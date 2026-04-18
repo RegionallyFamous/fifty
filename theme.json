@@ -231,7 +231,7 @@
 					}
 				},
 				{
-					"slug": "2xl",
+					"slug": "2-xl",
 					"name": "2X large",
 					"size": "2.5rem",
 					"fluid": {
@@ -240,7 +240,7 @@
 					}
 				},
 				{
-					"slug": "3xl",
+					"slug": "3-xl",
 					"name": "3X large",
 					"size": "3.25rem",
 					"fluid": {
@@ -249,7 +249,7 @@
 					}
 				},
 				{
-					"slug": "4xl",
+					"slug": "4-xl",
 					"name": "4X large",
 					"size": "4.25rem",
 					"fluid": {
@@ -258,7 +258,7 @@
 					}
 				},
 				{
-					"slug": "5xl",
+					"slug": "5-xl",
 					"name": "5X large",
 					"size": "5.5rem",
 					"fluid": {
@@ -300,7 +300,7 @@
 			},
 			"spacingSizes": [
 				{
-					"slug": "2xs",
+					"slug": "2-xs",
 					"name": "2X small",
 					"size": "clamp(0.25rem, 0.4vw + 0.1rem, 0.375rem)"
 				},
@@ -330,22 +330,22 @@
 					"size": "clamp(2rem, 3vw + 1.25rem, 3.75rem)"
 				},
 				{
-					"slug": "2xl",
+					"slug": "2-xl",
 					"name": "2X large",
 					"size": "clamp(3rem, 5vw + 1.5rem, 5.5rem)"
 				},
 				{
-					"slug": "3xl",
+					"slug": "3-xl",
 					"name": "3X large",
 					"size": "clamp(4rem, 6vw + 2rem, 7.5rem)"
 				},
 				{
-					"slug": "4xl",
+					"slug": "4-xl",
 					"name": "4X large",
 					"size": "clamp(5rem, 8vw + 2.5rem, 10rem)"
 				},
 				{
-					"slug": "5xl",
+					"slug": "5-xl",
 					"name": "5X large",
 					"size": "clamp(6rem, 10vw + 3rem, 14rem)"
 				}
@@ -462,8 +462,8 @@
 			"padding": {
 				"top": "0",
 				"bottom": "0",
-				"left": "var(--wp--preset--spacing--md)",
-				"right": "var(--wp--preset--spacing--md)"
+				"left": "var(--wp--preset--spacing--lg)",
+				"right": "var(--wp--preset--spacing--lg)"
 			}
 		},
 		"elements": {
@@ -501,19 +501,19 @@
 			},
 			"h1": {
 				"typography": {
-					"fontSize": "var(--wp--preset--font-size--4xl)",
+					"fontSize": "var(--wp--preset--font-size--4-xl)",
 					"lineHeight": "var(--wp--custom--line-height--tight)"
 				}
 			},
 			"h2": {
 				"typography": {
-					"fontSize": "var(--wp--preset--font-size--3xl)",
+					"fontSize": "var(--wp--preset--font-size--3-xl)",
 					"lineHeight": "var(--wp--custom--line-height--tight)"
 				}
 			},
 			"h3": {
 				"typography": {
-					"fontSize": "var(--wp--preset--font-size--2xl)",
+					"fontSize": "var(--wp--preset--font-size--2-xl)",
 					"lineHeight": "var(--wp--custom--line-height--snug)"
 				}
 			},
@@ -677,7 +677,8 @@
 							}
 						}
 					}
-				}
+				},
+				"css": "& .wp-block-navigation-item__content { position: relative; white-space: nowrap; padding-block: var(--wp--preset--spacing--xs); transition: color 160ms ease; } & .wp-block-navigation-item__content::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: center; transition: transform 220ms ease; } & .wp-block-navigation-item__content:hover::after { transform: scaleX(1); } & .wp-block-navigation__responsive-container-open { background: transparent; border: 0; color: var(--wp--preset--color--contrast); transition: color 160ms ease; } & .wp-block-navigation__responsive-container-close { background: transparent; border: 0; color: var(--wp--preset--color--contrast); transition: color 160ms ease; } & .wp-block-navigation__responsive-container-open svg { width: 24px; height: 24px; fill: currentColor; } & .wp-block-navigation__responsive-container-close svg { width: 24px; height: 24px; fill: currentColor; } & .wp-block-navigation__responsive-container.is-menu-open { background: var(--wp--preset--color--base); padding: var(--wp--preset--spacing--xl); } & .wp-block-navigation__responsive-container.is-menu-open .wp-block-navigation__responsive-container-content { gap: var(--wp--preset--spacing--md); } & .wp-block-navigation__responsive-container.is-menu-open .wp-block-navigation-item__content { font-size: var(--wp--preset--font-size--xl); font-family: var(--wp--preset--font-family--display); }"
 			},
 			"core/page-list": {
 				"typography": {
@@ -738,7 +739,7 @@
 			"core/post-title": {
 				"typography": {
 					"fontFamily": "var(--wp--preset--font-family--display)",
-					"fontSize": "var(--wp--preset--font-size--3xl)",
+					"fontSize": "var(--wp--preset--font-size--3-xl)",
 					"lineHeight": "var(--wp--custom--line-height--tight)",
 					"letterSpacing": "var(--wp--custom--letter-spacing--tight)"
 				},
@@ -876,7 +877,7 @@
 			"core/query-title": {
 				"typography": {
 					"fontFamily": "var(--wp--preset--font-family--display)",
-					"fontSize": "var(--wp--preset--font-size--3xl)",
+					"fontSize": "var(--wp--preset--font-size--3-xl)",
 					"lineHeight": "var(--wp--custom--line-height--tight)",
 					"letterSpacing": "var(--wp--custom--letter-spacing--tight)"
 				}
@@ -901,7 +902,8 @@
 					"margin": {
 						"top": "var(--wp--preset--spacing--xl)"
 					}
-				}
+				},
+				"css": "& .page-numbers { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; height: 40px; padding: 0 var(--wp--preset--spacing--xs); border-radius: var(--wp--custom--radius--md); color: var(--wp--preset--color--contrast); text-decoration: none; transition: background 160ms ease, color 160ms ease; } & .page-numbers:hover { background: var(--wp--preset--color--subtle); color: var(--wp--preset--color--accent); } & .page-numbers.current { background: var(--wp--preset--color--contrast); color: var(--wp--preset--color--base); } & .page-numbers.dots { background: transparent; color: var(--wp--preset--color--tertiary); }"
 			},
 			"core/query-pagination-numbers": {
 				"typography": {
@@ -1114,16 +1116,10 @@
 				"typography": {
 					"fontSize": "var(--wp--preset--font-size--sm)"
 				},
-				"border": {
-					"radius": "var(--wp--custom--radius--pill)",
-					"color": "var(--wp--preset--color--border)",
-					"width": "1px",
-					"style": "solid"
-				},
 				"color": {
-					"background": "var(--wp--preset--color--surface)",
 					"text": "var(--wp--preset--color--contrast)"
-				}
+				},
+				"css": "& .wp-block-search__inside-wrapper { border: 1px solid var(--wp--preset--color--border); border-radius: var(--wp--custom--radius--pill); background: var(--wp--preset--color--surface); overflow: hidden; } & .wp-block-search__input { border: 0; background: transparent; padding-inline: var(--wp--preset--spacing--md); padding-block: var(--wp--preset--spacing--xs); color: var(--wp--preset--color--contrast); font-size: var(--wp--preset--font-size--sm); } & .wp-block-search__input:focus { outline: 0; box-shadow: none; } & .wp-block-search__button { border: 0; background: transparent; color: var(--wp--preset--color--contrast); padding: var(--wp--preset--spacing--xs) var(--wp--preset--spacing--sm); transition: color 160ms ease; } & .wp-block-search__button:hover { color: var(--wp--preset--color--accent); background: transparent; } & .wp-block-search__button svg { width: 20px; height: 20px; fill: currentColor; } &.wp-block-search__button-only .wp-block-search__inside-wrapper { border: 0; background: transparent; } &.wp-block-search__button-only .wp-block-search__button { padding: var(--wp--preset--spacing--xs); border-radius: 999px; } &.wp-block-search__button-only .wp-block-search__button:hover { background: var(--wp--preset--color--subtle); }"
 			},
 			"core/separator": {
 				"color": {
@@ -1354,7 +1350,7 @@
 			"core/pullquote": {
 				"typography": {
 					"fontFamily": "var(--wp--preset--font-family--display)",
-					"fontSize": "var(--wp--preset--font-size--2xl)",
+					"fontSize": "var(--wp--preset--font-size--2-xl)",
 					"lineHeight": "var(--wp--custom--line-height--snug)",
 					"fontStyle": "normal"
 				},
@@ -1717,7 +1713,8 @@
 				},
 				"color": {
 					"text": "var(--wp--preset--color--contrast)"
-				}
+				},
+				"css": "& .wc-block-customer-account__link { display: inline-flex; align-items: center; justify-content: center; padding: var(--wp--preset--spacing--xs); border-radius: 999px; color: var(--wp--preset--color--contrast); transition: color 160ms ease; } & .wc-block-customer-account__link:hover { color: var(--wp--preset--color--accent); background: var(--wp--preset--color--subtle); } & .wc-block-customer-account__link svg { width: 22px; height: 22px; fill: currentColor; }"
 			},
 			"woocommerce/mini-cart": {
 				"typography": {
@@ -1726,7 +1723,8 @@
 				},
 				"color": {
 					"text": "var(--wp--preset--color--contrast)"
-				}
+				},
+				"css": "& .wc-block-mini-cart__button { position: relative; display: inline-flex; align-items: center; justify-content: center; padding: var(--wp--preset--spacing--xs); border-radius: 999px; color: var(--wp--preset--color--contrast); background: transparent; border: 0; transition: color 160ms ease; } & .wc-block-mini-cart__button:hover { color: var(--wp--preset--color--accent); background: var(--wp--preset--color--subtle); } & .wc-block-mini-cart__icon { width: 22px; height: 22px; } & .wc-block-mini-cart__badge { position: absolute; top: 0; right: 0; transform: translate(35%, -25%); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--wp--preset--color--accent); color: var(--wp--preset--color--base); font-size: 10px; font-weight: var(--wp--custom--font-weight--bold); line-height: 18px; text-align: center; box-shadow: 0 0 0 2px var(--wp--preset--color--base); }"
 			},
 			"woocommerce/mini-cart-contents": {
 				"color": {
@@ -1745,7 +1743,8 @@
 			"woocommerce/product-image": {
 				"border": {
 					"radius": "var(--wp--custom--radius--md)"
-				}
+				},
+				"css": "& { overflow: hidden; border-radius: var(--wp--custom--radius--md); display: block; } & img { transition: transform 480ms ease; } & a:hover img { transform: scale(1.04); }"
 			},
 			"woocommerce/product-image-gallery": {
 				"border": {
@@ -1854,8 +1853,8 @@
 				},
 				"spacing": {
 					"padding": {
-						"top": "var(--wp--preset--spacing--2xs)",
-						"bottom": "var(--wp--preset--spacing--2xs)",
+						"top": "var(--wp--preset--spacing--2-xs)",
+						"bottom": "var(--wp--preset--spacing--2-xs)",
 						"left": "var(--wp--preset--spacing--xs)",
 						"right": "var(--wp--preset--spacing--xs)"
 					}
@@ -1908,12 +1907,13 @@
 					"letterSpacing": "var(--wp--custom--letter-spacing--wider)",
 					"textTransform": "uppercase",
 					"lineHeight": "1"
-				}
+				},
+				"css": "& .wp-block-button__link, & .wc-block-components-product-button__button { display: inline-flex; align-items: center; justify-content: center; gap: var(--wp--preset--spacing--2-xs); padding: var(--wp--preset--spacing--sm) var(--wp--preset--spacing--md); border-radius: var(--wp--custom--radius--pill); background: var(--wp--preset--color--contrast); color: var(--wp--preset--color--base); border: 1px solid var(--wp--preset--color--contrast); transition: background 160ms ease, color 160ms ease, transform 160ms ease; cursor: pointer; } & .wp-block-button__link:hover, & .wc-block-components-product-button__button:hover { background: var(--wp--preset--color--accent); border-color: var(--wp--preset--color--accent); color: var(--wp--preset--color--base); transform: translateY(-1px); } & .added_to_cart { display: inline-block; margin-top: var(--wp--preset--spacing--xs); font-size: var(--wp--preset--font-size--xs); color: var(--wp--preset--color--accent); text-decoration: underline; }"
 			},
 			"woocommerce/related-products": {
 				"spacing": {
 					"margin": {
-						"top": "var(--wp--preset--spacing--2xl)"
+						"top": "var(--wp--preset--spacing--2-xl)"
 					},
 					"padding": {
 						"top": "var(--wp--preset--spacing--xl)"
@@ -1948,6 +1948,12 @@
 				},
 				"color": {
 					"text": "var(--wp--preset--color--tertiary)"
+				},
+				"spacing": {
+					"margin": {
+						"top": "0",
+						"bottom": "0"
+					}
 				}
 			},
 			"woocommerce/catalog-sorting": {
@@ -1956,7 +1962,14 @@
 				},
 				"color": {
 					"text": "var(--wp--preset--color--contrast)"
-				}
+				},
+				"spacing": {
+					"margin": {
+						"top": "0",
+						"bottom": "0"
+					}
+				},
+				"css": "& select { appearance: none; -webkit-appearance: none; -moz-appearance: none; background-color: transparent; background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%231A1A1A' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\"); background-repeat: no-repeat; background-position: right var(--wp--preset--spacing--sm) center; background-size: 10px 6px; border: 1px solid var(--wp--preset--color--border); border-radius: var(--wp--custom--radius--md); color: var(--wp--preset--color--contrast); font-family: inherit; font-size: var(--wp--preset--font-size--sm); font-weight: var(--wp--custom--font-weight--medium); line-height: 1; padding: var(--wp--preset--spacing--xs) calc(var(--wp--preset--spacing--lg) + 12px) var(--wp--preset--spacing--xs) var(--wp--preset--spacing--sm); transition: border-color 160ms ease, background-color 160ms ease; cursor: pointer; } & select:hover { border-color: var(--wp--preset--color--contrast); background-color: var(--wp--preset--color--base); } & select:focus { outline: none; border-color: var(--wp--preset--color--contrast); box-shadow: 0 0 0 3px var(--wp--preset--color--accent-soft); }"
 			},
 			"woocommerce/product-filters": {
 				"typography": {
@@ -2041,8 +2054,8 @@
 				},
 				"spacing": {
 					"padding": {
-						"top": "var(--wp--preset--spacing--2xl)",
-						"bottom": "var(--wp--preset--spacing--2xl)"
+						"top": "var(--wp--preset--spacing--2-xl)",
+						"bottom": "var(--wp--preset--spacing--2-xl)"
 					}
 				}
 			},
@@ -2102,7 +2115,7 @@
 			"woocommerce/cart-cross-sells-block": {
 				"spacing": {
 					"margin": {
-						"top": "var(--wp--preset--spacing--2xl)"
+						"top": "var(--wp--preset--spacing--2-xl)"
 					},
 					"padding": {
 						"top": "var(--wp--preset--spacing--xl)"
@@ -2225,7 +2238,7 @@
 			"woocommerce/order-confirmation-status": {
 				"typography": {
 					"fontFamily": "var(--wp--preset--font-family--display)",
-					"fontSize": "var(--wp--preset--font-size--3xl)",
+					"fontSize": "var(--wp--preset--font-size--3-xl)",
 					"lineHeight": "var(--wp--custom--line-height--tight)",
 					"letterSpacing": "var(--wp--custom--letter-spacing--tight)"
 				}
@@ -2276,6 +2289,11 @@
 		{
 			"name": "header",
 			"title": "Header",
+			"area": "header"
+		},
+		{
+			"name": "announcement-bar",
+			"title": "Announcement Bar",
 			"area": "header"
 		},
 		{

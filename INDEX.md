@@ -8,7 +8,7 @@ Read this file at the start of any LLM session to discover the project's structu
 
 ## At a glance
 
-- 24 templates, 7 parts
+- 24 templates, 8 parts
 - 11 starter patterns
 - 3 style variations
 - 157 block style entries in `theme.json` (85 core, 72 woocommerce)
@@ -36,6 +36,7 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- STRUCTURE.md
 |   `-- TOKENS.md
 |-- parts/
+|   |-- announcement-bar.html
 |   |-- checkout-header.html
 |   |-- comments.html
 |   |-- footer.html
@@ -131,6 +132,7 @@ Read this file at the start of any LLM session to discover the project's structu
 
 | File | Notes |
 |---|---|
+| `parts/announcement-bar.html` | (no description registered) |
 | `parts/checkout-header.html` | Stripped header used during checkout |
 | `parts/comments.html` | Post comments region |
 | `parts/footer.html` | Site footer (columns, copyright) |
@@ -266,10 +268,10 @@ Read this file at the start of any LLM session to discover the project's structu
 - `md` = 1.1875rem
 - `lg` = 1.5rem
 - `xl` = 1.875rem
-- `2xl` = 2.5rem
-- `3xl` = 3.25rem
-- `4xl` = 4.25rem
-- `5xl` = 5.5rem
+- `2-xl` = 2.5rem
+- `3-xl` = 3.25rem
+- `4-xl` = 4.25rem
+- `5-xl` = 5.5rem
 - `6xl` = 7rem
 
 ### Font families
@@ -281,16 +283,16 @@ Read this file at the start of any LLM session to discover the project's structu
 
 ### Spacing scale
 
-- `2xs` = clamp(0.25rem, 0.4vw + 0.1rem, 0.375rem)
+- `2-xs` = clamp(0.25rem, 0.4vw + 0.1rem, 0.375rem)
 - `xs` = clamp(0.5rem, 0.6vw + 0.25rem, 0.75rem)
 - `sm` = clamp(0.75rem, 0.8vw + 0.5rem, 1rem)
 - `md` = clamp(1rem, 1vw + 0.75rem, 1.5rem)
 - `lg` = clamp(1.5rem, 2vw + 1rem, 2.5rem)
 - `xl` = clamp(2rem, 3vw + 1.25rem, 3.75rem)
-- `2xl` = clamp(3rem, 5vw + 1.5rem, 5.5rem)
-- `3xl` = clamp(4rem, 6vw + 2rem, 7.5rem)
-- `4xl` = clamp(5rem, 8vw + 2.5rem, 10rem)
-- `5xl` = clamp(6rem, 10vw + 3rem, 14rem)
+- `2-xl` = clamp(3rem, 5vw + 1.5rem, 5.5rem)
+- `3-xl` = clamp(4rem, 6vw + 2rem, 7.5rem)
+- `4-xl` = clamp(5rem, 8vw + 2.5rem, 10rem)
+- `5-xl` = clamp(6rem, 10vw + 3rem, 14rem)
 
 ### Shadows
 

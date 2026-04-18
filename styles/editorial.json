@@ -44,12 +44,12 @@
 			},
 			"h1": {
 				"typography": {
-					"fontSize": "var(--wp--preset--font-size--5xl)"
+					"fontSize": "var(--wp--preset--font-size--5-xl)"
 				}
 			},
 			"h2": {
 				"typography": {
-					"fontSize": "var(--wp--preset--font-size--3xl)"
+					"fontSize": "var(--wp--preset--font-size--3-xl)"
 				}
 			}
 		},
