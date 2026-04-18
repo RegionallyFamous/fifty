@@ -8,7 +8,7 @@ Checks performed:
   1. JSON validity for theme.json and styles/*.json
   2. PHP syntax for every .php file
   3. Block-name validity in theme.json (via validate-theme-json.py)
-  4. No `!important` in code (only in docs/AGENTS.md, which is allowed)
+  4. No `!important` in code (only in AGENTS.md and other rule docs, which is allowed)
   5. No stray .css files (only style.css is allowed)
   6. No block prefixes other than core/* and woocommerce/* in templates/parts
   7. No AI-fingerprint vocabulary in user-facing files
@@ -150,7 +150,7 @@ def check_no_important() -> Result:
     pattern = re.compile(r"!important")
     for path in iter_files((".json", ".php", ".html", ".css")):
         rel = path.relative_to(ROOT).as_posix()
-        if any(rel == p or rel.startswith(f"docs/") for p in IMPORTANT_RULE_DOCS):
+        if rel in IMPORTANT_RULE_DOCS:
             continue
         if rel.startswith("bin/"):
             continue

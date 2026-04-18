@@ -50,7 +50,7 @@ Eleven generic patterns in `patterns/`: `hero-image`, `hero-text`, `featured-pro
 ### Documentation
 
 - `README.md`, `INDEX.md` (auto-generated), `SYSTEM-PROMPT.md` (paste-in for any LLM), `AGENTS.md` (full constraints + workflow recipes).
-- `docs/STRUCTURE.md`, `docs/TOKENS.md`, `docs/RECIPES.md`, `docs/ANTI-PATTERNS.md`, `docs/BLOCKS.md`.
+- Long-form docs (Architecture, Project Structure, Design Tokens, Recipes, Anti-Patterns, Block Reference, Templates, WooCommerce Integration, Style Variations, Working with LLMs, Tooling, Contributing, FAQ) live in the [project wiki](https://github.com/RegionallyFamous/Obel/wiki).
 - `_examples/` stubs for new patterns, style variations, and templates.
 
 ### Theme support

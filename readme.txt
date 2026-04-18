@@ -81,5 +81,5 @@ This theme bundles the following resources:
 * Three style variations in styles/: dark, editorial, high-contrast.
 * Eleven starter patterns: hero-image, hero-text, featured-products, value-props, faq-accordion, testimonials, brand-story, newsletter, cta-banner, footer-columns, category-tiles. Six pattern categories registered.
 * Tooling in bin/: check.py (single-command validator with 12 checks), build-index.py (regenerates INDEX.md), list-tokens.py, list-templates.py, validate-theme-json.py, clone.py.
-* Docs: README.md, INDEX.md (auto-generated), SYSTEM-PROMPT.md, AGENTS.md, plus STRUCTURE / TOKENS / RECIPES / ANTI-PATTERNS / BLOCKS in docs/.
+* Docs: README.md, INDEX.md (auto-generated), SYSTEM-PROMPT.md, AGENTS.md in the repo. Long-form docs (Architecture, Design Tokens, Recipes, Anti-Patterns, Block Reference, WooCommerce Integration, Style Variations, Tooling, FAQ) in the project wiki at github.com/RegionallyFamous/Obel/wiki.
 * _examples/ stubs for new patterns, style variations, and templates.

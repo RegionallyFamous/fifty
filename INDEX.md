@@ -29,12 +29,6 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- list-templates.py
 |   |-- list-tokens.py
 |   `-- validate-theme-json.py
-|-- docs/
-|   |-- ANTI-PATTERNS.md
-|   |-- BLOCKS.md
-|   |-- RECIPES.md
-|   |-- STRUCTURE.md
-|   `-- TOKENS.md
 |-- parts/
 |   |-- announcement-bar.html
 |   |-- checkout-header.html
@@ -370,13 +364,3 @@ If you want to style a block not listed here, add a new entry under `styles.bloc
 | `bin/list-templates.py` | List every template and the WordPress URL pattern it handles. |
 | `bin/list-tokens.py` | Print every design token defined in theme.json. |
 | `bin/validate-theme-json.py` | Validate that every block name referenced in theme.json actually exists. |
-
-## Documentation (`docs/`)
-
-| File | Topic |
-|---|---|
-| `docs/ANTI-PATTERNS.md` | Anti-Patterns |
-| `docs/BLOCKS.md` | Blocks Used |
-| `docs/RECIPES.md` | Recipes |
-| `docs/STRUCTURE.md` | Project Structure |
-| `docs/TOKENS.md` | Design Tokens |

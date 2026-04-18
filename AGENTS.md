@@ -1,14 +1,14 @@
 # AGENTS.md
 
-Instructions for AI coding agents working in this repository. Read this file in full before making any changes. Human-oriented docs live in `README.md`.
+Instructions for AI coding agents working in this repository. Read this file in full before making any changes. Human-oriented docs live in `README.md` and the [project wiki](https://github.com/RegionallyFamous/Obel/wiki).
 
 ## Required reading order
 
 1. **`INDEX.md`** -- auto-generated map of every template, part, pattern, style variation, design token, and block style entry. Read this first; it tells you what exists without reading individual files.
 2. This file (constraints + workflow).
-3. `docs/STRUCTURE.md` (annotated project map for humans).
-4. `docs/TOKENS.md` (design-token usage).
-5. For specific tasks: `docs/RECIPES.md`, `docs/ANTI-PATTERNS.md`, `docs/BLOCKS.md`.
+3. `README.md` (human-facing overview with the project quickstart and links to deeper docs).
+
+For deeper task-specific reference, read the wiki on demand. The relevant pages are listed below under "Where to find more detail".
 
 ## Tools you should use
 
@@ -38,7 +38,7 @@ These rules are not preferences. They define what this theme *is*. Do not break 
 4. **No JavaScript bundles.** No `package.json`, no `webpack`, no build step. Pure PHP + JSON + HTML.
 5. **`theme.json` is the single source of truth for styling.** Every visual change goes through `theme.json` — global tokens, element styles, or per-block `styles.blocks.*` entries.
 6. **All block names must be real.** Verify every `core/*` and `woocommerce/*` key against the Gutenberg / WooCommerce source before adding it. Run `bin/validate-theme-json.py` after editing `theme.json`. Past mistakes (`core/time-to-read` instead of `core/post-time-to-read`, etc.) cost real time.
-7. **No marketing fluff in user-facing text.** Plain, factual prose. No em-dashes (`—`), no triadic constructions ("clean, fast, beautiful"), no "leverage / robust / comprehensive / seamless" vocabulary.
+7. **No marketing fluff in user-facing text.** Plain, factual prose. No em-dashes (`—`), no triadic constructions ("clean, fast, beautiful"), no "leverage / robust / comprehensive / seamless" vocabulary. The check script enforces this on `README.md`, `readme.txt`, and `style.css`.
 
 ## Allowed dependencies
 
@@ -64,7 +64,7 @@ Anything else (Composer packages, NPM packages, external libraries) is forbidden
 | Translation strings | `languages/` |
 | Project tooling (validators, clone script) | `bin/` |
 | Copy-from stubs for new files | `_examples/` |
-| Long-form docs for humans and agents | `docs/` |
+| Long-form docs for humans | The [project wiki](https://github.com/RegionallyFamous/Obel/wiki). Do not commit Markdown docs into the repo (other than `README.md`, `INDEX.md`, `SYSTEM-PROMPT.md`, `AGENTS.md`, `CHANGELOG.md`). |
 | Paste-in system prompt for any LLM | `SYSTEM-PROMPT.md` |
 
 ## Workflow for common tasks
@@ -118,9 +118,25 @@ cp _examples/template.html.txt templates/your-template.html
 
 Then update the header (slug, title, description) and replace the body with your content. The `.txt` suffix is intentional and prevents WordPress from loading the stubs.
 
+## Where to find more detail
+
+For deeper reference, point the user (or read directly via `WebFetch` if you can) at the [project wiki](https://github.com/RegionallyFamous/Obel/wiki):
+
+| Topic | Wiki page |
+|---|---|
+| Project structure (every file, what it does) | [Project-Structure](https://github.com/RegionallyFamous/Obel/wiki/Project-Structure) |
+| Design tokens (which slug to use when) | [Design-Tokens](https://github.com/RegionallyFamous/Obel/wiki/Design-Tokens) |
+| Step-by-step recipes for common tasks | [Recipes](https://github.com/RegionallyFamous/Obel/wiki/Recipes) |
+| Bad-code/good-code pairs | [Anti-Patterns](https://github.com/RegionallyFamous/Obel/wiki/Anti-Patterns) |
+| Inventory of every block referenced | [Block-Reference](https://github.com/RegionallyFamous/Obel/wiki/Block-Reference) |
+| WooCommerce template guide | [WooCommerce-Integration](https://github.com/RegionallyFamous/Obel/wiki/WooCommerce-Integration) |
+| Architecture and philosophy | [Architecture](https://github.com/RegionallyFamous/Obel/wiki/Architecture) |
+| Style variation guide | [Style-Variations](https://github.com/RegionallyFamous/Obel/wiki/Style-Variations) |
+| Tooling reference | [Tooling](https://github.com/RegionallyFamous/Obel/wiki/Tooling) |
+
 ## Glossary of design tokens
 
-See `docs/TOKENS.md` for which token to use in which situation. **Do not introduce new token slugs** for project clones unless you also document them. Prefer reusing existing slugs over inventing new ones.
+The full token reference is in `theme.json` (`settings.*`) and summarized in `INDEX.md`. **Do not introduce new token slugs** for project clones unless you also document them in the wiki. Prefer reusing existing slugs over inventing new ones.
 
 ## Things that look like good ideas but aren't
 
@@ -138,16 +154,16 @@ python3 bin/check.py            # full check (online; validates block names)
 python3 bin/check.py --quick    # offline subset (skip block-name network check)
 ```
 
-`bin/check.py` runs every check the project cares about: JSON validity, PHP syntax, block-name validity, `!important` scan, stray-CSS scan, block-namespace scan, and AI-fingerprint scan. Output is one line per check. Exit code 0 if all pass.
+`bin/check.py` runs every check the project cares about: JSON validity, PHP syntax, block-name validity, `INDEX.md` freshness, `!important` scan, stray-CSS scan, block-namespace scan, AI-fingerprint scan, hardcoded-color scan, hardcoded-dimensions scan, block-attribute-token enforcement, duplicate-template scan. Output is one line per check. Exit code 0 if all pass.
 
 For a deeper dive into individual checks, see the script source.
 
 ## When in doubt
 
 1. Run `python3 bin/list-tokens.py` to see the design system at a glance (or ask the user to paste the output if you can't run scripts).
-2. Read `docs/STRUCTURE.md` for the project map.
-3. Read `docs/RECIPES.md` for the closest matching task.
-4. If still unsure, read `theme.json` end-to-end (it's the entire design system in one file, about 5 minutes to skim).
+2. Read `INDEX.md` for the project map (auto-generated; always current).
+3. Read `theme.json` end-to-end (it's the entire design system in one file, about 5 minutes to skim).
+4. For task-specific guidance, browse the [project wiki](https://github.com/RegionallyFamous/Obel/wiki).
 5. Then ask the user before making structural changes.
 
 If you are an LLM working in this repo via system prompt: see `SYSTEM-PROMPT.md` for the canonical prompt to paste in.

@@ -23,9 +23,11 @@ Before doing anything else, read `INDEX.md` at the project root. It is auto-gene
 - Every style variation
 - Every design token defined in `theme.json` (colors, fonts, sizes, spacing, shadows, layout, custom)
 - Every block already styled in `theme.json`, grouped by namespace
-- A one-line description for every script in `bin/` and doc in `docs/`
+- A one-line description for every script in `bin/`
 
-This saves you from reading individual files just to discover what exists. Read deeper files (e.g. a specific template, `theme.json`, a doc in `docs/`) only when `INDEX.md` tells you they're relevant to the current task.
+This saves you from reading individual files just to discover what exists. Read deeper files (e.g. a specific template or `theme.json`) only when `INDEX.md` tells you they're relevant to the current task.
+
+For deeper task-specific reference (recipes, anti-patterns, design tokens, block reference, WooCommerce integration), the project wiki lives at https://github.com/RegionallyFamous/Obel/wiki. If you have web-fetch access, browse it on demand. Otherwise ask the user to paste the relevant page.
 
 ### Hard rules. Never violate.
 
@@ -41,13 +43,18 @@ This saves you from reading individual files just to discover what exists. Read 
 
 You should read these on demand, not all at once:
 
-- `AGENTS.md` -- full constraints, where-to-put-what table, workflow recipes.
-- `docs/STRUCTURE.md` -- annotated project map.
-- `docs/TOKENS.md` -- which design-token slug to use when.
-- `docs/RECIPES.md` -- step-by-step recipes for the 10 most common tasks.
-- `docs/ANTI-PATTERNS.md` -- 15 bad-code/good-code pairs.
-- `docs/BLOCKS.md` -- inventory of every block this theme uses.
+- `AGENTS.md` -- full constraints, where-to-put-what table, workflow recipes (in repo).
 - `theme.json` -- the design system. Skim if you need to know what tokens exist.
+
+Wiki pages (https://github.com/RegionallyFamous/Obel/wiki) for deeper reference:
+
+- `Project-Structure` -- annotated project map.
+- `Design-Tokens` -- which design-token slug to use when.
+- `Recipes` -- step-by-step recipes for the most common tasks.
+- `Anti-Patterns` -- bad-code/good-code pairs.
+- `Block-Reference` -- inventory of every block this theme uses.
+- `WooCommerce-Integration` -- guide to every WC template.
+- `Architecture` -- the philosophy and the five hard rules.
 
 ### Tools
 
@@ -174,12 +181,12 @@ Run `python3 bin/list-templates.py` (or ask the user to paste its output) to get
 
 ### When you finish a change
 
-If you added, removed, or renamed any file under `templates/`, `parts/`, `patterns/`, `styles/`, `bin/`, or `docs/`, or you edited `theme.json`, ask the user to run `python3 bin/build-index.py` to regenerate `INDEX.md`.
+If you added, removed, or renamed any file under `templates/`, `parts/`, `patterns/`, `styles/`, or `bin/`, or you edited `theme.json`, ask the user to run `python3 bin/build-index.py` to regenerate `INDEX.md`.
 
 Then ask the user to run `python3 bin/check.py --quick` (or `python3 bin/check.py` for the full network-validating version) and paste the result back. Treat any non-PASS line as a failure you must fix before declaring "done". The "INDEX.md in sync" check fails if you forgot the regenerate step above.
 
 ### When in doubt
 
-Read `theme.json` end-to-end (it's the entire design system in one file). Then read the closest matching recipe in `docs/RECIPES.md`. Then ask the user before making structural changes.
+Read `theme.json` end-to-end (it's the entire design system in one file). Then look at the closest matching recipe in the wiki at https://github.com/RegionallyFamous/Obel/wiki/Recipes. Then ask the user before making structural changes.
 
 ## END SYSTEM PROMPT
