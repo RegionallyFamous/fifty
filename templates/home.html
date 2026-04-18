@@ -1,28 +1,32 @@
 <!-- wp:template-part {"slug":"header","tagName":"header"} /-->
 
-<!-- wp:group {"tagName":"main","style":{"spacing":{"padding":{"top":"var:preset|spacing|xl","bottom":"var:preset|spacing|2-xl"},"blockGap":"var:preset|spacing|2-xl"}},"layout":{"type":"constrained"}} -->
-<main class="wp-block-group" style="padding-top:var(--wp--preset--spacing--xl);padding-bottom:var(--wp--preset--spacing--2-xl)">
-	<!-- wp:group {"layout":{"type":"constrained"}} -->
+<!-- wp:group {"tagName":"main","style":{"spacing":{"padding":{"top":"var:preset|spacing|2-xl","bottom":"var:preset|spacing|3-xl"},"blockGap":"var:preset|spacing|2-xl"}},"layout":{"type":"constrained"}} -->
+<main class="wp-block-group" style="padding-top:var(--wp--preset--spacing--2-xl);padding-bottom:var(--wp--preset--spacing--3-xl)">
+	<!-- wp:group {"layout":{"type":"constrained","contentSize":"720px"},"style":{"spacing":{"blockGap":"var:preset|spacing|sm"}}} -->
 	<div class="wp-block-group">
-		<!-- wp:heading {"textAlign":"center","level":1,"content":"Journal"} -->
-		<h1 class="wp-block-heading has-text-align-center">Journal</h1>
+		<!-- wp:paragraph {"align":"center","fontSize":"xs","textColor":"tertiary","style":{"typography":{"textTransform":"uppercase","letterSpacing":"var:custom|letter-spacing|wider"},"spacing":{"margin":{"bottom":"0"}}}} -->
+		<p class="has-text-align-center has-tertiary-color has-text-color has-xs-font-size" style="text-transform:uppercase;letter-spacing:var(--wp--custom--letter-spacing--wider)">Latest writing</p>
+		<!-- /wp:paragraph -->
+
+		<!-- wp:heading {"textAlign":"center","level":1,"content":"Journal","style":{"typography":{"fontSize":"var(--wp--preset--font-size--4-xl)"},"spacing":{"margin":{"top":"0","bottom":"0"}}}} -->
+		<h1 class="wp-block-heading has-text-align-center" style="margin-top:0;margin-bottom:0;font-size:var(--wp--preset--font-size--4-xl)">Journal</h1>
 		<!-- /wp:heading -->
 
-		<!-- wp:paragraph {"align":"center","textColor":"secondary"} -->
-		<p class="has-text-align-center has-secondary-color has-text-color">Writing on craft, commerce, and the things we make.</p>
+		<!-- wp:paragraph {"align":"center","textColor":"secondary","style":{"typography":{"fontSize":"var(--wp--preset--font-size--md)"},"spacing":{"margin":{"top":"var:preset|spacing|xs"}}}} -->
+		<p class="has-text-align-center has-secondary-color has-text-color" style="margin-top:var(--wp--preset--spacing--xs);font-size:var(--wp--preset--font-size--md)">Writing on craft, commerce, and the things we make.</p>
 		<!-- /wp:paragraph -->
 	</div>
 	<!-- /wp:group -->
 
 	<!-- wp:query {"queryId":0,"query":{"perPage":12,"pages":0,"offset":0,"postType":"post","order":"desc","orderBy":"date","inherit":true},"align":"wide","layout":{"type":"constrained"}} -->
 	<div class="wp-block-query alignwide">
-		<!-- wp:post-template {"layout":{"type":"grid","columnCount":3,"minimumColumnWidth":null},"style":{"spacing":{"blockGap":{"top":"var:preset|spacing|xl","left":"var:preset|spacing|lg"}}}} -->
+		<!-- wp:post-template {"layout":{"type":"grid","columnCount":3,"minimumColumnWidth":null},"style":{"spacing":{"blockGap":{"top":"var:preset|spacing|2-xl","left":"var:preset|spacing|lg"}}}} -->
 			<!-- wp:group {"style":{"spacing":{"blockGap":"var:preset|spacing|sm"}}} -->
 			<div class="wp-block-group">
-				<!-- wp:post-featured-image {"isLink":true,"aspectRatio":"var(--wp--custom--aspect-ratio--card)"} /-->
+				<!-- wp:post-featured-image {"isLink":true,"aspectRatio":"var(--wp--custom--aspect-ratio--card)","style":{"border":{"radius":"var(--wp--custom--radius--md)"}}} /-->
 				<!-- wp:post-date {"format":"F j, Y","fontSize":"xs"} /-->
-				<!-- wp:post-title {"isLink":true,"level":3} /-->
-				<!-- wp:post-excerpt {"moreText":""} /-->
+				<!-- wp:post-title {"isLink":true,"level":3,"style":{"typography":{"fontSize":"var(--wp--preset--font-size--lg)"}}} /-->
+				<!-- wp:post-excerpt {"moreText":"","excerptLength":20,"style":{"typography":{"fontSize":"var(--wp--preset--font-size--sm)"}}} /-->
 			</div>
 			<!-- /wp:group -->
 		<!-- /wp:post-template -->
@@ -31,7 +35,7 @@
 			<!-- wp:template-part {"slug":"no-results"} /-->
 		<!-- /wp:query-no-results -->
 
-		<!-- wp:query-pagination {"layout":{"type":"flex","justifyContent":"center"},"style":{"spacing":{"margin":{"top":"var:preset|spacing|2-xl"}}}} -->
+		<!-- wp:query-pagination {"layout":{"type":"flex","justifyContent":"center"},"style":{"spacing":{"margin":{"top":"var:preset|spacing|2-xl"},"blockGap":"var:preset|spacing|xs"}}} -->
 			<!-- wp:query-pagination-previous /-->
 			<!-- wp:query-pagination-numbers /-->
 			<!-- wp:query-pagination-next /-->

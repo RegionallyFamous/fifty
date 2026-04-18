@@ -1,16 +1,12 @@
 <!-- wp:template-part {"slug":"header","tagName":"header"} /-->
 
-<!-- wp:group {"tagName":"main","style":{"spacing":{"padding":{"top":"var:preset|spacing|2-xl","bottom":"var:preset|spacing|2-xl"},"blockGap":"var:preset|spacing|xl"}},"layout":{"type":"constrained"}} -->
-<main class="wp-block-group" style="padding-top:var(--wp--preset--spacing--2-xl);padding-bottom:var(--wp--preset--spacing--2-xl)">
+<!-- wp:group {"tagName":"main","style":{"spacing":{"padding":{"top":"var:preset|spacing|2-xl","bottom":"var:preset|spacing|3-xl"},"blockGap":"var:preset|spacing|2-xl"}},"layout":{"type":"constrained"}} -->
+<main class="wp-block-group" style="padding-top:var(--wp--preset--spacing--2-xl);padding-bottom:var(--wp--preset--spacing--3-xl)">
 	<!-- wp:woocommerce/store-notices /-->
 
-	<!-- wp:group {"layout":{"type":"constrained"},"style":{"spacing":{"blockGap":"var:preset|spacing|md"}}} -->
+	<!-- wp:group {"layout":{"type":"constrained","contentSize":"640px"},"style":{"spacing":{"blockGap":"var:preset|spacing|lg"}}} -->
 	<div class="wp-block-group">
-		<!-- wp:paragraph {"align":"center","fontSize":"xs","textColor":"tertiary","style":{"typography":{"textTransform":"uppercase","letterSpacing":"var:custom|letter-spacing|wider"}}} -->
-		<p class="has-text-align-center has-tertiary-color has-text-color has-xs-font-size" style="text-transform:uppercase;letter-spacing:var(--wp--custom--letter-spacing--wider)">Thank you</p>
-		<!-- /wp:paragraph -->
-
-		<!-- wp:woocommerce/order-confirmation-status {"textAlign":"center"} /-->
+		<!-- wp:woocommerce/order-confirmation-status {"textAlign":"center","style":{"spacing":{"margin":{"top":"0","bottom":"0"}}}} /-->
 
 		<!-- wp:woocommerce/order-confirmation-summary /-->
 	</div>
@@ -18,8 +14,8 @@
 
 	<!-- wp:woocommerce/order-confirmation-totals-wrapper {"align":"wide"} -->
 	<div class="wp-block-woocommerce-order-confirmation-totals-wrapper alignwide">
-		<!-- wp:heading {"level":2,"fontSize":"lg","content":"Order details"} -->
-		<h2 class="wp-block-heading has-lg-font-size">Order details</h2>
+		<!-- wp:heading {"level":2,"fontSize":"xl","content":"Order details","style":{"spacing":{"margin":{"bottom":"var:preset|spacing|md"}}}} -->
+		<h2 class="wp-block-heading has-xl-font-size" style="margin-bottom:var(--wp--preset--spacing--md)">Order details</h2>
 		<!-- /wp:heading -->
 		<!-- wp:woocommerce/order-confirmation-totals /-->
 	</div>
@@ -27,21 +23,21 @@
 
 	<!-- wp:woocommerce/order-confirmation-downloads-wrapper {"align":"wide"} -->
 	<div class="wp-block-woocommerce-order-confirmation-downloads-wrapper alignwide">
-		<!-- wp:heading {"level":2,"fontSize":"lg","content":"Downloads"} -->
-		<h2 class="wp-block-heading has-lg-font-size">Downloads</h2>
+		<!-- wp:heading {"level":2,"fontSize":"xl","content":"Downloads","style":{"spacing":{"margin":{"bottom":"var:preset|spacing|md"}}}} -->
+		<h2 class="wp-block-heading has-xl-font-size" style="margin-bottom:var(--wp--preset--spacing--md)">Downloads</h2>
 		<!-- /wp:heading -->
 		<!-- wp:woocommerce/order-confirmation-downloads /-->
 	</div>
 	<!-- /wp:woocommerce/order-confirmation-downloads-wrapper -->
 
-	<!-- wp:columns {"align":"wide","style":{"spacing":{"blockGap":{"top":"var:preset|spacing|xl","left":"var:preset|spacing|xl"}}}} -->
+	<!-- wp:columns {"align":"wide","style":{"spacing":{"blockGap":{"top":"var:preset|spacing|xl","left":"var:preset|spacing|2-xl"}}}} -->
 	<div class="wp-block-columns alignwide">
 		<!-- wp:column -->
 		<div class="wp-block-column">
 			<!-- wp:woocommerce/order-confirmation-shipping-wrapper -->
 			<div class="wp-block-woocommerce-order-confirmation-shipping-wrapper">
-				<!-- wp:heading {"level":3,"fontSize":"md","content":"Shipping"} -->
-				<h3 class="wp-block-heading has-md-font-size">Shipping</h3>
+				<!-- wp:heading {"level":3,"fontSize":"md","content":"Shipping address","style":{"typography":{"textTransform":"uppercase","letterSpacing":"var:custom|letter-spacing|wider","fontSize":"var(--wp--preset--font-size--xs)"},"spacing":{"margin":{"bottom":"var:preset|spacing|sm"}}},"textColor":"secondary"} -->
+				<h3 class="wp-block-heading has-secondary-color has-text-color has-md-font-size" style="margin-bottom:var(--wp--preset--spacing--sm);text-transform:uppercase;letter-spacing:var(--wp--custom--letter-spacing--wider)">Shipping address</h3>
 				<!-- /wp:heading -->
 				<!-- wp:woocommerce/order-confirmation-shipping-address /-->
 			</div>
@@ -53,8 +49,8 @@
 		<div class="wp-block-column">
 			<!-- wp:woocommerce/order-confirmation-billing-wrapper -->
 			<div class="wp-block-woocommerce-order-confirmation-billing-wrapper">
-				<!-- wp:heading {"level":3,"fontSize":"md","content":"Billing"} -->
-				<h3 class="wp-block-heading has-md-font-size">Billing</h3>
+				<!-- wp:heading {"level":3,"fontSize":"md","content":"Billing address","style":{"typography":{"textTransform":"uppercase","letterSpacing":"var:custom|letter-spacing|wider","fontSize":"var(--wp--preset--font-size--xs)"},"spacing":{"margin":{"bottom":"var:preset|spacing|sm"}}},"textColor":"secondary"} -->
+				<h3 class="wp-block-heading has-secondary-color has-text-color has-md-font-size" style="margin-bottom:var(--wp--preset--spacing--sm);text-transform:uppercase;letter-spacing:var(--wp--custom--letter-spacing--wider)">Billing address</h3>
 				<!-- /wp:heading -->
 				<!-- wp:woocommerce/order-confirmation-billing-address /-->
 			</div>
