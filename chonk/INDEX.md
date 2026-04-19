@@ -44,6 +44,7 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- testimonials.php
 |   `-- value-props.php
 |-- playground/
+|   |-- images/
 |   `-- blueprint.json
 |-- styles/
 |   |-- dark.json
