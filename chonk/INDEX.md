@@ -276,15 +276,15 @@ Read this file at the start of any LLM session to discover the project's structu
 
 ### Shadows
 
-- `xs` = 2px 2px 0 0 #000000
-- `sm` = 3px 3px 0 0 #000000
-- `md` = 4px 4px 0 0 #000000
-- `lg` = 6px 6px 0 0 #000000
-- `xl` = 8px 8px 0 0 #000000
+- `xs` = 2px 2px 0 0 var(--wp--preset--color--contrast)
+- `sm` = 3px 3px 0 0 var(--wp--preset--color--contrast)
+- `md` = 4px 4px 0 0 var(--wp--preset--color--contrast)
+- `lg` = 6px 6px 0 0 var(--wp--preset--color--contrast)
+- `xl` = 8px 8px 0 0 var(--wp--preset--color--contrast)
 - `accent` = 6px 6px 0 0 var(--wp--preset--color--accent)
 - `secondary-accent` = 6px 6px 0 0 var(--wp--preset--color--secondary-accent)
 - `tertiary-accent` = 6px 6px 0 0 var(--wp--preset--color--tertiary-accent)
-- `inset` = inset 0 0 0 2px #000000
+- `inset` = inset 0 0 0 2px var(--wp--preset--color--contrast)
 
 ### Layout
 

@@ -229,6 +229,179 @@ def check_no_hardcoded_colors() -> Result:
     return r
 
 
+def check_no_hex_in_theme_json() -> Result:
+    """Fail if theme.json contains hex colors outside the palette declarations.
+
+    Allowed locations for raw hex: settings.color.palette, settings.color.gradients,
+    settings.color.duotone. Anywhere else (styles.css escape hatches,
+    settings.shadow.presets, block-level styles, etc.) must use design tokens
+    so a single palette edit ripples everywhere.
+    """
+    r = Result("No raw hex colors in theme.json (outside palette)")
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.fail("theme.json missing")
+        return r
+    try:
+        data = json.loads(theme_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        r.fail(str(exc))
+        return r
+    hex_re = re.compile(r"#[0-9A-Fa-f]{3,8}\b")
+    allowed_prefixes = (
+        "settings.color.palette",
+        "settings.color.gradients",
+        "settings.color.duotone",
+    )
+
+    def walk(node, path: str = "") -> None:
+        if any(path.startswith(p) for p in allowed_prefixes):
+            return
+        if isinstance(node, dict):
+            for k, v in node.items():
+                walk(v, f"{path}.{k}" if path else k)
+        elif isinstance(node, list):
+            for i, v in enumerate(node):
+                walk(v, f"{path}[{i}]")
+        elif isinstance(node, str):
+            for m in hex_re.finditer(node):
+                r.fail(f"theme.json: '{m.group(0)}' at {path}")
+
+    walk(data)
+    return r
+
+
+def check_wc_grid_integration() -> Result:
+    """Catch known WooCommerce + theme.json layout integration bugs.
+
+    Specifically:
+
+    1. CLEARFIX-IN-GRID
+       WooCommerce's plugin CSS adds clearfix `::before` and `::after` pseudo-
+       elements to `ul.products` (`content:" "; display:table; clear:both`).
+       When a theme sets `display:grid` on the same `<ul>`, those pseudos
+       become real grid items and consume cells, leaving visible empty slots
+       (e.g. 2 product cards on a 4-cell grid show in cells 2 and 3, with
+       cells 1 and 4 blank). Fix: in the same scope, hide the pseudos with
+       `display:none; content:none;`.
+
+       This check fails if `theme.json` `styles.css` contains a rule that
+       sets `display:grid` on a selector ending in `ul.products` (or
+       `.products`) and the same scope does not also nullify both
+       `::before` and `::after` on that same selector.
+
+    2. WC LOOP WIDTH LEAK
+       WC sets `.woocommerce ul.products[class*=columns-] li.product
+       { width: 22.05% / 30.79% / 48% / 100% }` based on the `.columns-N`
+       class. Inside a grid container those percentages stop the LIs filling
+       their cells. Fix: a scoped rule resetting `width:100%` on
+       `li.product:nth-child(n)` (the `:nth-child(n)` is needed to win
+       specificity over WC's `:nth-child(Nn)` margin-reset rules).
+
+       This check fails if a `display:grid` rule on `ul.products` exists
+       without an accompanying `li.product` width reset rule in the same
+       theme.json `styles.css`.
+    """
+    r = Result("WooCommerce grid integration (clearfix + loop width)")
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.fail("theme.json missing")
+        return r
+    try:
+        data = json.loads(theme_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        r.fail(str(exc))
+        return r
+
+    css = ""
+    styles = data.get("styles", {})
+    if isinstance(styles, dict):
+        css = styles.get("css", "") or ""
+    if not css:
+        return r  # Nothing to check.
+
+    # Find every CSS rule of the form `<selectors> { <body> }`.
+    # We deliberately keep this regex simple — theme.json `styles.css` is
+    # never deeply nested (no @media, no nesting) by project convention.
+    rule_re = re.compile(r"([^{};]+)\{([^{}]*)\}")
+
+    grid_rules: list[tuple[str, str]] = []  # (selectors, body)
+    pseudo_rules: list[str] = []             # selector strings
+    width_reset_rules: list[str] = []        # selector strings
+
+    for m in rule_re.finditer(css):
+        selectors = m.group(1).strip()
+        body = m.group(2)
+        # Normalize whitespace inside the body for substring checks.
+        body_norm = re.sub(r"\s+", "", body)
+        sel_list = [s.strip() for s in selectors.split(",")]
+
+        is_grid_on_products = "display:grid" in body_norm and any(
+            re.search(r"(?:^|\s|\.)products(?:\s|$)|ul\.products(?:\s|$)", s)
+            for s in sel_list
+        )
+        if is_grid_on_products:
+            grid_rules.append((selectors, body_norm))
+
+        is_pseudo_kill = (
+            ("display:none" in body_norm or "content:none" in body_norm)
+            and any("::before" in s or "::after" in s for s in sel_list)
+            and any("ul.products" in s or "products" in s for s in sel_list)
+        )
+        if is_pseudo_kill:
+            pseudo_rules.extend(sel_list)
+
+        is_width_reset = (
+            "width:100%" in body_norm
+            and any("li.product" in s for s in sel_list)
+        )
+        if is_width_reset:
+            width_reset_rules.extend(sel_list)
+
+    if not grid_rules:
+        return r  # No grid on ul.products → nothing to enforce.
+
+    # For each grid rule we found, require both a pseudo-element nullifier
+    # and a width-reset rule whose scope overlaps. We use a permissive
+    # "scope tag" derived from the selector (.upsells / .related / .shop
+    # etc.) so that a grid scoped to .upsells must be paired with pseudo-
+    # kills and width-resets that also mention .upsells.
+    scope_re = re.compile(r"\.(upsells|related|shop|products|cross-sells|cart-cross-sells)")
+
+    for selectors, _body in grid_rules:
+        scopes = set(scope_re.findall(selectors))
+        if not scopes:
+            scopes = {"products"}
+
+        for scope in scopes:
+            has_before = any(
+                f".{scope}" in s and "::before" in s for s in pseudo_rules
+            )
+            has_after = any(
+                f".{scope}" in s and "::after" in s for s in pseudo_rules
+            )
+            has_width_reset = any(
+                f".{scope}" in s and "li.product" in s for s in width_reset_rules
+            )
+
+            if not (has_before and has_after):
+                r.fail(
+                    f"grid on `ul.products` scoped to `.{scope}` "
+                    "without `::before` AND `::after { display:none; content:none; }` "
+                    "in the same scope — WC clearfix pseudos will consume grid cells "
+                    f"(rule selectors: {selectors[:120]}{'…' if len(selectors) > 120 else ''})"
+                )
+            if not has_width_reset:
+                r.fail(
+                    f"grid on `ul.products` scoped to `.{scope}` "
+                    "without `li.product { width:100% }` reset — WC loop widths "
+                    "(22%/30%/48%) will leak into grid cells "
+                    f"(rule selectors: {selectors[:120]}{'…' if len(selectors) > 120 else ''})"
+                )
+
+    return r
+
+
 def check_no_hardcoded_dimensions() -> Result:
     """Scan templates/parts/patterns for hardcoded px/em/rem values in style=
     attributes, excluding common known-safe values.
@@ -378,6 +551,8 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_block_prefixes(),
         check_no_ai_fingerprints(),
         check_no_hardcoded_colors(),
+        check_no_hex_in_theme_json(),
+        check_wc_grid_integration(),
         check_no_hardcoded_dimensions(),
         check_block_attrs_use_tokens(),
         check_no_duplicate_templates(),

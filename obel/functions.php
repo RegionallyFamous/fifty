@@ -62,3 +62,22 @@ add_action(
 		}
 	}
 );
+
+add_filter(
+	'woocommerce_upsells_columns',
+	static function ( int $columns, array $upsells = array() ): int {
+		$count = is_array( $upsells ) ? count( $upsells ) : 0;
+		return $count > 0 ? min( $count, 4 ) : 4;
+	},
+	10,
+	2
+);
+
+add_filter(
+	'woocommerce_output_related_products_args',
+	static function ( array $args ): array {
+		$args['posts_per_page'] = 4;
+		$args['columns']        = 4;
+		return $args;
+	}
+);
