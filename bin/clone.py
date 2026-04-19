@@ -126,6 +126,10 @@ def main() -> int:
     print(f"  3. Replace screenshot.png with your own (1200x900px recommended)")
     print(f"  4. Update style.css Author, Author URI, and Theme URI headers")
     print(f"  5. Replace or extend the starter patterns in patterns/")
+    print(f"  6. Run `python3 bin/sync-playground.py` so the new theme's")
+    print(f"     playground/blueprint.json picks up the latest shared helpers")
+    print(f"     (the blueprint itself was already copied from {source.name} and the")
+    print(f"     '{source.name}' / '{title_case(source.name)}' identifiers were rewritten above)")
     return 0
 
 

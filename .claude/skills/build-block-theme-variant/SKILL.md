@@ -20,19 +20,22 @@ Read this **before** running `bin/clone.py` or touching any files, the moment th
 ## The non-negotiable workflow
 
 ```
-1. PREFLIGHT       → read base theme rules + tooling
-2. PIN INTENT      → mockup + 4-question briefing (one round, batched)
-3. PLAN TOKENS     → full design system on paper before writing code
-4. CLONE           → bin/clone.py
-5. TOKENS FIRST    → theme.json palette, type, spacing, shadow, radius, borders, fontFace
-6. STRUCTURE       → restyle templates/parts to match mockup composition
-7. DYNAMIC         → swap hardcoded content for core/terms-query, core/query, core/navigation, core/site-*
-8. SEED DATA       → ensure menus, pages, categories exist in the DB so dynamic blocks render real content
-9. VERIFY          → check.py + screenshots at mobile/tablet/desktop
-10. REPORT         → ship a single summary, not a back-and-forth
+ 1. PREFLIGHT       → read base theme rules + tooling
+ 2. PIN INTENT      → mockup + 4-question briefing (one round, batched)
+ 3. PLAN TOKENS     → full design system on paper before writing code
+ 4. CLONE           → bin/clone.py
+ 5. TOKENS FIRST    → theme.json palette, type, spacing, shadow, radius, borders, fontFace
+ 6. STRUCTURE       → restyle templates/parts to match mockup composition
+ 7. DYNAMIC         → swap hardcoded content for core/terms-query, core/query, core/navigation, core/site-*
+ 8. SEED DATA       → ensure menus, pages, categories exist in the DB so dynamic blocks render real content
+ 9. PLAYGROUND      → bin/sync-playground.py + load the new theme's blueprint URL and walk the surface checklist
+10. VERIFY          → check.py + screenshots at mobile/tablet/desktop
+11. REPORT          → ship a single summary, not a back-and-forth
 ```
 
 Skipping any step is what causes the "you held my hand too much" failure mode.
+
+**Step 9 is non-optional.** Every theme in this monorepo must ship a working `<theme>/playground/blueprint.json`. `bin/clone.py` copies and rewrites obel's blueprint automatically; `bin/sync-playground.py` auto-discovers the new theme via `_lib.iter_themes()` and re-inlines the shared `playground/*.php` helpers. After that, open the deeplink (`https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/<org>/<repo>/main/<theme>/playground/blueprint.json`) and click through front page → shop → single product → cart → checkout → blog post → 404 once. If any pretty URL 404s, the blueprint is broken — see "Playground gotchas" below.
 
 ---
 
@@ -520,7 +523,76 @@ For product categories specifically, the user almost always already has terms vi
 
 ---
 
-## Step 9 — Verify
+## Step 9 — Ship a working Playground blueprint
+
+**Every theme in this monorepo must ship a working `<theme>/playground/blueprint.json`.** It is part of the deliverable, not an extra. A theme without a working blueprint is incomplete — there's no other way for a reviewer to load it without a full local WP + WC install.
+
+### What you don't have to do
+
+`bin/clone.py` already copied `obel/playground/blueprint.json` into your new theme and rewrote `obel`→`<new>` and `Obel`→`<New>` in the JSON. That handles `installTheme.path`, `installTheme.options.targetFolderName`, `setSiteOptions.blogname`, the meta `title`/`description`, and the `WO_THEME_NAME` constant inside the inlined `wo-configure.php` body. Don't recreate the blueprint by hand.
+
+### What you must do
+
+```bash
+python3 bin/sync-playground.py
+```
+
+This auto-discovers every theme in the monorepo (via `_lib.iter_themes()`) and re-inlines the latest `playground/*.php` bodies into each blueprint. There is no hardcoded theme list — adding a new theme is automatic. Run it once after cloning, and again any time `playground/wo-import.php`, `playground/wo-configure.php`, or `playground/wo-cart-mu.php` change.
+
+Then load the deeplink and walk the surface checklist:
+
+```
+https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/<org>/<repo>/main/<theme>/playground/blueprint.json
+```
+
+Append `&url=/<path>/` to deep-link into a specific surface. Walk these at minimum, in order:
+
+```
+&url=/                            front page
+&url=/shop/                       shop archive
+&url=/product/bottled-morning/    single product
+&url=/cart/?demo=cart             cart (pre-filled by the mu-plugin)
+&url=/checkout/?demo=cart         checkout
+&url=/journal/                    blog index
+&url=/welcome-to-wonders-and-oddities/   single post
+&url=/this-route-does-not-exist/  404
+```
+
+If **any** pretty URL 404s, the blueprint is broken — almost certainly the permalink-flush gotcha (see below). Don't ship until every URL above resolves to a designed page.
+
+### Playground gotchas
+
+**Permalink flush in `wp eval-file` context.** This is the bug that ate hours and shipped a broken demo for both obel and chonk. The naive pattern
+
+```php
+update_option( 'permalink_structure', '/%postname%/' );
+flush_rewrite_rules( true );
+```
+
+does **not** work. The global `$wp_rewrite` was constructed at WP boot from the previous (default = empty) structure; `update_option()` doesn't touch it. `flush_rewrite_rules()` then regenerates the `rewrite_rules` option from that stale property, producing rules for the default URL scheme. Every pretty post / page / product URL 404s as a result.
+
+The correct pattern (already in `playground/wo-configure.php`) is:
+
+```php
+global $wp_rewrite;
+$wp_rewrite->set_permalink_structure( '/%postname%/' );
+$wp_rewrite->set_category_base( '' );
+$wp_rewrite->set_tag_base( '' );
+$wp_rewrite->flush_rules( true );
+delete_option( 'rewrite_rules' );  // belt + suspenders for lazy rebuild
+```
+
+Don't "simplify" it back. If you do, you're reintroducing the bug.
+
+**Don't use `{ resource: url }` for the `writeFile` data field.** Playground caches URL fetches across boots, and `raw.githubusercontent.com` ships `cache-control: max-age=300`. A pushed change to the script can take 5+ minutes to surface, and Playground will run the previous version against the new blueprint. The whole point of `bin/sync-playground.py` is to inline the script body so there's only one URL to invalidate. Keep it inlined.
+
+**Playground's `wp-cli` step has no shell.** The command string is parsed into args and handed straight to WP-CLI; there is no `&&`, no `||`, no `;`, no `$(…)`, no pipes. Use a `runPHP` step (with `require_once '/wordpress/wp-load.php';` at the top) or a `wp eval-file` against a `writeFile`'d script for anything more complex than a single command.
+
+**Test in a fresh browser / incognito.** Playground persists each scope's WP install in the browser's OPFS, so loading a deeplink with an existing scope replays the previously-booted state — bug fixes in the blueprint won't take effect until a fresh scope boots. When verifying a fix, always use a brand-new browser context.
+
+---
+
+## Step 10 — Verify
 
 Run, in order:
 
@@ -627,7 +699,7 @@ Fix every contrast failure immediately. Common fixes:
 
 ---
 
-## Step 10 — Report once
+## Step 11 — Report once
 
 Send the user a single summary message containing:
 
@@ -659,8 +731,10 @@ These are real mistakes from the Chonk build. Don't repeat them.
 | Footer columns built as `<ul><li><a href="/about">About</a></li>…</ul>` because "the menus aren't set up yet" | `core/navigation` block always. If the menu doesn't exist, seed it in step 8 via `wp menu create`. Hardcoded link lists are dead links the moment the user changes their site structure. |
 | Hardcoded "© 2026 Site Title" copyright text | `core/site-title` for the name, current year via a real WP block (or accept "© All rights reserved." with no year — never invent a year that will be wrong in 9 months). |
 | Used hardcoded category names anywhere outside a structural label | `core/terms-query` always |
-| Verified responsiveness only on the homepage | Three-viewport screenshot pass required for **every** surface in step 9 Pass B (with the parent-inheritance shortcut). Cart layout almost always breaks at mobile in ways the homepage doesn't. |
-| Used `secondary` / `tertiary` text color slugs without checking contrast on every background they land on | Plan contrast pairs in step 5 and run `bin/check-contrast.py`. Per-surface, audit body/meta/buttons/links/focus/form fields against WCAG AA in step 9 Pass C. |
+| Verified responsiveness only on the homepage | Three-viewport screenshot pass required for **every** surface in step 10 Pass B (with the parent-inheritance shortcut). Cart layout almost always breaks at mobile in ways the homepage doesn't. |
+| Used `secondary` / `tertiary` text color slugs without checking contrast on every background they land on | Plan contrast pairs in step 5 and run `bin/check-contrast.py`. Per-surface, audit body/meta/buttons/links/focus/form fields against WCAG AA in step 10 Pass C. |
+| Shipped a theme variant without ever loading its Playground blueprint | Step 9 is non-optional. Every theme must have a working `<theme>/playground/blueprint.json`, which `bin/clone.py` creates and `bin/sync-playground.py` keeps in sync automatically. Walk the deeplink surface checklist before declaring done. |
+| "Simplified" the permalink section of `playground/wo-configure.php` back to `update_option(...)` + `flush_rewrite_rules(...)` | That's the bug. In a `wp eval-file` context the global `$wp_rewrite` is stale; you must use `$wp_rewrite->set_permalink_structure()` first. See "Playground gotchas" in step 9. |
 | Removed the focus ring (`outline:none`) for visual cleanliness | Always keep a visible focus ring at ≥ 3:1 contrast. Style it; don't remove it. Tab through the homepage to verify before declaring done. |
 | Status colors (sale price, error, success) defaulted to red/green with no recalibration against the variant palette | Treat status colors as palette slugs (`status-positive`, `status-negative`, `status-warning`) and run them through the contrast script along with everything else. |
 | Used a `core/html` block to drop in raw markup because "the block I want doesn't quite exist" | Forbidden. Either compose the design from existing `core/*` / `woocommerce/*` blocks, or use the `theme.json` `css` escape hatch for pure styling problems. Raw HTML in a template defeats the entire design system. |
@@ -749,6 +823,15 @@ Plus generate a mockup image alongside, so the user can react to a picture, not 
 - [ ] Zero hardcoded site name, tagline, year, or address — every site datum is a `core/site-*` block
 - [ ] Every category/product/post list uses `core/terms-query` or `core/query`, not hardcoded markup
 - [ ] Menus, pages, and any referenced taxonomy terms exist in the DB (or explicitly handed off to the user with instructions)
+
+**Playground blueprint (the deliverable is incomplete without this):**
+
+- [ ] `<theme>/playground/blueprint.json` exists (created automatically by `bin/clone.py`)
+- [ ] `python3 bin/sync-playground.py` reports "already in sync" for every theme (no stale inlined helpers)
+- [ ] Blueprint metadata references the correct theme — `meta.title`, `meta.description`, `installTheme.path`, `installTheme.options.targetFolderName`, `setSiteOptions.blogname`, and the `define('WO_THEME_NAME', '<Theme>')` inside the `wo-configure.php` data field all read `<Theme>`, not `Obel`
+- [ ] Loaded the deeplink (`https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/<org>/<repo>/main/<theme>/playground/blueprint.json`) in a fresh browser / incognito window — boot completes without errors
+- [ ] Walked every URL in the surface checklist (`/`, `/shop/`, `/product/bottled-morning/`, `/cart/?demo=cart`, `/checkout/?demo=cart`, `/journal/`, `/welcome-to-wonders-and-oddities/`, `/this-route-does-not-exist/`) — every pretty URL resolves to a designed page, no 404s on legitimate URLs, the 404 page renders the variant's branded 404
+- [ ] `playground/wo-configure.php`'s permalink section still uses `$wp_rewrite->set_permalink_structure(...)` (not just `update_option(...)`)
 
 **Modern-blocks-only audit (run the validation greps from the hard rule):**
 

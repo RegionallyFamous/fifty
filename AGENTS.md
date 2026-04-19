@@ -78,28 +78,73 @@ Use the agent skill `build-block-theme-variant` (in `.claude/skills/build-block-
 
 The short version:
 
-1. `python3 bin/clone.py <new_name>` — scaffolds `fifty/<new_name>/` from Obel.
+1. `python3 bin/clone.py <new_name>` — scaffolds `fifty/<new_name>/` from Obel, including `playground/blueprint.json`.
 2. Edit `<new_name>/theme.json` (palette, fonts, layout sizes, shadows, radii).
 3. Restructure templates and parts only when the design demands it; otherwise inherit Obel's defaults.
 4. Seed real data (pages, navigations, categories) via WP CLI — never hardcode.
 5. `ln -s fifty/<new_name> ../<new_name>` so WordPress sees it.
 6. `wp theme activate <new_name>`
 7. `python3 bin/build-index.py <new_name>`
-8. `python3 bin/check.py <new_name>`
+8. `python3 bin/sync-playground.py` — auto-discovers the new theme and re-inlines the shared helpers into its blueprint.
+9. `python3 bin/check.py <new_name>`
+10. Open the new theme's Playground deeplink (`https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/<org>/<repo>/main/<new_name>/playground/blueprint.json`) and walk the surface checklist before declaring done. The blueprint is part of the deliverable — see "WordPress Playground blueprints" below.
 
 ## WordPress Playground blueprints
 
-Each theme has a Playground blueprint at `<theme>/playground/blueprint.json`. The blueprints share a single Wonders & Oddities sample-data importer at `playground/wo-import.php` (repo root, not under any theme).
+**Every theme in this monorepo MUST ship a working Playground blueprint at `<theme>/playground/blueprint.json`.** It is part of the deliverable, not an extra. A theme without a working blueprint is incomplete — there's no other way for a reviewer to load it without a full local WP + WC install.
 
-**The script is inlined into both blueprints**, not fetched at boot. Don't change the blueprints' `writeFile` step to use a `{ resource: url }` data field — Playground caches URL resources aggressively (and `raw.githubusercontent.com` ships `cache-control: max-age=300`), so a freshly-pushed script change can take 5+ minutes to propagate and Playground will run the previous version against the new blueprint. Inlining puts the script body in the same payload as the blueprint, so there is one URL to invalidate, not two.
+The expected layout:
 
-After editing `playground/wo-import.php`:
-
-```bash
-python3 bin/sync-playground.py   # re-inlines the script into both blueprints
+```
+fifty/
+├── playground/                       # shared, theme-agnostic helpers
+│   ├── wo-import.php                 # WC product importer
+│   ├── wo-configure.php              # site/options/orders/customer/reviews
+│   └── wo-cart-mu.php                # ?demo=cart pre-filler mu-plugin
+├── obel/playground/blueprint.json    # ← every theme has its own copy
+├── chonk/playground/blueprint.json
+└── <new-theme>/playground/blueprint.json
 ```
 
-Commit the resulting `*/playground/blueprint.json` changes alongside the script change. `bin/check.py` does not (yet) enforce that the blueprints are in sync — keep them in sync by hand.
+How a new theme gets one (the only correct path):
+
+1. `python3 bin/clone.py <new_name>` — copies obel including `playground/blueprint.json`, and rewrites `obel`→`<new_name>` and `Obel`→`<New_name>` in the editable files (the JSON included). The blueprint's `installTheme.path`, `installTheme.options.targetFolderName`, `setSiteOptions.blogname`, and the `WO_THEME_NAME` constant inside the inlined `wo-configure.php` body all get rewritten automatically.
+2. `python3 bin/sync-playground.py` — auto-discovers every theme via `_lib.iter_themes()` and re-inlines the latest `playground/*.php` bodies into each blueprint, deriving `WO_THEME_NAME` from each theme's `theme.json` `title`. There is no hardcoded theme list to update.
+3. Open the resulting deeplink in Playground (`https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/<org>/<repo>/main/<new_name>/playground/blueprint.json`) once and click through the surface checklist (front page, shop, single product, cart, checkout, blog post, 404). If anything 404s or renders unstyled, the blueprint is not done.
+
+**The shared helpers are inlined into every blueprint**, not fetched at boot. Don't change the `writeFile` steps to use a `{ resource: url }` data field — Playground caches URL resources aggressively (and `raw.githubusercontent.com` ships `cache-control: max-age=300`), so a freshly-pushed script change can take 5+ minutes to propagate and Playground will run the previous version against the new blueprint. Inlining puts the script body in the same payload as the blueprint, so there is one URL to invalidate, not two.
+
+After editing any of `playground/wo-import.php`, `playground/wo-configure.php`, or `playground/wo-cart-mu.php`:
+
+```bash
+python3 bin/sync-playground.py   # re-inlines into every theme's blueprint
+```
+
+Commit the resulting `*/playground/blueprint.json` changes alongside the source-file change. `bin/check.py` does not (yet) enforce that the blueprints are in sync — keep them in sync by running `sync-playground.py` before every commit that touches `playground/`.
+
+### Permalinks gotcha (the one footgun that will burn you)
+
+In a `wp eval-file` context (which is how `wo-configure.php` runs), the global `$wp_rewrite` was constructed at WP boot from the previous (default = empty) `permalink_structure` option. Calling
+
+```php
+update_option( 'permalink_structure', '/%postname%/' );
+flush_rewrite_rules( true );
+```
+
+**does not work** — the flush regenerates `rewrite_rules` from the stale in-memory `$wp_rewrite->permalink_structure`, producing rules for the default URL scheme. Every pretty post / page / product URL then 404s inside Playground.
+
+The correct pattern (already in `wo-configure.php`) is:
+
+```php
+global $wp_rewrite;
+$wp_rewrite->set_permalink_structure( '/%postname%/' );
+$wp_rewrite->set_category_base( '' );
+$wp_rewrite->set_tag_base( '' );
+$wp_rewrite->flush_rules( true );
+delete_option( 'rewrite_rules' );  // belt + suspenders for lazy rebuild
+```
+
+Don't regress this. If you find yourself "simplifying" the permalink section back to `update_option` + `flush_rewrite_rules`, you are reintroducing the bug.
 
 The script must be type-aware when calling WC product setters:
 
