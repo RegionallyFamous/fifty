@@ -4,12 +4,14 @@ A monorepo of block-only WooCommerce themes. Every theme is one `theme.json` fil
 
 ## Themes in this repo
 
-| Theme | Path | Status | Vibe |
-| --- | --- | --- | --- |
-| **Obel** | [`obel/`](./obel/) | Base / canonical reference | Editorial, soft, restrained |
-| **Chonk** | [`chonk/`](./chonk/) | Variant | Neo-brutalist, chunky, high contrast |
+| Theme | Path | Status | Vibe | Try it |
+| --- | --- | --- | --- | --- |
+| **Obel** | [`obel/`](./obel/) | Base / canonical reference | Editorial, soft, restrained | [Open in Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/RegionallyFamous/fifty/main/obel/playground/blueprint.json) |
+| **Chonk** | [`chonk/`](./chonk/) | Variant | Neo-brutalist, chunky, high contrast | [Open in Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/RegionallyFamous/fifty/main/chonk/playground/blueprint.json) |
 
 Obel is the reference theme. Read it first. Every other theme in this repo is a clone of Obel with a different `theme.json` and a few template tweaks.
+
+Each theme ships its own `playground/blueprint.json` so it can be loaded into [WordPress Playground](https://wordpress.org/playground/) with one click. See [Try a theme in WordPress Playground](#try-a-theme-in-wordpress-playground) below for what each blueprint does and how to point one at a feature branch.
 
 ## Layout
 
@@ -24,6 +26,28 @@ fifty/
 ```
 
 Each theme directory is self-contained from WordPress's perspective: it has its own `theme.json`, `style.css`, `templates/`, `parts/`, `patterns/`, and `screenshot.png`. Each theme also has its own `AGENTS.md`, `INDEX.md`, `CHANGELOG.md`, and `SYSTEM-PROMPT.md` capturing theme-specific guidance.
+
+## Try a theme in WordPress Playground
+
+Every theme ships a Playground blueprint at `<theme>/playground/blueprint.json`. Click a link below and a disposable WordPress instance boots in your browser with the theme, WooCommerce, and the [Wonders & Oddities](https://github.com/RegionallyFamous/wonders-oddities) sample dataset (30 products, 20 posts, 8 pages, menus, images) pre-loaded. No local install. Expect 60 to 90 seconds the first time the dataset downloads.
+
+| Theme | One-click URL |
+| --- | --- |
+| Obel  | https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/RegionallyFamous/fifty/main/obel/playground/blueprint.json |
+| Chonk | https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/RegionallyFamous/fifty/main/chonk/playground/blueprint.json |
+
+Each blueprint:
+
+- Boots WordPress (latest) on PHP 8.3 with the kitchen-sink extension bundle and networking enabled.
+- Logs you in as `admin`.
+- Installs WooCommerce and the WordPress Importer from wordpress.org.
+- Pulls the theme directly from this repo via Playground's `git:directory` resource (only the `obel/` or `chonk/` subfolder is fetched, not the whole monorepo).
+- Imports the Wonders & Oddities product CSV and content XML, sets the front page and posts page, and assigns menu locations.
+- Lands you on `/shop/`. From there `/wp-admin/site-editor.php` is one click away.
+
+To try an in-flight branch, swap `ref` in the blueprint to your branch name (keep `refType: "branch"`). To pin to a specific commit, set `ref` to the SHA and `refType: "commit"`.
+
+If you want a faster, data-free version (just the theme + WooCommerce, no sample content), copy `<theme>/playground/blueprint.json`, drop the `wordpress-importer` plugin, the two `runPHP` blocks, the `importWxr` step, and the two `wp-cli` steps, and serve the trimmed blueprint from any HTTPS URL. Same pattern, ~15 second cold start.
 
 ## Loading themes into WordPress
 

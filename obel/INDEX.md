@@ -43,6 +43,8 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- newsletter.php
 |   |-- testimonials.php
 |   `-- value-props.php
+|-- playground/
+|   `-- blueprint.json
 |-- styles/
 |   |-- dark.json
 |   |-- editorial.json

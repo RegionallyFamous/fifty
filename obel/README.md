@@ -180,7 +180,7 @@ The "INDEX.md in sync" check fails if you forget. See [Working with LLMs](https:
 
 ## Try in Playground
 
-One click spins up a fresh WordPress + WooCommerce install with Obel active and the [Wonders & Oddities](https://github.com/RegionallyFamous/wonders-oddities) sample dataset pre-loaded — 30 products, 20 blog posts, 8 pages, menus, and all images. Nothing to install locally.
+One click spins up a fresh WordPress + WooCommerce install with Obel active and the [Wonders & Oddities](https://github.com/RegionallyFamous/wonders-oddities) sample dataset pre-loaded: 30 products, 20 blog posts, 8 pages, menus, and all images. Nothing to install locally.
 
 [![Open in Playground](https://playground.wordpress.net/assets/playground-badge.svg)](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/RegionallyFamous/fifty/main/obel/playground/blueprint.json)
 
