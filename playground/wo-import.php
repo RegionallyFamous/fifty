@@ -30,11 +30,11 @@
  * they already exist, so re-running the blueprint will not create
  * duplicates.
  *
- * Image sideloading is intentionally skipped here. The accompanying WXR
- * import (run as a separate blueprint step) brings in featured images for
- * pages and posts; for the product demo, products are created without
- * gallery images to keep the boot fast and resilient to upstream image
- * outages.
+ * Product images are sideloaded from the URLs in the CSV's "Images"
+ * column (comma-separated; first becomes the featured image, the rest
+ * become the gallery). Each fetch is wrapped in its own try/catch so a
+ * single 404 or upstream timeout drops just that image and lets the
+ * product save with whatever else loaded.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -133,6 +133,59 @@ function wo_resolve_tag( string $name ): int {
 function wo_truthy( $value ): bool {
 	$value = strtolower( trim( (string) $value ) );
 	return in_array( $value, array( '1', 'yes', 'true' ), true );
+}
+
+/**
+ * Sideload a single image URL into the media library and return the new
+ * attachment ID, or 0 on failure.
+ *
+ * Caches by URL so the same image referenced by multiple products is only
+ * downloaded once per import run. Looks for an existing attachment with a
+ * matching _wo_source_url meta first, so re-running the blueprint
+ * (idempotent by SKU at the product level) also avoids re-downloading
+ * images that already landed in a previous run.
+ *
+ * media_sideload_image() lives in wp-admin/includes/media.php and pulls in
+ * file.php and image.php transitively; we require all three explicitly so
+ * the function exists in the wp-cli context where wp-admin isn't loaded by
+ * default.
+ */
+function wo_sideload_image( string $url, int $parent_post_id ): int {
+	static $cache = array();
+
+	$url = trim( $url );
+	if ( '' === $url ) {
+		return 0;
+	}
+	if ( isset( $cache[ $url ] ) ) {
+		return $cache[ $url ];
+	}
+
+	$existing = get_posts(
+		array(
+			'post_type'      => 'attachment',
+			'meta_key'       => '_wo_source_url',
+			'meta_value'     => $url,
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+			'no_found_rows'  => true,
+		)
+	);
+	if ( ! empty( $existing ) ) {
+		return $cache[ $url ] = (int) $existing[0];
+	}
+
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+	require_once ABSPATH . 'wp-admin/includes/media.php';
+
+	$id = media_sideload_image( $url, $parent_post_id, null, 'id' );
+	if ( is_wp_error( $id ) || ! $id ) {
+		return $cache[ $url ] = 0;
+	}
+
+	update_post_meta( (int) $id, '_wo_source_url', $url );
+	return $cache[ $url ] = (int) $id;
 }
 
 $response = wp_remote_get(
@@ -306,7 +359,34 @@ foreach ( $lines as $line ) {
 			$product->set_tag_ids( array_values( array_unique( $tag_ids ) ) );
 		}
 
-		$product->save();
+		$product_id = $product->save();
+
+		// Images are attached after the initial save so each attachment
+		// can record its parent post ID. We re-fetch the product object
+		// before the second save so the image-id setters operate on a
+		// fresh CRUD instance with no stale cached data.
+		$image_urls = array_filter(
+			array_map( 'trim', explode( ',', (string) ( $row['Images'] ?? '' ) ) ),
+			'strlen'
+		);
+		if ( ! empty( $image_urls ) && $product_id ) {
+			$attachment_ids = array();
+			foreach ( $image_urls as $img_url ) {
+				$att_id = wo_sideload_image( $img_url, $product_id );
+				if ( $att_id ) {
+					$attachment_ids[] = $att_id;
+				}
+			}
+			if ( ! empty( $attachment_ids ) ) {
+				$product = wc_get_product( $product_id );
+				$product->set_image_id( (int) array_shift( $attachment_ids ) );
+				if ( ! empty( $attachment_ids ) ) {
+					$product->set_gallery_image_ids( array_values( array_unique( $attachment_ids ) ) );
+				}
+				$product->save();
+			}
+		}
+
 		++$created;
 	} catch ( Exception $e ) {
 		++$failed;
