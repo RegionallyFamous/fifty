@@ -10,7 +10,7 @@ Read this file at the start of any LLM session to discover the project's structu
 
 - 24 templates, 8 parts
 - 11 starter patterns
-- 3 style variations
+- 4 style variations
 - 157 block style entries in `theme.json` (85 core, 72 woocommerce)
 
 ## File tree
@@ -46,6 +46,7 @@ Read this file at the start of any LLM session to discover the project's structu
 |-- playground/
 |   `-- blueprint.json
 |-- styles/
+|   |-- claude.json
 |   |-- dark.json
 |   |-- editorial.json
 |   `-- high-contrast.json
@@ -222,6 +223,7 @@ Read this file at the start of any LLM session to discover the project's structu
 
 | File | Title shown in Site Editor > Styles |
 |---|---|
+| `styles/claude.json` | Claude |
 | `styles/dark.json` | Dark |
 | `styles/editorial.json` | Editorial |
 | `styles/high-contrast.json` | High Contrast |
