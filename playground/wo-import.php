@@ -202,86 +202,115 @@ foreach ( $lines as $line ) {
 			break;
 	}
 
-	$product->set_name( (string) ( $row['Name'] ?? '' ) );
-	$product->set_status( wo_truthy( $row['Published'] ?? '1' ) ? 'publish' : 'draft' );
-	if ( '' !== $sku ) {
-		$product->set_sku( $sku );
-	}
-	$product->set_description( (string) ( $row['Description'] ?? '' ) );
-	$product->set_short_description( (string) ( $row['Short description'] ?? '' ) );
-	$product->set_featured( wo_truthy( $row['Is featured?'] ?? '0' ) );
+	// External and grouped products do not support stock management or
+	// physical dimensions in WC; calling the setters throws
+	// WC_Data_Exception. Gate by type instead of guarding every setter.
+	$supports_stock = $product->is_type( 'simple' ) || $product->is_type( 'variable' );
+	$supports_dims  = ! $product->is_type( 'external' ) && ! $product->is_type( 'grouped' );
 
-	$visibility = trim( (string) ( $row['Visibility in catalog'] ?? 'visible' ) );
-	if ( in_array( $visibility, array( 'visible', 'catalog', 'search', 'hidden' ), true ) ) {
-		$product->set_catalog_visibility( $visibility );
-	}
-
-	$reg = trim( (string) ( $row['Regular price'] ?? '' ) );
-	if ( '' !== $reg ) {
-		$product->set_regular_price( $reg );
-	}
-	$sale = trim( (string) ( $row['Sale price'] ?? '' ) );
-	if ( '' !== $sale ) {
-		$product->set_sale_price( $sale );
-	}
-
-	$tax_status = trim( (string) ( $row['Tax status'] ?? '' ) );
-	if ( in_array( $tax_status, array( 'taxable', 'shipping', 'none' ), true ) ) {
-		$product->set_tax_status( $tax_status );
-	}
-
-	if ( wo_truthy( $row['In stock?'] ?? '1' ) ) {
-		$product->set_stock_status( 'instock' );
-		$stock = trim( (string) ( $row['Stock'] ?? '' ) );
-		if ( '' !== $stock && is_numeric( $stock ) ) {
-			$product->set_manage_stock( true );
-			$product->set_stock_quantity( (int) $stock );
-		}
-	} else {
-		$product->set_stock_status( 'outofstock' );
-	}
-
-	foreach ( array( 'Weight (kg)' => 'set_weight', 'Length (cm)' => 'set_length', 'Width (cm)' => 'set_width', 'Height (cm)' => 'set_height' ) as $key => $setter ) {
-		$value = trim( (string) ( $row[ $key ] ?? '' ) );
-		if ( '' !== $value && is_numeric( $value ) ) {
-			$product->{$setter}( $value );
-		}
-	}
-
-	$cat_ids = array();
-	$cats    = trim( (string) ( $row['Categories'] ?? '' ) );
-	if ( '' !== $cats ) {
-		foreach ( explode( ',', $cats ) as $cat_path ) {
-			$tid = wo_resolve_category_path( $cat_path );
-			if ( $tid ) {
-				$cat_ids[] = $tid;
-			}
-		}
-	}
-	if ( ! empty( $cat_ids ) ) {
-		$product->set_category_ids( array_values( array_unique( $cat_ids ) ) );
-	}
-
-	$tag_ids = array();
-	$tags    = trim( (string) ( $row['Tags'] ?? '' ) );
-	if ( '' !== $tags ) {
-		foreach ( explode( ',', $tags ) as $tag_name ) {
-			$tid = wo_resolve_tag( $tag_name );
-			if ( $tid ) {
-				$tag_ids[] = $tid;
-			}
-		}
-	}
-	if ( ! empty( $tag_ids ) ) {
-		$product->set_tag_ids( array_values( array_unique( $tag_ids ) ) );
-	}
-
+	// Set everything inside a single try/catch so an unexpected
+	// rejection from any one setter (new validation rule, schema
+	// change) only loses this row instead of the whole import.
 	try {
+		$product->set_name( (string) ( $row['Name'] ?? '' ) );
+		$product->set_status( wo_truthy( $row['Published'] ?? '1' ) ? 'publish' : 'draft' );
+		if ( '' !== $sku ) {
+			$product->set_sku( $sku );
+		}
+		$product->set_description( (string) ( $row['Description'] ?? '' ) );
+		$product->set_short_description( (string) ( $row['Short description'] ?? '' ) );
+		$product->set_featured( wo_truthy( $row['Is featured?'] ?? '0' ) );
+
+		$visibility = trim( (string) ( $row['Visibility in catalog'] ?? 'visible' ) );
+		if ( in_array( $visibility, array( 'visible', 'catalog', 'search', 'hidden' ), true ) ) {
+			$product->set_catalog_visibility( $visibility );
+		}
+
+		// Grouped products derive their price from children; setting one
+		// directly is rejected. Skip pricing on grouped, allow it on
+		// simple/variable/external.
+		if ( ! $product->is_type( 'grouped' ) ) {
+			$reg = trim( (string) ( $row['Regular price'] ?? '' ) );
+			if ( '' !== $reg ) {
+				$product->set_regular_price( $reg );
+			}
+			$sale = trim( (string) ( $row['Sale price'] ?? '' ) );
+			if ( '' !== $sale ) {
+				$product->set_sale_price( $sale );
+			}
+		}
+
+		$tax_status = trim( (string) ( $row['Tax status'] ?? '' ) );
+		if ( in_array( $tax_status, array( 'taxable', 'shipping', 'none' ), true ) ) {
+			$product->set_tax_status( $tax_status );
+		}
+
+		if ( $supports_stock ) {
+			if ( wo_truthy( $row['In stock?'] ?? '1' ) ) {
+				$product->set_stock_status( 'instock' );
+				$stock = trim( (string) ( $row['Stock'] ?? '' ) );
+				if ( '' !== $stock && is_numeric( $stock ) ) {
+					$product->set_manage_stock( true );
+					$product->set_stock_quantity( (int) $stock );
+				}
+			} else {
+				$product->set_stock_status( 'outofstock' );
+			}
+		}
+
+		if ( $supports_dims ) {
+			foreach ( array( 'Weight (kg)' => 'set_weight', 'Length (cm)' => 'set_length', 'Width (cm)' => 'set_width', 'Height (cm)' => 'set_height' ) as $key => $setter ) {
+				$value = trim( (string) ( $row[ $key ] ?? '' ) );
+				if ( '' !== $value && is_numeric( $value ) ) {
+					$product->{$setter}( $value );
+				}
+			}
+		}
+
+		// External-only fields. Both have safe defaults if missing.
+		if ( $product->is_type( 'external' ) ) {
+			$ext_url = trim( (string) ( $row['External URL'] ?? '' ) );
+			if ( '' !== $ext_url ) {
+				$product->set_product_url( $ext_url );
+			}
+			$button = trim( (string) ( $row['Button text'] ?? '' ) );
+			if ( '' !== $button ) {
+				$product->set_button_text( $button );
+			}
+		}
+		$cat_ids = array();
+		$cats    = trim( (string) ( $row['Categories'] ?? '' ) );
+		if ( '' !== $cats ) {
+			foreach ( explode( ',', $cats ) as $cat_path ) {
+				$tid = wo_resolve_category_path( $cat_path );
+				if ( $tid ) {
+					$cat_ids[] = $tid;
+				}
+			}
+		}
+		if ( ! empty( $cat_ids ) ) {
+			$product->set_category_ids( array_values( array_unique( $cat_ids ) ) );
+		}
+
+		$tag_ids = array();
+		$tags    = trim( (string) ( $row['Tags'] ?? '' ) );
+		if ( '' !== $tags ) {
+			foreach ( explode( ',', $tags ) as $tag_name ) {
+				$tid = wo_resolve_tag( $tag_name );
+				if ( $tid ) {
+					$tag_ids[] = $tid;
+				}
+			}
+		}
+		if ( ! empty( $tag_ids ) ) {
+			$product->set_tag_ids( array_values( array_unique( $tag_ids ) ) );
+		}
+
 		$product->save();
 		++$created;
 	} catch ( Exception $e ) {
 		++$failed;
-		WP_CLI::warning( sprintf( 'Failed to save "%s" (SKU %s): %s', $row['Name'] ?? '?', $sku, $e->getMessage() ) );
+		WP_CLI::warning( sprintf( 'Skipping "%s" (SKU %s, type %s): %s', $row['Name'] ?? '?', $sku, $type, $e->getMessage() ) );
 	}
 }
 
