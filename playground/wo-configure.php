@@ -577,20 +577,44 @@ if ( ! get_option( '_wo_reviews_seeded' ) ) {
 // ---------------------------------------------------------------------------
 // 11b. Category cover images
 // ---------------------------------------------------------------------------
+//
+// Both the image base URL and the cat-name -> filename map are pulled from
+// the per-theme content/ folder so every theme can ship its own category
+// cover artwork without touching this shared script. The map lives at
+// `<theme>/playground/content/category-images.json` and looks like:
+//
+//     { "Curiosities": "cat-curiosities.jpg", ... }
+//
+// Image files themselves live at `<theme>/playground/images/<filename>`.
+//
+// If the JSON file is missing or unreachable (e.g. a theme that doesn't
+// ship category covers), the step quietly no-ops -- it isn't a hard
+// dependency for a working storefront.
 if ( ! get_option( '_wo_cat_images_seeded' ) ) {
 	require_once ABSPATH . 'wp-admin/includes/media.php';
 	require_once ABSPATH . 'wp-admin/includes/file.php';
 	require_once ABSPATH . 'wp-admin/includes/image.php';
 
-	$raw_base = 'https://raw.githubusercontent.com/RegionallyFamous/fifty/main/playground/category-images/';
-	$cat_images = array(
-		'Curiosities'     => 'cat-curiosities.jpg',
-		'Forbidden Snacks' => 'cat-forbidden-snacks.jpg',
-		'Moods & Feelings' => 'cat-moods-feelings.jpg',
-		'Impossibilities'  => 'cat-impossibilities.jpg',
-		'Digital Oddments' => 'cat-digital-oddments.jpg',
-		'Curated Bundles'  => 'cat-curated-bundles.jpg',
-	);
+	$wo_content_base = defined( 'WO_CONTENT_BASE_URL' )
+		? WO_CONTENT_BASE_URL
+		: 'https://raw.githubusercontent.com/RegionallyFamous/fifty/main/playground/';
+	$raw_base = rtrim( $wo_content_base, '/' ) . '/images/';
+	$map_url  = rtrim( $wo_content_base, '/' ) . '/content/category-images.json';
+
+	$cat_images   = array();
+	$map_response = wp_remote_get( $map_url, array( 'timeout' => 30 ) );
+	if ( ! is_wp_error( $map_response ) && 200 === wp_remote_retrieve_response_code( $map_response ) ) {
+		$decoded = json_decode( wp_remote_retrieve_body( $map_response ), true );
+		if ( is_array( $decoded ) ) {
+			$cat_images = $decoded;
+		}
+	}
+	if ( empty( $cat_images ) ) {
+		WP_CLI::log( "Category images: no map found at {$map_url}, skipping." );
+		// The trailing update_option('_wo_cat_images_seeded', ...) below
+		// fires regardless, so the empty-map branch is idempotent on its
+		// own without an early return here.
+	}
 
 	$img_count = 0;
 	foreach ( $cat_images as $cat_name => $filename ) {
@@ -629,6 +653,84 @@ if ( ! get_option( '_wo_cat_images_seeded' ) ) {
 
 	update_option( '_wo_cat_images_seeded', '1' );
 	WP_CLI::log( "Category images: {$img_count} assigned." );
+}
+
+// ---------------------------------------------------------------------------
+// 11c. Product featured images
+// ---------------------------------------------------------------------------
+//
+// Loads a JSON map of { "SKU": "filename.jpg" } from the per-theme content/
+// folder (product-images.json) and sideloads each image as a media attachment,
+// then sets it as the product's featured image.  Like the category cover step,
+// the source images live in <theme>/playground/images/  and the map is fetched
+// from <theme>/playground/content/product-images.json.
+//
+// This step runs after the WXR import so it replaces any placeholder images
+// that the import may have sideloaded from the CSV.  It is idempotent because
+// it checks whether the product already has a thumbnail whose _wo_product_image
+// post meta flag is set before sideloading again.
+if ( ! get_option( '_wo_product_images_seeded' ) ) {
+	require_once ABSPATH . 'wp-admin/includes/media.php';
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+
+	$wo_content_base = defined( 'WO_CONTENT_BASE_URL' )
+		? WO_CONTENT_BASE_URL
+		: 'https://raw.githubusercontent.com/RegionallyFamous/fifty/main/playground/';
+	$prod_raw_base = rtrim( $wo_content_base, '/' ) . '/images/';
+	$prod_map_url  = rtrim( $wo_content_base, '/' ) . '/content/product-images.json';
+
+	$prod_images   = array();
+	$prod_response = wp_remote_get( $prod_map_url, array( 'timeout' => 30 ) );
+	if ( ! is_wp_error( $prod_response ) && 200 === wp_remote_retrieve_response_code( $prod_response ) ) {
+		$decoded = json_decode( wp_remote_retrieve_body( $prod_response ), true );
+		if ( is_array( $decoded ) ) {
+			$prod_images = $decoded;
+		}
+	}
+	if ( empty( $prod_images ) ) {
+		WP_CLI::log( "Product images: no map found at {$prod_map_url}, skipping." );
+	}
+
+	$pi_count = 0;
+	foreach ( $prod_images as $sku => $filename ) {
+		$pid = wc_get_product_id_by_sku( $sku );
+		if ( ! $pid ) {
+			WP_CLI::log( "Product image: SKU '{$sku}' not found, skipping." );
+			continue;
+		}
+
+		// Skip if we already seeded this product's image in a prior run.
+		if ( get_post_meta( $pid, '_wo_product_image', true ) ) {
+			continue;
+		}
+
+		$url = $prod_raw_base . $filename;
+		$tmp = download_url( $url );
+		if ( is_wp_error( $tmp ) ) {
+			WP_CLI::warning( "Product image: failed to download {$url} — " . $tmp->get_error_message() );
+			continue;
+		}
+
+		$file_array = array(
+			'name'     => $filename,
+			'tmp_name' => $tmp,
+		);
+		$attachment_id = media_handle_sideload( $file_array, $pid, $sku );
+		if ( is_wp_error( $attachment_id ) ) {
+			@unlink( $tmp );
+			WP_CLI::warning( "Product image: sideload failed for SKU '{$sku}' — " . $attachment_id->get_error_message() );
+			continue;
+		}
+
+		set_post_thumbnail( $pid, $attachment_id );
+		update_post_meta( $pid, '_wo_product_image', $attachment_id );
+		++$pi_count;
+		WP_CLI::log( "Product image: assigned to '{$sku}' (attachment {$attachment_id})." );
+	}
+
+	update_option( '_wo_product_images_seeded', '1' );
+	WP_CLI::log( "Product images: {$pi_count} assigned." );
 }
 
 // ---------------------------------------------------------------------------

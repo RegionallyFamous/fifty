@@ -86,32 +86,45 @@ The short version:
 5. `ln -s fifty/<new_name> ../<new_name>` so WordPress sees it.
 6. `wp theme activate <new_name>`
 7. `python3 bin/build-index.py <new_name>`
-8. `python3 bin/sync-playground.py` — auto-discovers the new theme and re-inlines the shared helpers into its blueprint.
-9. `python3 bin/check.py <new_name>`
-10. Open the new theme's Playground deeplink (`https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/<org>/<repo>/main/<new_name>/playground/blueprint.json`) and walk the surface checklist before declaring done. The blueprint is part of the deliverable — see "WordPress Playground blueprints" below.
+8. `python3 bin/seed-playground-content.py` — populates the new theme's `playground/content/` (CSV + WXR + category-images map) and `playground/images/` (product / page / post / category artwork) from the canonical W&O source, rewriting every image URL to point at the new theme's own folder.
+9. `python3 bin/sync-playground.py` — auto-discovers the new theme and re-inlines the shared helpers into its blueprint, prepending the per-theme constants and rewriting the importWxr URL.
+10. `python3 bin/check.py <new_name>`
+11. Open the new theme's Playground deeplink (`https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/<org>/<repo>/main/<new_name>/playground/blueprint.json`) and walk the surface checklist before declaring done. The blueprint is part of the deliverable — see "WordPress Playground blueprints" below.
 
 ## WordPress Playground blueprints
 
-**Every theme in this monorepo MUST ship a working Playground blueprint at `<theme>/playground/blueprint.json`.** It is part of the deliverable, not an extra. A theme without a working blueprint is incomplete — there's no other way for a reviewer to load it without a full local WP + WC install.
+**Every theme in this monorepo MUST ship a working Playground blueprint and a self-contained per-theme content set.** This is part of the deliverable, not an extra. A theme without a working blueprint is incomplete — there's no other way for a reviewer to load it without a full local WP + WC install.
 
 The expected layout:
 
 ```
 fifty/
-├── playground/                       # shared, theme-agnostic helpers
-│   ├── wo-import.php                 # WC product importer
-│   ├── wo-configure.php              # site/options/orders/customer/reviews
-│   └── wo-cart-mu.php                # ?demo=cart pre-filler mu-plugin
-├── obel/playground/blueprint.json    # ← every theme has its own copy
-├── chonk/playground/blueprint.json
-└── <new-theme>/playground/blueprint.json
+├── playground/                          # SHARED — scaffolding only, no content
+│   ├── AGENTS.md                        # full contract — read it before editing here
+│   ├── wo-import.php                    # generic WC importer (reads URLs from WO_CONTENT_BASE_URL)
+│   ├── wo-configure.php                 # generic WP/WC configurator (reads URLs from WO_CONTENT_BASE_URL)
+│   └── wo-cart-mu.php                   # ?demo=cart pre-filler mu-plugin
+├── obel/playground/                     # PER-THEME — content + assets + blueprint
+│   ├── blueprint.json                   # auto-synced
+│   ├── content/
+│   │   ├── products.csv                 # WC catalogue for THIS theme
+│   │   ├── content.xml                  # WXR (pages, posts, blog) for THIS theme
+│   │   └── category-images.json         # cat-name → image filename map
+│   └── images/                          # every binary attachment THIS theme references
+│       ├── *.{png,jpg,…}                # products / pages / posts / category covers
+│       └── *.{pdf,wav,…}                # downloadable attachments referenced from CSV/XML
+├── chonk/playground/                    # same shape, with chonk-styled imagery
+└── <new-theme>/playground/              # same shape, seeded by bin/seed-playground-content.py
 ```
 
-How a new theme gets one (the only correct path):
+The per-theme `content/` files are the **canonical source for that theme** after the initial seed. Each theme is free to diverge: rewrite product copy, swap SKUs, replace pages, drop different artwork into `images/`. The shared `playground/wo-*.php` scripts must stay theme-agnostic — they receive theme-specific values through three constants (`WO_THEME_NAME`, `WO_THEME_SLUG`, `WO_CONTENT_BASE_URL`) which `bin/sync-playground.py` prepends when it inlines the script body into each theme's blueprint.
 
-1. `python3 bin/clone.py <new_name>` — copies obel including `playground/blueprint.json`, and rewrites `obel`→`<new_name>` and `Obel`→`<New_name>` in the editable files (the JSON included). The blueprint's `installTheme.path`, `installTheme.options.targetFolderName`, `setSiteOptions.blogname`, and the `WO_THEME_NAME` constant inside the inlined `wo-configure.php` body all get rewritten automatically.
-2. `python3 bin/sync-playground.py` — auto-discovers every theme via `_lib.iter_themes()` and re-inlines the latest `playground/*.php` bodies into each blueprint, deriving `WO_THEME_NAME` from each theme's `theme.json` `title`. There is no hardcoded theme list to update.
-3. Open the resulting deeplink in Playground (`https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/<org>/<repo>/main/<new_name>/playground/blueprint.json`) once and click through the surface checklist (front page, shop, single product, cart, checkout, blog post, 404). If anything 404s or renders unstyled, the blueprint is not done.
+How a new theme gets a working blueprint (the only correct path):
+
+1. `python3 bin/clone.py <new_name>` — copies obel including `playground/blueprint.json`, and rewrites `obel`→`<new_name>` and `Obel`→`<New_name>` in the editable files (the JSON included). The blueprint's `installTheme.path`, `installTheme.options.targetFolderName`, and `setSiteOptions.blogname` are rewritten automatically.
+2. `python3 bin/seed-playground-content.py` — auto-discovers themes that don't yet have `playground/content/` and seeds CSV + WXR + `category-images.json` + every image / PDF / audio attachment, rewriting image URLs in the CSV/XML to point at the new theme's own `images/` folder. Idempotent; safe to re-run.
+3. `python3 bin/sync-playground.py` — auto-discovers every theme via `_lib.iter_themes()` and re-inlines the latest `playground/*.php` bodies into each blueprint, prepending the per-theme constants block (deriving `WO_THEME_NAME` from each theme's `theme.json` `title` and composing `WO_CONTENT_BASE_URL` from the theme slug) and rewriting the `importWxr` step's URL to point at the per-theme `content.xml`. There is no hardcoded theme list to update.
+4. Open the resulting deeplink in Playground (`https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/<org>/<repo>/main/<new_name>/playground/blueprint.json`) once and click through the surface checklist (front page, shop, single product, cart, checkout, blog post, 404). If anything 404s or renders unstyled, the blueprint is not done.
 
 **The shared helpers are inlined into every blueprint**, not fetched at boot. Don't change the `writeFile` steps to use a `{ resource: url }` data field — Playground caches URL resources aggressively (and `raw.githubusercontent.com` ships `cache-control: max-age=300`), so a freshly-pushed script change can take 5+ minutes to propagate and Playground will run the previous version against the new blueprint. Inlining puts the script body in the same payload as the blueprint, so there is one URL to invalidate, not two.
 
@@ -120,6 +133,8 @@ After editing any of `playground/wo-import.php`, `playground/wo-configure.php`, 
 ```bash
 python3 bin/sync-playground.py   # re-inlines into every theme's blueprint
 ```
+
+After editing any per-theme `<theme>/playground/content/` file or replacing artwork in `<theme>/playground/images/`, no re-sync is needed — those URLs are fetched live by the blueprint and importer at boot.
 
 Commit the resulting `*/playground/blueprint.json` changes alongside the source-file change. `bin/check.py` does not (yet) enforce that the blueprints are in sync — keep them in sync by running `sync-playground.py` before every commit that touches `playground/`.
 

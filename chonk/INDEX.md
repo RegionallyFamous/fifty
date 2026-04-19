@@ -44,8 +44,81 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- testimonials.php
 |   `-- value-props.php
 |-- playground/
+|   |-- content/
+|   |   |-- category-images.json
+|   |   |-- content.xml
+|   |   `-- products.csv
 |   |-- images/
-|   `-- blueprint.json
+|   |   |-- cat-curated-bundles.jpg
+|   |   |-- cat-curiosities.jpg
+|   |   |-- cat-digital-oddments.jpg
+|   |   |-- cat-forbidden-snacks.jpg
+|   |   |-- cat-impossibilities.jpg
+|   |   |-- cat-moods-feelings.jpg
+|   |   |-- imaginary-deed.pdf
+|   |   |-- imaginary-seal.png
+|   |   |-- lost-recipe.pdf
+|   |   |-- one-hand.wav
+|   |   |-- wonders-borrowed-nostalgia.png
+|   |   |-- wonders-bottled-morning.png
+|   |   |-- wonders-chaos-seasoning.png
+|   |   |-- wonders-cosmic-mystery-box.png
+|   |   |-- wonders-deja-vu-session.png
+|   |   |-- wonders-discount-gravity.png
+|   |   |-- wonders-dread-repellent.png
+|   |   |-- wonders-fog-in-bottle.png
+|   |   |-- wonders-forbidden-honey.png
+|   |   |-- wonders-gently-used-luck.png
+|   |   |-- wonders-handcrafted-echo.png
+|   |   |-- wonders-haunted-candle.png
+|   |   |-- wonders-imaginary-deed.png
+|   |   |-- wonders-interdim-bazaar.png
+|   |   |-- wonders-invisible-umbrella.png
+|   |   |-- wonders-left-sock.png
+|   |   |-- wonders-lost-recipe-time.png
+|   |   |-- wonders-memory-foam-memory.png
+|   |   |-- wonders-monday-kit.png
+|   |   |-- wonders-moon-dust.png
+|   |   |-- wonders-one-hand-clapping.png
+|   |   |-- wonders-page-about.png
+|   |   |-- wonders-page-contact.png
+|   |   |-- wonders-page-faq.png
+|   |   |-- wonders-page-home.png
+|   |   |-- wonders-page-journal.png
+|   |   |-- wonders-page-lookbook.png
+|   |   |-- wonders-page-privacy-policy.png
+|   |   |-- wonders-page-shipping-returns.png
+|   |   |-- wonders-pocket-thunder.png
+|   |   |-- wonders-portable-hole.png
+|   |   |-- wonders-post-behind-the-scenes-bottling-mondays.png
+|   |   |-- wonders-post-caring-for-your-portable-hole.png
+|   |   |-- wonders-post-carl-on-the-moon.png
+|   |   |-- wonders-post-chaos-seasoning-recipe-roundup.png
+|   |   |-- wonders-post-fog-season.png
+|   |   |-- wonders-post-forbidden-honey-what-does-forbidden-mean.png
+|   |   |-- wonders-post-hidden-gems-5-overlooked-products.png
+|   |   |-- wonders-post-how-to-apply-existential-dread-repellent.png
+|   |   |-- wonders-post-imaginary-ownership-beginners.png
+|   |   |-- wonders-post-interview-with-carl.png
+|   |   |-- wonders-post-invisible-umbrella-spotlight.png
+|   |   |-- wonders-post-memoirs-of-a-left-sock.png
+|   |   |-- wonders-post-mildly-haunted-candle-faq.png
+|   |   |-- wonders-post-philosophy-of-bottled-monday-morning.png
+|   |   |-- wonders-post-pocket-thunder-safety.png
+|   |   |-- wonders-post-spare-tuesday-field-guide.png
+|   |   |-- wonders-post-tangible-wifi-30-day-review.png
+|   |   |-- wonders-post-the-art-of-artisanal-silence.png
+|   |   |-- wonders-post-welcome-to-wonders-and-oddities.png
+|   |   |-- wonders-post-year-one-abridged.png
+|   |   |-- wonders-sensory-starter.png
+|   |   |-- wonders-silence-jar.png
+|   |   |-- wonders-spare-key-nowhere.png
+|   |   |-- wonders-spare-tuesday.png
+|   |   |-- wonders-tangible-wifi.png
+|   |   |-- wonders-void-sampler.png
+|   |   `-- wonders-whispering-stone.png
+|   |-- blueprint.json
+|   `-- generate-images.py
 |-- styles/
 |   |-- dark.json
 |   |-- editorial.json

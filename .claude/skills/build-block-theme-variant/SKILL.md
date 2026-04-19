@@ -28,14 +28,23 @@ Read this **before** running `bin/clone.py` or touching any files, the moment th
  6. STRUCTURE       → restyle templates/parts to match mockup composition
  7. DYNAMIC         → swap hardcoded content for core/terms-query, core/query, core/navigation, core/site-*
  8. SEED DATA       → ensure menus, pages, categories exist in the DB so dynamic blocks render real content
- 9. PLAYGROUND      → bin/sync-playground.py + load the new theme's blueprint URL and walk the surface checklist
+ 9. PLAYGROUND      → bin/seed-playground-content.py + bin/sync-playground.py, then load the new theme's blueprint URL and walk the surface checklist
 10. VERIFY          → check.py + screenshots at mobile/tablet/desktop
 11. REPORT          → ship a single summary, not a back-and-forth
 ```
 
 Skipping any step is what causes the "you held my hand too much" failure mode.
 
-**Step 9 is non-optional.** Every theme in this monorepo must ship a working `<theme>/playground/blueprint.json`. `bin/clone.py` copies and rewrites obel's blueprint automatically; `bin/sync-playground.py` auto-discovers the new theme via `_lib.iter_themes()` and re-inlines the shared `playground/*.php` helpers. After that, open the deeplink (`https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/<org>/<repo>/main/<theme>/playground/blueprint.json`) and click through front page → shop → single product → cart → checkout → blog post → 404 once. If any pretty URL 404s, the blueprint is broken — see "Playground gotchas" below.
+**Step 9 is non-optional.** Every theme in this monorepo must ship a working `<theme>/playground/blueprint.json` AND a self-contained per-theme content set under `<theme>/playground/content/` and `<theme>/playground/images/`.
+
+The shared scaffolding (`playground/wo-*.php`) stays theme-agnostic and reads three constants — `WO_THEME_NAME`, `WO_THEME_SLUG`, `WO_CONTENT_BASE_URL` — that `bin/sync-playground.py` prepends to each inlined script body. Per-theme content (CSV catalogue, WXR pages/posts, every product/page/post/category image) lives under that theme's own `playground/content/` and `playground/images/`, with all image URLs inside the CSV/XML pointing at `https://raw.githubusercontent.com/<org>/<repo>/main/<theme>/playground/images/`. Each theme is free to diverge — different products, different copy, different artwork that matches the theme.
+
+The pipeline:
+
+1. `bin/clone.py` copied obel's blueprint and rewrote `obel`→`<new>` / `Obel`→`<New>`. It deliberately did NOT copy obel's `playground/content/` or `playground/images/` (text substitution doesn't touch CSV/XML, so copying would leave you pointing at obel's image URLs).
+2. `bin/seed-playground-content.py` populates the new theme's content + assets from the canonical W&O source, rewriting every image URL to point at the new theme's own `images/` folder.
+3. `bin/sync-playground.py` auto-discovers every theme via `_lib.iter_themes()`, re-inlines the shared `playground/*.php` helpers (with the per-theme constants prepended), and rewrites the `importWxr` URL to point at the per-theme `content.xml`.
+4. Open the deeplink (`https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/<org>/<repo>/main/<theme>/playground/blueprint.json`) and click through front page → shop → single product → cart → checkout → blog post → 404 once. If any pretty URL 404s, the blueprint is broken — see "Playground gotchas" below. If product or page imagery looks like every other theme's, the seed step was skipped.
 
 ---
 
@@ -525,11 +534,21 @@ For product categories specifically, the user almost always already has terms vi
 
 ## Step 9 — Ship a working Playground blueprint
 
-**Every theme in this monorepo must ship a working `<theme>/playground/blueprint.json`.** It is part of the deliverable, not an extra. A theme without a working blueprint is incomplete — there's no other way for a reviewer to load it without a full local WP + WC install.
+**Every theme in this monorepo must ship a working `<theme>/playground/blueprint.json` AND a self-contained per-theme content set under `<theme>/playground/{content,images}/`.** It is part of the deliverable, not an extra. A theme without a working blueprint is incomplete — there's no other way for a reviewer to load it without a full local WP + WC install. A theme that boots but renders the same product imagery as every other variant defeats the purpose of building variants.
 
 ### What you don't have to do
 
-`bin/clone.py` already copied `obel/playground/blueprint.json` into your new theme and rewrote `obel`→`<new>` and `Obel`→`<New>` in the JSON. That handles `installTheme.path`, `installTheme.options.targetFolderName`, `setSiteOptions.blogname`, the meta `title`/`description`, and the `WO_THEME_NAME` constant inside the inlined `wo-configure.php` body. Don't recreate the blueprint by hand.
+`bin/clone.py` already copied `obel/playground/blueprint.json` into your new theme and rewrote `obel`→`<new>` and `Obel`→`<New>` in the JSON. That handles `installTheme.path`, `installTheme.options.targetFolderName`, `setSiteOptions.blogname`, and the meta `title`/`description`. Don't recreate the blueprint by hand.
+
+`bin/clone.py` did NOT copy `obel/playground/content/` or `obel/playground/images/` — that's intentional. Those folders hold per-theme content with image URLs that bake in the theme slug, and clone.py's text substitution doesn't touch CSV/XML. Run the seed script next:
+
+```bash
+python3 bin/seed-playground-content.py
+```
+
+This auto-discovers themes that don't yet have `playground/content/`, fetches the canonical CSV / WXR / asset bundle from `RegionallyFamous/wonders-oddities` (cached at `/tmp/wonders-oddities-source` between runs), and writes them into `<theme>/playground/content/` and `<theme>/playground/images/` with every image URL inside the CSV/XML rewritten to point at this theme's own `images/` folder. Idempotent — re-runs are no-ops. Pass `--force` only when you intentionally want to re-pull from the upstream source (the per-theme files are the canonical source for that theme after the initial seed).
+
+Once both content and blueprint are in place, sync the shared helpers:
 
 ### What you must do
 
@@ -537,7 +556,9 @@ For product categories specifically, the user almost always already has terms vi
 python3 bin/sync-playground.py
 ```
 
-This auto-discovers every theme in the monorepo (via `_lib.iter_themes()`) and re-inlines the latest `playground/*.php` bodies into each blueprint. There is no hardcoded theme list — adding a new theme is automatic. Run it once after cloning, and again any time `playground/wo-import.php`, `playground/wo-configure.php`, or `playground/wo-cart-mu.php` change.
+This auto-discovers every theme in the monorepo (via `_lib.iter_themes()`) and re-inlines the latest `playground/*.php` bodies into each blueprint, prepending the per-theme constants block (`WO_THEME_NAME` from `theme.json` `title`, `WO_THEME_SLUG` and `WO_CONTENT_BASE_URL` from the directory name) and rewriting the `importWxr` step's URL to point at this theme's own `content/content.xml`. There is no hardcoded theme list — adding a new theme is automatic. Run it once after cloning + seeding, and again any time `playground/wo-import.php`, `playground/wo-configure.php`, or `playground/wo-cart-mu.php` change.
+
+Per-theme content edits (replacing artwork, rewriting copy, swapping SKUs) do NOT require re-syncing — those URLs are fetched live by the blueprint and importer at boot. The sync script only matters when the shared scaffolding or the per-theme constants need to change inside the inlined PHP bodies.
 
 Then load the deeplink and walk the surface checklist:
 
@@ -734,6 +755,8 @@ These are real mistakes from the Chonk build. Don't repeat them.
 | Verified responsiveness only on the homepage | Three-viewport screenshot pass required for **every** surface in step 10 Pass B (with the parent-inheritance shortcut). Cart layout almost always breaks at mobile in ways the homepage doesn't. |
 | Used `secondary` / `tertiary` text color slugs without checking contrast on every background they land on | Plan contrast pairs in step 5 and run `bin/check-contrast.py`. Per-surface, audit body/meta/buttons/links/focus/form fields against WCAG AA in step 10 Pass C. |
 | Shipped a theme variant without ever loading its Playground blueprint | Step 9 is non-optional. Every theme must have a working `<theme>/playground/blueprint.json`, which `bin/clone.py` creates and `bin/sync-playground.py` keeps in sync automatically. Walk the deeplink surface checklist before declaring done. |
+| Skipped `bin/seed-playground-content.py` after cloning, so the new theme's Playground booted with no products / blank pages OR — worse — with image URLs pointing at obel's `playground/images/` because someone "fixed" clone.py to copy `playground/content/` over | clone.py deliberately skips per-theme `playground/content/` and `playground/images/`. Those folders bake the theme slug into every image URL inside the CSV and XML, and clone.py's text substitution doesn't touch CSV/XML. Always run `python3 bin/seed-playground-content.py` after `bin/clone.py` so the new theme's content/ is seeded fresh with image URLs rewritten to its own slug. |
+| Hardcoded an image URL or theme name inside `playground/wo-import.php` or `playground/wo-configure.php` | Those scripts are SHARED across every theme — they must stay theme-agnostic and read URLs/names from the three constants `WO_THEME_NAME`, `WO_THEME_SLUG`, `WO_CONTENT_BASE_URL`. `bin/sync-playground.py` prepends the constants block when it inlines each script body. If the value you need can be expressed as a path under `WO_CONTENT_BASE_URL`, use that. Per-theme divergence belongs in `<theme>/playground/content/` (data) or `<theme>/playground/images/` (assets), never in the shared scripts. |
 | "Simplified" the permalink section of `playground/wo-configure.php` back to `update_option(...)` + `flush_rewrite_rules(...)` | That's the bug. In a `wp eval-file` context the global `$wp_rewrite` is stale; you must use `$wp_rewrite->set_permalink_structure()` first. See "Playground gotchas" in step 9. |
 | Removed the focus ring (`outline:none`) for visual cleanliness | Always keep a visible focus ring at ≥ 3:1 contrast. Style it; don't remove it. Tab through the homepage to verify before declaring done. |
 | Status colors (sale price, error, success) defaulted to red/green with no recalibration against the variant palette | Treat status colors as palette slugs (`status-positive`, `status-negative`, `status-warning`) and run them through the contrast script along with everything else. |
@@ -831,8 +854,11 @@ Plus generate a mockup image alongside, so the user can react to a picture, not 
 **Playground blueprint (the deliverable is incomplete without this):**
 
 - [ ] `<theme>/playground/blueprint.json` exists (created automatically by `bin/clone.py`)
+- [ ] `<theme>/playground/content/` contains `products.csv`, `content.xml`, and `category-images.json` (created by `bin/seed-playground-content.py`)
+- [ ] `<theme>/playground/images/` contains the per-theme product / page / post artwork (created by `bin/seed-playground-content.py`; replace with theme-styled artwork as desired)
+- [ ] Sample image URLs inside `<theme>/playground/content/products.csv` and `content.xml` start with `https://raw.githubusercontent.com/<org>/<repo>/main/<theme>/playground/images/` — NOT `wonders-oddities` and NOT another theme's slug
 - [ ] `python3 bin/sync-playground.py` reports "already in sync" for every theme (no stale inlined helpers)
-- [ ] Blueprint metadata references the correct theme — `meta.title`, `meta.description`, `installTheme.path`, `installTheme.options.targetFolderName`, `setSiteOptions.blogname`, and the `define('WO_THEME_NAME', '<Theme>')` inside the `wo-configure.php` data field all read `<Theme>`, not `Obel`
+- [ ] Blueprint metadata references the correct theme — `meta.title`, `meta.description`, `installTheme.path`, `installTheme.options.targetFolderName`, `setSiteOptions.blogname`, the `define('WO_THEME_NAME', '<Theme>')` constants prepended to `wo-import.php` and `wo-configure.php`, and the `importWxr` step's `file.url` all read `<Theme>` / `<theme>`, not `Obel` / `obel`
 - [ ] Loaded the deeplink (`https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/<org>/<repo>/main/<theme>/playground/blueprint.json`) in a fresh browser / incognito window — boot completes without errors
 - [ ] Walked every URL in the surface checklist (`/`, `/shop/`, `/product/bottled-morning/`, `/cart/?demo=cart`, `/checkout/?demo=cart`, `/journal/`, `/welcome-to-wonders-and-oddities/`, `/this-route-does-not-exist/`) — every pretty URL resolves to a designed page, no 404s on legitimate URLs, the 404 page renders the variant's branded 404
 - [ ] `playground/wo-configure.php`'s permalink section still uses `$wp_rewrite->set_permalink_structure(...)` (not just `update_option(...)`)

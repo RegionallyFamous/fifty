@@ -45,7 +45,28 @@ if ( ! class_exists( 'WooCommerce' ) ) {
 	WP_CLI::error( 'WooCommerce is not active. Aborting W&O import.' );
 }
 
-const WO_CSV_URL = 'https://raw.githubusercontent.com/RegionallyFamous/wonders-oddities/main/wonders-oddities-products.csv';
+// WO_CONTENT_BASE_URL is prepended to this script by bin/sync-playground.py
+// when the script is inlined into each theme's blueprint.json. It points at
+// the per-theme playground/ directory on raw.githubusercontent.com, e.g.
+//     https://raw.githubusercontent.com/RegionallyFamous/fifty/main/obel/playground/
+// so this importer pulls content/products.csv from the SAME theme that
+// served the blueprint. Each theme owns its own catalogue and product
+// imagery -- divergent copy and styling are first-class.
+//
+// The fallback to the upstream wonders-oddities repo is intentional: if a
+// developer runs `wp eval-file wo-import.php` directly without the sync
+// script having defined the constant (e.g. while debugging), we still get
+// a working catalogue from the original source.
+$wo_content_base = defined( 'WO_CONTENT_BASE_URL' )
+	? WO_CONTENT_BASE_URL
+	: 'https://raw.githubusercontent.com/RegionallyFamous/wonders-oddities/main/';
+$wo_csv_url = rtrim( $wo_content_base, '/' ) . '/content/products.csv';
+// Legacy fallback: the upstream wonders-oddities repo doesn't have a
+// content/ subdirectory -- the CSV sits at the repo root. Detect that
+// case so the script stays runnable against the original source.
+if ( false !== strpos( $wo_content_base, 'wonders-oddities' ) ) {
+	$wo_csv_url = rtrim( $wo_content_base, '/' ) . '/wonders-oddities-products.csv';
+}
 
 /**
  * Walk a "Parent > Child > Grandchild" category path, creating any missing
@@ -189,7 +210,7 @@ function wo_sideload_image( string $url, int $parent_post_id ): int {
 }
 
 $response = wp_remote_get(
-	WO_CSV_URL,
+	$wo_csv_url,
 	array( 'timeout' => 60 )
 );
 
