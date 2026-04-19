@@ -575,6 +575,63 @@ if ( ! get_option( '_wo_reviews_seeded' ) ) {
 }
 
 // ---------------------------------------------------------------------------
+// 11b. Category cover images
+// ---------------------------------------------------------------------------
+if ( ! get_option( '_wo_cat_images_seeded' ) ) {
+	require_once ABSPATH . 'wp-admin/includes/media.php';
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+
+	$raw_base = 'https://raw.githubusercontent.com/RegionallyFamous/fifty/main/playground/category-images/';
+	$cat_images = array(
+		'Curiosities'     => 'cat-curiosities.jpg',
+		'Forbidden Snacks' => 'cat-forbidden-snacks.jpg',
+		'Moods & Feelings' => 'cat-moods-feelings.jpg',
+		'Impossibilities'  => 'cat-impossibilities.jpg',
+		'Digital Oddments' => 'cat-digital-oddments.jpg',
+		'Curated Bundles'  => 'cat-curated-bundles.jpg',
+	);
+
+	$img_count = 0;
+	foreach ( $cat_images as $cat_name => $filename ) {
+		$term = get_term_by( 'name', $cat_name, 'product_cat' );
+		if ( ! $term ) {
+			WP_CLI::log( "Category image: term not found for '{$cat_name}', skipping." );
+			continue;
+		}
+		if ( get_term_meta( $term->term_id, 'thumbnail_id', true ) ) {
+			WP_CLI::log( "Category image: '{$cat_name}' already has a thumbnail, skipping." );
+			continue;
+		}
+
+		$url = $raw_base . $filename;
+		$tmp = download_url( $url );
+		if ( is_wp_error( $tmp ) ) {
+			WP_CLI::warning( "Category image: failed to download {$url} — " . $tmp->get_error_message() );
+			continue;
+		}
+
+		$file_array = array(
+			'name'     => $filename,
+			'tmp_name' => $tmp,
+		);
+		$attachment_id = media_handle_sideload( $file_array, 0, $cat_name );
+		if ( is_wp_error( $attachment_id ) ) {
+			@unlink( $tmp );
+			WP_CLI::warning( "Category image: sideload failed for '{$cat_name}' — " . $attachment_id->get_error_message() );
+			continue;
+		}
+
+		update_term_meta( $term->term_id, 'thumbnail_id', $attachment_id );
+		++$img_count;
+		WP_CLI::log( "Category image: assigned to '{$cat_name}' (attachment {$attachment_id})." );
+	}
+
+	update_option( '_wo_cat_images_seeded', '1' );
+	WP_CLI::log( "Category images: {$img_count} assigned." );
+}
+
+// ---------------------------------------------------------------------------
 // 12. Auto-update suppression
 // ---------------------------------------------------------------------------
 update_option( 'auto_update_core_major', 'disabled' );
