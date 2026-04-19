@@ -76,28 +76,31 @@ def replace_in_file(path: Path, old_lower: str, new_lower: str, old_title: str, 
 
 
 def main() -> int:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from _lib import MONOREPO_ROOT  # noqa: E402
+
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("new_name", help="New theme slug (lowercase, e.g. 'acme')")
     parser.add_argument(
         "--target",
         default=None,
-        help="Parent directory to clone into. Defaults to the parent of this Obel folder.",
+        help="Parent directory to clone into. Defaults to the monorepo root (sibling of source).",
     )
     parser.add_argument(
         "--source",
         default=None,
-        help="Path to the Obel folder. Defaults to the parent of this script.",
+        help="Path to the source theme folder. Defaults to <monorepo>/obel.",
     )
     args = parser.parse_args()
 
     new_lower = slug_validate(args.new_name)
     new_title = title_case(new_lower)
 
-    source = Path(args.source) if args.source else Path(__file__).resolve().parent.parent
+    source = Path(args.source) if args.source else MONOREPO_ROOT / "obel"
     if not source.is_dir():
         raise SystemExit(f"error: source folder {source} does not exist or is not a directory.")
 
-    parent = Path(args.target).expanduser() if args.target else source.parent
+    parent = Path(args.target).expanduser() if args.target else MONOREPO_ROOT
     parent.mkdir(parents=True, exist_ok=True)
     dest = parent / new_lower
 

@@ -13,9 +13,14 @@ WordPress template hierarchy reference:
 
 from __future__ import annotations
 
+import argparse
+import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _lib import resolve_theme_root  # noqa: E402
+
+ROOT: Path = Path.cwd()
 
 # Map template slug -> human URL description.
 # WP picks the most-specific matching template from top to bottom.
@@ -53,6 +58,12 @@ TEMPLATE_MAP: list[tuple[str, str]] = [
 
 
 def main() -> None:
+    global ROOT
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("theme", nargs="?", default=None, help="Theme directory name (defaults to cwd).")
+    args = parser.parse_args()
+    ROOT = resolve_theme_root(args.theme)
+
     templates_dir = ROOT / "templates"
     existing = {p.stem for p in templates_dir.glob("*.html")}
 

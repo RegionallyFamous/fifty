@@ -26,8 +26,11 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-INDEX = ROOT / "INDEX.md"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _lib import iter_themes, resolve_theme_root  # noqa: E402
+
+ROOT: Path = Path.cwd()
+INDEX: Path = ROOT / "INDEX.md"
 
 # One-line description for every well-known WP / WC template slug. When a
 # template ships in this theme, the matching description is shown.
@@ -70,28 +73,42 @@ PART_DESCRIPTIONS: dict[str, str] = {
 }
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true", help="Exit 1 if INDEX.md is stale.")
-    args = parser.parse_args()
+def run_for(theme_root: Path, check_only: bool) -> int:
+    global ROOT, INDEX
+    ROOT = theme_root
+    INDEX = ROOT / "INDEX.md"
 
     new_text = build_index()
 
-    if args.check:
+    if check_only:
         if not INDEX.exists():
-            print("INDEX.md is missing. Run: python3 bin/build-index.py", file=sys.stderr)
+            print(f"{theme_root.name}: INDEX.md is missing. Run: python3 bin/build-index.py {theme_root.name}", file=sys.stderr)
             return 1
         if INDEX.read_text(encoding="utf-8") != new_text:
             print(
-                "INDEX.md is out of date. Run: python3 bin/build-index.py",
+                f"{theme_root.name}: INDEX.md is out of date. Run: python3 bin/build-index.py {theme_root.name}",
                 file=sys.stderr,
             )
             return 1
         return 0
 
     INDEX.write_text(new_text, encoding="utf-8")
-    print(f"wrote {INDEX.relative_to(ROOT)} ({len(new_text.splitlines())} lines)")
+    print(f"{theme_root.name}: wrote INDEX.md ({len(new_text.splitlines())} lines)")
     return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("theme", nargs="?", default=None, help="Theme directory name (defaults to cwd).")
+    parser.add_argument("--all", action="store_true", help="Run against every theme in the monorepo.")
+    parser.add_argument("--check", action="store_true", help="Exit 1 if INDEX.md is stale.")
+    args = parser.parse_args()
+
+    if args.all:
+        codes = [run_for(t, args.check) for t in iter_themes()]
+        return 1 if any(codes) else 0
+
+    return run_for(resolve_theme_root(args.theme), args.check)
 
 
 def build_index() -> str:

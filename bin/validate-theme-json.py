@@ -245,10 +245,21 @@ def validate(theme_json_path: Path) -> int:
 
 
 def main(argv: list[str]) -> int:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from _lib import resolve_theme_root  # noqa: E402
+
     if len(argv) > 2:
-        print("usage: validate-theme-json.py [path/to/theme.json]", file=sys.stderr)
+        print("usage: validate-theme-json.py [theme_name|path/to/theme.json]", file=sys.stderr)
         return 2
-    target = Path(argv[1]) if len(argv) == 2 else Path(__file__).resolve().parent.parent / "theme.json"
+    if len(argv) == 2:
+        arg = argv[1]
+        candidate = Path(arg)
+        if candidate.is_file():
+            target = candidate
+        else:
+            target = resolve_theme_root(arg) / "theme.json"
+    else:
+        target = resolve_theme_root() / "theme.json"
     return validate(target)
 
 

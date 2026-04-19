@@ -22,13 +22,6 @@ Read this file at the start of any LLM session to discover the project's structu
 |   `-- template.html.txt
 |-- assets/
 |   `-- fonts/
-|-- bin/
-|   |-- build-index.py
-|   |-- check.py
-|   |-- clone.py
-|   |-- list-templates.py
-|   |-- list-tokens.py
-|   `-- validate-theme-json.py
 |-- parts/
 |   |-- announcement-bar.html
 |   |-- checkout-header.html
@@ -79,12 +72,10 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- singular.html
 |   |-- tag.html
 |   `-- taxonomy.html
-|-- .editorconfig
 |-- AGENTS.md
 |-- CHANGELOG.md
 |-- functions.php
 |-- INDEX.md
-|-- LICENSE
 |-- README.md
 |-- readme.txt
 |-- screenshot.png
@@ -353,14 +344,3 @@ If you want to style a block not listed here, add a new entry under `styles.bloc
 ### `woocommerce/*` (72)
 
 `woocommerce/add-to-cart-form`, `woocommerce/breadcrumbs`, `woocommerce/cart`, `woocommerce/cart-cross-sells-block`, `woocommerce/cart-items-block`, `woocommerce/cart-line-items-block`, `woocommerce/cart-order-summary-block`, `woocommerce/cart-order-summary-heading-block`, `woocommerce/cart-order-summary-totals-block`, `woocommerce/cart-totals-block`, `woocommerce/catalog-sorting`, `woocommerce/checkout`, `woocommerce/checkout-actions-block`, `woocommerce/checkout-billing-address-block`, `woocommerce/checkout-contact-information-block`, `woocommerce/checkout-fields-block`, `woocommerce/checkout-order-note-block`, `woocommerce/checkout-order-summary-block`, `woocommerce/checkout-order-summary-cart-items-block`, `woocommerce/checkout-order-summary-totals-block`, `woocommerce/checkout-payment-block`, `woocommerce/checkout-shipping-address-block`, `woocommerce/checkout-shipping-method-block`, `woocommerce/checkout-terms-block`, `woocommerce/checkout-totals-block`, `woocommerce/customer-account`, `woocommerce/empty-cart-block`, `woocommerce/filled-cart-block`, `woocommerce/mini-cart`, `woocommerce/mini-cart-contents`, `woocommerce/order-confirmation-additional-fields`, `woocommerce/order-confirmation-additional-information`, `woocommerce/order-confirmation-billing-address`, `woocommerce/order-confirmation-create-account`, `woocommerce/order-confirmation-downloads`, `woocommerce/order-confirmation-shipping-address`, `woocommerce/order-confirmation-status`, `woocommerce/order-confirmation-summary`, `woocommerce/order-confirmation-totals`, `woocommerce/order-confirmation-totals-wrapper`, `woocommerce/proceed-to-checkout-block`, `woocommerce/product-button`, `woocommerce/product-collection`, `woocommerce/product-details`, `woocommerce/product-filter-active`, `woocommerce/product-filter-attribute`, `woocommerce/product-filter-brand`, `woocommerce/product-filter-category`, `woocommerce/product-filter-checkbox-list`, `woocommerce/product-filter-chips`, `woocommerce/product-filter-clear-button`, `woocommerce/product-filter-price`, `woocommerce/product-filter-rating`, `woocommerce/product-filter-status`, `woocommerce/product-filter-tag`, `woocommerce/product-filters`, `woocommerce/product-image`, `woocommerce/product-image-gallery`, `woocommerce/product-meta`, `woocommerce/product-price`, `woocommerce/product-rating`, `woocommerce/product-rating-counter`, `woocommerce/product-rating-stars`, `woocommerce/product-results-count`, `woocommerce/product-sale-badge`, `woocommerce/product-sku`, `woocommerce/product-stock-indicator`, `woocommerce/product-summary`, `woocommerce/product-template`, `woocommerce/product-title`, `woocommerce/related-products`, `woocommerce/store-notices`
-
-## Tooling (`bin/`)
-
-| Script | Purpose |
-|---|---|
-| `bin/build-index.py` | Generate INDEX.md, a single-file project index for LLMs and humans. |
-| `bin/check.py` | Single-command validator. Run before every commit. |
-| `bin/clone.py` | Clone Obel into a new theme folder, renaming all identifiers. |
-| `bin/list-templates.py` | List every template and the WordPress URL pattern it handles. |
-| `bin/list-tokens.py` | Print every design token defined in theme.json. |
-| `bin/validate-theme-json.py` | Validate that every block name referenced in theme.json actually exists. |

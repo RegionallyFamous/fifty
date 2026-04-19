@@ -38,7 +38,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _lib import iter_themes, resolve_theme_root  # noqa: E402
+
+# ROOT is set per-theme in main() before any check runs.
+ROOT: Path = Path.cwd()
 
 # ANSI colors. Disabled when not a tty.
 USE_COLOR = sys.stdout.isatty() and os.environ.get("NO_COLOR") is None
@@ -119,8 +123,9 @@ def check_block_names(offline: bool) -> Result:
     if offline:
         r.skip("--offline / --quick passed")
         return r
+    bin_dir = Path(__file__).resolve().parent
     proc = subprocess.run(
-        [sys.executable, str(ROOT / "bin" / "validate-theme-json.py")],
+        [sys.executable, str(bin_dir / "validate-theme-json.py"), str(ROOT / "theme.json")],
         capture_output=True,
         text=True,
     )
@@ -131,8 +136,9 @@ def check_block_names(offline: bool) -> Result:
 
 def check_index_in_sync() -> Result:
     r = Result("INDEX.md in sync (build-index.py --check)")
+    bin_dir = Path(__file__).resolve().parent
     proc = subprocess.run(
-        [sys.executable, str(ROOT / "bin" / "build-index.py"), "--check"],
+        [sys.executable, str(bin_dir / "build-index.py"), ROOT.name, "--check"],
         capture_output=True,
         text=True,
     )
@@ -357,23 +363,10 @@ def iter_files(suffixes: tuple[str, ...]):
             yield path
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Run every Obel project check.")
-    parser.add_argument(
-        "--offline",
-        action="store_true",
-        help="Skip checks that require network (block-name validation against Gutenberg).",
-    )
-    parser.add_argument(
-        "--quick",
-        action="store_true",
-        help="Alias for --offline.",
-    )
-    args = parser.parse_args()
-
-    offline = args.offline or args.quick
-
-    print(f"Running Obel checks ({'offline' if offline else 'online'})...\n")
+def run_checks_for(theme_root: Path, offline: bool) -> int:
+    global ROOT
+    ROOT = theme_root
+    print(f"Running checks for {theme_root.name} ({'offline' if offline else 'online'})...\n")
 
     results = [
         check_json_validity(),
@@ -398,13 +391,51 @@ def main() -> int:
 
     print()
     if failed:
-        print(f"{RED}FAILED{RESET}: {len(failed)} of {len(results)} checks failed.")
+        print(f"{RED}FAILED{RESET}: {len(failed)} of {len(results)} checks failed for {theme_root.name}.")
         return 1
     if skipped:
-        print(f"{GREEN}OK{RESET}: all checks passed ({len(skipped)} skipped).")
+        print(f"{GREEN}OK{RESET}: all checks passed for {theme_root.name} ({len(skipped)} skipped).")
     else:
-        print(f"{GREEN}OK{RESET}: all {len(results)} checks passed.")
+        print(f"{GREEN}OK{RESET}: all {len(results)} checks passed for {theme_root.name}.")
     return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Run every Fifty project check.")
+    parser.add_argument(
+        "theme",
+        nargs="?",
+        default=None,
+        help="Theme directory name (e.g. 'obel'). Defaults to cwd if it contains theme.json.",
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Run against every theme in the monorepo.",
+    )
+    parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Skip checks that require network (block-name validation against Gutenberg).",
+    )
+    parser.add_argument(
+        "--quick",
+        action="store_true",
+        help="Alias for --offline.",
+    )
+    args = parser.parse_args()
+
+    offline = args.offline or args.quick
+
+    if args.all:
+        exit_codes = []
+        for theme in iter_themes():
+            print(f"\n{'=' * 60}")
+            exit_codes.append(run_checks_for(theme, offline))
+        return 1 if any(exit_codes) else 0
+
+    theme_root = resolve_theme_root(args.theme)
+    return run_checks_for(theme_root, offline)
 
 
 if __name__ == "__main__":

@@ -23,8 +23,11 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-THEME = ROOT / "theme.json"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _lib import resolve_theme_root  # noqa: E402
+
+ROOT: Path = Path.cwd()
+THEME: Path = ROOT / "theme.json"
 
 
 def load_theme() -> dict:
@@ -107,11 +110,16 @@ def _css_var(section: str, slug: str) -> str:
 
 
 def main() -> int:
+    global ROOT, THEME
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--theme", default=None, help="Theme directory name (defaults to cwd if it has theme.json).")
     parser.add_argument("category", nargs="?", choices=["colors", "fonts", "font-sizes", "spacing", "shadows", "layout", "custom"])
     parser.add_argument("--format", choices=["text", "json"], default="text")
     parser.add_argument("--css-vars", action="store_true", help="Show the CSS variable name next to each token.")
     args = parser.parse_args()
+
+    ROOT = resolve_theme_root(args.theme)
+    THEME = ROOT / "theme.json"
 
     if not THEME.exists():
         print(f"error: {THEME} not found", file=sys.stderr)
