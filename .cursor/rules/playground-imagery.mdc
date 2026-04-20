@@ -1,0 +1,54 @@
+---
+description: Per-theme playground imagery conventions — every theme ships its own matching product and category images
+alwaysApply: true
+---
+
+# Per-theme Playground Imagery
+
+Every theme in the monorepo must ship its own product and category images that match the theme's visual language. Shared or generic images defeat the purpose of having distinct visual variants.
+
+## File layout
+
+```
+<theme>/playground/
+  content/
+    category-images.json    # cat-name → filename map
+    product-images.json     # WC SKU → filename map
+  images/
+    product-wo-*.jpg        # 30 product photos (one per parent SKU)
+    cat-*.jpg               # 6 category cover images
+```
+
+## Per-theme aesthetic briefs
+
+### Obel (light, Scandinavian minimal)
+- **Palette**: base `#FAFAF7`, accent `#C07241` (warm terracotta), contrast `#1A1A1A`
+- **Background**: pure white or near-white warm grey; natural marble, linen, pale wood surfaces
+- **Lighting**: soft, diffuse, even — no harsh shadows; feels like overcast daylight through a north-facing window
+- **Composition**: centered or rule-of-thirds; maximum 1–2 contextual props; generous white space
+- **Labels/tags**: cream card stock in a fine serif; terracotta ink or ribbon accent
+- **Feel**: contemporary Scandinavian gift shop meets design-museum catalogue; quiet, confident
+
+### Chonk (neo-brutalist)
+- **Palette**: base `#F5F1E8`, border `#000000`, accent `#FFE600` (electric yellow), secondary-accent `#FF3C8A` (hot pink)
+- **Background**: flat cream (`#F5F1E8`) or stark white; never gradient, never soft
+- **Lighting**: hard overhead or 45° direct — sharp, defined black shadows are a *feature*
+- **Composition**: symmetrical or deliberately off-axis; product centered and confrontational
+- **Labels**: bold black borders, ALL-CAPS sans-serif or slab serif, electric yellow fills or hot-pink accents
+- **Feel**: zine meets pop-art meets brutalist product catalogue; loud, graphic, unapologetic
+
+### Selvedge (dark editorial menswear)
+- **Palette**: base `#160F08`, contrast `#EDE3CE`, accent `#D06030` (rust/terracotta)
+- **Background**: near-black warm brown `#160F08`
+- **Lighting**: single dramatic side-light from the left; long shadows; fine-art moody
+- **Labels**: cream serif type; rust-orange accent details
+- **Feel**: dark editorial menswear/workwear catalogue; refined and cinematic
+
+## Rules
+
+1. **Never share images across themes.** Each `<theme>/playground/images/` folder is self-contained.
+2. **product-images.json is required** for any theme that ships custom product photography. It maps every parent WC SKU (e.g. `"WO-BOTTLED-MORNING"`) to its filename (e.g. `"product-wo-bottled-morning.jpg"`). `wo-configure.php` reads this map at boot to sideload and assign thumbnails.
+3. **category-images.json is required** for every theme. It maps each `product_cat` term name to its cover image filename.
+4. **Naming convention**: product images → `product-wo-<slug>.jpg`; category images → `cat-<slug>.jpg`.
+5. **Image style must match the theme's brief above**. Generating a dark-background image for Obel or a washed-out photo for Chonk is a mistake.
+6. **After adding or replacing images, run `python3 bin/sync-playground.py`** to propagate any PHP changes, then commit both the images and any blueprint diffs together.
