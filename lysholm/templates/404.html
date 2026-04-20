@@ -1,0 +1,29 @@
+<!-- wp:template-part {"slug":"header","tagName":"header"} /-->
+
+<!-- wp:group {"tagName":"main","style":{"spacing":{"padding":{"top":"var:preset|spacing|3-xl","bottom":"var:preset|spacing|3-xl"},"blockGap":"var:preset|spacing|lg"}},"layout":{"type":"constrained","contentSize":"var(--wp--custom--layout--prose)"}} -->
+<main class="wp-block-group" style="padding-top:var(--wp--preset--spacing--3-xl);padding-bottom:var(--wp--preset--spacing--3-xl)">
+	<!-- wp:heading {"textAlign":"center","level":1,"content":"404","fontSize":"6xl"} -->
+	<h1 class="wp-block-heading has-text-align-center has-6-xl-font-size">404</h1>
+	<!-- /wp:heading -->
+
+	<!-- wp:heading {"textAlign":"center","level":2,"content":"Page not found"} -->
+	<h2 class="wp-block-heading has-text-align-center">Page not found</h2>
+	<!-- /wp:heading -->
+
+	<!-- wp:paragraph {"align":"center","textColor":"secondary"} -->
+	<p class="has-text-align-center has-secondary-color has-text-color">The page you're looking for has moved, been removed, or never existed. Try the search below or head back to the homepage.</p>
+	<!-- /wp:paragraph -->
+
+	<!-- wp:search {"label":"Search","showLabel":false,"placeholder":"Search the site","buttonText":"Search","buttonPosition":"button-inside","buttonUseIcon":true,"align":"center"} /-->
+
+	<!-- wp:buttons {"layout":{"type":"flex","justifyContent":"center"},"style":{"spacing":{"margin":{"top":"var:preset|spacing|md"}}}} -->
+	<div class="wp-block-buttons" style="margin-top:var(--wp--preset--spacing--md)">
+		<!-- wp:button {"className":"is-style-outline"} -->
+		<div class="wp-block-button is-style-outline"><a class="wp-block-button__link wp-element-button" href="/">Back to home</a></div>
+		<!-- /wp:button -->
+	</div>
+	<!-- /wp:buttons -->
+</main>
+<!-- /wp:group -->
+
+<!-- wp:template-part {"slug":"footer","tagName":"footer"} /-->

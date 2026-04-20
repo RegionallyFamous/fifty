@@ -1,0 +1,47 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/theme.json",
+	"version": 3,
+	"title": "High Contrast",
+	"settings": {
+		"color": {
+			"palette": [
+				{ "slug": "base",        "name": "Base",        "color": "#FFFFFF" },
+				{ "slug": "surface",     "name": "Surface",     "color": "#FFFFFF" },
+				{ "slug": "subtle",      "name": "Subtle",      "color": "#F0F0F0" },
+				{ "slug": "muted",       "name": "Muted",       "color": "#D8D8D8" },
+				{ "slug": "border",      "name": "Border",      "color": "#000000" },
+				{ "slug": "tertiary",    "name": "Tertiary",    "color": "#3A3A3A" },
+				{ "slug": "secondary",   "name": "Secondary",   "color": "#1F1F1F" },
+				{ "slug": "contrast",    "name": "Contrast",    "color": "#000000" },
+				{ "slug": "primary",     "name": "Primary",     "color": "#000000" },
+				{ "slug": "primary-hover","name": "Primary Hover","color": "#1F1F1F" },
+				{ "slug": "accent",      "name": "Accent",      "color": "#0044AA" },
+				{ "slug": "accent-soft", "name": "Accent Soft", "color": "#D6E4FF" },
+				{ "slug": "success",     "name": "Success",     "color": "#005C2E" },
+				{ "slug": "warning",     "name": "Warning",     "color": "#7A4A00" },
+				{ "slug": "error",       "name": "Error",       "color": "#A00000" },
+				{ "slug": "info",        "name": "Info",        "color": "#003F8A" }
+			]
+		}
+	},
+	"styles": {
+		"elements": {
+			"link": {
+				"typography": { "textDecoration": "underline" },
+				":hover": {
+					"typography": { "textDecoration": "underline" }
+				},
+				":focus-visible": {
+					"color": { "background": "var(--wp--preset--color--accent)", "text": "var(--wp--preset--color--base)" }
+				}
+			},
+			"button": {
+				"border": {
+					"color": "var(--wp--preset--color--contrast)",
+					"style": "solid",
+					"width": "2px"
+				}
+			}
+		}
+	}
+}

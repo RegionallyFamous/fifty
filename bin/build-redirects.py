@@ -212,9 +212,6 @@ INDEX_HEAD = """<!doctype html>
 \t\t.theme p{{margin:0;color:#a8a29e;font-size:.95rem}}
 \t\t.cta{{display:inline-flex;align-items:center;gap:.5rem;background:#fafaf9;color:#0f0f10;padding:.55rem .95rem;border-radius:9999px;text-decoration:none;font-weight:600;font-size:.9rem;align-self:flex-start;transition:background 160ms ease}}
 \t\t.cta:hover{{background:#fff}}
-\t\t.pages{{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:.4rem .6rem;font-size:.8rem}}
-\t\t.pages a{{color:#d6d3d1;text-decoration:none;border-bottom:1px solid #44403c;padding-bottom:1px}}
-\t\t.pages a:hover{{color:#fafaf9;border-color:#fafaf9}}
 \t\tfooter{{margin-top:3rem;padding-top:2rem;border-top:1px solid #2c2a27;color:#78716c;font-size:.85rem}}
 \t\tfooter a{{color:#d6d3d1}}
 \t\t@media (prefers-color-scheme:light){{
@@ -224,8 +221,6 @@ INDEX_HEAD = """<!doctype html>
 \t\t\t.theme:hover{{border-color:#a8a29e}}
 \t\t\t.cta{{background:#1c1917;color:#fafaf9}}
 \t\t\t.cta:hover{{background:#0c0a09}}
-\t\t\t.pages a{{color:#44403c;border-color:#d6d3d1}}
-\t\t\t.pages a:hover{{color:#0c0a09;border-color:#0c0a09}}
 \t\t\tfooter{{border-color:#e7e5e4;color:#78716c}}
 \t\t\tfooter a{{color:#44403c}}
 \t\t}}
@@ -265,15 +260,13 @@ def render_index(themes_html: list[str]) -> str:
 
 
 def render_theme_card(theme_name: str, theme_slug: str) -> str:
-    short_root = gh_pages_short_url(theme_slug)
-    pages_html_parts: list[str] = []
-    for page in PAGES:
-        if page["slug"] == "":
-            continue  # root is the big CTA below; skip in the chips list
-        pages_html_parts.append(
-            f'<li><a href="{html_escape(page["slug"] + "/")}">{html_escape(page["label"])}</a></li>'
-        )
-    pages_html = "".join(pages_html_parts)
+    # Per-page chips were intentionally removed from the homepage: they
+    # used theme-relative paths (`shop/`, `product/…/`) that resolve
+    # against the *site root* on demo.regionallyfamous.com (not against
+    # the theme card's URL), so they 404'd. The per-page redirectors
+    # under docs/<theme>/<slug>/ are still generated and remain useful
+    # for sharing a deep link to a specific entry point — they're just
+    # not surfaced on the landing page anymore.
     description = (
         f'A {html_escape(theme_name)} demo storefront with WooCommerce and '
         f'sample content, ready to click through.'
@@ -283,7 +276,6 @@ def render_theme_card(theme_name: str, theme_slug: str) -> str:
         f'\t\t\t\t<h2>{html_escape(theme_name)}</h2>\n'
         f'\t\t\t\t<p>{description}</p>\n'
         f'\t\t\t\t<a class="cta" href="{html_escape(theme_slug + "/")}">Open in Playground →</a>\n'
-        f'\t\t\t\t<ul class="pages" aria-label="More {html_escape(theme_name)} pages">{pages_html}</ul>\n'
         f'\t\t\t</article>\n'
     )
 

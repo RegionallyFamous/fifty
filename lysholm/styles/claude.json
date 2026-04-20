@@ -1,0 +1,272 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/theme.json",
+	"version": 3,
+	"title": "Claude",
+	"settings": {
+		"layout": {
+			"contentSize": "680px",
+			"wideSize": "1180px"
+		},
+		"color": {
+			"palette": [
+				{ "slug": "base",         "name": "Base",         "color": "#EFE6D2" },
+				{ "slug": "surface",      "name": "Surface",      "color": "#F4ECDA" },
+				{ "slug": "subtle",       "name": "Subtle",       "color": "#E5DAC0" },
+				{ "slug": "muted",        "name": "Muted",        "color": "#D4C6A6" },
+				{ "slug": "border",       "name": "Border",       "color": "#8C7E62" },
+				{ "slug": "tertiary",     "name": "Tertiary",     "color": "#6E624D" },
+				{ "slug": "secondary",    "name": "Secondary",    "color": "#473F30" },
+				{ "slug": "contrast",     "name": "Contrast",     "color": "#1A150E" },
+				{ "slug": "primary",      "name": "Primary",      "color": "#1A150E" },
+				{ "slug": "primary-hover","name": "Primary Hover","color": "#3A311F" },
+				{ "slug": "accent",       "name": "Accent",       "color": "#CC785C" },
+				{ "slug": "accent-deep",  "name": "Accent Deep",  "color": "#9C4A33" },
+				{ "slug": "accent-soft",  "name": "Accent Soft",  "color": "#F5D6C5" },
+				{ "slug": "success",      "name": "Success",      "color": "#3F6B4F" },
+				{ "slug": "warning",      "name": "Warning",      "color": "#9B6F1F" },
+				{ "slug": "error",        "name": "Error",        "color": "#9C3A2E" },
+				{ "slug": "info",         "name": "Info",         "color": "#3A567A" }
+			]
+		},
+		"shadow": {
+			"presets": [
+				{ "slug": "xs", "name": "XS", "shadow": "none" },
+				{ "slug": "sm", "name": "SM", "shadow": "none" },
+				{ "slug": "md", "name": "MD", "shadow": "none" },
+				{ "slug": "lg", "name": "LG", "shadow": "none" },
+				{ "slug": "xl", "name": "XL", "shadow": "none" },
+				{ "slug": "inset", "name": "Inset", "shadow": "inset 0 -1px 0 var(--wp--preset--color--border)" }
+			]
+		},
+		"custom": {
+			"radius": {
+				"none": "0",
+				"sm":   "0",
+				"md":   "0",
+				"lg":   "2px",
+				"xl":   "4px",
+				"pill": "9999px"
+			},
+			"line-height": {
+				"tight":   "1.02",
+				"snug":    "1.12",
+				"normal":  "1.55",
+				"relaxed": "1.7",
+				"loose":   "1.9"
+			},
+			"letter-spacing": {
+				"tighter": "-0.03em",
+				"tight":   "-0.015em",
+				"normal":  "0",
+				"wide":    "0.02em",
+				"wider":   "0.06em",
+				"widest":  "0.18em"
+			},
+			"font-weight": {
+				"regular":  "400",
+				"medium":   "500",
+				"semibold": "600",
+				"bold":     "700"
+			}
+		}
+	},
+	"styles": {
+		"css": " body{font-feature-settings:\"kern\" 1,\"liga\" 1,\"onum\" 1;text-rendering:optimizeLegibility;} .wp-block-post-content > p:first-of-type::first-letter{font-family:\"New York\",\"Charter\",\"Iowan Old Style\",\"Source Serif 4\",\"Source Serif Pro\",Cambria,Georgia,serif;float:left;font-size:5.5em;line-height:0.85;padding:0.05em 0.12em 0 0;font-weight:400;color:var(--wp--preset--color--accent-deep);font-style:normal;} a{text-underline-offset:0.18em;text-decoration-thickness:0.06em;} ",
+		"color": {
+			"background": "var(--wp--preset--color--base)",
+			"text":       "var(--wp--preset--color--contrast)"
+		},
+		"typography": {
+			"fontFamily":    "\"New York\", \"Charter\", \"Iowan Old Style\", \"Source Serif 4\", \"Source Serif Pro\", Cambria, Georgia, serif",
+			"fontSize":      "var(--wp--preset--font-size--md)",
+			"fontWeight":    "var(--wp--custom--font-weight--regular)",
+			"lineHeight":    "var(--wp--custom--line-height--relaxed)",
+			"letterSpacing": "var(--wp--custom--letter-spacing--normal)"
+		},
+		"elements": {
+			"heading": {
+				"typography": {
+					"fontFamily":    "\"New York\", \"Charter\", \"Iowan Old Style\", \"Source Serif 4\", \"Source Serif Pro\", Cambria, Georgia, serif",
+					"fontWeight":    "var(--wp--custom--font-weight--regular)",
+					"letterSpacing": "var(--wp--custom--letter-spacing--tight)",
+					"lineHeight":    "var(--wp--custom--line-height--snug)",
+					"textTransform": "none"
+				},
+				"color": { "text": "var(--wp--preset--color--contrast)" }
+			},
+			"h1": {
+				"typography": {
+					"fontSize":      "var(--wp--preset--font-size--5-xl)",
+					"fontStyle":     "italic",
+					"fontWeight":    "var(--wp--custom--font-weight--regular)",
+					"lineHeight":    "var(--wp--custom--line-height--tight)",
+					"letterSpacing": "var(--wp--custom--letter-spacing--tighter)"
+				}
+			},
+			"h2": { "typography": { "fontSize": "var(--wp--preset--font-size--3-xl)", "lineHeight": "var(--wp--custom--line-height--tight)", "letterSpacing": "var(--wp--custom--letter-spacing--tighter)" } },
+			"h3": { "typography": { "fontSize": "var(--wp--preset--font-size--xl)",   "fontStyle": "italic", "lineHeight": "var(--wp--custom--line-height--snug)" } },
+			"h4": { "typography": { "fontSize": "var(--wp--preset--font-size--lg)",   "lineHeight": "var(--wp--custom--line-height--snug)" } },
+			"h5": {
+				"typography": {
+					"fontFamily":    "-apple-system, BlinkMacSystemFont, \"Inter\", \"Helvetica Neue\", Helvetica, Arial, sans-serif",
+					"fontSize":      "var(--wp--preset--font-size--xs)",
+					"fontWeight":    "var(--wp--custom--font-weight--medium)",
+					"letterSpacing": "var(--wp--custom--letter-spacing--widest)",
+					"textTransform": "uppercase"
+				},
+				"color": { "text": "var(--wp--preset--color--tertiary)" }
+			},
+			"h6": {
+				"typography": {
+					"fontFamily":    "-apple-system, BlinkMacSystemFont, \"Inter\", \"Helvetica Neue\", Helvetica, Arial, sans-serif",
+					"fontSize":      "var(--wp--preset--font-size--xs)",
+					"fontWeight":    "var(--wp--custom--font-weight--medium)",
+					"letterSpacing": "var(--wp--custom--letter-spacing--widest)",
+					"textTransform": "uppercase"
+				},
+				"color": { "text": "var(--wp--preset--color--tertiary)" }
+			},
+			"link": {
+				"color":      { "text": "var(--wp--preset--color--accent-deep)" },
+				"typography": { "textDecoration": "underline" },
+				":hover":     { "color": { "text": "var(--wp--preset--color--contrast)" }, "typography": { "textDecoration": "underline" } },
+				":focus":     { "color": { "text": "var(--wp--preset--color--accent-deep)" } }
+			},
+			"button": {
+				"color":      { "background": "var(--wp--preset--color--contrast)", "text": "var(--wp--preset--color--base)" },
+				"border":     { "radius": "0", "width": "0", "style": "solid", "color": "var(--wp--preset--color--contrast)" },
+				"typography": { "fontFamily": "-apple-system, BlinkMacSystemFont, \"Inter\", \"Helvetica Neue\", Helvetica, Arial, sans-serif", "fontWeight": "var(--wp--custom--font-weight--medium)", "fontSize": "var(--wp--preset--font-size--xs)", "letterSpacing": "var(--wp--custom--letter-spacing--widest)", "textTransform": "uppercase" },
+				"spacing":    { "padding": { "top": "var(--wp--preset--spacing--sm)", "right": "var(--wp--preset--spacing--xl)", "bottom": "var(--wp--preset--spacing--sm)", "left": "var(--wp--preset--spacing--xl)" } },
+				":hover":  { "color": { "background": "var(--wp--preset--color--accent)", "text": "var(--wp--preset--color--contrast)" }, "border": { "color": "var(--wp--preset--color--accent)" } },
+				":focus":  { "color": { "background": "var(--wp--preset--color--accent)", "text": "var(--wp--preset--color--contrast)" }, "border": { "color": "var(--wp--preset--color--accent)" } },
+				":active": { "color": { "background": "var(--wp--preset--color--primary-hover)", "text": "var(--wp--preset--color--base)" } }
+			},
+			"caption": {
+				"typography": { "fontStyle": "italic", "fontSize": "var(--wp--preset--font-size--sm)" },
+				"color":      { "text": "var(--wp--preset--color--tertiary)" }
+			},
+			"cite": {
+				"typography": { "fontStyle": "italic", "fontWeight": "var(--wp--custom--font-weight--regular)", "letterSpacing": "var(--wp--custom--letter-spacing--normal)" }
+			}
+		},
+		"blocks": {
+			"core/post-title": {
+				"typography": {
+					"fontFamily":    "\"New York\", \"Charter\", \"Iowan Old Style\", \"Source Serif 4\", \"Source Serif Pro\", Cambria, Georgia, serif",
+					"fontSize":      "var(--wp--preset--font-size--5-xl)",
+					"fontStyle":     "italic",
+					"fontWeight":    "var(--wp--custom--font-weight--regular)",
+					"lineHeight":    "var(--wp--custom--line-height--tight)",
+					"letterSpacing": "var(--wp--custom--letter-spacing--tighter)",
+					"textTransform": "none"
+				}
+			},
+			"core/query-title": {
+				"typography": {
+					"fontFamily":    "\"New York\", \"Charter\", \"Iowan Old Style\", \"Source Serif 4\", \"Source Serif Pro\", Cambria, Georgia, serif",
+					"fontSize":      "var(--wp--preset--font-size--3-xl)",
+					"fontStyle":     "italic",
+					"fontWeight":    "var(--wp--custom--font-weight--regular)",
+					"letterSpacing": "var(--wp--custom--letter-spacing--tighter)",
+					"textTransform": "none"
+				}
+			},
+			"core/post-content": {
+				"typography": {
+					"fontFamily": "\"New York\", \"Charter\", \"Iowan Old Style\", \"Source Serif 4\", \"Source Serif Pro\", Cambria, Georgia, serif",
+					"fontSize":   "var(--wp--preset--font-size--md)",
+					"lineHeight": "var(--wp--custom--line-height--loose)"
+				}
+			},
+			"core/post-excerpt": {
+				"typography": {
+					"fontFamily": "\"New York\", \"Charter\", \"Iowan Old Style\", \"Source Serif 4\", \"Source Serif Pro\", Cambria, Georgia, serif",
+					"fontSize":   "var(--wp--preset--font-size--md)",
+					"fontStyle":  "italic",
+					"lineHeight": "var(--wp--custom--line-height--snug)"
+				},
+				"color": { "text": "var(--wp--preset--color--secondary)" }
+			},
+			"core/quote": {
+				"typography": { "fontFamily": "\"New York\", \"Charter\", \"Iowan Old Style\", \"Source Serif 4\", \"Source Serif Pro\", Cambria, Georgia, serif", "fontSize": "var(--wp--preset--font-size--xl)", "fontStyle": "italic", "lineHeight": "var(--wp--custom--line-height--snug)" },
+				"border":     { "left": { "color": "var(--wp--preset--color--accent)", "width": "2px", "style": "solid" } },
+				"spacing":    { "padding": { "left": "var(--wp--preset--spacing--lg)" } }
+			},
+			"core/pullquote": {
+				"typography": { "fontFamily": "\"New York\", \"Charter\", \"Iowan Old Style\", \"Source Serif 4\", \"Source Serif Pro\", Cambria, Georgia, serif", "fontSize": "var(--wp--preset--font-size--2-xl)", "fontStyle": "italic", "lineHeight": "var(--wp--custom--line-height--snug)", "letterSpacing": "var(--wp--custom--letter-spacing--tight)" },
+				"border":     { "top": { "color": "var(--wp--preset--color--border)", "width": "1px", "style": "solid" }, "bottom": { "color": "var(--wp--preset--color--border)", "width": "1px", "style": "solid" } },
+				"color":      { "text": "var(--wp--preset--color--contrast)" }
+			},
+			"core/separator": {
+				"color":   { "background": "var(--wp--preset--color--border)" },
+				"spacing": { "margin": { "top": "var(--wp--preset--spacing--xl)", "bottom": "var(--wp--preset--spacing--xl)" } }
+			},
+			"core/site-title": {
+				"typography": {
+					"fontFamily":    "\"New York\", \"Charter\", \"Iowan Old Style\", \"Source Serif 4\", \"Source Serif Pro\", Cambria, Georgia, serif",
+					"fontSize":      "var(--wp--preset--font-size--lg)",
+					"fontStyle":     "italic",
+					"fontWeight":    "var(--wp--custom--font-weight--regular)",
+					"letterSpacing": "var(--wp--custom--letter-spacing--tight)",
+					"textTransform": "none"
+				}
+			},
+			"core/site-tagline": {
+				"typography": { "fontFamily": "\"New York\", \"Charter\", \"Iowan Old Style\", \"Source Serif 4\", \"Source Serif Pro\", Cambria, Georgia, serif", "fontStyle": "italic", "fontSize": "var(--wp--preset--font-size--sm)" },
+				"color":      { "text": "var(--wp--preset--color--tertiary)" }
+			},
+			"core/navigation": {
+				"typography": {
+					"fontFamily":    "\"New York\", \"Charter\", \"Iowan Old Style\", \"Source Serif 4\", \"Source Serif Pro\", Cambria, Georgia, serif",
+					"fontSize":      "var(--wp--preset--font-size--base)",
+					"fontStyle":     "italic",
+					"fontWeight":    "var(--wp--custom--font-weight--regular)",
+					"letterSpacing": "var(--wp--custom--letter-spacing--normal)"
+				}
+			},
+			"core/post-date": {
+				"typography": {
+					"fontFamily":    "-apple-system, BlinkMacSystemFont, \"Inter\", \"Helvetica Neue\", Helvetica, Arial, sans-serif",
+					"fontSize":      "var(--wp--preset--font-size--xs)",
+					"letterSpacing": "var(--wp--custom--letter-spacing--widest)",
+					"textTransform": "uppercase"
+				},
+				"color": { "text": "var(--wp--preset--color--tertiary)" }
+			},
+			"core/post-author-name": {
+				"typography": { "fontFamily": "\"New York\", \"Charter\", \"Iowan Old Style\", \"Source Serif 4\", \"Source Serif Pro\", Cambria, Georgia, serif", "fontStyle": "italic", "fontSize": "var(--wp--preset--font-size--sm)" }
+			},
+			"core/post-terms": {
+				"typography": { "fontFamily": "-apple-system, BlinkMacSystemFont, \"Inter\", \"Helvetica Neue\", Helvetica, Arial, sans-serif", "fontSize": "var(--wp--preset--font-size--xs)", "letterSpacing": "var(--wp--custom--letter-spacing--widest)", "textTransform": "uppercase" }
+			},
+			"core/term-name": {
+				"typography": { "fontFamily": "\"New York\", \"Charter\", \"Iowan Old Style\", \"Source Serif 4\", \"Source Serif Pro\", Cambria, Georgia, serif", "fontSize": "var(--wp--preset--font-size--xl)", "fontStyle": "italic", "fontWeight": "var(--wp--custom--font-weight--regular)", "letterSpacing": "var(--wp--custom--letter-spacing--tight)" }
+			},
+			"core/term-count": {
+				"typography": { "fontStyle": "italic", "fontSize": "var(--wp--preset--font-size--sm)" },
+				"color":      { "text": "var(--wp--preset--color--tertiary)" }
+			},
+			"core/search": {
+				"border": { "radius": "0", "width": "0", "color": "var(--wp--preset--color--border)" }
+			},
+			"woocommerce/product-title": {
+				"typography": {
+					"fontFamily":    "\"New York\", \"Charter\", \"Iowan Old Style\", \"Source Serif 4\", \"Source Serif Pro\", Cambria, Georgia, serif",
+					"fontSize":      "var(--wp--preset--font-size--md)",
+					"fontStyle":     "italic",
+					"fontWeight":    "var(--wp--custom--font-weight--regular)",
+					"letterSpacing": "var(--wp--custom--letter-spacing--tight)"
+				}
+			},
+			"woocommerce/product-price": {
+				"typography": { "fontFamily": "-apple-system, BlinkMacSystemFont, \"Inter\", \"Helvetica Neue\", Helvetica, Arial, sans-serif", "fontSize": "var(--wp--preset--font-size--sm)", "letterSpacing": "var(--wp--custom--letter-spacing--wide)" },
+				"color":      { "text": "var(--wp--preset--color--accent-deep)" }
+			},
+			"woocommerce/product-sale-badge": {
+				"typography": { "fontFamily": "-apple-system, BlinkMacSystemFont, \"Inter\", \"Helvetica Neue\", Helvetica, Arial, sans-serif", "fontSize": "var(--wp--preset--font-size--xs)", "letterSpacing": "var(--wp--custom--letter-spacing--widest)", "textTransform": "uppercase", "fontWeight": "var(--wp--custom--font-weight--medium)" },
+				"color":      { "background": "var(--wp--preset--color--accent)", "text": "var(--wp--preset--color--contrast)" },
+				"border":     { "radius": "0" }
+			}
+		}
+	}
+}

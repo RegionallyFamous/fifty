@@ -1,0 +1,19 @@
+/*
+Theme Name:        Lysholm
+Theme URI:         https://github.com/lysholm
+Description:       A block-only WooCommerce starter theme. All styling is defined in theme.json; there are no custom CSS files. Intended to be copied and renamed for each project.
+Version:           1.0.0
+Requires at least: 6.8
+Tested up to:      6.9
+Requires PHP:      8.2
+WC requires at least: 10.0
+WC tested up to:   10.7
+Author:            Lysholm
+Author URI:        https://github.com/lysholm
+License:           GNU General Public License v2 or later
+License URI:       https://www.gnu.org/licenses/gpl-2.0.html
+Text Domain:       lysholm
+Domain Path:       /languages
+Update URI:        false
+Tags:              block-styles, full-site-editing, wide-blocks, e-commerce, one-column, two-columns, custom-colors, featured-images, threaded-comments, translation-ready
+*/

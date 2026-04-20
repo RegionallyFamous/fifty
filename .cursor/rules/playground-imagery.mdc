@@ -44,6 +44,14 @@ Every theme in the monorepo must ship its own product and category images that m
 - **Labels**: cream serif type; rust-orange accent details
 - **Feel**: dark editorial menswear/workwear catalogue; refined and cinematic
 
+### Lysholm (Nordic home goods, white-on-white)
+- **Palette**: base `#F7F5F1` (chalk white), surface `#FCFAF6`, muted `#E3D9C8` (warm beige), accent `#C9A97C` (blonde wood), tertiary `#8A867E` (fog grey), contrast `#1D1D1D` (deep ink)
+- **Background**: chalk-white linen, oat-toned plaster, blonde-wood plank, or pale beige paper. White-on-white is the default; never pure stark white.
+- **Lighting**: natural daylight from a single tall window; soft, even, slightly cool; long but very gentle shadows; airy and unhurried
+- **Composition**: object placed off-center with generous negative space; one supporting prop maximum (linen napkin, ceramic dish, dried branch); lookbook-style cropping rather than catalogue-tight
+- **Labels/tags**: thin Inter or Söhne-style sans, light weight, deep ink on chalk; no decorative borders; small-cap or wide-tracked detail lines
+- **Feel**: Nordic home editorial — slow living, blonde wood, soft linen, oat tones; the room itself feels exhaled
+
 ## Rules
 
 1. **Never share images across themes.** Each `<theme>/playground/images/` folder is self-contained.
