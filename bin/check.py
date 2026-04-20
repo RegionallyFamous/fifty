@@ -1294,6 +1294,139 @@ def check_archive_sort_dropdown_styled() -> Result:
     return r
 
 
+def check_no_squeezed_wc_sidebars() -> Result:
+    """Guard against the WC cart/checkout sidebar-squeeze regression.
+
+    Symptoms (caught in production review on 2026-04-20):
+      * Cart page sidebar squeezed to ~200px on tablet/narrow-desktop
+        widths -> 'CART TOTALS' wraps to two lines, 'Add coupons'
+        wraps to one letter per line, the Proceed-to-Checkout button
+        balloons into an oversized pill that overflows the card.
+      * Checkout page right column hosting `<order-summary-item>` (a
+        nested 64px / 1fr / auto grid) squeezed below ~150px ->
+        product names ('Artisanal Silence (8 oz Jar)') and prices wrap
+        one glyph per line ('A / r / t / i / s / a / n / a / l').
+
+    Three independent root causes need to all stay fixed for the
+    sidebar to render correctly. This rule asserts each one is locked
+    in `theme.json` -> top-level `styles.css`:
+
+      1. The original `grid-template-columns:2fr 1fr` shrinks the
+         sidebar to below readable width. The fix is
+         `grid-template-columns:minmax(0,1fr) minmax(300px,360px)`.
+         This rule forbids the bad pattern.
+
+      2. Grid children default to `min-width:auto`, which is the
+         intrinsic content width. That defeats `minmax(0, ...)` and
+         forces the row to overflow horizontally. Every grid child
+         that hosts long-form text inside the sidebar must declare
+         `min-width:0`. This rule asserts that for the three
+         hot-path selectors.
+
+      3. `word-break:break-all` wraps text on letter boundaries
+         instead of word boundaries (it 'fixes' overflow by chopping
+         words mid-character). For graceful long-word handling we
+         use `overflow-wrap:break-word; word-break:normal` instead.
+         This rule forbids `break-all` anywhere in styles.css.
+
+    The CSS that satisfies this lives in
+    `bin/append-wc-overrides.py` (`/* wc-tells-cart-sidebar-fix */`
+    + `/* wc-tells-checkout-summary-fix */`). If a future edit drops
+    a `min-width:0` declaration, re-introduces the `2fr 1fr` grid,
+    or sneaks in `word-break:break-all`, this rule fires and the
+    bug becomes undeployable.
+    """
+    r = Result("WC cart/checkout sidebars are not squeeze-prone")
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.fail("theme.json missing")
+        return r
+    try:
+        data = json.loads(theme_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        r.fail(str(exc))
+        return r
+    styles = data.get("styles") or {}
+    top_css = styles.get("css") if isinstance(styles.get("css"), str) else ""
+    css_norm = re.sub(r"\s+", "", top_css or "")
+
+    # 1. Forbid `grid-template-columns:2fr 1fr` for either sidebar parent.
+    bad_grids = {
+        ".wc-block-cart{grid-template-columns:2fr1fr": ".wc-block-cart",
+        ".wc-block-checkout{grid-template-columns:2fr1fr": ".wc-block-checkout",
+    }
+    for needle, sel in bad_grids.items():
+        if needle in css_norm:
+            r.fail(
+                f"top-level styles.css applies `grid-template-columns: 2fr 1fr` "
+                f"to `{sel}`. On tablet widths (~800-1000px) that collapses "
+                f"the sidebar to ~200px and triggers per-letter text wrapping. "
+                f"Use `minmax(0,1fr) minmax(300px,360px)` instead."
+            )
+
+    # 2. Forbid `word-break:break-all` anywhere. It chops words mid-character
+    #    when space is tight; we want word-boundary wrapping via
+    #    `overflow-wrap:break-word` + `word-break:normal`.
+    if "word-break:break-all" in css_norm:
+        r.fail(
+            "top-level styles.css contains `word-break: break-all`. That wraps "
+            "text on letter boundaries (renders 'Artisanal' as 'A r t i s a n "
+            "a l' in tight columns). Use `overflow-wrap: break-word; "
+            "word-break: normal` instead so wrapping happens on word boundaries."
+        )
+
+    # 3. Require `min-width:0` for the three hot-path sidebar grid children.
+    #    Heuristic: find every `{...}` body whose preceding selector list
+    #    contains the target selector and verify the body declares
+    #    `min-width:0`. Multiple appended chunks may target the same
+    #    selector in different rules; any one of them counts.
+    required_selectors = [
+        ".wc-block-cart__sidebar",
+        ".wc-block-checkout__sidebar",
+        ".wc-block-components-order-summary-item__description",
+    ]
+    for selector in required_selectors:
+        sel_norm = re.sub(r"\s+", "", selector)
+        found = False
+        idx = 0
+        while True:
+            i = css_norm.find(sel_norm, idx)
+            if i < 0:
+                break
+            # Walk forward to the rule body for the rule containing this
+            # selector occurrence. Only count this selector if it is at the
+            # top of its own rule (i.e. the next `{` is the rule body, not
+            # a deeper nested at-rule).
+            brace_open = css_norm.find("{", i)
+            if brace_open < 0:
+                break
+            brace_close = css_norm.find("}", brace_open)
+            if brace_close < 0:
+                break
+            body = css_norm[brace_open:brace_close]
+            if "min-width:0" in body:
+                found = True
+                break
+            idx = brace_close + 1
+        if not found:
+            r.fail(
+                f"top-level styles.css has no rule that targets `{selector}` "
+                f"AND declares `min-width:0`. Without this the grid child "
+                f"defaults to `min-width:auto` (== intrinsic content width), "
+                f"which forces the row to overflow horizontally and triggers "
+                f"per-letter text wrapping inside the sidebar. Append a rule "
+                f"like `{selector}{{min-width:0}}` to styles.css."
+            )
+
+    if r.passed and not r.skipped:
+        r.details.append(
+            f"checked {len(required_selectors)} sidebar selector(s) for "
+            f"`min-width:0`; verified no `word-break:break-all` and no "
+            f"`2fr 1fr` grid for cart/checkout"
+        )
+    return r
+
+
 def check_blueprint_landing_page() -> Result:
     """Fail if `playground/blueprint.json`'s `landingPage` is anything other
     than `/`.
@@ -1458,6 +1591,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_no_duplicate_templates(),
         check_no_duplicate_stock_indicator(),
         check_archive_sort_dropdown_styled(),
+        check_no_squeezed_wc_sidebars(),
         check_blueprint_landing_page(),
         check_front_page_unique_layout(),
     ]

@@ -90,7 +90,7 @@ table.variations select:focus{{outline:none;border-color:var(--wp--preset--color
 .wc-block-mini-cart__footer-actions a:hover,.wc-block-mini-cart__footer-actions .wc-block-components-button:hover{{background:var(--wp--preset--color--accent);border-color:var(--wp--preset--color--accent);}}
 .wp-block-woocommerce-empty-mini-cart-contents-block{{text-align:center;font-family:var(--wp--preset--font-family--sans);}}
 .wc-block-cart{{display:grid;grid-template-columns:1fr;gap:var(--wp--preset--spacing--2-xl);}}
-@media (min-width:782px){{.wc-block-cart{{grid-template-columns:2fr 1fr;}}}}
+@media (min-width:782px){{.wc-block-cart{{grid-template-columns:minmax(0,1fr) minmax(300px,360px);}}}}
 .wc-block-cart-items,.wp-block-woocommerce-cart-line-items-block{{padding:0;margin:0;border-collapse:collapse;border:0;}}
 .wc-block-cart-items th{{display:none;}}
 .wc-block-cart-items .wc-block-cart-items__row{{display:grid;grid-template-columns:96px 1fr auto;gap:var(--wp--preset--spacing--md);align-items:start;padding:var(--wp--preset--spacing--md) 0;border-bottom:1px solid var(--wp--preset--color--border);}}
@@ -119,7 +119,7 @@ table.variations select:focus{{outline:none;border-color:var(--wp--preset--color
 .wc-block-cart-cross-sells>h2,.wc-block-cart-cross-sells .wp-block-heading{{font-family:var(--wp--preset--font-family--display);font-size:var(--wp--preset--font-size--2-xl);margin:0 0 var(--wp--preset--spacing--lg);}}
 .wc-block-components-shipping-calculator-address{{display:grid;gap:var(--wp--preset--spacing--sm);margin-top:var(--wp--preset--spacing--md);}}
 .wc-block-checkout{{display:grid;grid-template-columns:1fr;gap:var(--wp--preset--spacing--2-xl);}}
-@media (min-width:782px){{.wc-block-checkout{{grid-template-columns:2fr 1fr;}}}}
+@media (min-width:782px){{.wc-block-checkout{{grid-template-columns:minmax(0,1fr) minmax(300px,360px);}}}}
 .wc-block-checkout__main{{display:flex;flex-direction:column;gap:var(--wp--preset--spacing--xl);}}
 .wc-block-components-checkout-step{{padding:var(--wp--preset--spacing--lg) 0;border-bottom:1px solid var(--wp--preset--color--border);position:relative;}}
 .wc-block-components-checkout-step__heading{{display:flex;flex-direction:column;gap:var(--wp--preset--spacing--2-xs);margin-bottom:var(--wp--preset--spacing--md);}}
@@ -209,6 +209,56 @@ CSS_CART_FIX = f"""{SENTINEL_OPEN_CART_FIX}
 {SENTINEL_CLOSE_CART_FIX}"""
 
 
+# ---------------------------------------------------------------------------
+# Follow-up chunk: checkout order-summary sidebar fix.
+# ---------------------------------------------------------------------------
+# The original group B (checkout interior) hit the same squeeze as the
+# cart, only worse: the right column on checkout hosts the
+# `.wc-block-components-order-summary-item`, which is itself a nested
+# 3-column grid (64px image / 1fr description / auto price). Without
+# `min-width:0` on the description and price grid children, intrinsic
+# content size forces row overflow — at sidebar widths around 80-150px
+# the product name wraps to one glyph per line ("A / r / t / i / s / a /
+# n / a / l").
+#
+# The fix mirrors the cart chunk and adds two new pieces:
+#   1. `.wc-block-checkout` sidebar clamp + `min-width:0` on every grid
+#      child (parent and order-summary children).
+#   2. `min-width:0` + `overflow-wrap:break-word; word-break:normal` on
+#      the description / total / individual-prices columns inside each
+#      order-summary item, so long product names wrap on word boundaries.
+#   3. The same on `.wc-block-cart-item__product` / `__total` for parity
+#      (the cart line items don't suffer the same way today because they
+#      live in the main column, but a future redesign that moves them
+#      into a sidebar would re-trigger the bug).
+#
+# bin/check.py grows a `check_no_squeezed_wc_sidebars` companion rule
+# that asserts each of the three sidebar selectors carries
+# `min-width:0`, forbids `word-break:break-all` anywhere, and forbids
+# the original `2fr 1fr` grid for either parent. That rule is the
+# guardrail that makes the regression undeployable.
+SENTINEL_OPEN_CO_FIX = "/* wc-tells-checkout-summary-fix */"
+SENTINEL_CLOSE_CO_FIX = "/* /wc-tells-checkout-summary-fix */"
+CSS_CO_FIX = f"""{SENTINEL_OPEN_CO_FIX}
+.wc-block-checkout{{align-items:start;}}
+@media (min-width:782px){{.wc-block-checkout{{grid-template-columns:minmax(0,1fr) minmax(300px,360px);}}}}
+.wc-block-checkout__main,.wc-block-checkout__sidebar,.wc-block-components-sidebar-layout__sidebar,.wc-block-components-sidebar-layout__main{{min-width:0;}}
+.wc-block-checkout__sidebar{{overflow-wrap:break-word;word-break:normal;hyphens:none;}}
+.wc-block-checkout__sidebar .wp-block-heading{{font-family:var(--wp--preset--font-family--display);font-size:var(--wp--preset--font-size--xl);font-weight:var(--wp--custom--font-weight--regular);overflow-wrap:break-word;word-break:normal;hyphens:none;}}
+.wc-block-components-order-summary-item{{grid-template-columns:48px minmax(0,1fr) auto;align-items:start;gap:var(--wp--preset--spacing--sm);}}
+.wc-block-components-order-summary-item__image{{flex:0 0 auto;width:48px;}}
+.wc-block-components-order-summary-item__image img{{width:48px;height:auto;}}
+.wc-block-components-order-summary-item__description,.wc-block-components-order-summary-item__total,.wc-block-components-order-summary-item__individual-prices{{min-width:0;overflow-wrap:break-word;word-break:normal;hyphens:none;}}
+.wc-block-components-order-summary-item__total{{text-align:right;font-variant-numeric:tabular-nums;}}
+.wc-block-components-product-name{{display:block;overflow-wrap:break-word;word-break:normal;hyphens:none;}}
+.wc-block-components-product-price{{overflow-wrap:break-word;word-break:normal;hyphens:none;}}
+.wc-block-components-product-price ins,.wc-block-components-product-price del{{display:inline-block;}}
+.wc-block-components-formatted-money-amount{{white-space:nowrap;}}
+.wc-block-cart-item__product,.wc-block-cart-item__total{{min-width:0;overflow-wrap:break-word;word-break:normal;hyphens:none;}}
+.wc-block-components-product-metadata{{overflow-wrap:break-word;word-break:normal;}}
+{SENTINEL_CLOSE_CO_FIX}"""
+
+
 # Each entry: (sentinel_open, sentinel_close, raw_css, anchor_after).
 # `anchor_after` is the marker the chunk is spliced in after — for the
 # first chunk that's the canonical archive-page marker; for follow-ups
@@ -226,6 +276,12 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_CART_FIX,
         CSS_CART_FIX,
         SENTINEL_CLOSE,
+    ),
+    (
+        SENTINEL_OPEN_CO_FIX,
+        SENTINEL_CLOSE_CO_FIX,
+        CSS_CO_FIX,
+        SENTINEL_CLOSE_CART_FIX,
     ),
 ]
 
