@@ -83,6 +83,21 @@ add_filter(
 );
 
 /**
+ * Quieter sale badge.
+ *
+ * WC ships a chirpy `<span class="onsale">Sale!</span>` on the product image.
+ * Selvedge is dark editorial; "Reduced" reads as a price tag at a quiet
+ * boutique rather than a flash sale shout. The pill styling itself lives in
+ * theme.json -> styles.css.
+ */
+add_filter(
+	'woocommerce_sale_flash',
+	static function (): string {
+		return '<span class="onsale">' . esc_html__( 'Reduced', 'selvedge' ) . '</span>';
+	}
+);
+
+/**
  * Per-post View Transitions: name the post title and featured image with a
  * stable, post-scoped identifier so the browser can morph between the archive
  * card and the single-post hero across a real cross-document navigation.

@@ -681,12 +681,155 @@ def check_wc_overrides_styled() -> Result:
     top_css_norm = re.sub(r"\s+", "", top_css or "")
     blocks = styles.get("blocks") or {}
 
-    # The single-product tabs target was removed: we no longer render
-    # `wp:woocommerce/product-details` (see `check_no_wc_tabs_block`), so
-    # there is no WC tab markup left on the page to fight. The list is
-    # intentionally empty — adding a future WC-CSS-bleed surface (e.g. cart
-    # form rows, store-notices) is one append away.
-    WC_OVERRIDE_TARGETS: list[dict] = []
+    # Each entry locks in one previously-WC-default visual surface. The
+    # rules are deliberately narrow: a single brittle selector + a single
+    # "kill" declaration that proves we're more than tweaking type — we're
+    # actively tearing down WC's chrome (rounded panels, alert bars, star
+    # glyphs, etc.). The chunk that satisfies all ten lives in
+    # bin/append-wc-overrides.py and was appended to each theme's
+    # styles.css; if a future edit strips a selector this list catches it.
+    #
+    # `must_kill_one_of` strings are matched against `top_css_norm` which
+    # has had ALL whitespace stripped (`re.sub(r"\s+", "", ...)`), so the
+    # fragments below are intentionally written with no spaces.
+    WC_OVERRIDE_TARGETS: list[dict] = [
+        {
+            "name": "Store notices (F)",
+            "must_target": [
+                ".woocommerce-message",
+                ".woocommerce-error",
+                ".woocommerce-info",
+                ".added_to_cart",
+            ],
+            "must_kill_one_of": [
+                ".woocommerce-message,.woocommerce-error,.woocommerce-info{border:0;border-radius:0;background:transparent",
+            ],
+            "inert_block": "woocommerce/store-notices",
+            "why": "WC ships green/red alert bars with leading icons. Replace with editorial divider rule (border-top/bottom only).",
+        },
+        {
+            "name": "PDP meta labels (I)",
+            "must_target": [
+                ".product_meta .sku_wrapper>:first-child",
+                ".product_meta .posted_in>:first-child",
+                ".product_meta .tagged_as>:first-child",
+            ],
+            "must_kill_one_of": [
+                ".product_meta.sku_wrapper>:first-child,.product_meta.posted_in>:first-child,.product_meta.tagged_as>:first-child{display:none",
+            ],
+            "why": "WC prefixes meta with literal 'SKU:' / 'Category:' / 'Tags:' labels. Hide the label, keep the value.",
+        },
+        {
+            "name": "Star rating (G)",
+            "must_target": [
+                ".star-rating",
+                ".star-rating>span",
+            ],
+            "must_kill_one_of": [
+                ".star-rating{display:inline-block;position:relative;width:6rem;height:2px",
+            ],
+            "why": "WC renders 5 gold star glyphs via @font-face. Restyle the same markup as a thin horizontal fill bar.",
+        },
+        {
+            "name": "Variable product form (D)",
+            "must_target": [
+                "table.variations",
+                "table.variations select",
+                ".reset_variations",
+            ],
+            "must_kill_one_of": [
+                "table.variationsselect{appearance:none",
+            ],
+            "why": "WC's <table.variations> is a 2-column grey table with a native browser select. Stack rows + custom chevron + editorial labels.",
+        },
+        {
+            "name": "Lightbox + product gallery (E)",
+            "must_target": [
+                ".pswp__top-bar",
+                ".pswp__button",
+                ".pswp__counter",
+                ".flex-control-thumbs",
+                ".flex-control-thumbs img.flex-active",
+            ],
+            "must_kill_one_of": [
+                ".flex-control-thumbs{display:grid;grid-template-columns:repeat(4,1fr)",
+            ],
+            "inert_block": "woocommerce/product-image-gallery",
+            "why": "PhotoSwipe and the FlexSlider thumbs strip ship with WC's own chrome (round buttons, blue active border).",
+        },
+        {
+            "name": "Mini-cart drawer (C)",
+            "must_target": [
+                ".wc-block-mini-cart__drawer .components-modal__content",
+                ".wc-block-mini-cart-items .wc-block-cart-item",
+                ".wc-block-mini-cart__footer",
+                ".wc-block-mini-cart__footer-actions",
+            ],
+            "must_kill_one_of": [
+                ".wc-block-mini-cart__drawer.components-modal__content{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--base)",
+            ],
+            "inert_block": "woocommerce/mini-cart-contents",
+            "why": "WC ships a left-aligned drawer with grey panel chrome and a red 'Remove' link. Reskin to editorial panel + pill buttons.",
+        },
+        {
+            "name": "Cart page interior (A)",
+            "must_target": [
+                ".wc-block-cart",
+                ".wc-block-cart-items .wc-block-cart-items__row",
+                ".wc-block-components-quantity-selector",
+                ".wc-block-cart__sidebar",
+                ".wc-block-cart__submit-container",
+                ".wc-block-components-totals-coupon__form",
+            ],
+            "must_kill_one_of": [
+                ".wc-block-cart{display:grid;grid-template-columns:1fr",
+            ],
+            "inert_block": "woocommerce/cart",
+            "why": "WC's cart ships rounded blue qty steppers, a panelised 'Cart totals' card, and a green proceed button. Restyle to editorial rows + pill buttons.",
+        },
+        {
+            "name": "Checkout page interior (B)",
+            "must_target": [
+                ".wc-block-checkout",
+                ".wc-block-components-checkout-step",
+                ".wc-block-components-checkout-step__title",
+                ".wc-block-components-text-input input",
+                ".wc-block-components-payment-method",
+                ".wc-block-components-checkout-place-order-button",
+            ],
+            "must_kill_one_of": [
+                ".wc-block-checkout{display:grid;grid-template-columns:1fr",
+            ],
+            "inert_block": "woocommerce/checkout",
+            "why": "WC's checkout ships numbered step circles, blue accents on inputs, and a giant green Place-Order button. Restyle to editorial steps + pill buttons.",
+        },
+        {
+            "name": "Order confirmation downloads + create-account (J)",
+            "must_target": [
+                ".wp-block-woocommerce-order-confirmation-downloads",
+                ".wp-block-woocommerce-order-confirmation-downloads table",
+                ".wp-block-woocommerce-order-confirmation-create-account form",
+            ],
+            "must_kill_one_of": [
+                ".wp-block-woocommerce-order-confirmation-downloadstable{width:100%;border-collapse:collapse",
+            ],
+            "why": "WC's downloads block ships a standalone bordered card with a blue Download button. Match the existing summary/totals/addresses treatment.",
+        },
+        {
+            "name": "My Account (K)",
+            "must_target": [
+                ".woocommerce-account .woocommerce",
+                ".woocommerce-MyAccount-navigation",
+                ".woocommerce-MyAccount-navigation a",
+                ".woocommerce-orders-table",
+                ".woocommerce-MyAccount-content",
+            ],
+            "must_kill_one_of": [
+                ".woocommerce-account.woocommerce{display:grid;grid-template-columns:220px1fr",
+            ],
+            "why": "WC's My Account ships a tab-style sidebar nav and a bordered orders table with WC blue accents. CSS-only restyle to editorial nav + flat tables.",
+        },
+    ]
 
     for target in WC_OVERRIDE_TARGETS:
         # 1) Reject any leftover block-scoped `css` field for this surface.

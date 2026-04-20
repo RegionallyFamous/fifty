@@ -781,6 +781,164 @@ if ( ! get_option( '_wo_product_images_seeded' ) ) {
 }
 
 // ---------------------------------------------------------------------------
+// 11d. Cart + Checkout: replace post_content with a controlled WC Blocks tree.
+// ---------------------------------------------------------------------------
+//
+// Why we do this:
+//   * WC's default cart page ships with `woocommerce/cart-cross-sells-block`
+//     as the first inner block of `cart-items-block`. That's the "Customers
+//     also bought…" carousel, a hard WC visual tell that does not match
+//     any of our editorial themes. The CSS in styles.css can hide it but
+//     the markup still loads, so we strip it from post_content instead.
+//   * The default checkout ships an express-payment block at the very top
+//     (Apple Pay / Google Pay buttons in giant black pills). In a demo
+//     storefront with no real payment processor wired up they're noise; we
+//     keep the inner block in the tree but as the second-to-last
+//     `checkout-fields-block` child so it doesn't dominate the page.
+//   * Authoring the tree explicitly here means future WC versions adding
+//     new "promotional" inner blocks to the default cart/checkout templates
+//     do NOT silently appear in our demos.
+//
+// Idempotency: stored under `_wo_cart_checkout_seeded`. Running the
+// blueprint a second time skips this section, so a re-boot does not nuke
+// any post-import edits a developer might have made in the editor.
+if ( ! get_option( '_wo_cart_checkout_seeded' ) ) {
+	$cart_id     = (int) get_option( 'woocommerce_cart_page_id' );
+	$checkout_id = (int) get_option( 'woocommerce_checkout_page_id' );
+
+	// Cart: filled state (no cross-sells), explicit empty state.
+	$cart_blocks = <<<'CART'
+<!-- wp:woocommerce/cart -->
+<div class="wp-block-woocommerce-cart is-loading"><!-- wp:woocommerce/filled-cart-block -->
+<div class="wp-block-woocommerce-filled-cart-block"><!-- wp:woocommerce/cart-items-block -->
+<div class="wp-block-woocommerce-cart-items-block"><!-- wp:woocommerce/cart-line-items-block -->
+<div class="wp-block-woocommerce-cart-line-items-block"></div>
+<!-- /wp:woocommerce/cart-line-items-block --></div>
+<!-- /wp:woocommerce/cart-items-block -->
+
+<!-- wp:woocommerce/cart-totals-block -->
+<div class="wp-block-woocommerce-cart-totals-block"><!-- wp:woocommerce/cart-order-summary-block -->
+<div class="wp-block-woocommerce-cart-order-summary-block"></div>
+<!-- /wp:woocommerce/cart-order-summary-block -->
+
+<!-- wp:woocommerce/cart-express-payment-block -->
+<div class="wp-block-woocommerce-cart-express-payment-block"></div>
+<!-- /wp:woocommerce/cart-express-payment-block -->
+
+<!-- wp:woocommerce/proceed-to-checkout-block -->
+<div class="wp-block-woocommerce-proceed-to-checkout-block"></div>
+<!-- /wp:woocommerce/proceed-to-checkout-block -->
+
+<!-- wp:woocommerce/cart-accepted-payment-methods-block -->
+<div class="wp-block-woocommerce-cart-accepted-payment-methods-block"></div>
+<!-- /wp:woocommerce/cart-accepted-payment-methods-block --></div>
+<!-- /wp:woocommerce/cart-totals-block --></div>
+<!-- /wp:woocommerce/filled-cart-block -->
+
+<!-- wp:woocommerce/empty-cart-block -->
+<div class="wp-block-woocommerce-empty-cart-block"><!-- wp:heading {"textAlign":"center","level":2} -->
+<h2 class="wp-block-heading has-text-align-center">Your cart is empty</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph {"align":"center"} -->
+<p class="has-text-align-center"><a href="/shop/">Continue browsing</a></p>
+<!-- /wp:paragraph --></div>
+<!-- /wp:woocommerce/empty-cart-block --></div>
+<!-- /wp:woocommerce/cart -->
+CART;
+
+	// Checkout: standard fields tree (no order-note duplication, no
+	// promotional banners), single order-summary on the right column.
+	$checkout_blocks = <<<'CHECKOUT'
+<!-- wp:woocommerce/checkout -->
+<div class="wp-block-woocommerce-checkout wc-block-checkout is-loading"><!-- wp:woocommerce/checkout-fields-block -->
+<div class="wp-block-woocommerce-checkout-fields-block"><!-- wp:woocommerce/checkout-express-payment-block -->
+<div class="wp-block-woocommerce-checkout-express-payment-block"></div>
+<!-- /wp:woocommerce/checkout-express-payment-block -->
+
+<!-- wp:woocommerce/checkout-contact-information-block -->
+<div class="wp-block-woocommerce-checkout-contact-information-block"></div>
+<!-- /wp:woocommerce/checkout-contact-information-block -->
+
+<!-- wp:woocommerce/checkout-shipping-method-block -->
+<div class="wp-block-woocommerce-checkout-shipping-method-block"></div>
+<!-- /wp:woocommerce/checkout-shipping-method-block -->
+
+<!-- wp:woocommerce/checkout-pickup-options-block -->
+<div class="wp-block-woocommerce-checkout-pickup-options-block"></div>
+<!-- /wp:woocommerce/checkout-pickup-options-block -->
+
+<!-- wp:woocommerce/checkout-shipping-address-block -->
+<div class="wp-block-woocommerce-checkout-shipping-address-block"></div>
+<!-- /wp:woocommerce/checkout-shipping-address-block -->
+
+<!-- wp:woocommerce/checkout-billing-address-block -->
+<div class="wp-block-woocommerce-checkout-billing-address-block"></div>
+<!-- /wp:woocommerce/checkout-billing-address-block -->
+
+<!-- wp:woocommerce/checkout-shipping-methods-block -->
+<div class="wp-block-woocommerce-checkout-shipping-methods-block"></div>
+<!-- /wp:woocommerce/checkout-shipping-methods-block -->
+
+<!-- wp:woocommerce/checkout-payment-block -->
+<div class="wp-block-woocommerce-checkout-payment-block"></div>
+<!-- /wp:woocommerce/checkout-payment-block -->
+
+<!-- wp:woocommerce/checkout-additional-information-block -->
+<div class="wp-block-woocommerce-checkout-additional-information-block"></div>
+<!-- /wp:woocommerce/checkout-additional-information-block -->
+
+<!-- wp:woocommerce/checkout-order-note-block -->
+<div class="wp-block-woocommerce-checkout-order-note-block"></div>
+<!-- /wp:woocommerce/checkout-order-note-block -->
+
+<!-- wp:woocommerce/checkout-terms-block -->
+<div class="wp-block-woocommerce-checkout-terms-block"></div>
+<!-- /wp:woocommerce/checkout-terms-block -->
+
+<!-- wp:woocommerce/checkout-actions-block -->
+<div class="wp-block-woocommerce-checkout-actions-block"></div>
+<!-- /wp:woocommerce/checkout-actions-block --></div>
+<!-- /wp:woocommerce/checkout-fields-block -->
+
+<!-- wp:woocommerce/checkout-totals-block -->
+<div class="wp-block-woocommerce-checkout-totals-block"><!-- wp:woocommerce/checkout-order-summary-block -->
+<div class="wp-block-woocommerce-checkout-order-summary-block"></div>
+<!-- /wp:woocommerce/checkout-order-summary-block --></div>
+<!-- /wp:woocommerce/checkout-totals-block --></div>
+<!-- /wp:woocommerce/checkout -->
+CHECKOUT;
+
+	$cc_updated = 0;
+	if ( $cart_id > 0 ) {
+		// kses + slashing match what wp_insert_post() would do for editor input.
+		wp_update_post(
+			array(
+				'ID'           => $cart_id,
+				'post_content' => wp_slash( $cart_blocks ),
+			)
+		);
+		++$cc_updated;
+	} else {
+		WP_CLI::warning( 'Cart page id missing — woocommerce_cart_page_id option is empty.' );
+	}
+	if ( $checkout_id > 0 ) {
+		wp_update_post(
+			array(
+				'ID'           => $checkout_id,
+				'post_content' => wp_slash( $checkout_blocks ),
+			)
+		);
+		++$cc_updated;
+	} else {
+		WP_CLI::warning( 'Checkout page id missing — woocommerce_checkout_page_id option is empty.' );
+	}
+
+	update_option( '_wo_cart_checkout_seeded', '1' );
+	WP_CLI::log( "Cart/Checkout: {$cc_updated} pages reseeded with controlled WC Blocks tree." );
+}
+
+// ---------------------------------------------------------------------------
 // 12. Auto-update suppression
 // ---------------------------------------------------------------------------
 update_option( 'auto_update_core_major', 'disabled' );

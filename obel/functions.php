@@ -83,6 +83,23 @@ add_filter(
 );
 
 /**
+ * Quieter sale badge.
+ *
+ * WC ships a chirpy `<span class="onsale">Sale!</span>` on the product image.
+ * The exclamation point and the literal word "Sale!" are an immediate "this
+ * is a stock WooCommerce store" tell. The wrapper styling lives in
+ * theme.json -> styles.css (`.products li.product .onsale, span.onsale`),
+ * which already turns the badge into an editorial uppercase pill; here we
+ * just swap the copy so each theme has its own brand voice.
+ */
+add_filter(
+	'woocommerce_sale_flash',
+	static function (): string {
+		return '<span class="onsale">' . esc_html__( 'On sale', 'obel' ) . '</span>';
+	}
+);
+
+/**
  * Per-post View Transitions: name the post title and featured image with a
  * stable, post-scoped identifier so the browser can morph between the archive
  * card and the single-post hero across a real cross-document navigation.
