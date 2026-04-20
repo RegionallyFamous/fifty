@@ -19,6 +19,8 @@ Checks performed:
  12. No remote font URLs (self-hosted Google Fonts only — see AGENTS.md rule 8)
  13. WooCommerce grid integration (clearfix + loop width) safeguards in theme.json
  14. WooCommerce frontend CSS overrides (product tabs etc.) — see AGENTS.md rule 6
+ 15. Front-page layout differs from every other theme (no "same shape, different
+     colors" reskins — see AGENTS.md rule 8)
 
 Usage:
     python3 bin/check.py            # run everything
@@ -43,7 +45,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib import iter_themes, resolve_theme_root  # noqa: E402
+from _lib import MONOREPO_ROOT, iter_themes, resolve_theme_root  # noqa: E402
 
 # ROOT is set per-theme in main() before any check runs.
 ROOT: Path = Path.cwd()
@@ -710,9 +712,191 @@ def check_wc_overrides_styled() -> Result:
                 f"{target['must_kill']} somewhere in the rule body). "
                 f"Without these, WC's `::before`/`::after` shapes leak through."
             )
+            continue
+
+        # Specificity bump.
+        #
+        # WC's `assets/css/woocommerce.css` selectors look like
+        # `.woocommerce div.product .woocommerce-tabs ul.tabs li` — that's
+        # specificity (0,4,3). The block-prefixed `& .woocommerce-tabs
+        # ul.tabs.wc-tabs li` we get by default is (0,4,2), which means WC
+        # wins on every shared property (background, padding, float, width,
+        # …) and the override only takes effect for properties WC doesn't
+        # set. The fix is to prefix every rule with `html body &` so the
+        # selector becomes `html body .wp-block-…` ((+0,0,2) = (0,4,4)),
+        # mirroring the same trick WC's own `is-style-minimal` rule uses
+        # in `client/blocks/assets/js/blocks/product-details/style.scss`.
+        #
+        # We require the literal substring `html body &` to appear in the
+        # css (and any rule that targets a wc-tabs selector to be
+        # prefixed with it). A heuristic, but a strict one: it forces the
+        # author to make a deliberate decision about specificity.
+        rules_targeting_tabs = re.findall(
+            r"([^{}]*\.wc-tabs[^{}]*)\{", css
+        )
+        bare_rules = [
+            sel.strip() for sel in rules_targeting_tabs
+            if not re.match(r"^\s*html\s+body\s+&", sel.strip())
+        ]
+        if "html body &" not in css_norm:
+            r.fail(
+                f"`styles.blocks[\"{target['block']}\"].css` does not use "
+                f"the `html body &` specificity-bump prefix. WC's plugin "
+                f"CSS targets `.woocommerce div.product .woocommerce-tabs "
+                f"ul.tabs li` ((0,4,3)); a bare `& .…` selector is only "
+                f"(0,4,2) and loses on every shared property. Prefix every "
+                f"rule with `html body &` (the same trick WC's own "
+                f"is-style-minimal style uses)."
+            )
+        elif bare_rules:
+            preview = bare_rules[0][:120]
+            r.fail(
+                f"`styles.blocks[\"{target['block']}\"].css` has at least "
+                f"one wc-tabs selector without the `html body &` prefix. "
+                f"WC will out-specify it. Offending selector: `{preview}…`"
+            )
 
     if r.passed and not r.skipped:
         r.details.append(f"{len(WC_OVERRIDE_TARGETS)} WC surface(s) checked")
+    return r
+
+
+# Matches a single Gutenberg block delimiter comment:
+#   <!-- wp:core/group {"foo":"bar"} -->         opening, attrs
+#   <!-- wp:core/group -->                        opening, no attrs
+#   <!-- wp:core/spacer {"height":"4px"} /-->     self-closing
+#   <!-- /wp:core/group -->                       closing
+# Captures: 1 = "/wp:NAME" or "wp:NAME", 2 = JSON attrs (or None), 3 = "/" if self-closing.
+_BLOCK_DELIMITER_RE = re.compile(
+    r"<!--\s*(/?wp:[a-z][a-z0-9_/-]*)(?:\s+(\{.*?\}))?\s*(/?)-->",
+    re.DOTALL,
+)
+
+
+def _front_page_fingerprint(html: str) -> list[str]:
+    """Return the structural fingerprint of front-page.html's <main> root.
+
+    The fingerprint is the ordered list of direct children of the
+    `<!-- wp:group {"tagName":"main",...} -->` root. Each entry is one of:
+
+        "pattern:slug/name"               — for `wp:pattern` references
+        "block-name(first-class-name)"    — when the block carries a className
+        "block-name"                      — bare block, no distinguishing class
+
+    Two themes that produce the SAME list have the SAME homepage composition,
+    even if every color / font / token underneath differs. That is exactly the
+    failure mode the user wants to prevent ("same layout, different colors").
+
+    Empty list = no <main> group found, or no children inside it.
+    """
+    # Find the opening delimiter of the <main> root group. We can't use a single
+    # regex with `[^}]*` here because group attrs routinely embed nested JSON
+    # ({"layout":{"type":"constrained"}}). Iterate every wp:group opener and
+    # parse its attrs as JSON, picking the first one whose tagName is "main".
+    main_open = None
+    for m in re.finditer(
+        r'<!--\s*wp:group\s+(\{[^>]*?\})\s*-->',
+        html,
+    ):
+        try:
+            attrs = json.loads(m.group(1))
+        except json.JSONDecodeError:
+            continue
+        if attrs.get("tagName") == "main":
+            main_open = m
+            break
+    if main_open is None:
+        return []
+
+    fingerprint: list[str] = []
+    depth = 0
+    for tok in _BLOCK_DELIMITER_RE.finditer(html, pos=main_open.end()):
+        name = tok.group(1)
+        attrs_json = tok.group(2)
+        self_closing = tok.group(3) == "/"
+
+        if name.startswith("/wp:"):
+            if depth == 0:
+                # Closing tag for the <main> group itself — done.
+                break
+            depth -= 1
+            continue
+
+        # Opening (or self-closing) block.
+        if depth == 0:
+            block = name[len("wp:"):]
+            label = block
+            if attrs_json:
+                try:
+                    attrs = json.loads(attrs_json)
+                except json.JSONDecodeError:
+                    attrs = {}
+                if block == "pattern":
+                    label = f"pattern:{attrs.get('slug', '?')}"
+                else:
+                    cls = attrs.get("className", "")
+                    first = cls.split()[0] if isinstance(cls, str) and cls else ""
+                    if first:
+                        label = f"{block}({first})"
+            fingerprint.append(label)
+
+        if not self_closing:
+            depth += 1
+
+    return fingerprint
+
+
+def check_front_page_unique_layout() -> Result:
+    """Every theme's homepage must be structurally distinct from every other theme's.
+
+    "Different colors and fonts on the same layout" is explicitly disallowed —
+    a variant that ships the identical block sequence as obel (or any sibling)
+    has not earned its place in the monorepo. Force a real composition.
+    """
+    r = Result("Front page layout differs from every other theme")
+    fp_path = ROOT / "templates" / "front-page.html"
+    if not fp_path.exists():
+        r.skip("no templates/front-page.html (front page falls through to home/index.html)")
+        return r
+
+    my_fp = _front_page_fingerprint(fp_path.read_text(encoding="utf-8"))
+    if not my_fp:
+        r.fail(
+            "templates/front-page.html has no <main> group root, or the root has "
+            "no top-level children. Wrap the page in <!-- wp:group "
+            '{"tagName":"main", ...} -->.'
+        )
+        return r
+
+    conflicts: list[tuple[str, list[str]]] = []
+    for other in iter_themes():
+        if other.resolve() == ROOT.resolve():
+            continue
+        other_fp_path = other / "templates" / "front-page.html"
+        if not other_fp_path.exists():
+            continue
+        other_fp = _front_page_fingerprint(
+            other_fp_path.read_text(encoding="utf-8")
+        )
+        if other_fp == my_fp:
+            conflicts.append((other.name, other_fp))
+
+    if conflicts:
+        names = ", ".join(name for name, _ in conflicts)
+        r.fail(
+            f"templates/front-page.html has the SAME top-level block sequence as "
+            f"{names}. A theme variant must do more than reskin colors and fonts: "
+            f"the homepage composition itself must differ. Change the section count, "
+            f"swap which dynamic surfaces appear (terms-query, product-collection, "
+            f"query, media-text, cover, …), reorder them, or introduce a different "
+            f"hero pattern.\n"
+            f"  this theme: {my_fp}\n"
+            f"  {conflicts[0][0]:<11} {conflicts[0][1]}"
+        )
+    else:
+        r.details.append(
+            f"{len(my_fp)} top-level section(s); fingerprint unique vs every other theme"
+        )
     return r
 
 
@@ -761,6 +945,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_no_hardcoded_dimensions(),
         check_block_attrs_use_tokens(),
         check_no_duplicate_templates(),
+        check_front_page_unique_layout(),
     ]
 
     for r in results:
