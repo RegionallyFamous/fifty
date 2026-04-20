@@ -67,6 +67,44 @@ python3 bin/check.py --all --quick
 python3 bin/build-index.py --all
 ```
 
+## Seeing what you built (visual snapshots)
+
+You cannot load `playground.wordpress.net` from the in-app browser, and asking the user to ship screenshots back over chat is a broken loop. Use `bin/snap.py` instead. It boots the theme's WordPress Playground locally via `@wp-playground/cli` (same blueprint the live demos use, with the local theme dir mounted on top of the GitHub-installed copy so unsynced edits show up) and captures Playwright PNGs you can read directly with the `Read` tool.
+
+```bash
+# Just the page you're working on (fastest)
+python3 bin/snap.py shoot chonk --routes checkout-filled --viewports desktop
+# -> tmp/snaps/chonk/desktop/checkout-filled.png  (Read this)
+
+# Full sweep for a theme
+python3 bin/snap.py shoot chonk
+
+# Whole monorepo (~10 routes × 4 viewports × 4 themes ≈ 160 PNGs)
+python3 bin/snap.py shoot --all
+
+# Boot a single theme and leave it running so you can drive it interactively
+# via the cursor-ide-browser MCP (auto-login enabled for /wp-admin/ access).
+python3 bin/snap.py serve chonk
+# -> http://localhost:9400/
+
+# Did anything change vs the committed reference set?
+python3 bin/snap.py diff --all
+# Re-baseline after intentional changes:
+python3 bin/snap.py baseline --all
+```
+
+When you make ANY change that could affect rendered output (template, theme.json, CSS, pattern, blueprint), the loop is:
+
+1. Make the change.
+2. `python3 bin/snap.py shoot <theme> --routes <route> --viewports <viewport>` for the affected cell(s).
+3. `Read` the PNG to verify.
+4. If wider impact possible: `python3 bin/snap.py shoot --all && python3 bin/snap.py diff --all`.
+5. If diffs are intentional: `python3 bin/snap.py baseline --all` and commit the updated baselines alongside the change.
+
+`bin/check.py --visual` runs the full shoot + diff as part of the check suite. It is OPT-IN because a sweep adds 2-5 minutes; the standard `--quick` checks stay fast for the inner loop. Use `--visual` before any commit that touches rendered output.
+
+`bin/snap_config.py` declares the (route × viewport) matrix. To add a new page or breakpoint to the sweep, edit that file and re-baseline.
+
 ## Agent skills
 
 This repo ships its own agent skills under `.claude/skills/` so any LLM working in the codebase (Claude Code, Claude.ai with this repo attached, Cursor, etc.) can pick them up without any local install. Cursor users will also find a mirror at `~/.cursor/skills/` on the maintainer's machine; the in-repo copy under `.claude/skills/` is the source of truth.

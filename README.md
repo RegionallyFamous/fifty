@@ -139,8 +139,59 @@ The full toolchain:
 | `seed-playground-content.py` | Populates `<theme>/playground/{content,images}/` from the canonical W&O source, rewriting image URLs to point at the new theme. |
 | `sync-playground.py` | Inlines `playground/*.php` into every theme's `playground/blueprint.json` and rewrites the `importWxr` URL to the per-theme `content.xml`. |
 | `build-redirects.py` | Regenerates `docs/<theme>/<page>/index.html` short URLs that GH Pages serves at `demo.regionallyfamous.com/`. |
+| `snap.py` | Visual-snapshot framework. Boots WordPress Playground locally for a theme, captures Playwright screenshots across every (route × viewport) defined in `bin/snap_config.py`, and diffs against committed baselines under `tests/visual-baseline/`. See `## Visual snapshots` below. |
 
 Each script also responds to `--help`.
+
+## Visual snapshots
+
+`bin/snap.py` lets the agent (and you) see what every theme actually looks like without uploading screenshots over chat. It boots each theme's WordPress Playground locally via `@wp-playground/cli`, drives Playwright Chromium across `bin/snap_config.py::ROUTES × VIEWPORTS`, and (optionally) diffs each capture against a committed baseline.
+
+```bash
+# Capture one theme at every route/viewport
+python3 bin/snap.py shoot chonk
+
+# Just the desktop checkout (fastest inner loop)
+python3 bin/snap.py shoot chonk --routes checkout-filled --viewports desktop
+
+# Quick subset (snap_config.QUICK_*) -- fastest "did anything explode" sweep
+python3 bin/snap.py shoot chonk --quick
+
+# Capture every theme
+python3 bin/snap.py shoot --all
+
+# Boot a single theme and leave it running for interactive poking via the
+# cursor-ide-browser MCP (or any browser) at http://localhost:9400/
+python3 bin/snap.py serve chonk          # admin auto-login is enabled
+                                          # for /wp-admin/ access
+
+# Visual regression: compare current snaps to committed baselines
+python3 bin/snap.py diff --all
+python3 bin/snap.py diff chonk --threshold 0.5
+
+# Promote latest snaps -> committed baselines (after reviewing diffs)
+python3 bin/snap.py baseline --all
+python3 bin/snap.py baseline chonk --route home --viewport desktop
+```
+
+Outputs land at:
+
+```
+tmp/snaps/<theme>/<viewport>/<route>.png       # latest capture (.gitignored)
+tmp/diffs/<theme>/<viewport>/<route>.png       # per-pixel diff overlay (.gitignored)
+tests/visual-baseline/<theme>/<viewport>/...   # committed reference (reviewed)
+```
+
+Visual diffs run as part of `bin/check.py --visual` (opt-in, ~2-5 min on top of the static checks). See `tests/visual-baseline/README.md` for the re-baselining workflow.
+
+First-time setup (one-off):
+
+```bash
+python3 -m pip install --user playwright
+playwright install chromium      # ~90 MB Chromium download
+```
+
+`@wp-playground/cli` is fetched on demand by `npx --yes`; no global install required. First boot takes ~2 minutes (WordPress download, plugin install, content seeding); subsequent boots are ~30 seconds when the playground cache is warm.
 
 ## Adding a new theme
 

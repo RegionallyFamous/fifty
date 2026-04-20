@@ -1,0 +1,24 @@
+# Snap framework: ephemeral artefacts.
+# `tmp/` holds the latest-shoot PNGs, mutated blueprints, server logs,
+# and per-pixel diff PNGs. Regenerated on every `bin/snap.py shoot|diff`.
+# The committed counterpart (the human-reviewed reference set) lives at
+# `tests/visual-baseline/` and is NOT ignored.
+tmp/
+
+# macOS
+.DS_Store
+
+# Node (only present if a contributor runs npm install for any reason)
+node_modules/
+
+# Python tooling caches
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+
+# Editor scratch
+*.swp
+*.swo
+.vscode/
+.idea/

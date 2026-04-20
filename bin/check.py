@@ -1751,6 +1751,29 @@ def main() -> int:
         action="store_true",
         help="Alias for --offline.",
     )
+    parser.add_argument(
+        "--visual",
+        action="store_true",
+        help=(
+            "After all static checks pass, also run the visual-snapshot "
+            "framework (`bin/snap.py check`) which boots Playground for "
+            "every theme, captures Playwright screenshots across "
+            "snap_config.ROUTES x VIEWPORTS, and diffs against the "
+            "committed baselines under `tests/visual-baseline/`. "
+            "OPT-IN because a full sweep adds 2-5 minutes to the cycle. "
+            "See bin/snap.py for re-baselining workflow."
+        ),
+    )
+    parser.add_argument(
+        "--visual-threshold",
+        type=float,
+        default=0.5,
+        help=(
+            "Max %% changed pixels per (route, viewport) cell before the "
+            "visual diff fails. Default 0.5%% (~one button-sized region). "
+            "Only used when --visual is passed."
+        ),
+    )
     args = parser.parse_args()
 
     offline = args.offline or args.quick
@@ -1760,10 +1783,29 @@ def main() -> int:
         for theme in iter_themes():
             print(f"\n{'=' * 60}")
             exit_codes.append(run_checks_for(theme, offline))
-        return 1 if any(exit_codes) else 0
+        static_rc = 1 if any(exit_codes) else 0
+    else:
+        theme_root = resolve_theme_root(args.theme)
+        static_rc = run_checks_for(theme_root, offline)
 
-    theme_root = resolve_theme_root(args.theme)
-    return run_checks_for(theme_root, offline)
+    # Visual diff runs LAST and only if static checks already passed.
+    # Bailing out early on a static failure avoids spending 2-5 minutes
+    # booting Playgrounds for code that won't compile.
+    if static_rc != 0 or not args.visual:
+        return static_rc
+
+    # Late-import so contributors who never run --visual don't pay for
+    # importing Playwright/Pillow on every check.
+    print(f"\n{'=' * 60}")
+    print("Running visual snapshot diff (`bin/snap.py check`)...\n")
+    snap_cmd = [
+        sys.executable,
+        str(Path(__file__).resolve().parent / "snap.py"),
+        "check",
+        f"--threshold={args.visual_threshold}",
+    ]
+    snap_rc = subprocess.call(snap_cmd, cwd=str(Path(__file__).resolve().parent.parent))
+    return snap_rc
 
 
 if __name__ == "__main__":
