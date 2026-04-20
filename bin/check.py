@@ -896,6 +896,142 @@ def check_no_wc_tabs_block() -> Result:
     return r
 
 
+def check_no_duplicate_stock_indicator() -> Result:
+    """Fail if a single-product template renders both
+    `wp:woocommerce/product-stock-indicator` AND `wp:woocommerce/add-to-cart-form`
+    without a top-level `styles.css` rule that hides the form's native
+    `<p class="stock">`.
+
+    Why this exists:
+      `wp:woocommerce/add-to-cart-form` is a WC plugin block that echoes the
+      add-to-cart `<form>` exactly like the legacy single-product template,
+      including `wc_get_stock_html()` → `<p class="stock in-stock">41 in
+      stock</p>`. If the template ALSO renders our designed
+      `wp:woocommerce/product-stock-indicator` block (which we use to style
+      stock copy in the theme's voice — uppercase, tracked, etc.), the
+      product page shows "in stock" twice on every PDP. Reviewers consistently
+      flag this as the most obvious "default WooCommerce theme" tell on the
+      page.
+
+      The fix is a top-level `styles.css` rule that hides the form's
+      `<p class="stock">` (and the variation-availability paragraph it shows
+      for variable products as the shopper picks attributes). Block-scoped
+      `styles.blocks["woocommerce/add-to-cart-form"].css` is NOT enough
+      because WP wraps that field in `:root :where(...)` (specificity 0,0,1)
+      and WC's stock paragraph CSS hits 0,0,2 — see `check_wc_overrides_styled`
+      for the full specificity story.
+
+    What this check enforces, ONLY when the template renders both blocks
+    together (i.e. the duplicate is actually possible):
+
+      - Top-level `styles.css` must include selectors that match the form's
+        `.stock` element under at least one of: `form.cart` (legacy +
+        block-rendered form, the latter inherits `class="cart"`),
+        `.wp-block-add-to-cart-form` (the block's outer wrapper),
+        `.wc-block-add-to-cart-form__stock` (newer WC versions).
+      - It must include a kill declaration (`display:none` or `visibility:hidden`).
+      - Variation availability (`.woocommerce-variation-availability`) should
+        also be hidden — variable products show a SECOND duplicate "in stock"
+        paragraph as the shopper picks attributes if you only hide the form's
+        initial one.
+
+    See AGENTS.md rule 6.
+    """
+    r = Result("No duplicate stock indicator on single-product templates")
+
+    template_paths = [
+        ROOT / "templates" / "single-product.html",
+        ROOT / "templates" / "single-product-variable.html",
+    ]
+    template_paths = [p for p in template_paths if p.exists()]
+    if not template_paths:
+        r.skip("no single-product template found in this theme")
+        return r
+
+    needs_hide_rule = False
+    triggering_template: Path | None = None
+    for path in template_paths:
+        text = path.read_text(encoding="utf-8", errors="replace")
+        renders_indicator = re.search(r"<!--\s*wp:woocommerce/product-stock-indicator(?:\s|/|-->)", text) is not None
+        renders_form = re.search(r"<!--\s*wp:woocommerce/add-to-cart-form(?:\s|/|-->)", text) is not None
+        if renders_indicator and renders_form:
+            needs_hide_rule = True
+            triggering_template = path
+            break
+
+    if not needs_hide_rule:
+        r.skip("template doesn't render both product-stock-indicator and add-to-cart-form")
+        return r
+
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.fail("theme.json missing — cannot verify the stock-hide rule.")
+        return r
+    try:
+        data = json.loads(theme_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        r.fail(f"theme.json: invalid JSON ({exc}).")
+        return r
+    top_css = (data.get("styles", {}) or {}).get("css") or ""
+    top_css_norm = re.sub(r"\s+", "", top_css)
+
+    # The hide rule needs both: a selector that matches the form's .stock,
+    # and a declaration that suppresses it. Accept any of the three known
+    # WC selector roots so this check is robust across WC releases.
+    selector_roots = [
+        "form.cart.stock",
+        ".wp-block-add-to-cart-form.stock",
+        ".wc-block-add-to-cart-form__stock",
+    ]
+    matched_selector = next(
+        (sel for sel in selector_roots if sel in top_css_norm),
+        None,
+    )
+    if matched_selector is None:
+        r.fail(
+            f"{triggering_template.relative_to(ROOT).as_posix()} renders both "
+            f"`wp:woocommerce/product-stock-indicator` (designed copy) and "
+            f"`wp:woocommerce/add-to-cart-form` (which renders WC's native "
+            f"`<p class=\"stock\">` above the quantity input). The result is "
+            f"\"in stock\" appearing twice on every PDP. Add a rule to "
+            f"top-level `styles.css` matching one of "
+            f"{selector_roots} (whitespace ignored) and "
+            f"`display:none` so the form's stock paragraph is hidden. The "
+            f"recommended selector list is: `form.cart .stock,"
+            f".wp-block-add-to-cart-form .stock,"
+            f".wc-block-add-to-cart-form__stock,"
+            f".woocommerce-variation-availability {{ display: none; }}`. "
+            f"Block-scoped `styles.blocks[\"woocommerce/add-to-cart-form\"]"
+            f".css` does NOT work — see check_wc_overrides_styled."
+        )
+        return r
+
+    if "display:none" not in top_css_norm and "visibility:hidden" not in top_css_norm:
+        r.fail(
+            f"top-level `styles.css` matches `{matched_selector}` but never "
+            f"declares `display:none` (or `visibility:hidden`). The form's "
+            f"`<p class=\"stock\">` is still visible — duplicating the "
+            f"designed product-stock-indicator above."
+        )
+        return r
+
+    if ".woocommerce-variation-availability" not in top_css_norm:
+        r.fail(
+            "stock paragraph is hidden, but `.woocommerce-variation-"
+            "availability` isn't. On variable products WC renders a SECOND "
+            "duplicate `<p class=\"stock\">`-style line under the variation "
+            "selector as the shopper picks attributes. Add "
+            "`.woocommerce-variation-availability` to the same hide rule."
+        )
+        return r
+
+    r.details.append(
+        f"matched `{matched_selector}` + `display:none` + variation-"
+        f"availability hide in top-level styles.css"
+    )
+    return r
+
+
 def check_blueprint_landing_page() -> Result:
     """Fail if `playground/blueprint.json`'s `landingPage` is anything other
     than `/`.
@@ -1058,6 +1194,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_no_hardcoded_dimensions(),
         check_block_attrs_use_tokens(),
         check_no_duplicate_templates(),
+        check_no_duplicate_stock_indicator(),
         check_blueprint_landing_page(),
         check_front_page_unique_layout(),
     ]
