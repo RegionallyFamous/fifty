@@ -47,6 +47,7 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- content/
 |   |   |-- category-images.json
 |   |   |-- content.xml
+|   |   |-- product-images.json
 |   |   `-- products.csv
 |   |-- images/
 |   |   |-- cat-curated-bundles.jpg
@@ -59,6 +60,36 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |   |-- imaginary-seal.png
 |   |   |-- lost-recipe.pdf
 |   |   |-- one-hand.wav
+|   |   |-- product-wo-borrowed-nostalgia.jpg
+|   |   |-- product-wo-bottled-morning.jpg
+|   |   |-- product-wo-chaos-seasoning.jpg
+|   |   |-- product-wo-cosmic-mystery-box.jpg
+|   |   |-- product-wo-deja-vu-session.jpg
+|   |   |-- product-wo-discount-gravity.jpg
+|   |   |-- product-wo-dread-repellent.jpg
+|   |   |-- product-wo-fog-in-bottle.jpg
+|   |   |-- product-wo-forbidden-honey.jpg
+|   |   |-- product-wo-gently-used-luck.jpg
+|   |   |-- product-wo-handcrafted-echo.jpg
+|   |   |-- product-wo-haunted-candle.jpg
+|   |   |-- product-wo-imaginary-deed.jpg
+|   |   |-- product-wo-interdim-bazaar.jpg
+|   |   |-- product-wo-invisible-umbrella.jpg
+|   |   |-- product-wo-left-sock.jpg
+|   |   |-- product-wo-lost-recipe-time.jpg
+|   |   |-- product-wo-memory-foam-memory.jpg
+|   |   |-- product-wo-monday-kit.jpg
+|   |   |-- product-wo-moon-dust.jpg
+|   |   |-- product-wo-one-hand-clapping.jpg
+|   |   |-- product-wo-pocket-thunder.jpg
+|   |   |-- product-wo-portable-hole.jpg
+|   |   |-- product-wo-sensory-starter.jpg
+|   |   |-- product-wo-silence-jar.jpg
+|   |   |-- product-wo-spare-key-nowhere.jpg
+|   |   |-- product-wo-spare-tuesday.jpg
+|   |   |-- product-wo-tangible-wifi.jpg
+|   |   |-- product-wo-void-sampler.jpg
+|   |   |-- product-wo-whispering-stone.jpg
 |   |   |-- wonders-borrowed-nostalgia.png
 |   |   |-- wonders-bottled-morning.png
 |   |   |-- wonders-chaos-seasoning.png
