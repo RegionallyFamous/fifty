@@ -1032,6 +1032,125 @@ def check_no_duplicate_stock_indicator() -> Result:
     return r
 
 
+def check_archive_sort_dropdown_styled() -> Result:
+    """Fail if a `wp:woocommerce/catalog-sorting` block appears in any archive
+    template but the theme never overrides the browser-default `<select>` chrome.
+
+    Why this exists:
+      `wp:woocommerce/catalog-sorting` renders a single `<form>` containing a
+      bare `<select class="orderby">`. With no theme intervention the browser
+      paints its OS-native dropdown — Chevy-grey on macOS, blue on Windows,
+      square edges on Linux — directly into an editorial layout. Reviewers
+      consistently call this out as the loudest "default WooCommerce theme"
+      tell on a shop archive: it breaks the visual rhythm of every adjacent
+      typographic element (results count, breadcrumbs, product titles).
+
+      Block-scoped CSS in `styles.blocks["woocommerce/catalog-sorting"].css`
+      gets wrapped by WP in `:root :where(.wp-block-woocommerce-catalog-
+      sorting)` (specificity 0,0,1) and is overridden by both UA select
+      defaults and several WC plugin rules (e.g. `.woocommerce-ordering
+      select.orderby` at 0,0,2). Top-level `styles.css` is the only place
+      where a rule reliably wins.
+
+      Additionally, `wp:woocommerce/catalog-sorting` is the BLOCK form, but
+      the same dropdown is rendered as a legacy `<form class="woocommerce-
+      ordering">` on shortcode-driven catalogs (e.g. cart upsell carousel
+      templates, `[products]` shortcodes). Selectors must cover both roots
+      so a shopper never hits an unstyled native dropdown by accident.
+
+    What this check enforces, ONLY when an archive-style template renders
+    the catalog-sorting block (so themes without a shop archive aren't
+    forced into rules they don't need):
+
+      - Top-level `styles.css` must include a selector that targets either
+        `.wp-block-woocommerce-catalog-sorting select.orderby` or
+        `.woocommerce-ordering select.orderby` (whitespace ignored).
+      - That rule must declare `appearance:none` (in any of the three
+        appearance variants), which is the load-bearing line that strips
+        the OS-native chrome and unlocks every other style.
+      - Both selector roots should appear, so the legacy non-block render
+        also gets the theme's treatment. (Only one selector is REQUIRED for
+        the check to pass; missing the second is a warning logged in
+        details, not a hard fail — block-only themes still benefit.)
+
+    See AGENTS.md (monorepo) "Shop archive header" rule.
+    """
+    r = Result("Catalog-sorting <select> styled in top-level styles.css")
+
+    template_paths = sorted(
+        (ROOT / "templates").glob("archive-product*.html")
+    ) if (ROOT / "templates").exists() else []
+    triggering = next(
+        (
+            p for p in template_paths
+            if re.search(r"<!--\s*wp:woocommerce/catalog-sorting(?:\s|/|-->)",
+                         p.read_text(encoding="utf-8", errors="replace"))
+        ),
+        None,
+    )
+    if triggering is None:
+        r.skip("no archive template renders wp:woocommerce/catalog-sorting")
+        return r
+
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.fail("theme.json missing — cannot verify the dropdown override.")
+        return r
+    try:
+        data = json.loads(theme_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        r.fail(f"theme.json: invalid JSON ({exc}).")
+        return r
+    top_css = (data.get("styles", {}) or {}).get("css") or ""
+    top_css_norm = re.sub(r"\s+", "", top_css)
+
+    selector_block = ".wp-block-woocommerce-catalog-sortingselect.orderby"
+    selector_legacy = ".woocommerce-orderingselect.orderby"
+    has_block_sel = selector_block in top_css_norm
+    has_legacy_sel = selector_legacy in top_css_norm
+
+    if not (has_block_sel or has_legacy_sel):
+        r.fail(
+            f"{triggering.relative_to(ROOT).as_posix()} renders "
+            f"`wp:woocommerce/catalog-sorting` (a bare `<select "
+            f"class=\"orderby\">`) but top-level `styles.css` never "
+            f"targets `.wp-block-woocommerce-catalog-sorting select.orderby` "
+            f"or `.woocommerce-ordering select.orderby`. Shoppers see the "
+            f"OS-native dropdown — the loudest \"default WooCommerce theme\" "
+            f"tell on a shop archive. Add a rule like "
+            f"`.wp-block-woocommerce-catalog-sorting select.orderby,"
+            f".woocommerce-ordering select.orderby {{ appearance:none; "
+            f"-webkit-appearance:none; ... }}` to top-level `styles.css`. "
+            f"Block-scoped `styles.blocks[\"woocommerce/catalog-sorting\"]"
+            f".css` does NOT win against the UA select chrome — see "
+            f"check_wc_overrides_styled for the specificity story."
+        )
+        return r
+
+    if "appearance:none" not in top_css_norm:
+        r.fail(
+            "top-level `styles.css` matches the catalog-sorting <select> "
+            "but never declares `appearance:none`. Without the appearance "
+            "reset the browser's native dropdown chrome (chevron, border, "
+            "OS focus ring) still paints over your theme styles. Add "
+            "`appearance:none;-webkit-appearance:none;-moz-appearance:none` "
+            "to the same rule."
+        )
+        return r
+
+    if not (has_block_sel and has_legacy_sel):
+        missing = "legacy `.woocommerce-ordering`" if has_block_sel else "block `.wp-block-woocommerce-catalog-sorting`"
+        r.details.append(
+            f"WARNING: only one selector root present; consider also "
+            f"covering the {missing} root so shortcode-driven catalogs "
+            f"render the same dropdown."
+        )
+    r.details.append(
+        f"matched dropdown selector + `appearance:none` in top-level styles.css"
+    )
+    return r
+
+
 def check_blueprint_landing_page() -> Result:
     """Fail if `playground/blueprint.json`'s `landingPage` is anything other
     than `/`.
@@ -1195,6 +1314,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_block_attrs_use_tokens(),
         check_no_duplicate_templates(),
         check_no_duplicate_stock_indicator(),
+        check_archive_sort_dropdown_styled(),
         check_blueprint_landing_page(),
         check_front_page_unique_layout(),
     ]

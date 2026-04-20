@@ -153,6 +153,15 @@ Every blueprint MUST set `"landingPage": "/"`. Reasons:
 
 `bin/check.py` enforces this via `check_blueprint_landing_page` — any drift fails the check before push.
 
+### Shop archive header
+
+The shop archive header is the most-judged surface in any WooCommerce theme review — it's the first page visitors land on after clicking "Shop", and it's where default-WooCommerce tells stack up fastest. Two non-negotiables:
+
+1. **The catalog-sorting `<select>` MUST have a themed appearance.** `wp:woocommerce/catalog-sorting` renders a bare `<select class="orderby">` with zero theme styling. Browsers paint OS-native dropdown chrome (chevron + border + focus ring), which fights every adjacent typographic element and screams "default WooCommerce" louder than any other single element on the page. Override it in **top-level `styles.css`** (NOT block-scoped — see `check_wc_overrides_styled` for the specificity story), targeting both `.wp-block-woocommerce-catalog-sorting select.orderby` and `.woocommerce-ordering select.orderby` (the legacy shortcode-rendered form), starting with `appearance:none;-webkit-appearance:none;-moz-appearance:none` to strip the UA chrome. Re-paint everything from scratch in the theme's voice (border, padding, custom chevron via background-image, focus state).
+2. **Don't dump the result count + sort dropdown into a single double-bordered bar.** Default WC themes wrap them in a top+bottom `1px` border that reads as a generic plugin echo. Move the result count up beside the page title (`flex space-between`, `verticalAlignment:bottom`) so they share an editorial line, and let the sort dropdown sit in its own slim row above the products with a single hairline `border-bottom`. The whole header should look composed, not stitched-together.
+
+`bin/check.py` enforces (1) via `check_archive_sort_dropdown_styled` — any archive template that renders `wp:woocommerce/catalog-sorting` without the matching top-level `styles.css` rule fails the check before push. (2) is taste-driven and not auto-checked, but every archive in the monorepo follows the same pattern; deviate from it deliberately.
+
 ### Permalinks gotcha (the one footgun that will burn you)
 
 In a `wp eval-file` context (which is how `wo-configure.php` runs), the global `$wp_rewrite` was constructed at WP boot from the previous (default = empty) `permalink_structure` option. Calling
