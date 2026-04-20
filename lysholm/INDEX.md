@@ -20,8 +20,6 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- pattern.php.txt
 |   |-- style-variation.json.txt
 |   `-- template.html.txt
-|-- assets/
-|   `-- fonts/
 |-- parts/
 |   |-- announcement-bar.html
 |   |-- checkout-header.html

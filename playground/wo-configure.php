@@ -692,7 +692,28 @@ if ( ! get_option( '_wo_product_images_seeded' ) ) {
 		WP_CLI::log( "Product images: no map found at {$prod_map_url}, skipping." );
 	}
 
-	$pi_count = 0;
+	// Map of simple-product SKU -> variant-parent SKU created in section 10.
+	// When 11c sideloads a per-theme image for a simple, the same attachment is
+	// also assigned as the featured image of the matching variant parent AND
+	// of every published variation underneath it. Without this propagation the
+	// variant parents stay stuck on whatever wo-import.php sideloaded from the
+	// CSV (typically the wonders-oddities source image), so the per-theme
+	// `product-wo-*.jpg` only ever shows up on the simple PDP, not on the
+	// variants PDP, the swatch picker, or the cart line item for a variation.
+	//
+	// Section 10 runs before this block, so the variant parents already exist
+	// here and we don't need to defer anything. Variations don't expose a
+	// dedicated REST setter via wc_get_product()->set_image_id() that survives
+	// re-runs cleanly, but set_post_thumbnail() on each variation post works
+	// against the standard _thumbnail_id meta and is what the WC frontend
+	// actually queries when rendering the variation image swap.
+	$variant_parents = array(
+		'WO-BOTTLED-MORNING' => 'WO-BOTL-VAR',
+		'WO-POCKET-THUNDER'  => 'WO-THUN-VAR',
+	);
+
+	$pi_count    = 0;
+	$variant_hit = 0;
 	foreach ( $prod_images as $sku => $filename ) {
 		$pid = wc_get_product_id_by_sku( $sku );
 		if ( ! $pid ) {
@@ -727,10 +748,36 @@ if ( ! get_option( '_wo_product_images_seeded' ) ) {
 		update_post_meta( $pid, '_wo_product_image', $attachment_id );
 		++$pi_count;
 		WP_CLI::log( "Product image: assigned to '{$sku}' (attachment {$attachment_id})." );
+
+		// Propagate to the matching variant parent + every variation child.
+		if ( isset( $variant_parents[ $sku ] ) ) {
+			$parent_sku = $variant_parents[ $sku ];
+			$parent_id  = wc_get_product_id_by_sku( $parent_sku );
+			if ( $parent_id ) {
+				$parent = wc_get_product( $parent_id );
+				if ( $parent ) {
+					$parent->set_image_id( $attachment_id );
+					$parent->save();
+					update_post_meta( $parent_id, '_wo_product_image', $attachment_id );
+					++$variant_hit;
+
+					// Each variation is its own post; setting the standard
+					// _thumbnail_id meta is what WC reads when swapping the
+					// product image as the shopper picks an attribute.
+					if ( method_exists( $parent, 'get_children' ) ) {
+						foreach ( $parent->get_children() as $child_id ) {
+							set_post_thumbnail( (int) $child_id, $attachment_id );
+							update_post_meta( (int) $child_id, '_wo_product_image', $attachment_id );
+						}
+					}
+					WP_CLI::log( "Product image: propagated to variant parent '{$parent_sku}' (#{$parent_id}) and its variations." );
+				}
+			}
+		}
 	}
 
 	update_option( '_wo_product_images_seeded', '1' );
-	WP_CLI::log( "Product images: {$pi_count} assigned." );
+	WP_CLI::log( "Product images: {$pi_count} assigned, {$variant_hit} variant parents updated." );
 }
 
 // ---------------------------------------------------------------------------
