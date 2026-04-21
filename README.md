@@ -1,8 +1,12 @@
 # Fifty
 
-**Five full WooCommerce stores. One shared codebase. Make one your own in an afternoon.**
+**WooCommerce themes built by an AI agent on very strict rails. The rails are the point; the themes are the proof.**
 
-Most WordPress theme projects are a graveyard of CSS files, build configs, and dependencies that haven't aged well. Fifty is the opposite: every theme in this repo is just block markup, a list of design values, and a tiny PHP file. You change about ten of those values and the whole storefront re-skins — buttons, links, focus rings, swatches, hover states, form inputs, "Add to cart" CTAs, transactional emails, the lot. You can read the whole thing in an afternoon. You can rebrand it in an evening. You can ship it to a real store on Monday.
+WooCommerce powers more stores than Shopify and ships nothing like Shopify's themes. Rich and I think AI agents, with the right rails around them, can close that gap. So we're building the proof — a growing set of full WooCommerce storefronts, sharing one codebase, every demo booting in your browser, every rail in this repo.
+
+The methodology is open source: dozens of lint checks that catch the WordPress-specific bugs LLMs love to ship, an editor-parity block validator that round-trips every block through the real `@wordpress/blocks` parser, a visual-regression suite that boots WordPress in headless Chromium and pixel-diffs every page, and a fussy Victorian shopkeeper named Woo-drow who gives the agent a voice and the rules a face. None of the themes ship a JavaScript bundle, a build step, a custom block, or a stylesheet — every theme directory is `theme.json` (the design system), block markup, and a tiny PHP file. You can read the whole thing in an afternoon, rebrand any of them in an evening, and ship to a real store on Monday.
+
+WooCommerce knows we're doing this. You can read along.
 
 ## See them running
 
@@ -46,17 +50,17 @@ The full nine-step walkthrough lives in [Adding a Theme](https://github.com/Regi
 - **A `playground/blueprint.json`** so anyone can boot your theme in a browser with one link, with sample products, sample orders, and a logged-in customer — exactly like the demos at the top of this README.
 - **Zero JavaScript bundles. Zero custom blocks. Zero `node_modules`. Zero dependencies.**
 
-## The cool engineering bits, in plain English
+## The rails, in plain English
 
-These are the parts that make the whole "ten values and you're done" thing actually work. None of them are hidden — they're all in this repo and they all earn their keep.
+These are the rails the agent operates inside. None of them are hidden — they're all in this repo, they all earn their keep, and they're how a swarm of LLM sessions across this codebase produces work that stays consistent enough to ship.
 
 - **No CSS files. No JavaScript. No build step.** Look at any theme directory: `theme.json` (the design system), `templates/` (block markup), `parts/` (header, footer, mini-cart), `patterns/` (drag-into-editor sections), `functions.php` (a few WP filters). That's it. No `package.json`, no `webpack.config.js`, no `style.scss`, no `dist/`. The look comes entirely from design tokens that the block editor reads natively. You edit a value, the editor updates instantly.
 
-- **Five very different stores from the same code.** Look at the demos again — Chonk and Lysholm couldn't look more different from each other, and they are literally clones of the same templates. Only the design tokens differ. That's the whole pitch in one sentence.
+- **Wildly different stores from the same code.** Look at the demos again — Chonk and Lysholm couldn't look more different from each other, and they're literally clones of the same templates. Only the design tokens differ. That's the whole pitch in one sentence.
 
 - **A real visual test on every commit.** A Python script (`bin/snap.py`) boots WordPress + WooCommerce locally for each theme, opens it in a real Chromium browser via Playwright, and screenshots every page at four screen sizes. Then it diffs the screenshots against committed reference images and tells you what changed. If something looks broken, the build fails. So you don't push a homepage that has the cart sidebar at 60 pixels wide because you renamed a CSS class three commits ago.
 
-- **Bug-catchers built specifically for WordPress's footguns.** Beyond the usual accessibility checks (axe-core runs on every snap), there are about 35 hand-written checks for the bugs WP and WC themes actually break on: oversized images, missing `alt` attributes, sidebars rendering 60px wide on desktop, "duplicate view-transition-name" warnings that silently abort native page transitions, leaked PHP debug output, raw `__()` translation tokens that didn't get translated, ellipsis truncation actively hiding content, brand-affecting filters smuggled into the demo-only `playground/` directory where they evaporate the moment a Proprietor downloads the theme, two themes shipping the exact same WooCommerce microcopy override (so every shop in the family reads "Proceed to Checkout" the same vanilla way). Each one names the file, points at the offending element, and tells you how to fix it.
+- **Bug-catchers built specifically for WordPress's footguns.** Beyond the usual accessibility checks (axe-core runs on every snap), there are dozens of hand-written checks for the bugs WP and WC themes actually break on: oversized images, missing `alt` attributes, sidebars rendering 60px wide on desktop, "duplicate view-transition-name" warnings that silently abort native page transitions, leaked PHP debug output, raw `__()` translation tokens that didn't get translated, ellipsis truncation actively hiding content, brand-affecting filters smuggled into the demo-only `playground/` directory where they evaporate the moment a Proprietor downloads the theme, two themes shipping the exact same WooCommerce microcopy override (so every shop in the family reads "Proceed to Checkout" the same vanilla way). Each one names the file, points at the offending element, and tells you how to fix it.
 
 - **One-click demos for everyone, including you.** Those `demo.regionallyfamous.com/<theme>/` links boot a real WordPress instance entirely in your browser via [WordPress Playground](https://wordpress.org/playground/). When you build your own theme on top of Fifty, you get the same thing free — your `playground/blueprint.json` is already wired up, just push to GitHub and share the link.
 
