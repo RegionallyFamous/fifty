@@ -86,7 +86,7 @@ add_filter(
 // the flex row (correct). The action-rendered count lands ABOVE the
 // product grid, with no parent container, floating in the middle of
 // nowhere -- the exact "23 ITEMS off in the middle of nowhere" failure
-// the Proprietor flagged.
+// reported against the live demo.
 //
 // `render_block_woocommerce/product-results-count` rewrites the block's
 // already-correctly-positioned `<p>` in place, so there is exactly ONE

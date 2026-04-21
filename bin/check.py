@@ -3781,7 +3781,7 @@ def check_mu_plugin_no_legacy_loop_echoes() -> Result:
     HTML on `woocommerce_before_shop_loop` paints that HTML TWICE: once
     in the title row (correct, because the matching block lives there)
     and once floating above the product grid with no parent flex
-    container. The Proprietor's screenshot showed exactly this: a
+    container. The exact symptom reported on the live demo was a
     naked "23 ITEMS" line appearing in the middle of nowhere, halfway
     between the H1 row and the product grid. The previous mu-plugin
     iteration shipped this regression because every static check in
