@@ -322,6 +322,55 @@ CSS_GRID_FIX = f"""{SENTINEL_OPEN_GRID_FIX}
 {SENTINEL_CLOSE_GRID_FIX}"""
 
 
+# ---------------------------------------------------------------------------
+# Follow-up chunk: Phase A premium fixes.
+# ---------------------------------------------------------------------------
+# Six small CSS guards that kill the "looks broken" tells observed across
+# all 4 themes' visual baselines:
+#
+#   1. PDP featured image. Switching the single-product template from the
+#      legacy `wp:woocommerce/product-image-gallery` (Flexslider/PhotoSwipe
+#      JS-dependent, opacity:0 until JS init) to `wp:post-featured-image`
+#      gives us a clean static <img>. We add a `wp-block-post-featured-
+#      image` CSS rule to enforce a square-ish aspect-ratio, fluid width,
+#      and a soft surface bg so the image always looks intentional.
+#   2. Force any leftover legacy `.woocommerce-product-gallery` instances
+#      visible regardless of WC frontend JS state (defensive: catches
+#      product blocks rendered via shortcode or 3rd-party widgets).
+#   3. Variation <select> font fallback. Chonk's display font (Marvin
+#      Visions) lacks coverage for "Choose an option" / variant labels,
+#      which is why the size/finish dropdowns rendered as a single em-dash
+#      glyph in the desktop screenshot. Pin variation selects to the
+#      sans-serif preset so the option text always renders.
+#   4. Suppress lingering loading skeletons. WC Blocks renders skeleton
+#      placeholders during hydration; on slow first-loads the skeleton
+#      can persist visibly long enough to look like the page is broken.
+#      Hide the skeleton entirely on the frontend (the real content
+#      replaces it ~50ms later anyway).
+#   5. Cart line items: enforce flex-column layout on `.wc-block-cart-
+#      items` and grid-card layout on each row, so even if WC ever serves
+#      the legacy <table> markup our CSS reframes it as a card list.
+#   6. Hide WC's "Uncategorized" breadcrumb segment so PDPs don't read
+#      as accidentally-uncategorised. Done as a CSS rule that targets
+#      breadcrumb anchors whose href ends with `/uncategorized/`.
+SENTINEL_OPEN_PHASE_A = "/* wc-tells-phase-a-premium */"
+SENTINEL_CLOSE_PHASE_A = "/* /wc-tells-phase-a-premium */"
+CSS_PHASE_A = f"""{SENTINEL_OPEN_PHASE_A}
+.wp-block-woocommerce-single-product .wp-block-post-featured-image,.single-product .wp-block-post-featured-image{{margin:0;background:var(--wp--preset--color--subtle);border-radius:var(--wp--custom--radius--md);overflow:hidden;}}
+.wp-block-woocommerce-single-product .wp-block-post-featured-image img,.single-product .wp-block-post-featured-image img{{display:block;width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;}}
+.woocommerce-product-gallery{{opacity:1!important;}}
+.woocommerce-product-gallery__image>a,.woocommerce-product-gallery__image>a>img{{display:block;width:100%;}}
+.woocommerce-product-gallery__image img.wp-post-image{{display:block!important;width:100%!important;height:auto!important;opacity:1!important;}}
+table.variations select,select.wo-variation{{font-family:var(--wp--preset--font-family--sans)!important;font-size:var(--wp--preset--font-size--sm)!important;}}
+.wc-block-components-skeleton,.wp-block-woocommerce-checkout .wc-block-components-skeleton,.wc-block-components-loading-mask{{display:none!important;}}
+.wc-block-cart-items{{display:flex;flex-direction:column;}}
+.wc-block-cart-items>tbody{{display:contents;}}
+.wc-block-cart-items__row{{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:var(--wp--preset--spacing--md);align-items:start;padding:var(--wp--preset--spacing--md) 0;border-bottom:1px solid var(--wp--preset--color--border);}}
+.woocommerce-breadcrumb a[href$="/uncategorized/"],.wc-block-components-breadcrumbs a[href$="/uncategorized/"]{{display:none;}}
+.woocommerce-breadcrumb a[href$="/uncategorized/"]+span,.wc-block-components-breadcrumbs a[href$="/uncategorized/"]+span{{display:none;}}
+{SENTINEL_CLOSE_PHASE_A}"""
+
+
 # Each entry: (sentinel_open, sentinel_close, raw_css, anchor_after).
 # `anchor_after` is the marker the chunk is spliced in after — for the
 # first chunk that's the canonical archive-page marker; for follow-ups
@@ -357,6 +406,12 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_CO_OUTER,
         CSS_CO_OUTER,
         SENTINEL_CLOSE_GRID_FIX,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_A,
+        SENTINEL_CLOSE_PHASE_A,
+        CSS_PHASE_A,
+        SENTINEL_CLOSE_CO_OUTER,
     ),
 ]
 

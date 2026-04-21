@@ -400,12 +400,19 @@ if ( ! wc_get_product_id_by_sku( 'WO-BOTL-S-AMB' ) ) {
 		$variable->set_short_description( 'Your morning, your way.' );
 		$variable->set_featured( false );
 
-		// Inherit the featured image from the matching simple product.
+		// Inherit the featured image AND product categories from the
+		// matching simple product. Without category inheritance the
+		// variable product falls through to "Uncategorized", which then
+		// shows up as a generic-WC tell in the breadcrumb.
 		$botl_simple_id = wc_get_product_id_by_sku( 'WO-BOTTLED-MORNING' );
 		if ( $botl_simple_id ) {
 			$botl_img_id = get_post_thumbnail_id( $botl_simple_id );
 			if ( $botl_img_id ) {
 				$variable->set_image_id( $botl_img_id );
+			}
+			$botl_cat_ids = wc_get_product( $botl_simple_id )->get_category_ids();
+			if ( ! empty( $botl_cat_ids ) ) {
+				$variable->set_category_ids( $botl_cat_ids );
 			}
 		}
 
@@ -469,12 +476,17 @@ if ( ! wc_get_product_id_by_sku( 'WO-THUN-SOFT' ) ) {
 		$thunder->set_description( 'A compact thunderstorm, available in two intensities.' );
 		$thunder->set_short_description( 'The storm that fits in your pocket.' );
 
-		// Inherit the featured image from the matching simple product.
+		// Inherit the featured image AND product categories from the
+		// matching simple product (see Bottled Morning above for why).
 		$thun_simple_id = wc_get_product_id_by_sku( 'WO-POCKET-THUNDER' );
 		if ( $thun_simple_id ) {
 			$thun_img_id = get_post_thumbnail_id( $thun_simple_id );
 			if ( $thun_img_id ) {
 				$thunder->set_image_id( $thun_img_id );
+			}
+			$thun_cat_ids = wc_get_product( $thun_simple_id )->get_category_ids();
+			if ( ! empty( $thun_cat_ids ) ) {
+				$thunder->set_category_ids( $thun_cat_ids );
 			}
 		}
 

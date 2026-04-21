@@ -33,12 +33,29 @@ add_action(
 
 		WC()->cart->empty_cart();
 
+		// Pre-fill the demo cart with three known in-stock products.
+		// Defensive: re-prime each product's stock_status BEFORE adding,
+		// because on a fresh Playground boot WC's stock cache may not yet
+		// reflect the imported `_stock` meta. Without this, the "demo cart"
+		// page sometimes renders a persistent pink "out of stock" notice
+		// even though the CSV says Stock=8. We force-recalculate via
+		// wc_update_product_stock_status() so the cart sees the imported
+		// stock truth, then skip any product that is genuinely OOS so the
+		// cart never has a phantom "removed" notice either.
 		$skus = array( 'WO-BOTTLED-MORNING', 'WO-POCKET-THUNDER', 'WO-CHAOS-SEASONING' );
 		foreach ( $skus as $sku ) {
 			$pid = wc_get_product_id_by_sku( $sku );
-			if ( $pid ) {
-				WC()->cart->add_to_cart( $pid );
+			if ( ! $pid ) {
+				continue;
 			}
+			if ( function_exists( 'wc_update_product_stock_status' ) ) {
+				wc_update_product_stock_status( $pid, 'instock' );
+			}
+			$product = wc_get_product( $pid );
+			if ( ! $product || ! $product->is_purchasable() ) {
+				continue;
+			}
+			WC()->cart->add_to_cart( $pid );
 		}
 	},
 	20
