@@ -857,6 +857,34 @@ body.theme-aero h1,body.theme-aero h2,body.theme-aero .wp-block-heading{{text-sh
 {SENTINEL_CLOSE_PHASE_J}"""
 
 
+# ----------------------------------------------------------------------
+# Phase K — Aero front-page "signal strip" promise band
+# ----------------------------------------------------------------------
+# A 4-tile chrome-chip row that lives between the hero and the featured
+# product collection on aero/templates/front-page.html. Three reasons it
+# exists as its own chunk instead of inline in Phase J:
+#   1. It's a NEW section unique to aero — no equivalent in obel /
+#      chonk / selvedge / lysholm — so it changes the front-page
+#      structural fingerprint and lets aero pass
+#      `check_front_page_unique_layout` against obel (the two themes
+#      previously shared the same `[hero-split, group, group]` shape
+#      and only got past the check because the slug differed).
+#   2. The Phase J sentinel is already locked in every theme's
+#      styles.css; appending into the same chunk would require force
+#      re-injection. A new phase keeps every existing theme byte-stable.
+#   3. Scoped to `body.theme-aero .aero-signal-strip` so it has zero
+#      effect on every other theme (the markup itself only ships in
+#      aero/templates/front-page.html).
+SENTINEL_OPEN_PHASE_K = "/* wc-tells-phase-k-aero-signal-strip */"
+SENTINEL_CLOSE_PHASE_K = "/* /wc-tells-phase-k-aero-signal-strip */"
+CSS_PHASE_K = f"""{SENTINEL_OPEN_PHASE_K}
+body.theme-aero .aero-signal-strip{{background:linear-gradient(90deg,rgba(255,255,255,0.55) 0%,rgba(214,196,242,0.45) 28%,rgba(167,210,238,0.45) 55%,rgba(255,224,243,0.45) 82%,rgba(255,255,255,0.55) 100%);border-top:1px solid rgba(255,255,255,0.8);border-bottom:1px solid rgba(255,255,255,0.8);box-shadow:inset 0 1px 0 rgba(255,255,255,0.95),inset 0 -1px 0 rgba(74,63,135,0.08);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}}
+body.theme-aero .aero-signal-strip__row{{gap:var(--wp--preset--spacing--lg) !important;}}
+body.theme-aero .aero-signal-chip{{margin:0 !important;padding:6px 14px !important;border-radius:var(--wp--custom--radius--pill,9999px) !important;background:linear-gradient(180deg,rgba(255,255,255,0.85) 0%,rgba(255,255,255,0.55) 100%) !important;border:1px solid rgba(255,255,255,0.8) !important;color:var(--wp--preset--color--contrast) !important;font-family:var(--wp--preset--font-family--sans) !important;font-weight:600 !important;letter-spacing:var(--wp--custom--letter-spacing--wide,0.04em) !important;text-transform:uppercase !important;box-shadow:inset 0 1px 0 rgba(255,255,255,0.95),0 4px 10px rgba(74,63,135,0.10) !important;}}
+@media (max-width: 781px){{body.theme-aero .aero-signal-strip__row{{gap:var(--wp--preset--spacing--xs) !important;}} body.theme-aero .aero-signal-chip{{padding:5px 10px !important;}}}}
+{SENTINEL_CLOSE_PHASE_K}"""
+
+
 # Each entry: (sentinel_open, sentinel_close, raw_css, anchor_after).
 # `anchor_after` is the marker the chunk is spliced in after — for the
 # first chunk that's the canonical archive-page marker; for follow-ups
@@ -958,6 +986,12 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_PHASE_J,
         CSS_PHASE_J,
         SENTINEL_CLOSE_PHASE_I,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_K,
+        SENTINEL_CLOSE_PHASE_K,
+        CSS_PHASE_K,
+        SENTINEL_CLOSE_PHASE_J,
     ),
 ]
 

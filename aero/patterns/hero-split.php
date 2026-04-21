@@ -64,7 +64,7 @@
 		<!-- wp:column {"verticalAlignment":"center"} -->
 		<div class="wp-block-column is-vertically-aligned-center">
 			<!-- wp:image {"sizeSlug":"large","style":{"dimensions":{"aspectRatio":"var(--wp--custom--aspect-ratio--widescreen)"}}} -->
-			<figure class="wp-block-image size-large" style="aspect-ratio:var(--wp--custom--aspect-ratio--widescreen)"><img src="<?php echo esc_url( get_theme_file_uri( 'playground/images/product-wo-bottled-morning.jpg' ) ); ?>" alt="<?php esc_attr_e( 'Bottled Morning — a cork-stoppered glass bottle of warm light, tagged in coral linen on a soft natural backdrop. The flagship product of the Wonders &amp; Oddities demo catalogue.', 'aero' ); ?>" /></figure>
+			<figure class="wp-block-image size-large" style="aspect-ratio:var(--wp--custom--aspect-ratio--widescreen)"><img src="<?php echo esc_url( get_theme_file_uri( 'playground/images/wonders-bottled-morning.png' ) ); ?>" alt="<?php esc_attr_e( 'Bottled Morning — a cork-stoppered glass bottle of warm light, the flagship product of the Wonders &amp; Oddities demo catalogue.', 'aero' ); ?>" /></figure>
 			<!-- /wp:image -->
 		</div>
 		<!-- /wp:column -->

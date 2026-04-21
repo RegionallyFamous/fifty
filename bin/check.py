@@ -1075,7 +1075,16 @@ def _front_page_fingerprint(html: str) -> list[str]:
                 except json.JSONDecodeError:
                     attrs = {}
                 if block == "pattern":
-                    label = f"pattern:{attrs.get('slug', '?')}"
+                    # Strip the theme-slug prefix from pattern slugs.
+                    # Two themes that compose `<theme>/hero-split + grid
+                    # + grid` are structurally identical even though
+                    # `aero/hero-split` and `obel/hero-split` are
+                    # technically different slugs. The prefix-stripped
+                    # form is what matters for the "same shape, different
+                    # paint" diversity test.
+                    raw_slug = attrs.get("slug", "?")
+                    bare = raw_slug.split("/", 1)[1] if "/" in raw_slug else raw_slug
+                    label = f"pattern:{bare}"
                 else:
                     cls = attrs.get("className", "")
                     first = cls.split()[0] if isinstance(cls, str) and cls else ""
@@ -2922,75 +2931,216 @@ def _extract_pattern_microcopy(patterns_dir: Path) -> dict[str, set[str]]:
     return out
 
 
+# Heading content extracted from `<!-- wp:heading {...content":"..."} -->`
+# delimiters in template / part HTML files. We treat heading copy with
+# the same distinctness rule as pattern microcopy: the same headline
+# appearing on two different themes is a "this is the same theme with
+# a different paint job" tell.
+TEMPLATE_HEADING_RE = re.compile(
+    r'<!--\s*wp:heading\s+(\{[^}]*?"content"\s*:\s*"((?:\\"|[^"])*)"[^}]*?\})\s*/?-->',
+    re.DOTALL,
+)
+
+
+def _normalize_heading(s: str) -> str:
+    """Lowercase + collapse whitespace + strip trailing punctuation so
+    "Field notes", "Field notes.", and "Field notes from the workshop"
+    all share a comparable normalised core. We keep the words intact;
+    the substring/word-overlap test runs on the normalised form."""
+    s = re.sub(r"\s+", " ", s).strip().lower()
+    return s.rstrip(".,;:!?— -")
+
+
+# Generic wayfinding headings every store needs. These appear on every
+# theme by design and should NOT trip the "shared microcopy" check.
+# Anything outside this allowlist is treated as voice / brand copy.
+SHARED_HEADING_ALLOWLIST = frozenset({
+    "shop", "categories", "cart", "checkout", "account", "my account",
+    "log in", "register", "search results", "404", "page not found",
+    "shop by category", "featured products", "new arrivals", "on sale",
+    "related products", "you may also like", "your cart", "order summary",
+    "billing", "shipping", "payment", "order details",
+})
+
+
+def _extract_template_headings(theme_dir: Path) -> dict[str, set[str]]:
+    """Map relative file path → set of normalised heading copy strings
+    found in template + part HTML (excludes wayfinding allowlist)."""
+    out: dict[str, set[str]] = {}
+    for sub in ("templates", "parts"):
+        d = theme_dir / sub
+        if not d.is_dir():
+            continue
+        for path in sorted(d.rglob("*.html")):
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            headings: set[str] = set()
+            for m in TEMPLATE_HEADING_RE.finditer(text):
+                raw = m.group(2).encode("utf-8").decode("unicode_escape", errors="ignore")
+                norm = _normalize_heading(raw)
+                # Keep headings 4+ chars that aren't pure wayfinding.
+                if len(norm) >= 4 and norm not in SHARED_HEADING_ALLOWLIST:
+                    headings.add(norm)
+            if headings:
+                out[path.relative_to(theme_dir).as_posix()] = headings
+    return out
+
+
 def check_pattern_microcopy_distinct() -> Result:
-    """Fail when patterns ship microcopy that's byte-identical to obel's
-    same-named pattern. (Skipped when running against obel itself.)
+    """Fail when patterns OR template/part headings ship copy that
+    overlaps with another theme's same-named pattern, or whose heading
+    string is shared (or contained-within / containing) another theme's
+    heading.
 
     Why this exists
     ---------------
-    `bin/clone.py` copies obel's patterns into every new theme, rewriting
-    only the slug + textdomain. Without a follow-up pass the new theme
-    inherits obel's placeholder copy — "A short statement of intent.",
-    "Two or three sentences explaining why your brand exists...", "One
-    sentence that expands on the headline.", "What customers say." —
-    and ships them in production. That microcopy is the single biggest
-    "this is a generic obel clone" tell.
+    Two failure modes are unmistakable "this is the same theme with a
+    different paint job" tells on the live demo:
+
+    (a) `bin/clone.py` copies obel's patterns into every new theme,
+        rewriting only the slug + textdomain. Without a follow-up pass
+        the new theme inherits obel's placeholder microcopy ("A short
+        statement of intent.", "Two or three sentences explaining why
+        your brand exists...") and ships it in production.
+
+    (b) An author drops a heading like "Field notes" onto a theme's
+        front-page section without realising another theme already
+        owns that phrase ("Field notes from the workshop." in
+        selvedge's footer). Even a partial overlap reads as a borrowed
+        voice on a side-by-side demo browse.
 
     What this check enforces
     ------------------------
-    For every pattern file in the current theme:
-      - Find the same-named pattern in `obel/patterns/`.
-      - Compare every translatable string ≥ PATTERN_MICROCOPY_MIN_CHARS
-        characters (we ignore short labels like "Shop" / "Returns"
-        because every store needs them).
-      - Fail if any string in the current theme's pattern is identical
-        to a string in obel's pattern.
+    PATTERNS: pairwise across every theme — for each pattern file in
+    the current theme, compare its translatable strings ≥
+    PATTERN_MICROCOPY_MIN_CHARS chars to the same-named pattern in
+    every other theme. Fail on any byte-identical match.
+
+    TEMPLATE/PART HEADINGS: pairwise across every theme — for each
+    `wp:heading` in templates/ and parts/, normalise (lowercase,
+    collapse whitespace, strip trailing punctuation), drop wayfinding
+    allowlist items ("Shop", "Cart", "My Account", …), then fail on
+    any (a) byte-identical normalised heading shared with another
+    theme, or (b) word-substring overlap where one heading wholly
+    contains the other and BOTH are 2+ words.
 
     The fix is always the same: rewrite the offending string in the
-    theme's own voice. The check fires per-string so you can see exactly
-    which placeholders are still inherited.
+    theme's own brand voice. The check fires per-string so you can see
+    exactly which copy is being shared.
     """
-    r = Result("Pattern microcopy distinct from obel placeholders")
+    r = Result("Pattern + heading microcopy distinct across themes")
 
     theme_slug = ROOT.name
-    if theme_slug == "obel":
-        r.skip("running against obel itself; obel IS the source of the placeholders")
+    theme_patterns = _extract_pattern_microcopy(ROOT / "patterns")
+    theme_headings = _extract_template_headings(ROOT)
+
+    if not theme_patterns and not theme_headings:
+        r.skip("no patterns/*.php and no headings in templates/ or parts/")
         return r
 
-    obel_patterns = MONOREPO_ROOT / "obel" / "patterns"
-    if not obel_patterns.is_dir():
-        r.skip("obel/patterns/ not found in monorepo (cannot diff)")
-        return r
-
-    obel_strings = _extract_pattern_microcopy(obel_patterns)
-    theme_strings = _extract_pattern_microcopy(ROOT / "patterns")
-    if not theme_strings:
-        r.skip("no patterns/*.php in this theme")
-        return r
-
-    leaks: list[tuple[str, str]] = []
-    for fname, strings in sorted(theme_strings.items()):
-        obel_set = obel_strings.get(fname, set())
-        if not obel_set:
+    # PATTERN-vs-PATTERN: pairwise across every other theme.
+    for other in iter_themes():
+        other_slug = other.name
+        if other_slug == theme_slug:
             continue
-        for s in sorted(strings & obel_set):
-            leaks.append((fname, s))
+        other_patterns = _extract_pattern_microcopy(other / "patterns")
+        if not other_patterns:
+            continue
+        for fname, strings in sorted(theme_patterns.items()):
+            other_set = other_patterns.get(fname, set())
+            if not other_set:
+                continue
+            for s in sorted(strings & other_set):
+                short = s if len(s) <= 80 else s[:77] + "..."
+                r.fail(
+                    f"patterns/{fname}: ships microcopy verbatim shared "
+                    f"with {other_slug}/patterns/{fname} — "
+                    f"\"{short}\" — rewrite in {theme_slug}'s voice"
+                )
 
-    if leaks:
-        for fname, s in leaks:
-            short = s if len(s) <= 80 else s[:77] + "..."
-            r.fail(
-                f"patterns/{fname}: ships obel's default microcopy verbatim — "
-                f"\"{short}\" — rewrite in {theme_slug}'s voice"
-            )
-        return r
+    # HEADING-vs-HEADING: pairwise across every other theme. We compare
+    # the union of every heading in the current theme against the union
+    # of every heading in each other theme (NOT same-file matched —
+    # "Field notes" in aero front-page collides with "Field notes from
+    # the workshop" in selvedge footer).
+    if theme_headings:
+        my_all = set().union(*theme_headings.values())
+        for other in iter_themes():
+            other_slug = other.name
+            if other_slug == theme_slug:
+                continue
+            other_headings = _extract_template_headings(other)
+            if not other_headings:
+                continue
+            other_all = set().union(*other_headings.values())
 
-    files_checked = sum(1 for f in theme_strings if f in obel_strings)
-    r.details.append(
-        f"{files_checked} pattern file(s) checked against obel; "
-        f"all microcopy distinct"
-    )
+            for h in sorted(my_all):
+                # (a) byte-identical normalised heading shared.
+                if h in other_all:
+                    rel = next(
+                        (rel for rel, hs in theme_headings.items() if h in hs),
+                        "?",
+                    )
+                    r.fail(
+                        f"{rel}: ships heading \"{h}\" shared verbatim "
+                        f"with {other_slug} — rewrite in {theme_slug}'s "
+                        f"voice (every theme on the demo browse should "
+                        f"speak in its own voice end-to-end)"
+                    )
+                    continue
+                # (b) word-overlap: one heading wholly contains the
+                # other AND both are 2+ words AND the shared core is
+                # 2+ words. This catches "Field notes" ⊂ "Field notes
+                # from the workshop." but doesn't fire on single-word
+                # accidents like "Featured" ⊂ "Featured products".
+                my_words = h.split()
+                if len(my_words) < 2:
+                    continue
+                for o in other_all:
+                    o_words = o.split()
+                    if len(o_words) < 2:
+                        continue
+                    # Require a contiguous 2+ word phrase shared.
+                    shared = _longest_shared_phrase(my_words, o_words)
+                    if shared and len(shared.split()) >= 2:
+                        rel = next(
+                            (rel for rel, hs in theme_headings.items() if h in hs),
+                            "?",
+                        )
+                        r.fail(
+                            f"{rel}: heading \"{h}\" shares the phrase "
+                            f"\"{shared}\" with {other_slug}'s heading "
+                            f"\"{o}\" — pick a phrase no other theme is "
+                            f"already using"
+                        )
+                        break
+
+    if r.passed and not r.skipped:
+        r.details.append(
+            f"{len(theme_patterns)} pattern file(s) + "
+            f"{len(theme_headings)} template/part file(s) with headings; "
+            f"all microcopy distinct vs every other theme"
+        )
     return r
+
+
+def _longest_shared_phrase(a: list[str], b: list[str]) -> str:
+    """Longest contiguous shared word-sequence between two heading word
+    lists, normalised. Returns empty string if no overlap."""
+    best = ""
+    for i in range(len(a)):
+        for j in range(len(b)):
+            k = 0
+            while (
+                i + k < len(a)
+                and j + k < len(b)
+                and a[i + k] == b[j + k]
+            ):
+                k += 1
+            if k > 0:
+                phrase = " ".join(a[i : i + k])
+                if len(phrase) > len(best):
+                    best = phrase
+    return best
 
 
 def check_no_default_wc_strings() -> Result:
