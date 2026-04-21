@@ -246,7 +246,7 @@ def validate(theme_json_path: Path) -> int:
 
 def main(argv: list[str]) -> int:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from _lib import resolve_theme_root  # noqa: E402
+    from _lib import resolve_theme_root
 
     if len(argv) > 2:
         print("usage: validate-theme-json.py [theme_name|path/to/theme.json]", file=sys.stderr)

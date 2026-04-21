@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib import iter_themes, resolve_theme_root  # noqa: E402
+from _lib import iter_themes, resolve_theme_root
 
 ROOT: Path = Path.cwd()
 INDEX: Path = ROOT / "INDEX.md"
@@ -170,7 +170,7 @@ def tree_section() -> str:
 
 def _tree(path: Path, prefix: str, skip: set[str]) -> list[str]:
     entries = sorted(
-        [p for p in path.iterdir() if p.name not in skip and not p.name.startswith(".") or p.name in {".editorconfig"}],
+        [p for p in path.iterdir() if (p.name not in skip and not p.name.startswith(".")) or p.name in {".editorconfig"}],
         key=lambda p: (not p.is_dir(), p.name.lower()),
     )
     lines: list[str] = []

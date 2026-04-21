@@ -65,7 +65,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib import MONOREPO_ROOT, iter_themes, theme_content_base_url  # noqa: E402
+from _lib import MONOREPO_ROOT, iter_themes, theme_content_base_url
 
 # Map each blueprint writeFile target path -> source file path (relative to ROOT).
 MAPPINGS: dict[str, Path] = {

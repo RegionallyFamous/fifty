@@ -47,7 +47,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib import MONOREPO_ROOT, iter_themes, resolve_theme_root  # noqa: E402
+from _lib import MONOREPO_ROOT, iter_themes, resolve_theme_root
 
 # ROOT is set per-theme in main() before any check runs.
 ROOT: Path = Path.cwd()
@@ -2694,7 +2694,7 @@ def check_archive_sort_dropdown_styled() -> Result:
             f"render the same dropdown."
         )
     r.details.append(
-        f"matched dropdown selector + `appearance:none` in top-level styles.css"
+        "matched dropdown selector + `appearance:none` in top-level styles.css"
     )
     return r
 

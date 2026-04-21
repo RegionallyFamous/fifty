@@ -65,7 +65,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib import (  # noqa: E402
+from _lib import (
     GH_PAGES_BASE_URL,
     GITHUB_BRANCH,
     GITHUB_ORG,

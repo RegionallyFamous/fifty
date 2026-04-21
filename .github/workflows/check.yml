@@ -2,19 +2,21 @@ name: check
 
 # Authoritative server-side gate for the regression-prevention stack.
 #
-# Runs `bin/check.py --all --offline` on every PR + every push to main.
-# This is the layer that can't be bypassed by `git commit --no-verify`
-# or by skipping the local hooks. If this turns red, the change does
-# not belong on main.
+# Five parallel jobs, one concern each, so a red CI tells you exactly
+# what broke:
 #
-# The same gate runs locally in three places:
-#   1. .githooks/pre-commit  — fast inner-loop check on every commit
-#   2. .githooks/pre-push    — backstop for --no-verify commits
-#   3. this workflow         — server-side, authoritative
+#   theme-gate        bin/check.py --all --offline (the original gate)
+#   drift-check       bin/append-wc-overrides.py  must be a no-op
+#   tooling-tests     pytest tests/ (Phase B + C unit + integration tests)
+#   validator-smoke   tests/validator/ (Node editor-parity validator)
+#   lint-format       ruff + mypy (Phase E)
 #
-# All three layers stack rather than duplicate: each one closes a
-# different bypass mode. See AGENTS.md hard rule
-# "Never commit without `bin/check.py --all --offline` passing".
+# Jobs run in parallel; a single job failure still surfaces the
+# full picture in the checks list on the PR page. None of the jobs
+# depend on any other (the theme gate doesn't need pytest to have
+# passed to be meaningful).
+#
+# All five are required for merge; see `bin/setup-branch-protection.sh`.
 
 on:
   push:
@@ -22,38 +24,102 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  # Cancel older runs on the same branch so pushing a fix twice in a
+  # row doesn't queue up two 10-minute pipelines. `main` is never
+  # cancelled because we rely on its history in required-checks.
+  group: check-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
-  check:
+  theme-gate:
     name: bin/check.py --all --offline
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          # Need full history because some checks compare against the
-          # rest of the monorepo (pairwise heading distinctness, front-page
-          # fingerprint diversity, etc).
+          # The front-page-uniqueness check compares every theme's
+          # structural fingerprint; it wants the full tree, not a
+          # shallow clone.
           fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - run: python3 bin/check.py --all --offline
 
-      - name: Run all-themes static gate
-        run: python3 bin/check.py --all --offline
-
-      - name: Verify bin/append-wc-overrides.py is in sync with theme.json
+  drift-check:
+    name: append-wc-overrides.py is a no-op
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify the CSS-override chain matches committed theme.json
         run: |
-          # The script is sentinel-based: a clean re-run is a no-op
-          # (every chunk reports `skip <sentinel>`). Any '+' line means
-          # the script's source has drifted past what's checked in.
+          # bin/append-wc-overrides.py is sentinel-based: a clean re-run
+          # is a no-op — every chunk should report "skip <sentinel>".
+          # Any '+' line or 'FAIL' means the script's source drifted
+          # past what's checked in and someone needs to re-run it.
           out="$(python3 bin/append-wc-overrides.py)"
           echo "$out"
           if echo "$out" | grep -qE '^\+|FAIL'; then
             echo
             echo "::error::bin/append-wc-overrides.py source has drifted"
-            echo "         from the committed theme.json files. Run the"
-            echo "         script locally and commit the diff."
+            echo "         from the committed theme.json files. Run"
+            echo "         \`python3 bin/append-wc-overrides.py\` locally"
+            echo "         and commit the diff."
             exit 1
           fi
+
+  tooling-tests:
+    name: pytest tests/
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Install dev deps
+        run: python3 -m pip install -r requirements-dev.txt
+      - name: Run unit + integration tests
+        run: python3 -m pytest tests/ --ignore=tests/validator -v
+
+  validator-smoke:
+    name: node blocks-validator smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: bin/blocks-validator/package-lock.json
+      - name: Install Python dev deps (pytest runner)
+        run: python3 -m pip install -r requirements-dev.txt
+      - name: Install blocks-validator deps
+        run: npm --prefix bin/blocks-validator ci
+      - name: Run validator smoke tests
+        run: python3 -m pytest tests/validator -v
+
+  lint-format:
+    name: ruff + mypy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Install dev deps
+        run: python3 -m pip install -r requirements-dev.txt
+      - name: Run lint gate
+        run: python3 bin/lint.py

@@ -24,7 +24,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib import resolve_theme_root  # noqa: E402
+from _lib import resolve_theme_root
 
 ROOT: Path = Path.cwd()
 THEME: Path = ROOT / "theme.json"

@@ -1,0 +1,161 @@
+name: visual
+
+# Pixel-diff visual regression gate.
+#
+# Runs `python3 bin/snap.py check --changed` — which boots WordPress
+# Playground in headless Chromium for each touched theme, re-shoots
+# every committed route/viewport combo, compares against
+# tests/visual-baseline/<theme>/, and runs the tiered-quality gate
+# (heuristic errors, accessibility violations, HTTP failures) with
+# `--strict`.
+#
+# This workflow is DELIBERATELY SEPARATE from `check.yml`:
+#   * `check.yml`  — fast static gate (~30 s). Always required.
+#   * `visual.yml` — slow (~5-10 min) browser-driven gate. Required
+#                    only on PRs that touch a theme directory.
+#
+# Trigger strategy:
+#   * `push` to `main` — always runs (catches merges that bypassed
+#     the pull_request trigger).
+#   * `pull_request` — only when theme files change. Keeps docs-only
+#     or tooling-only PRs from paying the 10-minute Playwright cost.
+#   * `workflow_dispatch` — manual re-run after baseline updates or
+#     when debugging a flaky screenshot.
+#
+# Warn-only rollout:
+#   For the first week after this workflow lands, the final `snap.py
+#   check` step is allowed to exit non-zero without failing the job
+#   (see `continue-on-error: true` below). Flip that off once the
+#   baselines have stabilised and we've scored a green run from each
+#   theme author.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'obel/**'
+      - 'chonk/**'
+      - 'selvedge/**'
+      - 'lysholm/**'
+      - 'aero/**'
+      - 'bin/snap.py'
+      - 'bin/snap_config.py'
+      - 'tests/visual-baseline/**'
+      - '.github/workflows/visual.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'obel/**'
+      - 'chonk/**'
+      - 'selvedge/**'
+      - 'lysholm/**'
+      - 'aero/**'
+      - 'bin/snap.py'
+      - 'bin/snap_config.py'
+      - 'tests/visual-baseline/**'
+      - '.github/workflows/visual.yml'
+  workflow_dispatch:
+    inputs:
+      themes:
+        description: 'Space-separated theme slugs (blank = all)'
+        required: false
+        default: ''
+
+concurrency:
+  # One visual run per branch at a time. The workflow holds Playwright
+  # processes and tmp/ writes; overlapping runs trample each other.
+  group: visual-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  visual:
+    name: bin/snap.py check --changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          # Playwright is not in requirements-dev.txt because bin/snap.py
+          # is the only consumer; install the same pinned version used
+          # locally. Keep this pin in lockstep with bin/snap.py's
+          # required version.
+          python3 -m pip install -r requirements-dev.txt playwright==1.47.0 Pillow
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-1.47.0
+
+      - name: Install Playwright Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: python3 -m playwright install --with-deps chromium
+
+      - name: Install system deps for Playwright (cache hit case)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: python3 -m playwright install-deps chromium
+
+      - name: Determine theme scope
+        id: scope
+        run: |
+          # workflow_dispatch may pass explicit theme slugs; pull_request
+          # + push use --changed so only themes touched by the diff get
+          # re-shot.
+          themes="${{ github.event.inputs.themes }}"
+          if [ -n "$themes" ]; then
+            echo "mode=manual" >> "$GITHUB_OUTPUT"
+            echo "themes=$themes" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=changed" >> "$GITHUB_OUTPUT"
+            echo "themes=" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The workflow is warn-only for now (see header comment). Flip
+      # `continue-on-error` off once the baselines have stabilised.
+      - name: Run snap check
+        id: snap
+        continue-on-error: true
+        run: |
+          if [ "${{ steps.scope.outputs.mode }}" = "manual" ]; then
+            echo ">> manual run: themes=${{ steps.scope.outputs.themes }}"
+            for theme in ${{ steps.scope.outputs.themes }}; do
+              python3 bin/snap.py shoot "$theme"
+              python3 bin/snap.py diff "$theme"
+            done
+            python3 bin/snap.py report --strict
+          else
+            python3 bin/snap.py check --changed --changed-base origin/main
+          fi
+
+      - name: Upload snap artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snap-output-${{ github.run_id }}
+          path: |
+            tmp/snap/**/review.md
+            tmp/snap/**/review.json
+            tmp/snap/**/diffs/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Warn-only reminder
+        if: steps.snap.outcome == 'failure'
+        run: |
+          echo "::warning::bin/snap.py check FAILED but this job is currently"
+          echo "::warning::warn-only. Flip continue-on-error: false in"
+          echo "::warning::.github/workflows/visual.yml once baselines stabilise."

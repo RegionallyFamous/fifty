@@ -36,7 +36,6 @@ To opt out (don't)
 """
 from __future__ import annotations
 
-import os
 import stat
 import subprocess
 import sys
@@ -65,7 +64,7 @@ def configure_hooks_path() -> None:
         print(f"  ! git config core.hooksPath was {current!r}; overwriting")
     result = run(["git", "config", "core.hooksPath", target])
     if result.returncode != 0:
-        print(f"  ✘ failed to set git config core.hooksPath", file=sys.stderr)
+        print("  ✘ failed to set git config core.hooksPath", file=sys.stderr)
         sys.exit(result.returncode)
     print(f"  ✓ set git config core.hooksPath = {target}")
 

@@ -80,7 +80,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import os
 import re
 import shutil
 import subprocess
@@ -88,7 +87,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib import MONOREPO_ROOT, iter_themes  # noqa: E402
+from _lib import MONOREPO_ROOT, iter_themes
 
 # Where to cache the upstream source repo locally between runs. /tmp keeps
 # it out of the user's home and out of the monorepo, and survives across

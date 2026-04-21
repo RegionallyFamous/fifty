@@ -1,0 +1,12 @@
+# Dev / CI dependencies. Runtime tooling in `bin/` is stdlib-only on
+# purpose (so `python3 bin/check.py` works on a fresh OS install with
+# nothing but Python). These deps are only needed when running the
+# tests, the lint gate, or the type checker.
+#
+# Pinned to ranges (not exact versions) so the gate doesn't break the
+# moment a patch release ships; CI's `setup-python` cache uses this
+# file's hash, so widening a range invalidates the cache exactly once.
+
+pytest>=8.0,<9
+ruff>=0.6,<1
+mypy>=1.11,<2

@@ -58,6 +58,39 @@ These are inherited by every theme in the monorepo. Per-theme `AGENTS.md` files 
 
 17. **`bin/check.py --all --offline` MUST pass on every commit, on every theme, no exceptions.** Two regressions made it to `main` because nothing automated ran the gate before the push: a Phase J refactor leaked `!important` past `check_no_important`, and a Phase K addition shipped the same leak under a new sentinel. The gate is fast (~3s × 5 themes ≈ 15s on a laptop) and has zero false positives — there is no real-world reason to commit past a red gate. Three layers enforce this and they stack rather than overlap because each one closes a different bypass: (a) `.githooks/pre-commit` runs the gate on every `git commit` and blocks the commit on any failure (this is the fast inner-loop signal); (b) `.githooks/pre-push` re-runs the gate AND a `bin/append-wc-overrides.py` drift check on every `git push` (this catches commits made with `git commit --no-verify`); (c) `.github/workflows/check.yml` runs the same gate server-side on every PR and every push to `main` (this is authoritative — no local bypass survives it). The local hooks only fire if `git config core.hooksPath` points at `.githooks/`; that's not on by default for a fresh clone, so the canonical bootstrap the moment you clone the repo (whether you're a human or a coding agent) is `python3 bin/install-hooks.py` — it sets `core.hooksPath`, fixes the executable bit on every hook, and smoke-tests the gate so you find out NOW if the working tree is already in a state that would block your next commit. The drift check piece matters as much as the static-analysis piece: `bin/append-wc-overrides.py` is sentinel-based, so a clean re-run is a no-op (every chunk reports `skip <sentinel>`); the moment the script's source diverges from the committed `theme.json` bytes, the script's next run reports `+<size> <sentinel>` and the pre-push gate blocks. NEVER edit `bin/append-wc-overrides.py` without re-running it AND committing the resulting `theme.json` diff in the same commit; NEVER `--no-verify` past a red gate; NEVER disable the GitHub Actions workflow.
 
+## Bootstrapping a fresh clone
+
+On the very first clone of this repo, run three commands in order. Each one is idempotent, so re-running them on a populated checkout is a no-op:
+
+```bash
+# 1. Install git hooks (pre-commit + pre-push) so `bin/check.py` runs
+#    automatically before every commit and push. Without this the
+#    local gate (layer a and b in rule #17) is inert.
+python3 bin/install-hooks.py
+
+# 2. Install the Python dev dependencies used by the tooling test
+#    suite and the lint gate (pytest + ruff + mypy). No WP/theme
+#    runtime deps — those live in the theme directories.
+python3 -m pip install -r requirements-dev.txt
+
+# 3. Install the Node dependencies for the editor-parity block
+#    validator (bin/blocks-validator/check-blocks.mjs). Only needed
+#    if you want to run `tests/validator/` locally; CI installs
+#    them from the committed package-lock.json.
+npm --prefix bin/blocks-validator ci
+```
+
+Once installed, four local commands together reproduce what CI runs:
+
+```bash
+python3 bin/check.py --all --offline    # theme-gate (same as CI)
+python3 -m pytest tests/                # unit + integration + validator tests
+python3 bin/lint.py                     # ruff + mypy + JS syntax check
+python3 bin/snap.py check --changed     # visual regression (slow; optional)
+```
+
+If you're an agent operating in this repo and hooks aren't installed yet, stop and run `python3 bin/install-hooks.py` before your first `git commit`. See root-rule #17 for the full story.
+
 ## Working on a theme
 
 ```bash
@@ -431,8 +464,21 @@ When you write theme READMEs, prefer the short URL (`https://demo.regionallyfamo
 `bin/` is shared. Anything you change there affects every theme. After editing:
 
 ```bash
-python3 bin/check.py --all --quick
+python3 bin/check.py --all --quick    # theme-gate
+python3 -m pytest tests/              # tooling-tests (unit + integration)
+python3 bin/lint.py                   # ruff + mypy
 ```
+
+The tooling test suite lives under `tests/` and is organised as:
+
+- `tests/check_py/` — unit tests for every `check_*` function in `bin/check.py`. One file per function family; each defines good + bad fixtures.
+- `tests/tools/` — integration tests for build scripts (`clone.py` round-trip, `build-index.py` determinism, `append-wc-overrides.py` idempotence, etc.).
+- `tests/validator/` — Node editor-parity validator smoke tests. Shells out to `bin/blocks-validator/check-blocks.mjs`; skipped when `node` / `php` / `node_modules/` are missing.
+- `tests/conftest.py` — shared `minimal_theme` / `monorepo` fixtures. Start here when writing a new test.
+
+See `tests/README.md` for the full convention (fixture patterns, naming, what to monkeypatch).
+
+CI runs all of this plus a visual-regression pass (`bin/snap.py check --changed`) on a separate workflow; see `.github/workflows/check.yml` + `.github/workflows/visual.yml`. Branch protection requires every job in `check.yml` to pass before a PR can merge; `visual.yml` is warn-only until the baselines stabilise. Applying / updating branch protection is a one-liner: `bash bin/setup-branch-protection.sh` (requires `gh auth login`).
 
 `bin/_lib.py` contains the theme resolver (`resolve_theme_root`, `iter_themes`, `MONOREPO_ROOT`) AND the canonical GitHub identity (`GITHUB_ORG`, `GITHUB_REPO`, `GITHUB_BRANCH`, `GH_PAGES_BASE_URL`, `RAW_GITHUB_BASE_URL`, `theme_content_base_url(slug)`, `theme_blueprint_raw_url(slug)`, `playground_deeplink(slug, url_path)`, `gh_pages_short_url(slug, page_slug)`). `bin/sync-playground.py` and `bin/build-redirects.py` both consume those helpers — if you change the org / repo / branch, change it once in `_lib.py` and re-run both scripts. Every new bin/ script should follow the same pattern: positional theme arg, `--all` flag where it makes sense, default to cwd if it contains `theme.json`, and pull any GH-identity URL from `_lib` rather than re-encoding it.
 

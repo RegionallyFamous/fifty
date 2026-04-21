@@ -1,0 +1,23 @@
+# CODEOWNERS for the Fifty monorepo.
+#
+# GitHub uses this file to auto-request reviews when a PR touches the
+# listed paths. The `bin/` scripts and the CI workflow definitions
+# are the two places where a bad change has blast-radius across every
+# theme, so we require an explicit owner sign-off before merge.
+#
+# Format: <path glob>  <space-separated owners>
+#
+# References:
+#   https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-security/
+#     customizing-your-repository/about-code-owners
+
+# Default: the repository owner reviews anything not covered below.
+*                           @nickhamze
+
+# Tooling & CI: changes here affect every theme + every contributor.
+/bin/                       @nickhamze
+/.github/                   @nickhamze
+/pyproject.toml             @nickhamze
+/requirements-dev.txt       @nickhamze
+/tests/                     @nickhamze
+/.githooks/                 @nickhamze

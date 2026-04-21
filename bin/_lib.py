@@ -14,10 +14,8 @@ list-tokens) to iterate every theme in the monorepo.
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-import sys
-from typing import Iterable
-
 
 MONOREPO_ROOT = Path(__file__).resolve().parent.parent
 

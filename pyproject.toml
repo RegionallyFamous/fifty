@@ -1,0 +1,182 @@
+######################################################################
+# fifty-tooling — pytest + ruff + mypy config for the bin/ test suite.
+#
+# This file does NOT install anything. The repo's "code" is the WordPress
+# theme directories (`obel/`, `chonk/`, …) and the standalone scripts in
+# `bin/`. Neither is a Python package. This pyproject exists purely as
+# the canonical place for tooling config so contributors don't have to
+# learn three tool-specific dotfiles (pytest.ini + .ruff.toml + mypy.ini).
+#
+# Bootstrap on a fresh clone:
+#
+#     python3 -m pip install --user -r requirements-dev.txt
+#     python3 bin/install-hooks.py
+#     pytest                       # Phase B/C/D unit + integration tests
+#     python3 bin/lint.py          # Phase E ruff + mypy + eslint wrapper
+#     python3 bin/check.py --all   # Phase G theme-gate (already existed)
+######################################################################
+
+[build-system]
+# We don't build anything — but the [build-system] section keeps modern
+# tooling happy when it inspects the file (mypy, ruff, pip).
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fifty-tooling"
+version = "0.0.0"
+description = "Test + lint config for the Fifty monorepo's bin/ scripts."
+requires-python = ">=3.9"
+# Empty deps. The runtime tools in `bin/` use only the stdlib.
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[tool.setuptools]
+# We intentionally don't ship a Python package. Tell setuptools to skip
+# auto-discovery so a stray `pip install .` doesn't pull in tests/ or bin/.
+packages = []
+
+######################################################################
+# pytest
+######################################################################
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+# `tests/visual-baseline/` holds binary PNGs (visual baselines for
+# bin/snap.py); pytest must not try to collect them as test modules.
+norecursedirs = [
+    "tests/visual-baseline",
+    "tests/validator/fixtures",
+    "tests/check_py/fixtures",
+    "tests/tools/fixtures",
+]
+# bin/ is not a package, so tests rely on a sys.path tweak in
+# tests/conftest.py to import the scripts as top-level modules
+# (`import check`, `import build_index`, …).
+addopts = [
+    "-ra",                  # show summary for all non-passed
+    "--strict-markers",     # typo'd @pytest.mark.foo fails loudly
+    "--strict-config",
+    "-q",
+]
+filterwarnings = [
+    "error",
+    # jsdom + Playwright noise leaks through subprocess capture; we
+    # tolerate DeprecationWarning from third-party stdlib usage but
+    # any new warning from our own code should be a hard error.
+    "default::DeprecationWarning",
+]
+
+######################################################################
+# ruff (linter + formatter)
+######################################################################
+[tool.ruff]
+line-length = 100
+# Match the Python version pinned in `.github/workflows/check.yml`. Local
+# devs may have 3.9 (macOS system Python); ruff still parses fine, but
+# its rule output reflects what CI's interpreter would accept.
+target-version = "py312"
+extend-exclude = [
+    "tests/visual-baseline",   # binary PNG assets
+    "tmp",                     # bin/snap.py output dir
+    "*/playground/content",    # generated WC catalogue + WXR
+    "*/playground/images",     # binary product photos
+    "*/_examples",             # demo / scratch space inside themes
+]
+
+[tool.ruff.lint]
+# Rule families chosen to match the existing codebase's voice without
+# requiring a sweeping reformat:
+#   E,F   pycodestyle + pyflakes (the bare-minimum hygiene set)
+#   I     import sorting
+#   UP    pyupgrade (modernise typing.List -> list[…], etc.)
+#   B     bugbear (catches genuine footguns: mutable default args, etc.)
+#   SIM   flake8-simplify
+#   RUF   ruff-native rules (catches shell-injection-prone subprocess use)
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = [
+    # bin/check.py + bin/snap.py have very long, intentionally chatty
+    # docstrings (multi-paragraph post-mortems explaining each invariant).
+    # Wrapping them at 100 cols would destroy readability.
+    "E501",
+    # Subprocess use is unavoidable here (php -l, node, gh, git);
+    # individual call sites are reviewed for shell-injection by hand.
+    "S603", "S607",
+    # `ROOT` global in bin/check.py is intentional (per-theme rebinding
+    # in run_checks_for); the shadowing-by-loop-var heuristic mis-fires.
+    "B007",
+    # Ambiguous-unicode rules fire all over our CSS strings and docs
+    # (× for dimensions, ’ for apostrophes, — for em-dash). The
+    # characters are NOT typos — they're the actual glyphs we want
+    # to render. Suppressing across the board rather than
+    # per-file-ignoring every docstring.
+    "RUF001", "RUF002", "RUF003",
+    # try/except pass-to-suppress is a readable idiom for a bunch of
+    # best-effort shell-outs in snap.py; context-manager suppress()
+    # isn't always clearer.
+    "SIM105",
+    # Keeping if/else blocks explicit rather than rewriting to
+    # ternaries is a deliberate style choice in this codebase.
+    "SIM108",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Test files routinely use bare `assert`, magic constants, and import
+# patterns that the production lint set would flag.
+"tests/**" = [
+    "S101",   # assert is the whole point in pytest
+    "RUF",    # test fixtures aren't worth the noise
+]
+# bin/snap.py is a 1700-line Playwright script with a handful of pre-existing
+# bugbear/pyflakes warnings that are out-of-scope for landing the lint gate.
+# Tighten these in a follow-up focused on snap.py hygiene.
+"bin/snap.py" = [
+    "F841",   # unused locals (dead-code cleanup follow-up)
+    "B904",   # raise ... from err follow-up
+    "RUF005", # list-concat-literal rewrite follow-up
+    "SIM115", # open without context manager (one call site)
+]
+# bin/append-wc-overrides.py is a 1000-line CSS splicing script; its one
+# RUF005 leak is in a tuple-concat for the CHUNKS list and is deliberate.
+"bin/append-wc-overrides.py" = [
+    "RUF005",
+]
+# bin/check.py concatenates single-element lists with glob() results in a
+# couple of places (e.g. functions.php + patterns/*.php); iterable unpacking
+# would be equivalent but less readable. Allow the pattern locally.
+"bin/check.py" = [
+    "RUF005",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = false
+
+######################################################################
+# mypy (type check)
+######################################################################
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "bin"
+files = ["bin", "tests"]
+# Permissive baseline so the type gate can land without rewriting
+# 14k LOC. Tighten per-module over follow-up PRs.
+ignore_missing_imports = true
+no_implicit_optional = false
+warn_unused_ignores = true
+warn_redundant_casts = true
+check_untyped_defs = false
+disallow_untyped_defs = false
+
+# The largest legacy files are exempt from strictness for now. Each
+# entry is a follow-up that should be opened as its own PR.
+[[tool.mypy.overrides]]
+module = ["check", "snap", "append_wc_overrides", "snap_config"]
+ignore_errors = true

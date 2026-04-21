@@ -96,14 +96,14 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 # Add `bin/` to sys.path so we can import snap_config when running this
 # file from the repo root (the most common invocation).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from snap_config import (  # noqa: E402
+from snap_config import (
     BUDGETS,
     INSPECT_SELECTORS,
     INTERACTIONS,
@@ -117,7 +117,6 @@ from snap_config import (  # noqa: E402
     Route,
     Viewport,
 )
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TMP_DIR = REPO_ROOT / "tmp"
@@ -361,7 +360,7 @@ def _probe(url: str, timeout_s: float = 3.0) -> tuple[int, str] | None:
         # 4xx counts as "alive" -- the server processed our request,
         # blueprint just hasn't installed the route yet.
         return e.code, ""
-    except (urllib.error.URLError, socket.timeout, ConnectionError):
+    except (TimeoutError, urllib.error.URLError, ConnectionError):
         return None
 
 
@@ -1539,7 +1538,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
         print(f"\n{GREEN}Ready{RESET}: {server.url}/")
         print(f"  Login at: {server.url}/wp-admin/  (admin / password)")
         print(f"  Logs streaming to: {server.log_path}")
-        print(f"  Press Ctrl-C to stop.\n")
+        print("  Press Ctrl-C to stop.\n")
         try:
             server.proc.wait()
         except KeyboardInterrupt:
@@ -2285,7 +2284,7 @@ def cmd_report(args: argparse.Namespace) -> int:
               f"{r['net_4xx']:4d} {r['net_5xx']:4d} {r['page_errs']:7d}  "
               f"{r['report_path']}")
     print()
-    print(f"Cross-theme rollup: tmp/snaps/review.md")
+    print("Cross-theme rollup: tmp/snaps/review.md")
     if overall_gate == "warn" and getattr(args, "strict", False):
         # Loud banner so a passing-but-noisy run still gets attention,
         # even though we don't exit non-zero on warns.
@@ -2348,7 +2347,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     # Playwright
     try:
-        from playwright.sync_api import sync_playwright  # noqa: F401
+        from playwright.sync_api import sync_playwright
         checks.append(("Playwright (Python) installed", True, ""))
         # Chromium binary
         try:
@@ -2419,7 +2418,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         probe = TMP_DIR / ".doctor-probe"
         probe.write_text("ok", encoding="utf-8")
         probe.unlink()
-        checks.append((f"tmp/ writable", True, ""))
+        checks.append(("tmp/ writable", True, ""))
     except Exception as e:
         checks.append((
             "tmp/ NOT writable",

@@ -16,8 +16,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib import iter_themes, resolve_theme_root  # noqa: E402
-
+from _lib import iter_themes, resolve_theme_root
 
 # (foreground_slug, background_slug, min_ratio, where_it_appears)
 #
