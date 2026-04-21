@@ -35,13 +35,12 @@ Why crop+resize rather than a fresh render?
   Playwright plumbing for no benefit. Cropping the existing baseline keeps the
   admin card guaranteed-consistent with what we ship in tests/visual-baseline.
 """
+
 from __future__ import annotations
 
 import argparse
 import sys
 from pathlib import Path
-
-from PIL import Image
 
 from _lib import MONOREPO_ROOT, iter_themes, resolve_theme_root
 
@@ -84,6 +83,12 @@ def _build_one(theme_dir: Path) -> Path:
     theme has neither a committed baseline nor a fresh snap to read from.
     """
     source = _resolve_source(theme_dir.name)
+
+    # Pillow is a heavy optional dep. Importing lazily keeps the rest of
+    # the script (argparse `--help`, theme discovery) usable in CI/dev
+    # environments that don't install Pillow — only the actual crop step
+    # requires it.
+    from PIL import Image
 
     with Image.open(source) as src:
         src = src.convert("RGB")  # screenshot.png is RGB, drop alpha

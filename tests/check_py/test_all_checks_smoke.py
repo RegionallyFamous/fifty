@@ -27,7 +27,8 @@ _CROSS_THEME = frozenset(
         "check_pattern_microcopy_distinct",
         "check_all_rendered_text_distinct_across_themes",
         "check_front_page_unique_layout",
-        "check_mu_plugin_no_legacy_loop_echoes",
+        "check_no_brand_filters_in_playground",
+        "check_wc_microcopy_distinct_across_themes",
     }
 )
 

@@ -3973,7 +3973,7 @@ def check_wc_microcopy_distinct_across_themes() -> Result:
     if allowlist_path.is_file():
         try:
             raw = json.loads(allowlist_path.read_text(encoding="utf-8"))
-            allowlist = {k for k in raw.keys() if not k.startswith("_comment")}
+            allowlist = {k for k in raw if not k.startswith("_comment")}
         except json.JSONDecodeError as exc:
             r.fail(f"wc_microcopy_universal.json: invalid JSON ({exc}).")
             return r
@@ -4168,6 +4168,68 @@ def check_playground_content_seeded() -> Result:
     return r
 
 
+def check_theme_screenshots_distinct() -> Result:
+    """Fail when any two themes ship the same ``screenshot.png`` bytes.
+
+    Background
+    ----------
+    Every WordPress theme has a ``screenshot.png`` (admin Themes screen
+    card image, ~1200x900). The convention is that the screenshot is a
+    representative shot of the theme rendering — for the Fifty monorepo
+    that means the home page from the snap framework, cropped+resized
+    by ``bin/build-theme-screenshots.py``.
+
+    Before this check was added, every theme in the monorepo shipped
+    the SAME placeholder bytes (md5 was identical across obel/chonk/
+    lysholm/selvedge/aero), so the admin Themes grid showed five
+    identical cards labelled with five different theme names. Catching
+    that in CI keeps the regression from re-appearing — common ways it
+    silently re-appears are:
+
+        * `bin/clone.py` copying the source theme's screenshot.png
+          verbatim into a new variant and the author forgetting to
+          re-run the screenshot builder.
+        * A theme being rebaselined but `bin/build-theme-screenshots.py`
+          not being re-run, leaving an old screenshot pointing at a
+          stale render.
+        * A copy-paste between themes in a "fix everything in parallel"
+          edit.
+
+    What this check enforces
+    ------------------------
+    For every theme directory in the monorepo, hash its
+    ``screenshot.png`` (sha-256, full file). If any two themes share a
+    hash, fail with both theme names — that's the duplicate. Also fail
+    if a theme is missing its screenshot.png entirely. We deliberately
+    do NOT compare visual similarity — even cropping/resizing slight
+    variations of the same source baseline produces distinct bytes, so
+    a byte-exact match is the unambiguous regression signal.
+    """
+    import hashlib
+
+    r = Result("Theme screenshots distinct (no duplicate-bytes)")
+
+    by_hash: dict[str, list[str]] = {}
+    for theme in iter_themes():
+        path = theme / "screenshot.png"
+        if not path.exists():
+            r.fail(f"{theme.name}/: missing screenshot.png")
+            continue
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        by_hash.setdefault(digest, []).append(theme.name)
+
+    for digest, themes in by_hash.items():
+        if len(themes) > 1:
+            r.fail(
+                f"{', '.join(themes)} share identical screenshot.png "
+                f"(sha256={digest[:12]}…). Re-run "
+                f"`python3 bin/build-theme-screenshots.py` to regenerate "
+                f"per-theme screenshots from each theme's home snap."
+            )
+
+    return r
+
+
 def check_no_unpushed_commits() -> Result:
     """Fail if local HEAD has commits that haven't reached origin yet.
 
@@ -4324,6 +4386,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_no_brand_filters_in_playground(),
         check_wc_microcopy_distinct_across_themes(),
         check_playground_content_seeded(),
+        check_theme_screenshots_distinct(),
         check_no_unpushed_commits(),
     ]
 
