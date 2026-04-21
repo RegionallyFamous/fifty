@@ -158,6 +158,15 @@ python3 bin/snap.py report
 python3 bin/snap.py diff --all
 # Re-baseline after intentional changes:
 python3 bin/snap.py baseline --all
+
+# Rebuild every theme's admin-card screenshot.png from the fresh snaps
+# (or from the baselines if you've just rebaselined). Without this, all
+# five themes ship the SAME placeholder bytes — the WP admin Themes
+# screen shows five identical cards labelled with five different names.
+# `bin/check.py` runs `check_theme_screenshots_distinct` and FAILS when
+# any two themes' screenshot.png have the same sha-256.
+python3 bin/build-theme-screenshots.py            # all themes
+python3 bin/build-theme-screenshots.py chonk      # one theme
 ```
 
 Per-cell artifacts (all under `tmp/snaps/<theme>/<viewport>/<route>.*`):
@@ -236,9 +245,10 @@ The short version:
 7. `python3 bin/build-index.py <new_name>`
 8. `python3 bin/seed-playground-content.py` — populates the new theme's `playground/content/` (CSV + WXR + category-images map) and `playground/images/` (product / page / post / category artwork) from the canonical W&O source, rewriting every image URL to point at the new theme's own folder.
 9. `python3 bin/sync-playground.py` — auto-discovers the new theme and re-inlines the shared helpers into its blueprint, prepending the per-theme constants and rewriting the importWxr URL.
-10. `python3 bin/check.py <new_name>`
-11. `python3 bin/build-redirects.py` — regenerates `docs/<new_name>/<page>/index.html` so the theme is reachable at `https://demo.regionallyfamous.com/<new_name>/` once the change is pushed and GH Pages picks it up. Re-run any time you add a theme or change the `PAGES` list inside the script. See "GitHub Pages short URLs" below.
-12. Open the new theme's short URL (`https://demo.regionallyfamous.com/<new_name>/`, which redirects to the canonical `playground.wordpress.net/?blueprint-url=…` deeplink) and walk the surface checklist before declaring done. The blueprint AND the short-URL redirector are part of the deliverable — see "WordPress Playground blueprints" and "GitHub Pages short URLs" below.
+10. `python3 bin/snap.py shoot <new_name> --routes home --viewports desktop` then `python3 bin/build-theme-screenshots.py <new_name>` — replaces `<new_name>/screenshot.png` (which `bin/clone.py` copied verbatim from Obel) with a real 1200x900 crop of the theme's own home page so the WP admin Themes card actually shows your theme. `bin/check.py` will fail until you do this.
+11. `python3 bin/check.py <new_name>`
+12. `python3 bin/build-redirects.py` — regenerates `docs/<new_name>/<page>/index.html` so the theme is reachable at `https://demo.regionallyfamous.com/<new_name>/` once the change is pushed and GH Pages picks it up. Re-run any time you add a theme or change the `PAGES` list inside the script. See "GitHub Pages short URLs" below.
+13. Open the new theme's short URL (`https://demo.regionallyfamous.com/<new_name>/`, which redirects to the canonical `playground.wordpress.net/?blueprint-url=…` deeplink) and walk the surface checklist before declaring done. The blueprint AND the short-URL redirector are part of the deliverable — see "WordPress Playground blueprints" and "GitHub Pages short URLs" below.
 
 ## WordPress Playground blueprints
 
