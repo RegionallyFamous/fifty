@@ -48,9 +48,15 @@ SKIP_DIRS = {".git", "node_modules", "vendor", "bin", "__pycache__"}
 # from the canonical wonders-oddities source and rewrites every image URL
 # to point at the new theme's own images/ folder. Skipping them here keeps
 # the cloned theme's content set theme-correct from the first commit.
+#
+# styles/claude.json is also skipped: it was an experimental "Claude" style
+# variation that the maintainer explicitly retired (chonk + aero both had
+# it deleted in follow-up commits). Skipping at clone time stops it from
+# silently re-appearing in every new theme.
 SKIP_RELPATHS = {
     Path("playground") / "content",
     Path("playground") / "images",
+    Path("styles") / "claude.json",
 }
 
 
