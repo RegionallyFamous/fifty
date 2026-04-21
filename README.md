@@ -1,54 +1,87 @@
 # Fifty
 
-**A monorepo of token-driven WooCommerce themes — zero CSS files, zero JavaScript, zero build step. Edit one `theme.json` and the entire storefront re-skins: homepage, archives, product pages, cart, checkout, account dashboard, transactional emails.**
+**Four full WooCommerce stores. One shared codebase. Make one your own in an afternoon.**
 
-Most WordPress themes are a CSS pile-up with a `package.json` and a webpack config bolted on. Fifty goes the other direction: every theme in this repo is pure block markup plus a `theme.json` of design tokens plus a tiny `functions.php` of WordPress filters. Restyling means moving tokens around, not chasing selectors. Adding a new theme means cloning the base and changing colors and fonts.
+Most WordPress theme projects are a graveyard of CSS files, build configs, and dependencies that haven't aged well. Fifty is the opposite: every theme in this repo is just block markup, a list of design values, and a tiny PHP file. You change about ten of those values and the whole storefront re-skins — buttons, links, focus rings, swatches, hover states, form inputs, "Add to cart" CTAs, transactional emails, the lot. You can read the whole thing in an afternoon. You can rebrand it in an evening. You can ship it to a real store.
 
-It is also a complete worked example of what an **agent-first** WordPress codebase looks like — every rule that keeps the themes consistent is codified in `bin/check.py` and gated by a Playwright + WordPress Playground visual snapshot framework that runs as part of the build. Cursor and Claude can pick this codebase up cold and ship a new theme in one session, because every architectural decision has a load-bearing comment and every footgun has a guardrail.
+## See them running
 
-## Try it now
+Each link below boots a fully-seeded WordPress + WooCommerce site **in your browser** — no install, no signup, no card. Give it 60 to 90 seconds on the first boot while it pulls the sample products and images.
 
-Each theme below boots a disposable WordPress + WooCommerce instance entirely in your browser, with the theme installed, 30 sample products, 5 orders, a logged-in customer, on-sale and out-of-stock states — all seeded. ~60-90s cold start. No install, no signup, no card.
-
-| Theme | Vibe | Live demo |
+| Theme | Vibe | Click here |
 | --- | --- | --- |
 | **Obel** | Editorial, soft, restrained | [demo.regionallyfamous.com/obel/](https://demo.regionallyfamous.com/obel/) |
 | **Chonk** | Neo-brutalist, chunky, high-contrast | [demo.regionallyfamous.com/chonk/](https://demo.regionallyfamous.com/chonk/) |
 | **Selvedge** | Workwear indigo, woven textures, raw edges | [demo.regionallyfamous.com/selvedge/](https://demo.regionallyfamous.com/selvedge/) |
-| **Lysholm** | Nordic home goods, white-on-white, blonde wood | [demo.regionallyfamous.com/lysholm/](https://demo.regionallyfamous.com/lysholm/) |
+| **Lysholm** | Quiet Nordic, white-on-white, blonde wood | [demo.regionallyfamous.com/lysholm/](https://demo.regionallyfamous.com/lysholm/) |
 
-Each demo lands you on the designed homepage. From there: shop archive, single product, pre-filled cart, checkout, account dashboard, blog, 404 — every page works. Logged in as `admin` / `password`; sign in as `customer` / `customer` to see the customer dashboard.
+You land on the homepage as `admin / password`. From there click into the shop, a product, the (already pre-filled) cart, checkout, the customer dashboard, the journal, the 404. Sign in as `customer / customer` to see the customer side. Break stuff — it's disposable.
 
-## What's cool about Fifty
+## Want to make your own?
 
-- **Four distinct storefronts from one codebase.** Same templates, same patterns, same `bin/check.py` gate — totally different vibes.
-- **Token-only restyling, for real.** No CSS files in any theme. The look comes entirely from `theme.json` design tokens. Change `--wp--preset--color--accent` and every button, link, focus ring, swatch, hover state, form input, and add-to-cart CTA picks it up. The hard rule is "no `!important` and no raw hex colors outside the palette" — and `bin/check.py` enforces it.
-- **One-click WordPress Playground demos.** A short URL like [`demo.regionallyfamous.com/chonk/cart/`](https://demo.regionallyfamous.com/chonk/cart/) boots a fully-seeded WordPress + WooCommerce instance in your browser. No install.
-- **Visual regression testing built into every commit.** `bin/snap.py` boots WordPress Playground locally for each theme, drives Playwright Chromium across every `(route × viewport)`, and captures screenshot **+** rendered DOM **+** console messages **+** page errors **+** network failures **+** axe-core a11y violations **+** computed dimensions for tracked layout selectors **+** scripted interactive flows. Diffs against committed baselines, emits a tiered `pass / warn / fail` gate.
-- **Custom DOM heuristics, not just axe.** ~25 hand-written checks for the bug classes WordPress + WooCommerce themes actually break on: broken/oversized/blurry images, narrow sidebars, missing `alt` attrs, leaked PHP debug output, raw `__()` i18n tokens, visible WC error notices, ellipsis truncation actively hiding content, empty landmarks, **duplicate `view-transition-name` collisions** (the kind that silently abort every browser-native page transition), and more.
-- **Cross-document view transitions, by default.** Every theme opts into [native CSS view transitions](https://developer.chrome.com/docs/web-platform/view-transitions/cross-document): the site title morphs from the header into the PDP hero, post titles morph from archive cards into single-post heroes, header and footer persist across navigation. CSS-only — no JavaScript, no SPA shell.
-- **WooCommerce-native, but the WC default chrome is invisible.** The themes paint over WC's loading skeletons, totals blocks, form inputs, sidebar layout, mini-cart drawer, product gallery, sale flashes, and review stars so the result looks like a custom store, not "yet another WooCommerce site".
-- **WCAG AA, enforced.** Hand-rolled contrast checks, axe-core on every snap, and a hover/focus state legibility check that catches the "accent color collapsed to invisible against base" footgun separately. No theme ships with a contrast violation.
-- **Agent-first by design.** Every theme has an `AGENTS.md`, `INDEX.md`, `CHANGELOG.md`, and `SYSTEM-PROMPT.md`. The repo-root `AGENTS.md` documents every footgun the project has hit, with the regression history and the codified guardrail.
+Pick whichever theme is closest to the vibe you want and copy it:
+
+```bash
+python3 bin/clone.py mybrand
+```
+
+That gives you `mybrand/`, a sibling of Obel inside this repo. Open `mybrand/theme.json` — that one file is the entire design system — and start changing values:
+
+- **The colors.** Six entries in `palette` define every color the theme uses. Want a coral-and-cream store? Change two of them. Every button, link, focus ring, hover state, form input, and "Add to cart" CTA picks it up.
+- **The fonts.** `typography.fontFamilies` is a short list. Drop in a Google Font URL or a local file.
+- **The shape.** `spacing.spacingScale`, `borderRadius`, `layout.contentSize` set the rhythm of the whole site. Tighter, looser, sharper, softer — three numbers each.
+
+Hit reload in the WordPress site editor and the entire storefront re-skins live. No build step. No CSS to recompile. No browser cache to chase. The block editor reads `theme.json` directly.
+
+When you've got something you like, ship it the same way you ship any other WordPress theme: drop the `mybrand/` directory into `wp-content/themes/` on a real site and activate it. Fifty themes are completely standard WordPress + WooCommerce — every block, every template, every WC hook is the official one. You're not locked into a framework or a page builder. You're not paying anyone a license fee. The entire project is GPL-2.0+, fork it and sell it.
+
+The full nine-step walkthrough lives in [Adding a Theme](https://github.com/RegionallyFamous/fifty/wiki/Adding-a-Theme).
+
+## What you get when you clone Obel
+
+- **~25 templates** that cover every WordPress and WooCommerce page: homepage, archives, single product (with gallery + variations + reviews + upsells), cart, checkout, my-account dashboard, order confirmation, search, comments, 404, even coming-soon mode and the customer order detail view.
+- **~10 starter patterns** (hero, featured products, value props, CTA banner, FAQ accordion, testimonials, newsletter, footer columns) you can drag into the editor and edit in place.
+- **A complete WooCommerce skin.** Cart, checkout, totals, mini-cart drawer, sale flashes, review stars, filters, breadcrumbs, the order-confirmation receipt — all themed, none of it screaming "stock WooCommerce".
+- **A `playground/blueprint.json`** so anyone can boot your theme in a browser with one link, with sample products, sample orders, and a logged-in customer — exactly like the demos at the top of this README.
+- **Zero JavaScript bundles. Zero custom blocks. Zero `node_modules`. Zero dependencies.**
+
+## The cool engineering bits, in plain English
+
+These are the parts that make the whole "ten values and you're done" thing actually work. None of them are hidden — they're all in this repo and they all earn their keep.
+
+- **No CSS files. No JavaScript. No build step.** Look at any theme directory: `theme.json` (the design system), `templates/` (block markup), `parts/` (header, footer, mini-cart), `patterns/` (drag-into-editor sections), `functions.php` (a few WP filters). That's it. No `package.json`, no `webpack.config.js`, no `style.scss`, no `dist/`. The look comes entirely from design tokens that the block editor reads natively. You edit a value, the editor updates instantly.
+
+- **Four very different stores from the same code.** Look at the demos again — Chonk and Lysholm couldn't look more different from each other, and they are literally clones of the same templates. Only the design tokens differ. That's the whole pitch in one sentence.
+
+- **A real visual test on every commit.** A Python script (`bin/snap.py`) boots WordPress + WooCommerce locally for each theme, opens it in a real Chromium browser via Playwright, and screenshots every page at four screen sizes. Then it diffs the screenshots against committed reference images and tells you what changed. If something looks broken, the build fails. So you don't push a homepage that has the cart sidebar at 60 pixels wide because you renamed a CSS class three commits ago.
+
+- **Bug-catchers built specifically for WordPress's footguns.** Beyond the usual accessibility checks (axe-core runs on every snap), there are about 25 hand-written checks for the bugs WP and WC themes actually break on: oversized images, missing `alt` attributes, sidebars rendering 60px wide on desktop, "duplicate view-transition-name" warnings that silently abort native page transitions, leaked PHP debug output, raw `__()` translation tokens that didn't get translated, ellipsis truncation actively hiding content. Each one names the file, points at the offending element, and tells you how to fix it.
+
+- **One-click demos for everyone, including you.** Those `demo.regionallyfamous.com/<theme>/` links boot a real WordPress instance entirely in your browser via [WordPress Playground](https://wordpress.org/playground/). When you build your own theme on top of Fifty, you get the same thing free — your `playground/blueprint.json` is already wired up, just push to GitHub and share the link.
+
+- **Native cross-page transitions.** Click around any of the demos and watch what happens between pages: the site title morphs from header into the product hero, post titles glide from archive cards into the single-post layout, header and footer persist across navigation. That's the browser's native [View Transitions API](https://developer.chrome.com/docs/web-platform/view-transitions/cross-document) doing the work — about 20 lines of CSS in `theme.json`. No JavaScript framework, no SPA shell, no router.
+
+- **Accessibility passes, every time.** A hand-written contrast checker runs on every theme's color palette and fails the build if any text drops below the WCAG AA 4.5:1 threshold or any UI element drops below 3:1. There's a separate hover/focus check for the "the accent color collapsed to invisible against the base" footgun. axe-core runs on every page in the snap framework. No theme in this repo ships with a known accessibility violation.
+
+- **Built to work with AI agents.** Every theme has an `AGENTS.md`, an `INDEX.md`, a `CHANGELOG.md`, and a `SYSTEM-PROMPT.md`. The repo-root [`AGENTS.md`](./AGENTS.md) is a 2000-line catalog of every footgun the project has hit, with the regression history and the rule that catches it. Drop the repo into Cursor or Claude and they can ship a brand-new theme variant in one session, because every gotcha has a comment and every rule has a check.
 
 ## Documentation
 
-The technical reference lives in the [wiki](https://github.com/RegionallyFamous/fifty/wiki).
+The full technical reference lives in the [wiki](https://github.com/RegionallyFamous/fifty/wiki):
 
 | If you want to... | Read |
 |---|---|
-| Try a theme in WordPress Playground (one-click demos, full URL tables) | [Getting Started](https://github.com/RegionallyFamous/fifty/wiki/Getting-Started) |
+| Try a theme in WordPress Playground (full URL tables, blueprint internals) | [Getting Started](https://github.com/RegionallyFamous/fifty/wiki/Getting-Started) |
 | Install a theme into a real WordPress instance | [Getting Started → Local install](https://github.com/RegionallyFamous/fifty/wiki/Getting-Started#loading-themes-into-wordpress) |
-| See the monorepo layout and what every directory does | [Project Structure](https://github.com/RegionallyFamous/fifty/wiki/Project-Structure) |
-| Run `bin/check.py`, validators, and the rest of the CLI | [Tooling](https://github.com/RegionallyFamous/fifty/wiki/Tooling) |
-| Drive the visual snapshot framework | [Visual Snapshots](https://github.com/RegionallyFamous/fifty/wiki/Visual-Snapshots) |
-| Scaffold a new theme variant | [Adding a Theme](https://github.com/RegionallyFamous/fifty/wiki/Adding-a-Theme) |
-| Make changes to existing themes or shared tooling | [Working in the Repo](https://github.com/RegionallyFamous/fifty/wiki/Working-in-the-Repo) |
-| Deep dive into a single theme's design tokens, blocks, templates | [Architecture](https://github.com/RegionallyFamous/fifty/wiki/Architecture) · [Design Tokens](https://github.com/RegionallyFamous/fifty/wiki/Design-Tokens) · [Block Reference](https://github.com/RegionallyFamous/fifty/wiki/Block-Reference) · [Templates](https://github.com/RegionallyFamous/fifty/wiki/Templates) |
+| Make your own theme variant from scratch | [Adding a Theme](https://github.com/RegionallyFamous/fifty/wiki/Adding-a-Theme) |
+| See the layout and what every directory does | [Project Structure](https://github.com/RegionallyFamous/fifty/wiki/Project-Structure) |
+| Run the build, validators, and the snapshot framework | [Tooling](https://github.com/RegionallyFamous/fifty/wiki/Tooling) · [Visual Snapshots](https://github.com/RegionallyFamous/fifty/wiki/Visual-Snapshots) |
+| Edit existing themes safely | [Working in the Repo](https://github.com/RegionallyFamous/fifty/wiki/Working-in-the-Repo) |
+| Deep dive into one theme | [Architecture](https://github.com/RegionallyFamous/fifty/wiki/Architecture) · [Design Tokens](https://github.com/RegionallyFamous/fifty/wiki/Design-Tokens) · [Block Reference](https://github.com/RegionallyFamous/fifty/wiki/Block-Reference) · [Templates](https://github.com/RegionallyFamous/fifty/wiki/Templates) |
 | Use Fifty with Cursor / Claude / ChatGPT | [Working with LLMs](https://github.com/RegionallyFamous/fifty/wiki/Working-with-LLMs) |
 
-For agents working in the repo, [`AGENTS.md`](./AGENTS.md) at the root is the load-bearing file: it carries every footgun the project has hit, with the regression history and the codified guardrail.
+If you're an agent working in this repo, [`AGENTS.md`](./AGENTS.md) at the root is the load-bearing file.
 
 ## License
 
-GPL-2.0-or-later. See [`LICENSE`](./LICENSE).
+GPL-2.0-or-later. Use it commercially, fork it, sell it, rebrand it. See [`LICENSE`](./LICENSE).
