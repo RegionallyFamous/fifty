@@ -75,6 +75,13 @@ MAPPINGS: dict[str, Path] = {
         MONOREPO_ROOT / "playground" / "wo-configure.php",
     "/wordpress/wp-content/mu-plugins/wo-cart-mu.php":
         MONOREPO_ROOT / "playground" / "wo-cart-mu.php",
+    # Premium-microcopy override mu-plugin. Replaces default WC strings
+    # ("Showing 1-16 of 55 results", "Default sorting", "Estimated
+    # total", "Proceed to Checkout", red-asterisk required markers) so
+    # the demo doesn't read as a generic WooCommerce install. See
+    # playground/wo-microcopy-mu.php for the full string map.
+    "/wordpress/wp-content/mu-plugins/wo-microcopy-mu.php":
+        MONOREPO_ROOT / "playground" / "wo-microcopy-mu.php",
 }
 
 # Targets that should receive the WO_* constants block at the top.

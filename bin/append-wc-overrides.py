@@ -371,6 +371,30 @@ table.variations select,select.wo-variation{{font-family:var(--wp--preset--font-
 {SENTINEL_CLOSE_PHASE_A}"""
 
 
+# ---------------------------------------------------------------------------
+# Follow-up chunk: Phase B microcopy support classes.
+# ---------------------------------------------------------------------------
+# The wo-microcopy-mu.php mu-plugin (installed by every blueprint) emits
+# two custom classes that need light styling so the swapped strings look
+# intentional rather than naked DOM:
+#
+#   .wo-required-mark   — replaces WC's red `<abbr class="required">*`
+#                         with a single secondary-colored mid-dot. We
+#                         render at line-height:1 so it never lifts the
+#                         label baseline.
+#   .wo-result-count    — replaces WC's "Showing 1-16 of 55 results"
+#                         counter on shop archives with a tight uppercase
+#                         "55 items" line. Pinned to the sans preset and
+#                         the secondary text color so it reads as a
+#                         supporting line, not as page H1 chrome.
+SENTINEL_OPEN_PHASE_B = "/* wc-tells-phase-b-microcopy */"
+SENTINEL_CLOSE_PHASE_B = "/* /wc-tells-phase-b-microcopy */"
+CSS_PHASE_B = f"""{SENTINEL_OPEN_PHASE_B}
+.wo-required-mark{{display:inline-block;margin-left:var(--wp--preset--spacing--2-xs);color:var(--wp--preset--color--secondary);font-weight:var(--wp--custom--font-weight--regular);line-height:1;}}
+.wo-result-count{{font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;color:var(--wp--preset--color--secondary);margin:0 0 var(--wp--preset--spacing--md);}}
+{SENTINEL_CLOSE_PHASE_B}"""
+
+
 # Each entry: (sentinel_open, sentinel_close, raw_css, anchor_after).
 # `anchor_after` is the marker the chunk is spliced in after — for the
 # first chunk that's the canonical archive-page marker; for follow-ups
@@ -412,6 +436,12 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_PHASE_A,
         CSS_PHASE_A,
         SENTINEL_CLOSE_CO_OUTER,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_B,
+        SENTINEL_CLOSE_PHASE_B,
+        CSS_PHASE_B,
+        SENTINEL_CLOSE_PHASE_A,
     ),
 ]
 
