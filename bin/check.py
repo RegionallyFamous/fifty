@@ -1589,6 +1589,13 @@ def check_wc_card_surfaces_padded() -> Result:
     bg_surfaces: set[str] = set()
     for m in re.finditer(r"([^{}]+)\{([^}]*)\}", top_css):
         selectors_blob, body = m.group(1), m.group(2)
+        # Strip CSS block comments from the selectors blob so a rule
+        # whose head is glued to a sentinel comment (the way
+        # `bin/append-wc-overrides.py` emits its chunks) still parses
+        # cleanly — without this strip, the first selector in the
+        # rule carries the leading `/* ... */` and never matches a
+        # bare-string equality test.
+        selectors_blob = re.sub(r"/\*.*?\*/", "", selectors_blob)
         # Multiple selectors per rule (`a, b, c { ... }`). For each card
         # surface, check if the rule's selector list mentions it as a
         # full selector (not a substring of a different selector — `+
@@ -1652,6 +1659,177 @@ def check_wc_card_surfaces_padded() -> Result:
     r.details.append(
         f"{len(bg_surfaces)} painted card surface(s) — all use "
         f"≥xl internal padding"
+    )
+    return r
+
+
+def check_wc_totals_blocks_padded() -> Result:
+    """Fail if `wp-block-woocommerce-cart-totals-block` or
+    `wp-block-woocommerce-checkout-totals-block` doesn't carry an
+    `xl`-or-larger padding declaration in top-level `styles.css`.
+
+    Why this is its own check (vs piggybacking on
+    `check_wc_card_surfaces_padded`):
+
+    `check_wc_card_surfaces_padded` is gated on the surface having a
+    NON-TRANSPARENT `background:` painted on it — the assumption is "if
+    you painted it as a panel, give it panel padding". That gate is
+    correct for the SIDEBAR WRAPPER (`.wc-block-cart__sidebar` /
+    `.wc-block-checkout__sidebar`) because that wrapper might be
+    transparent on some themes (the base layer of the page bleeds
+    through and there's no card to "breathe").
+
+    The two TOTALS BLOCKS (`.wp-block-woocommerce-cart-totals-block`
+    and `.wp-block-woocommerce-checkout-totals-block`) are different.
+    In current WooCommerce blocks (9.x+) the totals block IS the
+    visible "Order summary" card on every theme — it ALWAYS becomes
+    the painted surface a shopper sees, because:
+
+      * Phase C ships a `::before` "Order summary" pseudo-element
+        directly on `.wp-block-woocommerce-cart-totals-block` /
+        `.wp-block-woocommerce-checkout-totals-block`. That pseudo
+        title sits at the top-left of whatever bounds those selectors
+        own; if they have no padding, the title sits flush at the
+        edge.
+      * The WC block markup renders the totals block at width:100%
+        inside the sidebar wrapper. If the sidebar wrapper is
+        unpainted (or painted the same color as the page background,
+        like Selvedge's dark base where `--surface` ≈ page bg), the
+        totals block IS the visible card, and the only thing inset
+        from its perimeter is whatever padding the totals block
+        itself declares.
+
+    So even if the SIDEBAR WRAPPER passes
+    `check_wc_card_surfaces_padded`, the inner totals block can still
+    render edge-to-edge content (the bug we're preventing). This check
+    closes that gap by enforcing padding on the totals blocks
+    UNCONDITIONALLY — no background prerequisite, because in modern
+    WC the totals block is always the visible card surface on at
+    least some themes.
+
+    What this check enforces:
+
+      * For each of the two totals selectors above, at least one
+        top-level `styles.css` rule whose selector list mentions the
+        bare selector must declare `padding`, `padding-left`, or
+        `padding-inline` using a spacing token of `xl` or larger
+        (`xl`, `2-xl`, `3-xl`, `4-xl`, `5-xl`).
+      * If multiple rules apply, the bigger token wins (matches the
+        permissive semantics in `check_wc_card_surfaces_padded`).
+
+    Enforced at write time by:
+      `bin/append-wc-overrides.py` Phase H
+      (`wc-tells-phase-h-totals-padding`), which emits the baseline
+      `padding: xl` on these selectors into every theme's
+      `styles.css`.
+
+    See AGENTS.md "WooCommerce panel surfaces" rule for the broader
+    context.
+    """
+    r = Result(
+        "WC totals blocks (cart + checkout) have ≥xl internal padding"
+    )
+
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.skip("theme.json missing")
+        return r
+    try:
+        data = json.loads(theme_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        r.fail(f"theme.json: invalid JSON ({exc}).")
+        return r
+    top_css = (data.get("styles", {}) or {}).get("css") or ""
+    if not top_css.strip():
+        r.skip("no top-level styles.css")
+        return r
+
+    # The two selectors that ALWAYS render as the visible "Order
+    # summary" card in current WC. Add to this list as new always-
+    # painted totals containers ship in WC.
+    TOTALS_SELECTORS = (
+        ".wp-block-woocommerce-cart-totals-block",
+        ".wp-block-woocommerce-checkout-totals-block",
+    )
+    OK_TOKENS = ("xl", "2-xl", "3-xl", "4-xl", "5-xl")
+
+    def _padding_tokens(decl_block: str) -> list[str]:
+        """Collect every spacing slug used in any `padding`-family
+        declaration of a single rule body. Returns [] if nothing
+        token-shaped is found."""
+        tokens: list[str] = []
+        for prop in ("padding-left", "padding-inline", "padding"):
+            for m in re.finditer(
+                rf"\b{re.escape(prop)}\s*:\s*([^;}}]+)",
+                decl_block,
+            ):
+                value = m.group(1)
+                tokens.extend(
+                    re.findall(
+                        r"var\(--wp--preset--spacing--([a-z0-9-]+)\)",
+                        value,
+                    )
+                )
+        return tokens
+
+    # selector -> list of every padding token we saw on the bare
+    # selector across every rule in top-level styles.css.
+    seen: dict[str, list[str]] = {sel: [] for sel in TOTALS_SELECTORS}
+
+    for m in re.finditer(r"([^{}]+)\{([^}]*)\}", top_css):
+        selectors_blob, body = m.group(1), m.group(2)
+        # Strip CSS block comments from the selectors blob so a
+        # rule that's prefixed with sentinel markers (the way
+        # `bin/append-wc-overrides.py` emits its chunks) still
+        # parses cleanly. Without this strip the FIRST selector
+        # in the rule has the sentinel comment glued to its head
+        # and `sel == surface` never matches.
+        selectors_blob = re.sub(r"/\*.*?\*/", "", selectors_blob)
+        sel_list = [s.strip() for s in selectors_blob.split(",")]
+        for surface in TOTALS_SELECTORS:
+            for sel in sel_list:
+                # Only the BARE selector (or a selector list that
+                # contains the bare selector as one of its entries)
+                # describes the panel itself; descendant rules like
+                # `.wp-block-woocommerce-cart-totals-block .heading`
+                # are inner type, not the panel.
+                if sel == surface:
+                    seen[surface].extend(_padding_tokens(body))
+
+    failures: list[str] = []
+    for surface in TOTALS_SELECTORS:
+        tokens = seen[surface]
+        if not tokens:
+            failures.append(
+                f"{surface}: no `padding` (or `padding-left` / "
+                f"`padding-inline`) declaration found on the bare "
+                f"selector in top-level `styles.css`. This block is "
+                f"the visible 'Order summary' card on current WC; "
+                f"without explicit padding its content sits flush at "
+                f"the panel edge. Re-run `bin/append-wc-overrides.py` "
+                f"to (re-)emit Phase H, or add `padding: var(--wp--"
+                f"preset--spacing--xl)` (or larger) to a top-level "
+                f"rule whose selector list contains exactly `{surface}`."
+            )
+            continue
+        if not any(t in OK_TOKENS for t in tokens):
+            biggest = tokens[0]
+            failures.append(
+                f"{surface}: padding token `{biggest}` is below the "
+                f"`xl` panel-breathing bar. The totals card is dense "
+                f"(subtotal + tax + total + coupon row + primary "
+                f"CTA); `lg` and below visibly cramps the stack "
+                f"against the panel edge. Bump to `xl` or larger."
+            )
+
+    if failures:
+        for f in failures:
+            r.fail(f)
+        return r
+
+    r.details.append(
+        f"{len(TOTALS_SELECTORS)} totals block(s) — all carry ≥xl "
+        f"internal padding (Phase H)"
     )
     return r
 
@@ -2683,6 +2861,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_archive_sort_dropdown_styled(),
         check_no_squeezed_wc_sidebars(),
         check_wc_card_surfaces_padded(),
+        check_wc_totals_blocks_padded(),
         check_hover_state_legibility(),
         check_distinctive_chrome(),
         check_cart_checkout_pages_are_wide(),

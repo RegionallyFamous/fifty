@@ -664,6 +664,57 @@ body.theme-lysholm .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacin
 {SENTINEL_CLOSE_PHASE_G}"""
 
 
+# ----------------------------------------------------------------------
+# Phase H — totals-block internal padding (the "edge-to-edge order summary"
+#           regression)
+# ----------------------------------------------------------------------
+# Why this exists:
+#   Phase G paints the per-theme card chrome (background + border + radius
+#   + shadow + voice-distinct details) on `.wc-block-cart__sidebar` and
+#   `.wc-block-checkout__sidebar`. Those rules also set `padding: xl` on
+#   the sidebar wrapper. That worked for older WC blocks where the
+#   sidebar wrapper WAS the visible card surface.
+#
+#   In current WC blocks (9.x+) the visible "Order summary" card is
+#   actually the INNER block `.wp-block-woocommerce-cart-totals-block`
+#   (or `.wp-block-woocommerce-checkout-totals-block`), which renders
+#   inside the sidebar wrapper at width:100%. The sidebar wrapper's
+#   `padding: xl` insets the inner block from the wrapper edges, but
+#   on themes where the sidebar wrapper is NOT painted (or is painted
+#   the same color as the page, like Selvedge's dark base) the inner
+#   totals block looks like the card and any of its content (Phase C's
+#   `::before` "Order summary" pseudo-label + the SUBTOTAL / coupon row
+#   / total) sits flush against the inner block's edge. That's the
+#   "screenshot bug" — content butts up against the visual panel edge
+#   because the painted edge is the inner totals block, not the outer
+#   wrapper, and the inner block has no padding of its own.
+#
+# Why a separate chunk:
+#   Phase G is per-theme voice. This rule is theme-agnostic plumbing
+#   that prevents the regression on every theme present and future. By
+#   emitting it as its own sentinel-bracketed chunk we can tighten the
+#   rule (or add new totals selectors as WC adds new totals containers)
+#   without touching any per-theme voice rule.
+#
+# Why `xl` and not larger:
+#   Card surfaces hold dense compound content (subtotals, taxes, totals,
+#   coupon input, primary CTA). `lg` (~24-40px) visibly cramps that
+#   stack against the panel edge. `xl` (~40-64px) is the floor for the
+#   panel to "breathe". Anything larger is theme-specific and belongs
+#   in a per-theme voice override (Phase G).
+#
+# Enforced by:
+#   `bin/check.py::check_wc_totals_blocks_padded` (independent of
+#   background paint — the rule applies even on themes whose totals
+#   block ends up unpainted, because it ALWAYS becomes the visible
+#   card on current WC).
+SENTINEL_OPEN_PHASE_H = "/* wc-tells-phase-h-totals-padding */"
+SENTINEL_CLOSE_PHASE_H = "/* /wc-tells-phase-h-totals-padding */"
+CSS_PHASE_H = f"""{SENTINEL_OPEN_PHASE_H}
+.wp-block-woocommerce-cart-totals-block,.wp-block-woocommerce-checkout-totals-block{{padding:var(--wp--preset--spacing--xl);box-sizing:border-box;}}
+{SENTINEL_CLOSE_PHASE_H}"""
+
+
 # Each entry: (sentinel_open, sentinel_close, raw_css, anchor_after).
 # `anchor_after` is the marker the chunk is spliced in after — for the
 # first chunk that's the canonical archive-page marker; for follow-ups
@@ -747,6 +798,12 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_PHASE_G,
         CSS_PHASE_G,
         SENTINEL_CLOSE_PHASE_F,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_H,
+        SENTINEL_CLOSE_PHASE_H,
+        CSS_PHASE_H,
+        SENTINEL_CLOSE_PHASE_G,
     ),
 ]
 
