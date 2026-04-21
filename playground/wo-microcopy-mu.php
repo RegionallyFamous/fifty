@@ -63,11 +63,6 @@ add_filter(
 	}
 );
 
-add_filter(
-	'woocommerce_show_page_title',
-	'__return_true'
-);
-
 // "Showing X-Y of Z results" -> "Z items".
 //
 // Why a `render_block_*` filter and NOT a `woocommerce_before_shop_loop`

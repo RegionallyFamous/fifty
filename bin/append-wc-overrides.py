@@ -400,36 +400,29 @@ table.variations select,select.wo-variation{{font-family:var(--wp--preset--font-
 #                         with a single secondary-colored mid-dot. We
 #                         render at line-height:1 so it never lifts the
 #                         label baseline.
-#   .wo-result-count    — DEPRECATED. Earlier the mu-plugin emitted a
-#                         `<p class="woocommerce-result-count
-#                         wo-result-count">N items</p>` via a
-#                         `woocommerce_before_shop_loop` action. That
-#                         action fires INSIDE
-#                         `wp:woocommerce/product-collection`'s server
-#                         render too, so the count appeared TWICE on
-#                         every archive: once in the title flex row
-#                         (block-rendered, correct position) and once
-#                         floating above the grid with no parent
-#                         container. The mu-plugin now uses a
-#                         `render_block_woocommerce/product-results-count`
-#                         filter that rewrites the existing block <p>
-#                         in place (see comment block above that filter
-#                         in `playground/wo-microcopy-mu.php`). The
-#                         block's class is `woocommerce-result-count`
-#                         only — `wo-result-count` no longer matches
-#                         anything emitted at runtime, so this rule is
-#                         currently dead code. Per-theme styling lives
-#                         in each `theme.json`'s
-#                         `styles.blocks["woocommerce/product-results-count"]`
-#                         entry. This rule is left in place to keep the
-#                         sentinel-based chunk byte-stable in every
-#                         shipped `theme.json`; retire on the next
-#                         sentinel bump.
+#
+# A second class, `.wo-result-count`, used to live in this chunk —
+# pinned typography on the `<p class="woocommerce-result-count
+# wo-result-count">N items</p>` element the mu-plugin emitted via a
+# `woocommerce_before_shop_loop` action. That action fires INSIDE
+# `wp:woocommerce/product-collection`'s server render too, so the count
+# appeared TWICE on every archive: once in the title flex row
+# (block-rendered, correct position) and once floating above the grid
+# with no parent container. The mu-plugin now uses a
+# `render_block_woocommerce/product-results-count` filter that rewrites
+# the existing block <p> in place (see the comment block above that
+# filter in `playground/wo-microcopy-mu.php` for the post-mortem). The
+# rendered <p> only carries `woocommerce-result-count`, so the
+# `.wo-result-count` selector matched nothing at runtime — we stripped
+# it from every shipped `theme.json` in the same commit that retired
+# the action, and we keep the sentinel name stable so an in-place
+# strip is enough (no chunk re-append needed). Per-theme typography
+# for the count lives in each `theme.json`'s
+# `styles.blocks["woocommerce/product-results-count"]` entry.
 SENTINEL_OPEN_PHASE_B = "/* wc-tells-phase-b-microcopy */"
 SENTINEL_CLOSE_PHASE_B = "/* /wc-tells-phase-b-microcopy */"
 CSS_PHASE_B = f"""{SENTINEL_OPEN_PHASE_B}
 .wo-required-mark{{display:inline-block;margin-left:var(--wp--preset--spacing--2-xs);color:var(--wp--preset--color--secondary);font-weight:var(--wp--custom--font-weight--regular);line-height:1;}}
-.wo-result-count{{font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;color:var(--wp--preset--color--secondary);margin:0 0 var(--wp--preset--spacing--md);}}
 {SENTINEL_CLOSE_PHASE_B}"""
 
 
