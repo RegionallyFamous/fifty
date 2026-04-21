@@ -1177,6 +1177,177 @@ def check_no_duplicate_stock_indicator() -> Result:
     return r
 
 
+def check_wc_card_surfaces_padded() -> Result:
+    """Fail if any WC "panel/card" surface is given a `background:` in
+    top-level `styles.css` without enough internal padding for the panel to
+    breathe.
+
+    Why this exists:
+      The cart sidebar, checkout sidebar, mini-cart drawer, order-summary
+      panel, etc. are *card surfaces* — opaque blocks that sit inside the
+      page and hold dense compound content (subtotals, taxes, totals,
+      coupon input, primary CTA, etc.). The moment we paint them with a
+      non-transparent `background:` they READ as a panel and acquire the
+      visual debt of a panel: shoppers expect generous internal padding,
+      because the alternative — content butting up against the panel edge
+      — looks like a half-finished plugin echo. The default WC theme.json
+      block-scoped output ships these surfaces at `padding: lg` (≈24-40px
+      depending on viewport), which is fine for type-only blocks but
+      visibly cramped on a totals card with a price column on the right
+      and a checkout button on the bottom. Reviewers reliably flag it as
+      "feels like a default WooCommerce site".
+
+      Worse, when these rules are written in `styles.blocks.*.css` they
+      get wrapped in `:root :where(...)` (specificity 0,0,1) and lose the
+      cascade fight with WC's own padding declarations. Once you've
+      committed to overriding a card surface in top-level `styles.css`,
+      the padding token MUST hold.
+
+    What this check enforces:
+      - For each KNOWN card surface (the WC selectors listed below),
+        every top-level rule that sets a non-transparent `background:`
+        must ALSO set padding (or padding-left + padding-right) using a
+        spacing token of `xl` or larger.
+      - Allowed tokens: `xl`, `2-xl`, `3-xl`, `4-xl`, `5-xl`. Anything
+        smaller (`lg`, `md`, `sm`, `xs`, `2-xs`) fails — a panel painted
+        with chrome below `xl` of internal padding is exactly the bug
+        this check exists to prevent.
+      - If a surface has padding split across multiple rules, ANY rule
+        writing the bigger token is enough — we don't reject `padding:lg`
+        if a sibling rule for the same selector sets `padding:xl` later.
+        (This is permissive on purpose; the goal is "the panel breathes",
+        not "the rule is written a specific way".)
+
+      Surfaces that are styled but have no `background:` (transparent
+      sections inside a parent panel) are skipped — they inherit the
+      parent's padding context and don't need their own.
+
+    See AGENTS.md "WooCommerce panel surfaces" rule.
+    """
+    r = Result("WC card surfaces have enough internal padding to breathe")
+
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.skip("theme.json missing")
+        return r
+    try:
+        data = json.loads(theme_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        r.fail(f"theme.json: invalid JSON ({exc}).")
+        return r
+    top_css = (data.get("styles", {}) or {}).get("css") or ""
+    if not top_css.strip():
+        r.skip("no top-level styles.css")
+        return r
+
+    # WC selectors the theme paints as opaque card surfaces.
+    # Add to this list as new surfaces get reskinned.
+    CARD_SURFACES = [
+        ".wc-block-cart__sidebar",
+        ".wc-block-checkout__sidebar",
+        ".wc-block-mini-cart__drawer .components-modal__content",
+    ]
+
+    # Spacing tokens that satisfy the "panel breathes" bar. Anything below
+    # xl is intentionally rejected — see docstring.
+    OK_TOKENS = ("xl", "2-xl", "3-xl", "4-xl", "5-xl")
+
+    def _padding_token(decl_block: str) -> str | None:
+        """Return the spacing slug used in `padding` / `padding-left` /
+        `padding-right` declarations of a single CSS rule body, or None
+        if no padding is set. Prefers `padding-left` over the shorthand
+        because the shorthand can include 4 values."""
+        # Try padding-left first (the side most visually responsible for
+        # whether content reads as cramped against the panel edge).
+        for prop in ("padding-left", "padding-inline", "padding"):
+            for m in re.finditer(
+                rf"\b{re.escape(prop)}\s*:\s*([^;}}]+)",
+                decl_block,
+            ):
+                value = m.group(1)
+                token_match = re.search(
+                    r"var\(--wp--preset--spacing--([a-z0-9-]+)\)",
+                    value,
+                )
+                if token_match:
+                    return token_match.group(1)
+        return None
+
+    # Walk every rule of the form `<selectors> { <decls> }`. Group rules
+    # by the card surface they target, accumulating which tokens we've
+    # seen for that surface — a surface passes if ANY of its rules use a
+    # qualifying token.
+    seen_surfaces: dict[str, list[str]] = {}
+    bg_surfaces: set[str] = set()
+    for m in re.finditer(r"([^{}]+)\{([^}]*)\}", top_css):
+        selectors_blob, body = m.group(1), m.group(2)
+        # Multiple selectors per rule (`a, b, c { ... }`). For each card
+        # surface, check if the rule's selector list mentions it as a
+        # full selector (not a substring of a different selector — `+
+        # \b` enforced by character-class lookbehind).
+        sel_list = [s.strip() for s in selectors_blob.split(",")]
+        for surface in CARD_SURFACES:
+            for sel in sel_list:
+                if sel == surface or sel.startswith(surface + " ") or sel.endswith(" " + surface) or sel.startswith(surface + ":") or sel.startswith(surface + "."):
+                    if sel != surface:
+                        # Only the *bare* selector (no descendant /
+                        # state suffix) describes the panel itself; a
+                        # descendant rule like `.wc-block-cart__sidebar
+                        # .wp-block-heading` is internal type, not the
+                        # panel.
+                        continue
+                    has_bg = re.search(
+                        r"\bbackground(?:-color)?\s*:\s*(?!transparent\b|none\b|inherit\b|initial\b|unset\b)[^;}]+",
+                        body,
+                    ) is not None
+                    if has_bg:
+                        bg_surfaces.add(surface)
+                    token = _padding_token(body)
+                    if token:
+                        seen_surfaces.setdefault(surface, []).append(token)
+
+    # Only enforce the rule on surfaces that are actually painted as
+    # opaque panels in this theme. Untouched surfaces are skipped —
+    # the theme might not render the cart/checkout at all.
+    if not bg_surfaces:
+        r.skip("no WC card surfaces are painted with a background in this theme")
+        return r
+
+    failures: list[str] = []
+    for surface in sorted(bg_surfaces):
+        tokens = seen_surfaces.get(surface, [])
+        if not tokens:
+            failures.append(
+                f"{surface}: top-level rule sets `background:` but no "
+                f"`padding` (or `padding-left` / `padding-inline`) was "
+                f"found on the bare selector. A painted panel without "
+                f"explicit padding inherits zero from WC's reset and "
+                f"reads as cramped. Add `padding: var(--wp--preset--"
+                f"spacing--xl)` (or larger)."
+            )
+            continue
+        if not any(t in OK_TOKENS for t in tokens):
+            failures.append(
+                f"{surface}: rule(s) set `background:` and `padding: "
+                f"var(--wp--preset--spacing--{tokens[0]})`, but `"
+                f"{tokens[0]}` is below the `xl` panel-breathing bar. "
+                f"On a card surface holding totals + a primary CTA, "
+                f"`lg` and below visibly cramps the content against "
+                f"the panel edge. Bump to `xl` or larger."
+            )
+
+    if failures:
+        for f in failures:
+            r.fail(f)
+        return r
+
+    r.details.append(
+        f"{len(bg_surfaces)} painted card surface(s) — all use "
+        f"≥xl internal padding"
+    )
+    return r
+
+
 def check_archive_sort_dropdown_styled() -> Result:
     """Fail if a `wp:woocommerce/catalog-sorting` block appears in any archive
     template but the theme never overrides the browser-default `<select>` chrome.
@@ -1977,6 +2148,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_no_duplicate_stock_indicator(),
         check_archive_sort_dropdown_styled(),
         check_no_squeezed_wc_sidebars(),
+        check_wc_card_surfaces_padded(),
         check_cart_checkout_pages_are_wide(),
         check_blueprint_landing_page(),
         check_front_page_unique_layout(),
