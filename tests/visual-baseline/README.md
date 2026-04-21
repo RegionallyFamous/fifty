@@ -21,23 +21,37 @@ mirror `bin/snap_config.py::VIEWPORTS`. The same paths are used by
 ## Workflow
 
 ```bash
-# 1. Capture latest into tmp/snaps/
-python3 bin/snap.py shoot --all
+# 1. Capture latest into tmp/snaps/ (use --concurrency 2 for ~2x speed
+#    if you have RAM to spare; each worker boots its own playground at
+#    ~400MB).
+python3 bin/snap.py shoot --all --concurrency 2
 
-# 2. Compare against baselines, see what regressed
+# 2. Triage non-pixel signal (uncaught JS, console errors, 4xx/5xx,
+#    DOM heuristics). A clean run is "0 / 0 / 0 / 0" across every theme
+#    in the rollup table.
+python3 bin/snap.py report
+
+# 3. Compare against baselines, see what regressed
 python3 bin/snap.py diff --all
 
-# 3. If the changes are intentional (intentional redesign,
+# 4. If the changes are intentional (intentional redesign,
 #    new content, fixed bug), promote latest -> baseline:
 python3 bin/snap.py baseline --all                # entire matrix
 python3 bin/snap.py baseline chonk                # one theme
 python3 bin/snap.py baseline chonk --route checkout-filled --viewport desktop
                                                   # one cell
+
+# 5. Re-run diff to confirm clean (0 regressions above threshold).
+python3 bin/snap.py diff --all
 ```
 
-Always review the diff PNG (under `tmp/diffs/`) before re-baselining
-so you don't accidentally enshrine a regression as the new "correct"
-state.
+Always review the diff PNG (under `tmp/diffs/`) AND the per-theme
+`tmp/snaps/<theme>/review.md` before re-baselining. The diff PNG tells
+you which pixels changed; the review tells you whether anything broke
+on the way (broken images, mid-word wraps, narrow grid items, console
+errors, network failures). Re-baselining a green-pixel-diff that ships
+with a new uncaught JS error is exactly the regression this folder
+exists to prevent.
 
 ## Why commit PNGs
 

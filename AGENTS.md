@@ -69,7 +69,7 @@ python3 bin/build-index.py --all
 
 ## Seeing what you built (visual snapshots)
 
-You cannot load `playground.wordpress.net` from the in-app browser, and asking the user to ship screenshots back over chat is a broken loop. Use `bin/snap.py` instead. It boots the theme's WordPress Playground locally via `@wp-playground/cli` (same blueprint the live demos use, with the local theme dir mounted on top of the GitHub-installed copy so unsynced edits show up) and captures Playwright PNGs you can read directly with the `Read` tool.
+You cannot load `playground.wordpress.net` from the in-app browser, and asking the user to ship screenshots back over chat is a broken loop. Use `bin/snap.py` instead. It boots the theme's WordPress Playground locally via `@wp-playground/cli` (same blueprint the live demos use, with the local theme dir mounted on top of the GitHub-installed copy so unsynced edits show up), captures Playwright PNGs **plus diagnostic artifacts** for every (route × viewport) cell, and runs a JS heuristics pass that flags broken images, mid-word wraps, raw i18n tokens, PHP debug output, visible WC notices, and more. You can read the PNGs directly with the `Read` tool; the rest feeds the `report` subcommand below.
 
 ```bash
 # Just the page you're working on (fastest)
@@ -82,10 +82,20 @@ python3 bin/snap.py shoot chonk
 # Whole monorepo (~10 routes × 4 viewports × 4 themes ≈ 160 PNGs)
 python3 bin/snap.py shoot --all
 
+# Same, but boot two themes in parallel (~400MB RAM/worker, ~2x faster)
+python3 bin/snap.py shoot --all --concurrency 2
+
 # Boot a single theme and leave it running so you can drive it interactively
 # via the cursor-ide-browser MCP (auto-login enabled for /wp-admin/ access).
 python3 bin/snap.py serve chonk
 # -> http://localhost:9400/
+
+# Aggregate the latest captures' findings into reviewable markdown
+# (per-theme review.md + cross-theme rollup, sorted worst-first).
+python3 bin/snap.py report
+# -> tmp/snaps/<theme>/review.md   (per-theme, with inspector measurements)
+# -> tmp/snaps/review.md           (cross-theme rollup table)
+# -> tmp/snaps/review.json         (machine-readable summary)
 
 # Did anything change vs the committed reference set?
 python3 bin/snap.py diff --all
@@ -93,17 +103,37 @@ python3 bin/snap.py diff --all
 python3 bin/snap.py baseline --all
 ```
 
+Per-cell artifacts (all under `tmp/snaps/<theme>/<viewport>/<route>.*`):
+
+| Artifact | What's in it |
+|---|---|
+| `*.png` | The screenshot. `Read` directly. |
+| `*.html` | Final rendered DOM after JS settled. Useful for `Grep`-ing class names without re-shooting. |
+| `*.findings.json` | DOM-heuristic findings, captured console messages, page errors, network failures (>=400), and computed widths/displays/grid-template-columns for `INSPECT_SELECTORS`. The `report` subcommand reads these. |
+
 When you make ANY change that could affect rendered output (template, theme.json, CSS, pattern, blueprint), the loop is:
 
 1. Make the change.
 2. `python3 bin/snap.py shoot <theme> --routes <route> --viewports <viewport>` for the affected cell(s).
 3. `Read` the PNG to verify.
-4. If wider impact possible: `python3 bin/snap.py shoot --all && python3 bin/snap.py diff --all`.
-5. If diffs are intentional: `python3 bin/snap.py baseline --all` and commit the updated baselines alongside the change.
+4. `python3 bin/snap.py report` and skim the per-theme `review.md` (or the rollup) for any errors / warns / unexpected console + network noise.
+5. If wider impact possible: `python3 bin/snap.py shoot --all --concurrency 2 && python3 bin/snap.py diff --all && python3 bin/snap.py report`.
+6. If diffs are intentional: `python3 bin/snap.py baseline --all` and commit the updated baselines alongside the change.
+
+A clean inner loop looks like `0 errors / 0 warnings / 0 net 4xx-5xx / 0 uncaught JS` across every (theme, viewport, route) cell in the rollup. **Treat any non-zero count as a regression to investigate before moving on** — those columns are why the framework exists.
 
 `bin/check.py --visual` runs the full shoot + diff as part of the check suite. It is OPT-IN because a sweep adds 2-5 minutes; the standard `--quick` checks stay fast for the inner loop. Use `--visual` before any commit that touches rendered output.
 
-`bin/snap_config.py` declares the (route × viewport) matrix. To add a new page or breakpoint to the sweep, edit that file and re-baseline.
+### Configuration
+
+`bin/snap_config.py` is the single config file:
+
+- **`ROUTES`** — every (slug, URL path) the framework visits. Add a route here and it appears in every theme's review.
+- **`VIEWPORTS`** — Playwright viewport sizes (mobile / tablet / desktop / wide). Same idea.
+- **`INSPECT_SELECTORS`** — per-route map of CSS selectors whose computed width, height, display, and grid-template-columns get captured into `*.findings.json` and rendered into the per-theme `review.md` "Inspector measurements" tables. This is how the cart/checkout sidebar regression got diagnosed without re-shooting — add an entry here when you find yourself running ad-hoc Playwright probes to measure layout issues, so the next regression is visible immediately.
+- **`QUICK_*`** — subsets used when `shoot` is invoked with `--quick`.
+
+`bin/snap.py` also has a module-level `KNOWN_NOISE_SUBSTRINGS` tuple for filtering pre-confirmed-harmless console / page errors out of the report (currently just the headless-Chromium `wp-emoji-loader appendChild` quirk). **Add to it only after investigation confirms upstream noise** — never to silence a real theme bug.
 
 ## Agent skills
 
