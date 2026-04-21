@@ -36,11 +36,11 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- brand-story.php
 |   |-- category-tiles.php
 |   |-- cta-banner.php
+|   |-- explore-the-shop.php
 |   |-- faq-accordion.php
 |   |-- featured-products.php
 |   |-- hero-image.php
 |   |-- hero-text.php
-|   |-- newsletter.php
 |   |-- testimonials.php
 |   `-- value-props.php
 |-- playground/
@@ -229,6 +229,14 @@ Read this file at the start of any LLM session to discover the project's structu
 - **Keywords:** cta, banner, conversion, button
 - **Description:** Full-width banner with a single headline and primary CTA. Use to push toward a single conversion goal.
 
+### `patterns/explore-the-shop.php`
+
+- **Slug:** `chonk/explore-the-shop`
+- **Title:** Explore the shop
+- **Categories:** chonk, call-to-action
+- **Keywords:** shop, categories, browse, catalog
+- **Description:** Heavy CTA band that points at three real product-category pages and the full catalog. Real WC archive links — no placeholders, nothing to wire up later.
+
 ### `patterns/faq-accordion.php`
 
 - **Slug:** `chonk/faq-accordion`
@@ -260,14 +268,6 @@ Read this file at the start of any LLM session to discover the project's structu
 - **Categories:** chonk, featured
 - **Keywords:** hero, banner, header
 - **Description:** Centered text-only hero with headline, subhead, and CTA. Use when imagery would distract.
-
-### `patterns/newsletter.php`
-
-- **Slug:** `chonk/newsletter`
-- **Title:** Newsletter signup
-- **Categories:** chonk, call-to-action
-- **Keywords:** newsletter, signup, email, subscribe
-- **Description:** Inline newsletter call-out. Connect a real form provider when wiring up; this is a visual placeholder using the core Search block as a stand-in.
 
 ### `patterns/testimonials.php`
 

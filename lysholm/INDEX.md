@@ -35,12 +35,12 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- cta-banner.php
 |   |-- faq-accordion.php
 |   |-- featured-products.php
+|   |-- find-us-elsewhere.php
 |   |-- footer-columns.php
 |   |-- front-feature.php
 |   |-- hero-image.php
 |   |-- hero-split.php
 |   |-- hero-text.php
-|   |-- newsletter.php
 |   |-- testimonials.php
 |   `-- value-props.php
 |-- playground/
@@ -275,6 +275,14 @@ Read this file at the start of any LLM session to discover the project's structu
 - **Keywords:** products, collection, grid, shop, featured
 - **Description:** 3-column grid of featured products using the Product Collection block. Adjust the query attributes for your needs.
 
+### `patterns/find-us-elsewhere.php`
+
+- **Slug:** `lysholm/find-us-elsewhere`
+- **Title:** Find us elsewhere
+- **Categories:** lysholm, call-to-action
+- **Keywords:** social, instagram, follow, contact
+- **Description:** A quiet social-icons cluster pointing at the studio's outside-the-shop spaces. All real outbound links via core/social-links — no inbox capture, nothing to integrate later.
+
 ### `patterns/footer-columns.php`
 
 - **Slug:** `lysholm/footer-columns`
@@ -314,14 +322,6 @@ Read this file at the start of any LLM session to discover the project's structu
 - **Categories:** lysholm, featured
 - **Keywords:** hero, banner, header
 - **Description:** Centered text-only hero with headline, subhead, and CTA. Use when imagery would distract.
-
-### `patterns/newsletter.php`
-
-- **Slug:** `lysholm/newsletter`
-- **Title:** Newsletter signup
-- **Categories:** lysholm, call-to-action
-- **Keywords:** newsletter, signup, email, subscribe
-- **Description:** Inline newsletter call-out. Connect a real form provider when wiring up; this is a visual placeholder using the core Search block as a stand-in.
 
 ### `patterns/testimonials.php`
 

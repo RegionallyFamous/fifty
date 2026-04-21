@@ -42,7 +42,7 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- footer-columns.php
 |   |-- hero-image.php
 |   |-- hero-text.php
-|   |-- newsletter.php
+|   |-- journal-cta.php
 |   |-- testimonials.php
 |   `-- value-props.php
 |-- playground/
@@ -271,13 +271,13 @@ Read this file at the start of any LLM session to discover the project's structu
 - **Keywords:** hero, banner, header
 - **Description:** Centered text-only hero with headline, subhead, and CTA. Use when imagery would distract.
 
-### `patterns/newsletter.php`
+### `patterns/journal-cta.php`
 
-- **Slug:** `selvedge/newsletter`
-- **Title:** Newsletter signup
+- **Slug:** `selvedge/journal-cta`
+- **Title:** Journal call-to-action
 - **Categories:** selvedge, call-to-action
-- **Keywords:** newsletter, signup, email, subscribe
-- **Description:** Inline newsletter call-out. Connect a real form provider when wiring up; this is a visual placeholder using the core Search block as a stand-in.
+- **Keywords:** journal, dispatch, story, read more
+- **Description:** Editorial dispatch block that links straight to the workshop journal page. Real anchor, real destination — no email field, no provider integration to defer.
 
 ### `patterns/testimonials.php`
 

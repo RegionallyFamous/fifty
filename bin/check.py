@@ -899,6 +899,110 @@ def check_blocks_validator() -> Result:
     return r
 
 
+def check_no_fake_forms() -> Result:
+    """Fail if any pattern/template/part contains a 'form-shaped' block that
+    cannot actually submit anywhere.
+
+    WordPress core ships **no** working email-capture or newsletter form
+    block. The only form-ish blocks in core are:
+
+      * `core/search`             -- submits `?s=…` to the home URL.
+      * `core/login`              -- submits to `wp-login.php`.
+      * `core/comments` (and kin) -- per-post comment form.
+
+    Project history is full of "newsletter signup" patterns built out of
+    `core/search` styled to look like an email field, or `core/html`
+    blocks containing a raw `<form action="/?wo-newsletter=1">`. They
+    look real but submit to nothing -- a visitor who types their email
+    and clicks the button gets either a search-results page for their
+    own address or a 404. That's worse than no form at all.
+
+    The hard rule against non-`core/*` / non-`woocommerce/*` blocks
+    (AGENTS.md rule #4) makes a real email-capture form impossible
+    inside this codebase, so the only honest path is to ban the fake
+    ones. Replace newsletter sections with something that actually
+    works: `woocommerce/customer-account`, a link to a real journal /
+    page, a `core/social-links` cluster, a featured `woocommerce/
+    product-collection`, etc.
+
+    Two surfaces are checked:
+
+      1. `core/search` is allowed ONLY in genuinely-search contexts:
+         `parts/header.html`, `parts/no-results.html`,
+         `templates/search.html`, `templates/product-search-results.html`,
+         and `templates/404.html` (where a search prompt makes sense
+         when the URL was wrong). Anywhere else it's a fake form.
+
+      2. `core/html` blocks are scanned for `<form`,
+         `<input type="email"`, or a Subscribe / Sign up / Notify-me
+         button. Any of those is a fake submission target.
+
+    Fix path: pick a real action -- `woocommerce/customer-account`,
+    a `<a>` to `/my-account/`, `/journal/`, `/contact/`, a featured
+    collection -- and route the user there instead.
+    """
+    r = Result("No fake forms (no email-capture stand-ins built out of core/search or raw <form>)")
+
+    search_allowed_paths = {
+        "parts/header.html",
+        "parts/no-results.html",
+        "templates/search.html",
+        "templates/product-search-results.html",
+        "templates/404.html",
+    }
+    skip_dirs = ("templates/", "parts/", "patterns/")
+
+    files: list[Path] = []
+    for path in iter_files((".html", ".php")):
+        rel = path.relative_to(ROOT).as_posix()
+        if any(rel.startswith(d) for d in skip_dirs):
+            files.append(path)
+
+    search_re = re.compile(r"<!--\s*wp:search\b")
+    html_block_re = re.compile(
+        r"<!--\s*wp:html\s*-->\s*(.*?)\s*<!--\s*/wp:html\s*-->",
+        re.DOTALL,
+    )
+    fake_form_signals = re.compile(
+        r"<form\b|<input[^>]*type=[\"']email[\"']|<button[^>]*>\s*(?:subscribe|sign\s*up|notify|join the list)\b",
+        re.IGNORECASE,
+    )
+
+    for path in files:
+        rel = path.relative_to(ROOT).as_posix()
+        text = path.read_text(encoding="utf-8", errors="replace")
+
+        for m in search_re.finditer(text):
+            if rel in search_allowed_paths:
+                continue
+            lineno = text.count("\n", 0, m.start()) + 1
+            r.fail(
+                f"{rel}:{lineno}: core/search outside a real search surface. "
+                f"This block submits `?s=…` to the home URL -- it can't capture "
+                f"emails or subscriptions. Replace with a real CTA "
+                f"(woocommerce/customer-account, an <a> to /my-account/ or "
+                f"/journal/, a core/social-links cluster, etc.)."
+            )
+
+        for m in html_block_re.finditer(text):
+            body = m.group(1)
+            sig = fake_form_signals.search(body)
+            if not sig:
+                continue
+            lineno = text.count("\n", 0, m.start()) + 1
+            r.fail(
+                f"{rel}:{lineno}: core/html block contains a raw <form> or "
+                f"email-capture markup ('{sig.group(0)[:40]}') that submits to "
+                f"nothing real. Replace with a working CTA -- a real <a> to "
+                f"/my-account/, a woocommerce/customer-account block, or "
+                f"core/social-links."
+            )
+
+    if r.passed:
+        r.details.append(f"{len(files)} pattern/template/part file(s) scanned for fake forms")
+    return r
+
+
 def check_no_duplicate_templates() -> Result:
     """Fail if any two files in templates/ have identical content."""
     r = Result("No duplicate template files in templates/")
@@ -3885,6 +3989,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_block_attrs_use_tokens(),
         check_block_markup_anti_patterns(),
         check_blocks_validator(),
+        check_no_fake_forms(),
         check_no_duplicate_templates(),
         check_no_duplicate_stock_indicator(),
         check_archive_sort_dropdown_styled(),

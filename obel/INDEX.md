@@ -30,6 +30,7 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- post-meta.html
 |   `-- product-meta.html
 |-- patterns/
+|   |-- account-cta.php
 |   |-- brand-story.php
 |   |-- category-tiles.php
 |   |-- cta-banner.php
@@ -39,7 +40,6 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- hero-image.php
 |   |-- hero-split.php
 |   |-- hero-text.php
-|   |-- newsletter.php
 |   |-- testimonials.php
 |   `-- value-props.php
 |-- playground/
@@ -204,6 +204,14 @@ Read this file at the start of any LLM session to discover the project's structu
 
 ## Patterns
 
+### `patterns/account-cta.php`
+
+- **Slug:** `obel/account-cta`
+- **Title:** Account call-to-action
+- **Categories:** obel, call-to-action
+- **Keywords:** account, login, register, sign in
+- **Description:** Quiet sign-in / register prompt that uses the real woocommerce/customer-account block. Renders the account icon for logged-in shoppers and a sign-in link for everyone else — no fake fields, no third-party form provider needed.
+
 ### `patterns/brand-story.php`
 
 - **Slug:** `obel/brand-story`
@@ -275,14 +283,6 @@ Read this file at the start of any LLM session to discover the project's structu
 - **Categories:** obel, featured
 - **Keywords:** hero, banner, header
 - **Description:** Centered text-only hero with headline, subhead, and CTA. Use when imagery would distract.
-
-### `patterns/newsletter.php`
-
-- **Slug:** `obel/newsletter`
-- **Title:** Newsletter signup
-- **Categories:** obel, call-to-action
-- **Keywords:** newsletter, signup, email, subscribe
-- **Description:** Inline newsletter call-out. Connect a real form provider when wiring up; this is a visual placeholder using the core Search block as a stand-in.
 
 ### `patterns/testimonials.php`
 

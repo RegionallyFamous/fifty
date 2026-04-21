@@ -45,7 +45,7 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- hero-image.php
 |   |-- hero-split.php
 |   |-- hero-text.php
-|   |-- newsletter.php
+|   |-- latest-dispatch.php
 |   |-- testimonials.php
 |   `-- value-props.php
 |-- playground/
@@ -274,13 +274,13 @@ Read this file at the start of any LLM session to discover the project's structu
 - **Keywords:** hero, banner, header
 - **Description:** Centered text-only hero with headline, subhead, and CTA. Use when imagery would distract.
 
-### `patterns/newsletter.php`
+### `patterns/latest-dispatch.php`
 
-- **Slug:** `aero/newsletter`
-- **Title:** Newsletter signup
+- **Slug:** `aero/latest-dispatch`
+- **Title:** Latest dispatch
 - **Categories:** aero, call-to-action
-- **Keywords:** newsletter, signup, email, subscribe
-- **Description:** Inline newsletter call-out. Connect a real form provider when wiring up; this is a visual placeholder using the core Search block as a stand-in.
+- **Keywords:** blog, post, latest, news, dispatch
+- **Description:** Pulls the most recent blog post into a chrome-framed card via core/query — real wp_query, real permalink, no fake email field. Updates itself whenever a new post lands.
 
 ### `patterns/testimonials.php`
 
