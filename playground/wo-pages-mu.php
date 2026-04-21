@@ -37,55 +37,44 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Branded My Account login screen.
+// 1. Branded My Account login screen — moved to <theme>/functions.php.
 // ---------------------------------------------------------------------------
 //
-// The default WC login screen is two side-by-side forms ("Login" and
-// "Register") with WC default styling. Premium storefronts use this
-// page as a brand moment — Aesop frames it as "Welcome back" with a
-// short value prop on the left, form on the right; Glossier puts the
-// last campaign hero next to the form.
+// HISTORICAL NOTE. Earlier passes of this mu-plugin emitted shopper-
+// facing markup on the logged-out My Account page from `playground/`:
+// first a generic `<aside class="wo-account-intro">` + `<p class="wo-
+// account-help">` (cycle 1), then four structural `<div>` wrappers
+// (`wo-account-login-grid` / `wo-account-login-form`) that paired the
+// intro and the login form into a two-column layout (cycle 2).
 //
-// We inject:
-//   * a `wo-account-intro` panel BEFORE the login columns (left side
-//     visually via CSS grid in Phase D CSS), with a brand-voice intro.
-//   * a `wo-account-benefits` strip AFTER the login columns listing
-//     account perks (order history, faster checkout, saved addresses).
-add_action(
-	'woocommerce_before_customer_login_form',
-	function () {
-		if ( is_admin() || is_user_logged_in() ) {
-			return;
-		}
-		$brand = defined( 'WO_THEME_NAME' ) ? WO_THEME_NAME : 'our shop';
-		?>
-<aside class="wo-account-intro">
-	<p class="wo-account-intro__eyebrow">Account</p>
-	<h2 class="wo-account-intro__title">Welcome back to <?php echo esc_html( $brand ); ?>.</h2>
-	<p class="wo-account-intro__lede">Sign in to view your order history, track shipments, and check out faster next time.</p>
-	<ul class="wo-account-intro__perks">
-		<li>One-click reorders</li>
-		<li>Saved addresses + payment</li>
-		<li>Wishlist + early access drops</li>
-	</ul>
-</aside>
-		<?php
-	},
-	5
-);
-
-add_action(
-	'woocommerce_after_customer_login_form',
-	function () {
-		if ( is_admin() ) {
-			return;
-		}
-		?>
-<p class="wo-account-help">Trouble signing in? <a href="/contact/">Get in touch</a>.</p>
-		<?php
-	},
-	20
-);
+// Both violated the root rule "Shopper-facing brand lives in the
+// theme, not in playground/" — anything that affects what a real
+// shopper sees on a released theme has to ship in the theme directory
+// so a Proprietor who downloads the theme and drops it into
+// `wp-content/themes/` gets the same login chrome as the Playground
+// demo. The cycle-1 generics were superseded by per-theme branded
+// versions in each `<theme>/functions.php` (between the
+// `// === BEGIN my-account ===` sentinels). The cycle-2 structural
+// wrappers were caught by `bin/check.py`'s
+// `check_no_brand_filters_in_playground` gate (the
+// `woocommerce_before_customer_login_form` /
+// `woocommerce_after_customer_login_form` hooks are on its denylist
+// for exactly this reason) and moved into the same per-theme block at
+// priorities 4 / 6 / 19 / 25, sandwiching the intro (5) and help (20)
+// callbacks the themes already register. The resulting DOM on /my-
+// account/ when logged out is now:
+//
+//   <div class="wo-account-login-grid">                          ← prio 4 (theme)
+//     <aside class="wo-account-intro">…brand intro…</aside>      ← prio 5 (theme)
+//     <div class="wo-account-login-form">                        ← prio 6 (theme)
+//       …WC's <h2>Sign in</h2> + <form>…
+//     </div>                                                     ← after-prio 19 (theme)
+//     <p class="wo-account-help">…</p>                           ← after-prio 20 (theme)
+//   </div>                                                       ← after-prio 25 (theme)
+//
+// styled by `.wo-account-login-grid` / `.wo-account-login-form` rules
+// in each theme's `theme.json`. Nothing about the My Account login
+// surface lives in `playground/` any more.
 
 // ---------------------------------------------------------------------------
 // 2. Branded empty cart.

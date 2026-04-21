@@ -526,4 +526,546 @@ if ( ! function_exists( 'obel_render_account_dashboard' ) ) {
 		<?php
 	}
 }
+// Branded My Account login screen.
+//
+// The default WC login screen is two side-by-side forms ("Login" and
+// "Register") with WC default styling. Premium storefronts use the
+// page as a brand moment — Aesop frames it as "Welcome back" with a
+// short value prop on the left, form on the right; Glossier puts the
+// last campaign hero next to the form. The two hooks below fire only
+// for logged-out shoppers visiting /my-account/ and decorate the
+// classic-shortcode form with branded chrome that the CSS grid in
+// theme.json (`.woocommerce-account .woocommerce {`) lays out into a
+// proper editorial split.
+//
+// The brand name is hardcoded ('Obel') rather than read from a
+// `WO_THEME_NAME` constant — a real install won't have that constant
+// defined, only the Playground bootstrap does, so hardcoding is what
+// makes the released theme paint identically to the demo.
+// Two-column login layout: open `<div class="wo-account-login-grid">`
+// before the brand intro (prio 4) and `<div class="wo-account-login-form">`
+// just after it (prio 6); close them in reverse order around the help
+// paragraph at prio 19/25. This pairs the intro panel and WC's stock
+// `<h2>Sign in</h2>` + `<form>` block as side-by-side columns on
+// desktop with the help line spanning the full width underneath, and
+// collapses to a single column on mobile via `theme.json` CSS. The
+// wrappers ship in the theme so a Proprietor who downloads Obel and
+// drops it into `wp-content/themes/` gets the same login layout as the
+// Playground demo.
+add_action(
+	'woocommerce_before_customer_login_form',
+	static function (): void {
+		if ( is_admin() || is_user_logged_in() ) {
+			return;
+		}
+		echo '<div class="wo-account-login-grid">';
+	},
+	4
+);
+
+add_action(
+	'woocommerce_before_customer_login_form',
+	static function (): void {
+		if ( is_admin() || is_user_logged_in() ) {
+			return;
+		}
+		?>
+<aside class="wo-account-intro">
+	<p class="wo-account-intro__eyebrow"><?php esc_html_e( 'Account', 'obel' ); ?></p>
+	<h2 class="wo-account-intro__title"><?php esc_html_e( 'Welcome back to Obel.', 'obel' ); ?></h2>
+	<p class="wo-account-intro__lede"><?php esc_html_e( 'Sign in to view your order history, track shipments, and check out faster next time.', 'obel' ); ?></p>
+	<ul class="wo-account-intro__perks">
+		<li><?php esc_html_e( 'One-click reorders', 'obel' ); ?></li>
+		<li><?php esc_html_e( 'Saved addresses + payment', 'obel' ); ?></li>
+		<li><?php esc_html_e( 'Wishlist + early access drops', 'obel' ); ?></li>
+	</ul>
+</aside>
+		<?php
+	},
+	5
+);
+
+add_action(
+	'woocommerce_before_customer_login_form',
+	static function (): void {
+		if ( is_admin() || is_user_logged_in() ) {
+			return;
+		}
+		echo '<div class="wo-account-login-form">';
+	},
+	6
+);
+
+add_action(
+	'woocommerce_after_customer_login_form',
+	static function (): void {
+		if ( is_admin() || is_user_logged_in() ) {
+			return;
+		}
+		echo '</div>';
+	},
+	19
+);
+
+add_action(
+	'woocommerce_after_customer_login_form',
+	static function (): void {
+		if ( is_admin() ) {
+			return;
+		}
+		?>
+<p class="wo-account-help"><?php
+	printf(
+		/* translators: %s: contact link wrapping the words "Get in touch". */
+		esc_html__( 'Trouble signing in? %s.', 'obel' ),
+		'<a href="' . esc_url( '/contact/' ) . '">' . esc_html__( 'Get in touch', 'obel' ) . '</a>'
+	);
+?></p>
+		<?php
+	},
+	20
+);
+
+add_action(
+	'woocommerce_after_customer_login_form',
+	static function (): void {
+		if ( is_admin() || is_user_logged_in() ) {
+			return;
+		}
+		echo '</div>';
+	},
+	25
+);
 // === END my-account ===
+
+// === BEGIN body-class ===
+//
+// Per-theme body class for distinctive Phase E polish.
+//
+// Block themes don't expose a per-theme body class on the frontend by
+// default (`wp_get_theme()->get_stylesheet()` is only added in admin).
+// Without one, every CSS rule that needs to scope to a single theme
+// (Chonk's brutalist ATC, Selvedge's italic editorial sections, etc.)
+// would have to be forked into per-theme theme.json files. Hardcoding
+// the slug here (NOT reading WO_THEME_SLUG) is what makes the released
+// theme behave identically to the Playground demo on a fresh install.
+add_filter(
+	'body_class',
+	static function ( array $classes ): array {
+		$classes[] = 'theme-obel';
+		return $classes;
+	}
+);
+// === END body-class ===
+
+// === BEGIN swatches ===
+//
+// Variation-attribute swatches on the variable PDP.
+//
+// The default WC variation form renders a `<select>` per attribute,
+// which is the single most "I am a generic WooCommerce store" tell on
+// a PDP. We render color circles or text pills in front of the hidden
+// select; the select stays in the DOM as WC's source of truth and an
+// inline JS shim forwards button clicks into its `change` event so
+// WC's variation_form.js continues to drive price/stock/image swap.
+//
+// Per-theme: each theme owns its own `obel_swatches_color_map()` so
+// the swatch palette stays on-brand even when the catalogue is
+// shared. Anything not in the map renders as a typography-driven
+// text pill (the right default for Size / Intensity / numeric
+// options).
+if ( ! function_exists( 'obel_swatches_color_map' ) ) {
+	/**
+	 * Map lowercase option text to a hex color for visual swatches.
+	 * Anything not in this map falls through to a text pill.
+	 */
+	function obel_swatches_color_map(): array {
+		return array(
+			'amber'    => '#c98018',
+			'clear'    => '#e8e3d8',
+			'black'    => '#0a0a0a',
+			'white'    => '#f7f5ef',
+			'natural'  => '#d6c8a4',
+			'midnight' => '#1a1f3a',
+			'forest'   => '#2d4a3e',
+			'rust'     => '#a64a1f',
+		);
+	}
+}
+
+if ( ! function_exists( 'obel_swatches_render_group' ) ) {
+	/**
+	 * Render the swatch button group HTML for a single attribute.
+	 *
+	 * @param string $default_html WC's original `<select>` markup.
+	 * @param array  $args         WC dropdown args (attribute, options, selected, ...).
+	 */
+	function obel_swatches_render_group( string $default_html, array $args ): string {
+		$attribute_name = isset( $args['attribute'] ) ? (string) $args['attribute'] : '';
+		$options        = isset( $args['options'] ) && is_array( $args['options'] ) ? $args['options'] : array();
+		$selected       = isset( $args['selected'] ) ? (string) $args['selected'] : '';
+
+		if ( empty( $options ) || '' === $attribute_name ) {
+			return $default_html;
+		}
+
+		$attr_label    = ucwords( str_replace( array( 'attribute_', 'pa_', '_', '-' ), array( '', '', ' ', ' ' ), $attribute_name ) );
+		$hidden_select = preg_replace(
+			'/<select\b/',
+			'<select class="wo-swatch-select" aria-hidden="true" tabindex="-1"',
+			$default_html,
+			1
+		);
+
+		$colors  = obel_swatches_color_map();
+		$buttons = '';
+		foreach ( $options as $opt_value ) {
+			$label = $opt_value;
+			if ( taxonomy_exists( $attribute_name ) ) {
+				$term = get_term_by( 'slug', $opt_value, $attribute_name );
+				if ( $term && ! is_wp_error( $term ) ) {
+					$label = $term->name;
+				}
+			}
+			$key            = strtolower( trim( (string) $label ) );
+			$is_color       = isset( $colors[ $key ] );
+			$selected_class = ( '' !== $selected && (string) $selected === (string) $opt_value ) ? ' is-selected' : '';
+			$button_class   = 'wo-swatch' . ( $is_color ? ' wo-swatch--color' : ' wo-swatch--text' ) . $selected_class;
+			$style          = $is_color ? sprintf( ' style="--wo-swatch-color:%s"', esc_attr( $colors[ $key ] ) ) : '';
+			$visual         = $is_color
+				? '<span class="wo-swatch__dot" aria-hidden="true"></span>'
+				: '<span class="wo-swatch__label">' . esc_html( $label ) . '</span>';
+			$aria_label     = sprintf( '%s: %s', $attr_label, $label );
+			$buttons       .= sprintf(
+				'<button type="button" class="%1$s" data-value="%2$s" aria-label="%3$s" title="%4$s"%5$s>%6$s</button>',
+				esc_attr( $button_class ),
+				esc_attr( (string) $opt_value ),
+				esc_attr( $aria_label ),
+				esc_attr( (string) $label ),
+				$style,
+				$visual
+			);
+		}
+
+		$group = sprintf(
+			'<div class="wo-swatch-group" role="radiogroup" aria-label="%s">%s</div>',
+			esc_attr( $attr_label ),
+			$buttons
+		);
+		return '<div class="wo-swatch-wrap">' . $hidden_select . $group . '</div>';
+	}
+}
+
+add_filter(
+	'woocommerce_dropdown_variation_attribute_options_html',
+	static function ( $html, $args ) {
+		if ( is_admin() ) {
+			return $html;
+		}
+		return obel_swatches_render_group( (string) $html, (array) $args );
+	},
+	20,
+	2
+);
+
+// Inline JS shim: wire button-group clicks back to the hidden select
+// so WC's variation_form.js continues to refresh price/stock/image.
+// Footer-print only on requests that actually have a swatch group;
+// the early-return at the top makes it free on every other URL.
+add_action(
+	'wp_footer',
+	static function (): void {
+		if ( is_admin() ) {
+			return;
+		}
+		?>
+<script>
+(function(){
+	var groups = document.querySelectorAll('.wo-swatch-group');
+	if (!groups.length) return;
+	groups.forEach(function(group){
+		var wrap = group.closest('.wo-swatch-wrap');
+		if (!wrap) return;
+		var sel = wrap.querySelector('select.wo-swatch-select');
+		if (!sel) return;
+		group.addEventListener('click', function(e){
+			var btn = e.target.closest('.wo-swatch');
+			if (!btn) return;
+			e.preventDefault();
+			var v = btn.getAttribute('data-value') || '';
+			if (sel.value === v) { v = ''; }
+			sel.value = v;
+			sel.dispatchEvent(new Event('change', { bubbles: true }));
+			if (window.jQuery) { window.jQuery(sel).trigger('change'); }
+			group.querySelectorAll('.wo-swatch').forEach(function(b){
+				b.classList.toggle('is-selected', b === btn && v !== '');
+			});
+		});
+		sel.addEventListener('change', function(){
+			var v = sel.value;
+			group.querySelectorAll('.wo-swatch').forEach(function(b){
+				b.classList.toggle('is-selected', b.getAttribute('data-value') === v && v !== '');
+			});
+		});
+	});
+})();
+</script>
+		<?php
+	},
+	99
+);
+// === END swatches ===
+
+// === BEGIN empty-states ===
+//
+// Branded empty cart + branded "no products found" screens.
+//
+// WC's defaults are a small "Your cart is currently empty!" banner +
+// a "Return to shop" link, and "No products were found matching your
+// selection." for archive results. Both are unmistakable WC tells.
+// We replace each with a branded empty state (eyebrow + display
+// heading + lede + 2 CTAs) keyed off the same hooks WC uses for the
+// classic and block-rendered empty states.
+add_action(
+	'woocommerce_cart_is_empty',
+	static function (): void {
+		if ( is_admin() ) {
+			return;
+		}
+		?>
+<div class="wo-empty wo-empty--cart">
+	<p class="wo-empty__eyebrow"><?php esc_html_e( 'Cart', 'obel' ); ?></p>
+	<h1 class="wo-empty__title"><?php esc_html_e( 'Your cart is rather empty.', 'obel' ); ?></h1>
+	<p class="wo-empty__lede"><?php esc_html_e( 'Browse the shop, or pick up a thread you left in the journal.', 'obel' ); ?></p>
+	<p class="wo-empty__ctas">
+		<a class="wo-empty__cta wo-empty__cta--primary" href="<?php echo esc_url( '/shop/' ); ?>"><?php esc_html_e( 'Continue browsing', 'obel' ); ?></a>
+		<a class="wo-empty__cta wo-empty__cta--secondary" href="<?php echo esc_url( '/journal/' ); ?>"><?php esc_html_e( 'Visit the journal', 'obel' ); ?></a>
+	</p>
+</div>
+		<?php
+	},
+	5
+);
+
+add_action(
+	'init',
+	static function (): void {
+		if ( ! function_exists( 'wc_no_products_found' ) ) {
+			return;
+		}
+		remove_action( 'woocommerce_no_products_found', 'wc_no_products_found' );
+		add_action(
+			'woocommerce_no_products_found',
+			static function (): void {
+				if ( is_admin() ) {
+					return;
+				}
+				?>
+<div class="wo-empty wo-empty--shop">
+	<p class="wo-empty__eyebrow"><?php esc_html_e( 'Shop', 'obel' ); ?></p>
+	<h2 class="wo-empty__title"><?php esc_html_e( 'Nothing matches that filter just yet.', 'obel' ); ?></h2>
+	<p class="wo-empty__lede"><?php esc_html_e( 'Try a different category, or see everything currently in stock.', 'obel' ); ?></p>
+	<p class="wo-empty__ctas">
+		<a class="wo-empty__cta wo-empty__cta--primary" href="<?php echo esc_url( '/shop/' ); ?>"><?php esc_html_e( 'See everything', 'obel' ); ?></a>
+		<a class="wo-empty__cta wo-empty__cta--secondary" href="<?php echo esc_url( '/journal/' ); ?>"><?php esc_html_e( 'Visit the journal', 'obel' ); ?></a>
+	</p>
+</div>
+				<?php
+			},
+			10
+		);
+	},
+	20
+);
+// === END empty-states ===
+
+// === BEGIN archive-hero ===
+//
+// Editorial archive header (category / tag / shop).
+//
+// On product category and tag archives, prepends a hero strip with
+// the term's cover image (sideloaded by playground/wo-configure step
+// 11b) as background, term name + description overlaid. On the
+// generic shop archive (no term), a leaner H1+lede strip prints
+// instead. Drops in BEFORE WC's `woocommerce_before_main_content`
+// hook so the existing block-theme markup is unaffected.
+add_action(
+	'woocommerce_before_main_content',
+	static function (): void {
+		if ( is_admin() ) {
+			return;
+		}
+		if ( ! function_exists( 'is_product_category' ) || ! ( is_product_category() || is_product_tag() || is_shop() ) ) {
+			return;
+		}
+
+		$term      = get_queried_object();
+		$has_term  = ( $term && isset( $term->term_id ) );
+		$cover_url = '';
+		$title     = '';
+		$desc      = '';
+		$eyebrow   = '';
+
+		if ( $has_term ) {
+			$thumb_id = (int) get_term_meta( $term->term_id, 'thumbnail_id', true );
+			if ( $thumb_id ) {
+				$cover_url = (string) wp_get_attachment_image_url( $thumb_id, 'large' );
+			}
+			$title   = (string) $term->name;
+			$desc    = (string) term_description( $term->term_id, $term->taxonomy );
+			$eyebrow = ( 'product_cat' === $term->taxonomy )
+				? __( 'Collection', 'obel' )
+				: __( 'Tag', 'obel' );
+		} elseif ( function_exists( 'is_shop' ) && is_shop() ) {
+			$shop_page_id = wc_get_page_id( 'shop' );
+			if ( $shop_page_id > 0 ) {
+				$cover_url = (string) get_the_post_thumbnail_url( $shop_page_id, 'large' );
+				$title     = (string) get_the_title( $shop_page_id );
+			}
+			if ( '' === $title ) {
+				$title = __( 'Shop', 'obel' );
+			}
+			$eyebrow = __( 'Shop', 'obel' );
+		}
+
+		if ( '' === $title ) {
+			return;
+		}
+
+		$style = '';
+		$mod   = '';
+		if ( '' !== $cover_url ) {
+			$style = sprintf( ' style="background-image:url(%s);"', esc_url( $cover_url ) );
+			$mod   = ' wo-archive-hero--has-cover';
+		}
+		?>
+<header class="wo-archive-hero<?php echo esc_attr( $mod ); ?>"<?php echo $style; // phpcs:ignore WordPress.Security.EscapeOutput ?>>
+	<div class="wo-archive-hero__inner">
+		<p class="wo-archive-hero__eyebrow"><?php echo esc_html( $eyebrow ); ?></p>
+		<h1 class="wo-archive-hero__title"><?php echo esc_html( $title ); ?></h1>
+		<?php if ( '' !== $desc ) : ?>
+			<div class="wo-archive-hero__lede"><?php echo wp_kses_post( $desc ); ?></div>
+		<?php endif; ?>
+	</div>
+</header>
+		<?php
+	},
+	5
+);
+// === END archive-hero ===
+
+// === BEGIN payment-icons ===
+//
+// "We accept" trust strip on cart + checkout.
+//
+// The WC Blocks cart/checkout pages don't expose a clean PHP hook
+// post-render, so we attach via wp_footer and DOM-inject a small
+// `.wo-payment-icons` element into the cart-totals + checkout-actions
+// containers. Inline SVG glyphs keep the strip dependency-free (no
+// asset URLs, no font-loading races) and render identically across
+// every theme. Per-theme: the label text and the brands list are
+// owned here so each theme's voice + accepted-payments mix can
+// diverge without touching another theme.
+add_action(
+	'wp_footer',
+	static function (): void {
+		if ( is_admin() ) {
+			return;
+		}
+		if ( ! ( function_exists( 'is_cart' ) && ( is_cart() || is_checkout() ) ) ) {
+			return;
+		}
+		$label = esc_js( __( 'We accept', 'obel' ) );
+		?>
+<script>
+(function(){
+	var LABEL = '<?php echo $label; // phpcs:ignore WordPress.Security.EscapeOutput ?>';
+	var BRANDS = [
+		{ name: 'Visa', svg:
+			'<svg viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg" aria-label="Visa" focusable="false">'
+			+ '<rect width="40" height="26" rx="4" fill="#1A1F71"/>'
+			+ '<text x="20" y="18" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="900" font-style="italic" font-size="13" letter-spacing="0.5" fill="#fff">VISA</text>'
+			+ '</svg>'
+		},
+		{ name: 'Mastercard', svg:
+			'<svg viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg" aria-label="Mastercard" focusable="false">'
+			+ '<rect width="40" height="26" rx="4" fill="#fff" stroke="#E5E5E5"/>'
+			+ '<circle cx="16" cy="13" r="7" fill="#EB001B"/>'
+			+ '<circle cx="24" cy="13" r="7" fill="#F79E1B"/>'
+			+ '<path d="M20 8 a7 7 0 0 1 0 10 a7 7 0 0 1 0-10 z" fill="#FF5F00"/>'
+			+ '</svg>'
+		},
+		{ name: 'American Express', svg:
+			'<svg viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg" aria-label="American Express" focusable="false">'
+			+ '<rect width="40" height="26" rx="4" fill="#1F72CD"/>'
+			+ '<text x="20" y="17" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="800" font-size="9" letter-spacing="0.7" fill="#fff">AMEX</text>'
+			+ '</svg>'
+		},
+		{ name: 'Discover', svg:
+			'<svg viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg" aria-label="Discover" focusable="false">'
+			+ '<rect width="40" height="26" rx="4" fill="#fff" stroke="#E5E5E5"/>'
+			+ '<text x="3" y="16" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="700" font-size="5.5" letter-spacing="0.1" fill="#111">DISCOVER</text>'
+			+ '<circle cx="35" cy="13" r="3" fill="#F76B1C"/>'
+			+ '</svg>'
+		},
+		{ name: 'Apple Pay', svg:
+			'<svg viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg" aria-label="Apple Pay" focusable="false">'
+			+ '<rect width="40" height="26" rx="4" fill="#000"/>'
+			+ '<g transform="translate(7 5.5) scale(0.014)" fill="#fff">'
+			+ '<path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76.5 0-103.7 40.8-165.9 40.8s-105.6-57-155.5-127C46.7 790.7 0 663 0 541.8c0-194.4 126.4-297.5 250.8-297.5 66.1 0 121.2 43.4 162.7 43.4 39.5 0 101.1-46 176.3-46 28.5 0 130.9 2.6 198.3 99.2zm-234-181.5c31.1-36.9 53.1-88.1 53.1-139.3 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 7.8 1.3 15.6 1.9 18.1 3.2.6 8.4 1.3 13.6 1.3 45.4 0 102.5-30.4 135.5-71.3z"/>'
+			+ '</g>'
+			+ '<text x="21" y="17" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="600" font-size="10" letter-spacing="0.2" fill="#fff">Pay</text>'
+			+ '</svg>'
+		},
+		{ name: 'Google Pay', svg:
+			'<svg viewBox="0 0 40 26" xmlns="http://www.w3.org/2000/svg" aria-label="Google Pay" focusable="false">'
+			+ '<rect width="40" height="26" rx="4" fill="#fff" stroke="#E5E5E5"/>'
+			+ '<text x="6" y="18" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="700" font-size="13" fill="#4285F4">G</text>'
+			+ '<text x="16" y="17" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-weight="600" font-size="10" letter-spacing="0.2" fill="#5F6368">Pay</text>'
+			+ '</svg>'
+		}
+	];
+	function build(){
+		var div = document.createElement('div');
+		div.className = 'wo-payment-icons';
+		var label = document.createElement('span');
+		label.className = 'wo-payment-icons__label';
+		label.textContent = LABEL;
+		div.appendChild(label);
+		var list = document.createElement('span');
+		list.className = 'wo-payment-icons__list';
+		BRANDS.forEach(function(brand){
+			var pill = document.createElement('span');
+			pill.className = 'wo-payment-icons__icon';
+			pill.setAttribute('role', 'img');
+			pill.setAttribute('aria-label', brand.name);
+			pill.innerHTML = brand.svg;
+			list.appendChild(pill);
+		});
+		div.appendChild(list);
+		return div;
+	}
+	function inject(){
+		var actions = document.querySelector('.wp-block-woocommerce-checkout-actions-block');
+		if (actions && !actions.querySelector(':scope > .wo-payment-icons')) {
+			actions.appendChild(build());
+		}
+		var totals = document.querySelector('.wp-block-woocommerce-cart-totals-block');
+		if (totals && !totals.querySelector(':scope > .wo-payment-icons')) {
+			totals.appendChild(build());
+		}
+	}
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', inject);
+	} else {
+		inject();
+	}
+	var mo = new MutationObserver(function(){ inject(); });
+	mo.observe(document.body, { childList: true, subtree: true });
+})();
+</script>
+		<?php
+	},
+	99
+);
+// === END payment-icons ===
