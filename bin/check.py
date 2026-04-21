@@ -3733,8 +3733,11 @@ def check_no_default_wc_strings() -> Result:
          "\"Default sorting\" catalog-sorting first option"),
         ("Lost your password?",
          "\"Lost your password?\" account login link"),
-        ("wo-result-count",
-         "\"Showing 1-16 of 55 results\" loop result count"),
+        ("render_block_woocommerce/product-results-count",
+         "\"Showing 1-16 of 55 results\" loop result count "
+         "(rewritten in place via render_block filter — the previous "
+         "woocommerce_before_shop_loop echo produced a duplicate "
+         "floating count inside wp:woocommerce/product-collection)"),
     ]
     for needle, label in required:
         if needle not in target_data:
@@ -3748,6 +3751,148 @@ def check_no_default_wc_strings() -> Result:
         r.details.append(
             f"all {len(required)} default-WC microcopy overrides "
             f"present in inlined mu-plugin"
+        )
+    return r
+
+
+def check_mu_plugin_no_legacy_loop_echoes() -> Result:
+    """Forbid `add_action('woocommerce_before_shop_loop', ...)` /
+    `woocommerce_after_shop_loop` callbacks in `wo-microcopy-mu.php`
+    that emit HTML.
+
+    THE 23-ITEMS-FLOATING-IN-THE-MIDDLE-OF-NOWHERE FAIL MODE
+    --------------------------------------------------------
+    These two WC actions fire in TWO places on every modern shop /
+    archive page:
+
+      1. The legacy `woocommerce_content()` shortcode loop (where the
+         original WC counter, sort dropdown, and "no products" notice
+         all hooked in).
+      2. INSIDE `wp:woocommerce/product-collection`'s server render --
+         the product-collection block invokes the loop hooks for
+         backwards compatibility with sidebar widgets and addon
+         plugins.
+
+    Themes built on the modern block editor place
+    `wp:woocommerce/product-results-count` (and `catalog-sorting`,
+    etc.) inside a flex header row in `archive-product.html` and
+    `product-search-results.html`, then render the product grid below
+    via `wp:woocommerce/product-collection`. A mu-plugin that echoes
+    HTML on `woocommerce_before_shop_loop` paints that HTML TWICE: once
+    in the title row (correct, because the matching block lives there)
+    and once floating above the product grid with no parent flex
+    container. The Proprietor's screenshot showed exactly this: a
+    naked "23 ITEMS" line appearing in the middle of nowhere, halfway
+    between the H1 row and the product grid. The previous mu-plugin
+    iteration shipped this regression because every static check in
+    the gate inspected source files; nothing inspected the runtime
+    interaction between mu-plugin echoes and modern shop block
+    composition.
+
+    The canonical pattern is `render_block_<block-name>` filters:
+    they receive the block's already-correctly-positioned HTML and
+    rewrite it in place, so there is exactly ONE node per surface
+    and it sits where the template author put it. See the comment
+    block above the `render_block_woocommerce/product-results-count`
+    filter in `playground/wo-microcopy-mu.php` for the full
+    post-mortem.
+
+    A new override that needs to fire in the legacy loop AND the
+    block render AND nowhere else is a contradiction in terms --
+    pick one mechanism and stick to it. If a future override genuinely
+    needs the legacy hook (e.g. a block-less archive a plugin ships)
+    add the surface to `_LOOP_ECHO_ALLOWLIST` below with a one-line
+    rationale comment in this docstring.
+
+    See AGENTS.md hard rule "Mu-plugin overrides MUST use
+    render_block_* filters, not woocommerce_*_shop_loop echoes".
+    """
+    r = Result("wo-microcopy-mu.php has no HTML echoes on legacy loop hooks")
+    # Canonical source lives at <monorepo>/playground/wo-microcopy-mu.php
+    # (single file, inlined into every theme's blueprint by
+    # bin/sync-playground.py). Always scan that single source so the
+    # check fires once per theme run with the same content -- a
+    # per-theme path would skip every theme in the monorepo because
+    # the mu-plugin is shared, not duplicated.
+    mu_path = MONOREPO_ROOT / "playground" / "wo-microcopy-mu.php"
+    if not mu_path.exists():
+        r.skip("no playground/wo-microcopy-mu.php (monorepo without the demo mu-plugin)")
+        return r
+
+    src = mu_path.read_text(encoding="utf-8")
+
+    # Surfaces that fire inside both the legacy loop AND
+    # `wp:woocommerce/product-collection`'s server render. Adding to
+    # this list expands the forbidden-hook set; never shrink it.
+    forbidden_hooks = (
+        "woocommerce_before_shop_loop",
+        "woocommerce_after_shop_loop",
+        "woocommerce_no_products_found",
+    )
+
+    # Scan every `add_action( 'hook', function ... )` with a callback
+    # body that emits HTML (`echo` of a string literal, `print`, an
+    # interpolated `<...>` heredoc, or a `printf` of `<...>`). Allow
+    # callbacks whose only side effect is a `remove_action` /
+    # `add_filter` that doesn't itself emit HTML, because those are
+    # legitimate runtime hook reordering.
+    add_action_re = re.compile(
+        r"add_action\s*\(\s*"
+        r"['\"](" + "|".join(re.escape(h) for h in forbidden_hooks) + r")['\"]"
+        r"\s*,\s*function\s*\([^)]*\)\s*\{",
+        re.IGNORECASE,
+    )
+
+    failures: list[str] = []
+    for match in add_action_re.finditer(src):
+        hook = match.group(1)
+        body_start = match.end()
+        # Walk to the matching closing brace, respecting nesting.
+        depth = 1
+        i = body_start
+        while i < len(src) and depth > 0:
+            ch = src[i]
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+            i += 1
+        body = src[body_start : i - 1]
+        # Strip line + block comments before the emit-HTML scan so
+        # docstrings that mention `echo '<p ...>'` as illustration
+        # don't trip the gate.
+        body_no_comments = re.sub(r"//[^\n]*", "", body)
+        body_no_comments = re.sub(r"/\*[\s\S]*?\*/", "", body_no_comments)
+        emits_html = bool(
+            re.search(r"\b(echo|print)\s+[^;]*['\"]\s*<", body_no_comments)
+            or re.search(r"\bprintf\s*\(\s*['\"]\s*<", body_no_comments)
+            or re.search(r"<<<['\"]?\w+['\"]?\s*\n[\s\S]*?<", body_no_comments)
+        )
+        if emits_html:
+            line_no = src.count("\n", 0, match.start()) + 1
+            failures.append(
+                f"  playground/wo-microcopy-mu.php:{line_no}: "
+                f"`add_action('{hook}', function () {{ ... echo '<...>' ... }})` "
+                f"will paint the same HTML TWICE on every archive — once in "
+                f"the legacy loop position and once inside "
+                f"wp:woocommerce/product-collection's server render. Use a "
+                f"`render_block_<block-name>` filter to rewrite the existing "
+                f"block output in place instead."
+            )
+
+    if failures:
+        r.fail(
+            "wo-microcopy-mu.php emits HTML on a shared WC loop action; "
+            "this paints duplicate, container-less markup inside the "
+            "wp:woocommerce/product-collection block. Switch to a "
+            "render_block_<block-name> filter (see the post-mortem above "
+            "the render_block_woocommerce/product-results-count filter "
+            "in the mu-plugin):\n" + "\n".join(failures)
+        )
+    else:
+        r.details.append(
+            f"no HTML-emitting echoes on {len(forbidden_hooks)} forbidden "
+            f"WC loop hooks ({', '.join(forbidden_hooks)})"
         )
     return r
 
@@ -4006,6 +4151,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_pattern_microcopy_distinct(),
         check_all_rendered_text_distinct_across_themes(),
         check_no_default_wc_strings(),
+        check_mu_plugin_no_legacy_loop_echoes(),
         check_playground_content_seeded(),
         check_no_unpushed_commits(),
     ]

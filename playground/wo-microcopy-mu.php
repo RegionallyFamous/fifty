@@ -69,39 +69,60 @@ add_filter(
 );
 
 // "Showing X-Y of Z results" -> "Z items".
+//
+// Why a `render_block_*` filter and NOT a `woocommerce_before_shop_loop`
+// echo:
+//
+// The previous version of this block hooked `woocommerce_before_shop_loop`
+// (priority 20) and echoed a fresh `<p class="woocommerce-result-count
+// wo-result-count">N items</p>`. That action fires in TWO places on every
+// modern shop page:
+//
+//   1. The legacy `woocommerce_content()` shortcode loop (where the
+//      original WC counter lived).
+//   2. INSIDE `wp:woocommerce/product-collection`'s server render -- the
+//      product-collection block invokes the loop hooks for backwards
+//      compatibility with sidebar widgets and addon plugins.
+//
+// Themes built on the modern block editor place
+// `wp:woocommerce/product-results-count` inside a flex header row in
+// `archive-product.html`, then render the product grid below via
+// `wp:woocommerce/product-collection`. The block-rendered count lands in
+// the flex row (correct). The action-rendered count lands ABOVE the
+// product grid, with no parent container, floating in the middle of
+// nowhere -- the exact "23 ITEMS off in the middle of nowhere" failure
+// the Proprietor flagged.
+//
+// `render_block_woocommerce/product-results-count` rewrites the block's
+// already-correctly-positioned `<p>` in place, so there is exactly ONE
+// count node and it sits where the template author put it. The filter
+// passes through untouched if WC stops shipping the
+// `woocommerce-result-count` class (defensive forward-compat).
 add_filter(
-	'woocommerce_get_catalog_ordering_args',
-	function ( $args ) {
-		return $args;
-	}
-);
-
-// Replace the default `result-count` template output. WC fires a
-// `woocommerce_after_shop_loop_item_title` on cards; the count itself
-// has no filter, so we use the broader output buffer override:
-add_action(
-	'woocommerce_before_shop_loop',
-	function () {
-		// Remove the default WC counter; we'll print our own.
-		remove_action( 'woocommerce_before_shop_loop', 'woocommerce_result_count', 20 );
-		add_action(
-			'woocommerce_before_shop_loop',
-			function () {
-				if ( is_admin() ) {
-					return;
-				}
-				$total = (int) wc_get_loop_prop( 'total', 0 );
-				if ( $total > 0 ) {
-					echo '<p class="woocommerce-result-count wo-result-count">'
-						. esc_html( $total ) . ' '
-						. esc_html( _n( 'item', 'items', $total, 'fifty' ) )
-						. '</p>';
-				}
-			},
-			20
+	'render_block_woocommerce/product-results-count',
+	function ( $block_content ) {
+		if ( is_admin() || '' === trim( (string) $block_content ) ) {
+			return $block_content;
+		}
+		$total = (int) wc_get_loop_prop( 'total', 0 );
+		if ( $total <= 0 ) {
+			return $block_content;
+		}
+		$label = sprintf(
+			/* translators: %d: number of products in the current archive. */
+			esc_html( _n( '%d item', '%d items', $total, 'fifty' ) ),
+			$total
 		);
+		$rewritten = preg_replace(
+			'#(<p\b[^>]*\bclass="[^"]*\bwoocommerce-result-count\b[^"]*"[^>]*>)[\s\S]*?(</p>)#i',
+			'$1' . $label . '$2',
+			$block_content,
+			1,
+			$count
+		);
+		return ( $count > 0 && null !== $rewritten ) ? $rewritten : $block_content;
 	},
-	5
+	20
 );
 
 // "Default sorting" -> "Featured" in the catalog order dropdown.

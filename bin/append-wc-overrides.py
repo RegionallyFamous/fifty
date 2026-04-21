@@ -400,11 +400,31 @@ table.variations select,select.wo-variation{{font-family:var(--wp--preset--font-
 #                         with a single secondary-colored mid-dot. We
 #                         render at line-height:1 so it never lifts the
 #                         label baseline.
-#   .wo-result-count    — replaces WC's "Showing 1-16 of 55 results"
-#                         counter on shop archives with a tight uppercase
-#                         "55 items" line. Pinned to the sans preset and
-#                         the secondary text color so it reads as a
-#                         supporting line, not as page H1 chrome.
+#   .wo-result-count    — DEPRECATED. Earlier the mu-plugin emitted a
+#                         `<p class="woocommerce-result-count
+#                         wo-result-count">N items</p>` via a
+#                         `woocommerce_before_shop_loop` action. That
+#                         action fires INSIDE
+#                         `wp:woocommerce/product-collection`'s server
+#                         render too, so the count appeared TWICE on
+#                         every archive: once in the title flex row
+#                         (block-rendered, correct position) and once
+#                         floating above the grid with no parent
+#                         container. The mu-plugin now uses a
+#                         `render_block_woocommerce/product-results-count`
+#                         filter that rewrites the existing block <p>
+#                         in place (see comment block above that filter
+#                         in `playground/wo-microcopy-mu.php`). The
+#                         block's class is `woocommerce-result-count`
+#                         only — `wo-result-count` no longer matches
+#                         anything emitted at runtime, so this rule is
+#                         currently dead code. Per-theme styling lives
+#                         in each `theme.json`'s
+#                         `styles.blocks["woocommerce/product-results-count"]`
+#                         entry. This rule is left in place to keep the
+#                         sentinel-based chunk byte-stable in every
+#                         shipped `theme.json`; retire on the next
+#                         sentinel bump.
 SENTINEL_OPEN_PHASE_B = "/* wc-tells-phase-b-microcopy */"
 SENTINEL_CLOSE_PHASE_B = "/* /wc-tells-phase-b-microcopy */"
 CSS_PHASE_B = f"""{SENTINEL_OPEN_PHASE_B}
