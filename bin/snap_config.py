@@ -138,3 +138,70 @@ QUICK_VIEWPORTS: set[str] = {"desktop"}
 # Themes are auto-discovered from the repo (any folder with a theme.json).
 # Override here if you want to pin the order or skip experimental themes.
 THEME_ORDER: list[str] = ["obel", "chonk", "selvedge", "lysholm"]
+
+
+# ---------------------------------------------------------------------------
+# Inspector selectors -- per-route CSS selectors whose computed dimensions
+# get captured in `*.findings.json` and surfaced in the review.md report.
+#
+# Add a selector when its size or visibility is the "tell" for a known
+# regression class (e.g. cart sidebar collapsing below its min-width). The
+# inspector reports {selector, count, widths[], heights[], display, visible}
+# for each entry -- it doesn't fail builds, just makes the data available
+# without re-shooting. Use it as the "hard data" companion to the visual
+# pixel diff.
+# ---------------------------------------------------------------------------
+INSPECT_SELECTORS: dict[str, list[str]] = {
+    # Cart layout: sidebar must be >= 300px on desktop (>=782px viewport).
+    "cart-filled": [
+        ".wc-block-cart",
+        ".wc-block-cart__sidebar",
+        ".wc-block-cart__main",
+        ".wc-block-components-sidebar-layout__sidebar",
+        ".wc-block-cart-items",
+        ".wc-block-cart__submit-container",
+    ],
+    "cart-empty": [
+        ".wp-block-woocommerce-empty-cart-block",
+        ".wc-block-cart",
+    ],
+    # Checkout layout: same sidebar contract; main column should match
+    # theme.json wideSize (1280px) on desktop, NOT contentSize (720px).
+    "checkout-filled": [
+        ".wc-block-checkout",
+        ".wc-block-checkout__sidebar",
+        ".wc-block-checkout__main",
+        ".wc-block-components-sidebar-layout__sidebar",
+        ".wc-block-components-order-summary",
+        "main.wp-block-group",  # the page-checkout.html wrapper
+    ],
+    "shop": [
+        ".wp-block-woocommerce-product-template",
+        ".wc-block-product-template",
+    ],
+    "product-simple": [
+        ".woocommerce-product-gallery",
+        ".product .summary",
+        ".wp-block-add-to-cart-form",
+    ],
+    "product-variable": [
+        ".woocommerce-product-gallery",
+        "table.variations",
+    ],
+    "home": [
+        ".wp-site-blocks > main",
+        ".wp-block-post-featured-image",
+    ],
+    "my-account": [
+        ".woocommerce-form-login",
+        ".u-columns",
+    ],
+    "journal": [
+        ".wp-block-query",
+        ".wp-block-post-template",
+    ],
+    "category": [
+        ".wp-block-woocommerce-product-template",
+        ".wp-block-term-description",
+    ],
+}

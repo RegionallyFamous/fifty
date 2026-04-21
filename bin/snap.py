@@ -104,6 +104,7 @@ from typing import Iterable
 # file from the repo root (the most common invocation).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from snap_config import (  # noqa: E402
+    INSPECT_SELECTORS,
     QUICK_ROUTES,
     QUICK_VIEWPORTS,
     ROUTES,
@@ -472,6 +473,254 @@ def filter_viewports(names: Iterable[str] | None) -> list[Viewport]:
     return [v for v in VIEWPORTS if v.name in wanted]
 
 
+_FREEZE_CSS = """
+/* Injected by bin/snap.py before every screenshot to suppress
+   pixel-diff noise from animations, cursor blinks, scrollbars, and
+   web fonts that haven't fully swapped yet. We DON'T disable
+   scrollbars globally because doing so changes layout width on
+   platforms that reserve scrollbar gutter; we just hide the visible
+   thumb so that scroll position differences don't trip diffs. */
+*, *::before, *::after {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+    caret-color: transparent !important;
+}
+::-webkit-scrollbar-thumb { background: transparent !important; }
+/* WC mini-cart drawer mounting flicker: force collapsed during shots. */
+.wc-block-mini-cart__drawer:not(.is-mobile) { display: none !important; }
+"""
+
+
+# JS run via page.evaluate() after navigation. Returns a serialisable
+# dict of findings + per-selector measurements. Kept side-effect free
+# (no clicks, no DOM mutation) so it doesn't change what the screenshot
+# captures.
+_HEURISTICS_JS = r"""
+(args) => {
+    const out = {findings: [], selectors: []};
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    out.dom = {width: vw, height: vh,
+               scrollWidth: document.documentElement.scrollWidth,
+               scrollHeight: document.documentElement.scrollHeight};
+
+    const push = (sev, kind, msg, extra) => out.findings.push(
+        Object.assign({severity: sev, kind, message: msg}, extra || {})
+    );
+
+    // Horizontal page overflow -- the body is wider than the viewport.
+    // Anything > 1px is treated as accidental (browsers report 0 or 1
+    // even on perfectly fitting pages depending on rounding).
+    const overflow = document.documentElement.scrollWidth - vw;
+    if (overflow > 1) {
+        push("warn", "horizontal-overflow",
+             `Document scrollWidth ${document.documentElement.scrollWidth}px exceeds viewport ${vw}px by ${overflow}px.`,
+             {overflow_px: overflow});
+    }
+
+    // Visible WooCommerce error / info / success notices. These
+    // surface server-side problems that don't appear in the JS console
+    // (e.g. "product is out of stock" when the cart preload fails).
+    const noticeSelectors = [
+        ['.woocommerce-error', 'error', 'wc-error'],
+        ['.woocommerce-info', 'warn', 'wc-info'],
+        ['.woocommerce-message', 'info', 'wc-message'],
+        ['.wc-block-components-validation-error', 'warn', 'wc-validation-error'],
+    ];
+    for (const [sel, sev, kind] of noticeSelectors) {
+        document.querySelectorAll(sel).forEach((el) => {
+            const text = (el.innerText || '').trim().slice(0, 240);
+            if (text) push(sev, kind, text, {selector: sel});
+        });
+    }
+
+    // PHP/debug noise leaked into the page body.
+    const debugRegex = /(Notice:\s|Warning:\s|Fatal error:|Parse error:|Deprecated:|Stack trace:|<br\s*\/>\s*<b>)/i;
+    if (debugRegex.test(document.body.innerText || '')) {
+        const m = (document.body.innerText.match(debugRegex) || [''])[0];
+        push("error", "php-debug-output",
+             `Page body contains PHP debug output (matched: ${m.trim()}).`);
+    }
+
+    // Untranslated/raw template tokens left in the rendered DOM.
+    const rawToken = /__\(['"]/;
+    if (rawToken.test(document.body.innerText || '')) {
+        push("warn", "raw-i18n-token",
+             "Page body contains a raw __() i18n token (string never translated).");
+    }
+
+    // Images: missing alt + broken (loaded but 0x0) + suspiciously huge.
+    document.querySelectorAll('img').forEach((img) => {
+        const r = img.getBoundingClientRect();
+        const visible = r.width > 0 && r.height > 0 && r.bottom >= 0 && r.top <= vh + 4000;
+        if (!visible) return;
+        if (img.complete && img.naturalWidth === 0) {
+            push("error", "broken-image",
+                 `Image failed to load: ${img.currentSrc || img.src}`,
+                 {src: img.currentSrc || img.src});
+        }
+        if (!img.hasAttribute('alt')) {
+            push("warn", "img-missing-alt",
+                 `Image has no alt attribute: ${img.currentSrc || img.src}`,
+                 {src: img.currentSrc || img.src});
+        }
+        if (img.naturalWidth > 4000) {
+            push("info", "img-oversized",
+                 `Image is ${img.naturalWidth}px wide natively (consider a smaller variant).`,
+                 {src: img.currentSrc || img.src, natural_width: img.naturalWidth});
+        }
+    });
+
+    // Per-character word-wrap detector: an element whose intrinsic
+    // text width is much greater than its rendered width usually means
+    // its container collapsed below the text's minimum content width.
+    // We sample headings + button text inside known sidebar selectors
+    // because that's where the WC sidebar squeeze manifested ("CAR T
+    // TOT ALS" rendered as four lines of 1-3 chars each).
+    const sidebarLike = [
+        '.wc-block-cart__sidebar', '.wc-block-checkout__sidebar',
+        '.wc-block-components-sidebar-layout__sidebar', 'aside',
+    ];
+    sidebarLike.forEach((side) => {
+        document.querySelectorAll(`${side} h1, ${side} h2, ${side} h3, ${side} button, ${side} a.wc-block-cart__submit-button`).forEach((el) => {
+            const r = el.getBoundingClientRect();
+            const text = (el.innerText || '').trim();
+            if (!text || r.width < 1) return;
+            // Approximate the intrinsic word width: the longest word's
+            // pixel width if rendered on a single line.
+            const longestWord = text.split(/\s+/).reduce((a,b) => a.length >= b.length ? a : b, '');
+            if (longestWord.length < 4) return;
+            // Use a temporary inline span to measure unbroken text.
+            const probe = document.createElement('span');
+            probe.style.cssText = 'position:absolute;left:-99999px;top:-99999px;white-space:nowrap;font:inherit;letter-spacing:inherit;';
+            probe.textContent = longestWord;
+            el.appendChild(probe);
+            const probeWidth = probe.getBoundingClientRect().width;
+            el.removeChild(probe);
+            if (probeWidth > r.width + 2) {
+                push("warn", "word-broken",
+                     `"${text.slice(0,80)}" appears to wrap mid-word inside ${side} (longest token ${longestWord} measures ${Math.round(probeWidth)}px but element is ${Math.round(r.width)}px).`,
+                     {selector: side, element_width: Math.round(r.width), token_width: Math.round(probeWidth)});
+            }
+        });
+    });
+
+    // Captured measurements for the user-supplied INSPECT_SELECTORS.
+    const wanted = args.inspectSelectors || [];
+    for (const sel of wanted) {
+        const els = Array.from(document.querySelectorAll(sel));
+        const entry = {selector: sel, count: els.length, instances: []};
+        for (const el of els.slice(0, 4)) {
+            const r = el.getBoundingClientRect();
+            const cs = window.getComputedStyle(el);
+            entry.instances.push({
+                width: Math.round(r.width),
+                height: Math.round(r.height),
+                visible: r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none',
+                display: cs.display,
+                grid_template_columns: cs.gridTemplateColumns,
+                min_width: cs.minWidth,
+                max_width: cs.maxWidth,
+            });
+        }
+        if (els.length === 0) {
+            entry.missing = true;
+            // Missing inspect selectors are usually a reason to update
+            // snap_config.py rather than a real bug, so info-level only.
+            push("info", "inspect-selector-missing",
+                 `Selector \`${sel}\` matched 0 elements on this page.`,
+                 {selector: sel});
+        } else {
+            // Surface obviously narrow sidebar-ish elements.
+            for (const inst of entry.instances) {
+                const looksLikeSidebar = /sidebar|aside/i.test(sel);
+                if (looksLikeSidebar && inst.visible && inst.width > 0 && inst.width < 200 && vw >= 782) {
+                    push("error", "narrow-sidebar",
+                         `\`${sel}\` rendered ${inst.width}px wide on a ${vw}px viewport (expected >= 300px sidebar).`,
+                         {selector: sel, element_width: inst.width, viewport_width: vw});
+                }
+            }
+        }
+        out.selectors.push(entry);
+    }
+
+    return out;
+}
+"""
+
+
+# Known harmless noise from WordPress core / Playground that we never
+# want to count as a real page issue. Each entry is a substring matched
+# against the captured page_error / console.text payload (case-sensitive).
+# Add to this list when investigation confirms the message is upstream
+# noise — never to silence a real theme bug.
+KNOWN_NOISE_SUBSTRINGS: tuple[str, ...] = (
+    # wp-emoji-loader appends a hidden <canvas> to <head> while the
+    # head is briefly null in headless Chromium during early DOM setup.
+    # Harmless; emoji rendering still works.
+    "Cannot read properties of null (reading 'appendChild')",
+)
+
+
+def _is_known_noise(text: str) -> bool:
+    return any(s in text for s in KNOWN_NOISE_SUBSTRINGS)
+
+
+def _attach_diagnostics(page) -> dict:
+    """Wire console + pageerror + response listeners onto a Playwright
+    page and return a dict that accumulates the captured events.
+
+    The dict is mutated in-place by the listeners. Drain it after each
+    navigation by reading + clearing its lists; we keep one accumulator
+    per page rather than per route to avoid handler churn between
+    routes (Playwright re-emits handler-add cost on every wiring).
+    """
+    bag: dict = {"console": [], "page_errors": [], "network_failures": []}
+
+    def on_console(msg):
+        try:
+            t = msg.type
+        except Exception:
+            t = "log"
+        if t in ("warning", "error"):
+            try:
+                text = msg.text[:600]
+                if _is_known_noise(text):
+                    return
+                bag["console"].append({"type": t, "text": text})
+            except Exception:
+                pass
+
+    def on_pageerror(err):
+        try:
+            text = str(err)[:600]
+            if _is_known_noise(text):
+                return
+            bag["page_errors"].append(text)
+        except Exception:
+            pass
+
+    def on_response(resp):
+        try:
+            status = resp.status
+            if status >= 400:
+                bag["network_failures"].append({
+                    "status": status,
+                    "url": resp.url,
+                    "method": resp.request.method,
+                })
+        except Exception:
+            pass
+
+    page.on("console", on_console)
+    page.on("pageerror", on_pageerror)
+    page.on("response", on_response)
+    return bag
+
+
 def shoot_theme(
     theme: str,
     server_url: str,
@@ -481,10 +730,21 @@ def shoot_theme(
 ) -> dict:
     """Drive Playwright across (route, viewport). Returns a manifest dict.
 
-    Each shot is full-page (Playwright stitches the viewport-height
-    crops). We wait for `networkidle` so deferred WC blocks finish
-    hydrating before capture; this matters most for cart/checkout where
-    the order summary loads via XHR.
+    For each (route, viewport) the framework writes:
+      <slug>.png            full-page screenshot (animations frozen)
+      <slug>.html           rendered HTML after networkidle + JS settle
+      <slug>.findings.json  structured diagnostics:
+        * viewport          {width, height, scrollWidth, scrollHeight}
+        * findings[]        DOM heuristics (overflow, WC notices, broken
+                             images, sidebar squeeze, debug output, etc.)
+        * selectors[]       computed widths/grid for INSPECT_SELECTORS
+        * console[]         browser console warnings + errors
+        * page_errors[]     uncaught JS exceptions
+        * network_failures[] HTTP responses with status >= 400
+
+    Heuristics + capture happen inside `page.evaluate()`; nothing in
+    them mutates the DOM that gets screenshotted, so the PNG and the
+    findings reflect the same rendered state.
     """
     try:
         from playwright.sync_api import sync_playwright
@@ -506,46 +766,124 @@ def shoot_theme(
                 ctx = browser.new_context(
                     viewport={"width": vp.width, "height": vp.height},
                     device_scale_factor=1,
-                    # Pin a UA that excludes "HeadlessChrome" so WC's
-                    # client-side redirects don't bounce us to a
-                    # bot-friendly page.
                     user_agent=(
                         "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) "
                         "AppleWebKit/537.36 (KHTML, like Gecko) "
                         "Chrome/138.0.0.0 Safari/537.36"
                     ),
                 )
+                # `add_init_script` runs before any page script, but we
+                # need _FREEZE_CSS injected as a stylesheet (not a
+                # variable) so it applies to every navigation. The
+                # init script wires that up via a <style> tag on
+                # DOMContentLoaded so timed animations (font swap,
+                # WC drawer slide) settle before our screenshot fires.
+                ctx.add_init_script(
+                    "(() => { const s = document.createElement('style');"
+                    f" s.textContent = {json.dumps(_FREEZE_CSS)};"
+                    " document.documentElement.appendChild(s); })();"
+                )
                 page = ctx.new_page()
+                bag = _attach_diagnostics(page)
                 vp_dir = out_root / vp.name
                 vp_dir.mkdir(parents=True, exist_ok=True)
                 for route in routes:
                     out_path = vp_dir / f"{route.slug}.png"
+                    html_path = vp_dir / f"{route.slug}.html"
+                    findings_path = vp_dir / f"{route.slug}.findings.json"
                     url = server_url + route.path
                     print(
                         f"  {DIM}{vp.name:7s}{RESET} "
                         f"{route.slug:18s} → {url}",
                         flush=True,
                     )
+                    # Reset accumulators between routes so per-route
+                    # findings only attribute their own console + net
+                    # noise (cross-route bleed would confuse the
+                    # report).
+                    bag["console"].clear()
+                    bag["page_errors"].clear()
+                    bag["network_failures"].clear()
+                    nav_error: str | None = None
                     try:
                         page.goto(url, wait_until="networkidle", timeout=45_000)
                     except Exception as e:
-                        # Capture whatever loaded so we can see the failure
-                        # mode rather than aborting the whole sweep.
+                        nav_error = str(e)
                         print(f"    {YELLOW}warn:{RESET} navigation: {e}")
                     # Small settle for late client renders (mini-cart
-                    # hydration, font swap).
+                    # hydration, font swap, WC checkout XHR).
                     page.wait_for_timeout(500)
+
+                    # Capture HTML + run heuristics BEFORE the
+                    # screenshot so any DOM mutations from our
+                    # measurement probe (the temp <span> for word-wrap
+                    # detection) are reverted before the pixel snap.
+                    inspect = INSPECT_SELECTORS.get(route.slug, [])
+                    findings: dict = {}
+                    try:
+                        findings = page.evaluate(
+                            _HEURISTICS_JS,
+                            {"inspectSelectors": inspect},
+                        )
+                    except Exception as e:
+                        findings = {"findings": [
+                            {"severity": "warn", "kind": "heuristics-failed",
+                             "message": f"Heuristics evaluation failed: {e}"},
+                        ], "selectors": []}
+                    try:
+                        html_path.write_text(page.content(), encoding="utf-8")
+                    except Exception as e:
+                        print(f"    {YELLOW}warn:{RESET} html capture: {e}")
+
                     try:
                         page.screenshot(path=str(out_path), full_page=True)
                     except Exception as e:
                         print(f"    {RED}fail:{RESET} screenshot: {e}")
                         continue
+
+                    # Spread `findings` first so JS-supplied keys (dom,
+                    # findings, selectors) don't accidentally clobber
+                    # the run-context fields below. Order matters here:
+                    # `viewport` was previously overwritten by the JS
+                    # heuristics' `out.viewport = {...}` dict, which
+                    # broke sort keys downstream.
+                    findings_payload = {
+                        **findings,
+                        "theme": theme,
+                        "viewport": vp.name,
+                        "route": route.slug,
+                        "url": url,
+                        "navigation_error": nav_error,
+                        "console": list(bag["console"]),
+                        "page_errors": list(bag["page_errors"]),
+                        "network_failures": list(bag["network_failures"]),
+                    }
+                    findings_path.write_text(
+                        json.dumps(findings_payload, indent=2),
+                        encoding="utf-8",
+                    )
+
+                    # Emit a one-line summary so the agent watching
+                    # stdout doesn't have to crack open every JSON
+                    # file just to see if a route raised flags.
+                    finds = findings.get("findings", [])
+                    err_count = sum(1 for f in finds if f.get("severity") == "error")
+                    warn_count = sum(1 for f in finds if f.get("severity") == "warn")
+                    if err_count or warn_count:
+                        col = RED if err_count else YELLOW
+                        print(f"    {col}flags:{RESET} "
+                              f"{err_count} error / {warn_count} warn")
+
                     manifest["shots"].append(
                         {
                             "viewport": vp.name,
                             "route": route.slug,
                             "path": str(out_path.relative_to(REPO_ROOT)),
                             "size_bytes": out_path.stat().st_size,
+                            "findings_path": str(findings_path.relative_to(REPO_ROOT)),
+                            "html_path": str(html_path.relative_to(REPO_ROOT)),
+                            "error_count": err_count,
+                            "warn_count": warn_count,
                         }
                     )
                 ctx.close()
@@ -668,8 +1006,34 @@ def cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _shoot_one_theme(theme: str, routes: list[Route],
+                     viewports: list[Viewport], port: int | None,
+                     verbosity: str) -> tuple[str, str | None]:
+    """Worker used by both the serial and concurrent shoot paths.
+
+    Returns (theme, error) -- error is None on success, otherwise the
+    exception message. We never raise here so a single bad theme
+    doesn't abort the whole sweep.
+    """
+    out_root = SNAPS_DIR / theme
+    try:
+        with running_server(theme, port=port, verbosity=verbosity) as server:
+            shoot_theme(theme, server.url, routes, viewports, out_root)
+    except SystemExit as e:
+        return theme, f"failed: {e}"
+    except Exception as e:
+        return theme, f"crashed: {e}"
+    return theme, None
+
+
 def cmd_shoot(args: argparse.Namespace) -> int:
-    """Boot, capture, kill -- repeated per theme."""
+    """Boot, capture, kill -- repeated per theme.
+
+    Default is serial. `--concurrency=N` boots up to N themes in
+    parallel (each on its own port chosen via find_free_port) which
+    drops a 4-theme sweep from ~16min to ~4min. The cost is RAM (each
+    Playground worker eats ~400MB) and CPU during the screenshot pass.
+    """
     if args.all:
         themes = discover_themes()
     else:
@@ -679,32 +1043,64 @@ def cmd_shoot(args: argparse.Namespace) -> int:
 
     routes = filter_routes(args.routes or (sorted(QUICK_ROUTES) if args.quick else None))
     viewports = filter_viewports(args.viewports or (sorted(QUICK_VIEWPORTS) if args.quick else None))
+    concurrency = max(1, getattr(args, "concurrency", 1) or 1)
+    if concurrency > len(themes):
+        concurrency = len(themes)
 
     print(
         f"Shooting {len(themes)} theme(s) × {len(routes)} route(s) × "
         f"{len(viewports)} viewport(s) = "
-        f"{len(themes)*len(routes)*len(viewports)} screenshot(s)\n"
+        f"{len(themes)*len(routes)*len(viewports)} screenshot(s)"
+        f"  [concurrency={concurrency}]\n"
     )
 
-    failures = 0
-    for theme in themes:
-        print(f"=== {GREEN}{theme}{RESET} ===")
-        out_root = SNAPS_DIR / theme
-        try:
-            with running_server(theme, port=args.port, verbosity=args.verbosity) as server:
-                shoot_theme(theme, server.url, routes, viewports, out_root)
-        except SystemExit as e:
-            print(f"{RED}{theme} failed:{RESET} {e}")
-            failures += 1
-        except Exception as e:
-            print(f"{RED}{theme} crashed:{RESET} {e}")
-            failures += 1
+    failures: list[tuple[str, str]] = []
+
+    if concurrency == 1 or len(themes) == 1:
+        for theme in themes:
+            print(f"=== {GREEN}{theme}{RESET} ===")
+            t, err = _shoot_one_theme(
+                theme, routes, viewports, args.port, args.verbosity
+            )
+            if err:
+                print(f"{RED}{t} {err}{RESET}")
+                failures.append((t, err))
+    else:
+        # Parallel theme shoots. Use a thread pool because the worker
+        # is dominated by subprocess + network I/O, not Python CPU
+        # work; threads keep the impl simple (no need to pickle the
+        # Playwright handles).
+        import concurrent.futures
+        print(f"{DIM}(parallel mode: per-theme logs in tmp/<theme>-server.log){RESET}\n")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as ex:
+            # `port=None` so each worker picks its own free port; the
+            # find_free_port() call inside boot_server walks 9400-9499
+            # and is concurrent-safe because the bind happens via
+            # subprocess.Popen immediately after.
+            futures = {
+                ex.submit(_shoot_one_theme, theme, routes, viewports,
+                          None, args.verbosity): theme
+                for theme in themes
+            }
+            for fut in concurrent.futures.as_completed(futures):
+                t, err = fut.result()
+                if err:
+                    print(f"{RED}=== {t}: {err} ==={RESET}")
+                    failures.append((t, err))
+                else:
+                    print(f"=== {GREEN}{t}{RESET}: done ===")
 
     print()
     if failures:
-        print(f"{RED}done with {failures} failure(s).{RESET}")
+        print(f"{RED}done with {len(failures)} failure(s).{RESET}")
+        for t, err in failures:
+            print(f"  {RED}{t}:{RESET} {err}")
         return 1
     print(f"{GREEN}done.{RESET} Snaps in {SNAPS_DIR.relative_to(REPO_ROOT)}/")
+    print(
+        f"      Run {DIM}python3 bin/snap.py report{RESET} for a "
+        f"per-route findings summary."
+    )
     return 0
 
 
@@ -818,6 +1214,242 @@ def cmd_diff(args: argparse.Namespace) -> int:
     return 0
 
 
+_SEVERITY_RANK = {"error": 0, "warn": 1, "info": 2}
+
+
+def _gather_findings(themes: list[str]) -> list[dict]:
+    """Walk tmp/snaps/<theme>/<vp>/*.findings.json and return a flat
+    list of (theme, viewport, route, payload) tuples for the report.
+    """
+    out: list[dict] = []
+    for theme in themes:
+        snaps = SNAPS_DIR / theme
+        if not snaps.exists():
+            continue
+        for vp_dir in sorted(snaps.iterdir()):
+            if not vp_dir.is_dir():
+                continue
+            for fp in sorted(vp_dir.glob("*.findings.json")):
+                try:
+                    payload = json.loads(fp.read_text(encoding="utf-8"))
+                except Exception:
+                    continue
+                payload["_path"] = str(fp.relative_to(REPO_ROOT))
+                out.append(payload)
+    return out
+
+
+def cmd_report(args: argparse.Namespace) -> int:
+    """Aggregate `*.findings.json` into per-theme review markdown.
+
+    Output:
+      tmp/snaps/<theme>/review.md      human-readable triage list
+      tmp/snaps/review.md              cross-theme rollup with the
+                                       worst findings first
+      tmp/snaps/review.json            machine-readable summary
+
+    Severity buckets:
+      * error  -- definitely broken (broken image, narrow sidebar,
+                  PHP debug output, JS uncaught exception, 5xx response)
+      * warn   -- likely a polish issue (alt missing, mid-word wrap,
+                  WC info notice, 4xx response)
+      * info   -- worth a glance (oversized image, missing inspect
+                  selector)
+
+    The report is written even when no findings exist so consumers
+    can detect "ran cleanly" vs "never ran" from the file's mtime.
+    """
+    if args.theme:
+        themes = [args.theme]
+    elif args.all:
+        themes = discover_themes()
+    else:
+        # Default: report on whatever was last shot.
+        themes = sorted(p.name for p in SNAPS_DIR.iterdir()
+                        if p.is_dir() and p.name in discover_themes()) \
+            if SNAPS_DIR.exists() else []
+    if not themes:
+        raise SystemExit(
+            "No snaps to report on. Run `bin/snap.py shoot --all` first."
+        )
+
+    rollup: list[dict] = []
+    cross_theme_findings: list[tuple[dict, dict]] = []
+
+    for theme in themes:
+        payloads = _gather_findings([theme])
+        if not payloads:
+            continue
+        # Per-route severity totals.
+        route_summary: list[dict] = []
+        all_findings: list[tuple[dict, dict]] = []
+        for p in payloads:
+            finds = p.get("findings", [])
+            err = sum(1 for f in finds if f.get("severity") == "error")
+            warn = sum(1 for f in finds if f.get("severity") == "warn")
+            info = sum(1 for f in finds if f.get("severity") == "info")
+            net_fail = len(p.get("network_failures", []))
+            page_err = sum(1 for pe in p.get("page_errors", [])
+                           if not _is_known_noise(pe))
+            console_err = sum(1 for c in p.get("console", [])
+                              if c.get("type") == "error"
+                              and not _is_known_noise(c.get("text", "")))
+            route_summary.append({
+                "viewport": p["viewport"], "route": p["route"],
+                "error": err, "warn": warn, "info": info,
+                "net_fail": net_fail, "page_err": page_err,
+                "console_err": console_err,
+                "url": p.get("url", ""),
+            })
+            for f in finds:
+                all_findings.append((p, f))
+                cross_theme_findings.append((p, f))
+
+        all_findings.sort(key=lambda pf: (
+            _SEVERITY_RANK.get(pf[1].get("severity", "info"), 9),
+            pf[0].get("viewport", ""), pf[0].get("route", ""),
+            pf[1].get("kind", ""),
+        ))
+
+        # Per-theme markdown.
+        lines: list[str] = []
+        lines.append(f"# {theme} — visual review\n")
+        lines.append(
+            f"_Generated by `bin/snap.py report` from "
+            f"`tmp/snaps/{theme}/**/*.findings.json`._\n"
+        )
+        lines.append("## Per-route summary\n")
+        lines.append("| viewport | route | err | warn | info | net 4xx/5xx | console err | url |")
+        lines.append("|---|---|---:|---:|---:|---:|---:|---|")
+        for r in route_summary:
+            lines.append(
+                f"| {r['viewport']} | {r['route']} | {r['error']} | "
+                f"{r['warn']} | {r['info']} | {r['net_fail']} | "
+                f"{r['console_err']} | `{r['url']}` |"
+            )
+        lines.append("")
+
+        if all_findings:
+            lines.append("## Findings (worst first)\n")
+            for p, f in all_findings:
+                sev = f.get("severity", "info").upper()
+                kind = f.get("kind", "")
+                msg = f.get("message", "")
+                lines.append(
+                    f"- **{sev}** `{p['viewport']}/{p['route']}` "
+                    f"`{kind}`: {msg}"
+                )
+            lines.append("")
+        else:
+            lines.append("## Findings\n\n_No DOM heuristic findings._\n")
+
+        # Network failures + page errors get their own sections so a
+        # 4xx that's not in `findings[]` still surfaces in triage.
+        net_block: list[str] = []
+        for p in payloads:
+            for nf in p.get("network_failures", []):
+                # Suppress the noisy WC variation HEAD probe spam.
+                if nf.get("status") == 404 and "?" not in nf.get("url", ""):
+                    pass
+                net_block.append(
+                    f"  * `{p['viewport']}/{p['route']}` "
+                    f"{nf['method']} {nf['status']} {nf['url']}"
+                )
+        if net_block:
+            lines.append("## HTTP failures (>=400)\n")
+            lines.extend(net_block)
+            lines.append("")
+
+        page_err_block: list[str] = []
+        for p in payloads:
+            for pe in p.get("page_errors", []):
+                if _is_known_noise(pe):
+                    continue
+                page_err_block.append(
+                    f"  * `{p['viewport']}/{p['route']}`: {pe}"
+                )
+        if page_err_block:
+            lines.append("## Uncaught JS errors\n")
+            lines.extend(page_err_block)
+            lines.append("")
+
+        # Selector measurements -- one block per route that defined
+        # INSPECT_SELECTORS, helpful for "what's the actual width?"
+        # debugging without re-shooting.
+        meas_block: list[str] = []
+        for p in payloads:
+            sels = p.get("selectors", [])
+            if not sels:
+                continue
+            meas_block.append(
+                f"\n### {p['viewport']}/{p['route']}\n"
+            )
+            meas_block.append("| selector | count | width × height (px) | display | grid-template-columns |")
+            meas_block.append("|---|---:|---|---|---|")
+            for s in sels:
+                if s.get("missing"):
+                    meas_block.append(
+                        f"| `{s['selector']}` | 0 | _missing_ | — | — |"
+                    )
+                    continue
+                inst = (s.get("instances") or [{}])[0]
+                wxh = f"{inst.get('width', '?')} × {inst.get('height', '?')}"
+                meas_block.append(
+                    f"| `{s['selector']}` | {s['count']} | {wxh} | "
+                    f"{inst.get('display', '?')} | "
+                    f"`{inst.get('grid_template_columns', '?')}` |"
+                )
+        if meas_block:
+            lines.append("## Inspector measurements\n")
+            lines.extend(meas_block)
+            lines.append("")
+
+        out_path = SNAPS_DIR / theme / "review.md"
+        out_path.write_text("\n".join(lines), encoding="utf-8")
+        rollup.append({
+            "theme": theme,
+            "errors": sum(r["error"] for r in route_summary),
+            "warns": sum(r["warn"] for r in route_summary),
+            "infos": sum(r["info"] for r in route_summary),
+            "page_errs": sum(r["page_err"] for r in route_summary),
+            "net_fails": sum(r["net_fail"] for r in route_summary),
+            "report_path": str(out_path.relative_to(REPO_ROOT)),
+        })
+
+    # Cross-theme rollup.
+    rollup_lines = ["# Snap review — all themes\n"]
+    rollup_lines.append("| theme | errors | warns | infos | net 4xx/5xx | uncaught JS | report |")
+    rollup_lines.append("|---|---:|---:|---:|---:|---:|---|")
+    for r in rollup:
+        rollup_lines.append(
+            f"| {r['theme']} | {r['errors']} | {r['warns']} | {r['infos']} | "
+            f"{r['net_fails']} | {r['page_errs']} | "
+            f"`{r['report_path']}` |"
+        )
+    SNAPS_DIR.mkdir(parents=True, exist_ok=True)
+    (SNAPS_DIR / "review.md").write_text(
+        "\n".join(rollup_lines) + "\n", encoding="utf-8"
+    )
+    (SNAPS_DIR / "review.json").write_text(
+        json.dumps({"themes": rollup}, indent=2), encoding="utf-8"
+    )
+
+    # Print a terminal summary that mirrors the rollup.
+    print(f"\n{'theme':10s} {'err':>5s} {'warn':>5s} {'info':>5s} "
+          f"{'net4/5xx':>9s} {'js-err':>7s}  report")
+    print("-" * 70)
+    for r in rollup:
+        col = (RED if r["errors"] or r["page_errs"]
+               else YELLOW if r["warns"] or r["net_fails"]
+               else GREEN)
+        print(f"{r['theme']:10s} {col}{r['errors']:5d}{RESET} "
+              f"{r['warns']:5d} {r['infos']:5d} {r['net_fails']:9d} "
+              f"{r['page_errs']:7d}  {r['report_path']}")
+    print()
+    print(f"Cross-theme rollup: tmp/snaps/review.md")
+    return 0
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     """shoot --all then diff --all. The single command bin/check.py calls."""
     args.all = True
@@ -825,6 +1457,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     args.routes = None
     args.viewports = None
     args.quick = False
+    args.concurrency = getattr(args, "concurrency", 1)
     rc = cmd_shoot(args)
     if rc != 0:
         return rc
@@ -865,7 +1498,13 @@ def build_parser() -> argparse.ArgumentParser:
                          help="Subset of viewport names (default: all).")
     s_shoot.add_argument("--quick", action="store_true",
                          help="Use snap_config.QUICK_* subsets only.")
-    s_shoot.add_argument("--port", type=int, default=None)
+    s_shoot.add_argument("--port", type=int, default=None,
+                         help="Pin the playground port. Ignored when "
+                         "--concurrency > 1 (each worker auto-picks).")
+    s_shoot.add_argument("--concurrency", type=int, default=1,
+                         help="Number of themes to shoot in parallel "
+                         "(each spawns its own playground; ~400MB/worker). "
+                         "Default 1 (serial).")
     s_shoot.add_argument("--verbosity", default="normal",
                          choices=["quiet", "normal", "debug"],
                          help="Forwarded to @wp-playground/cli; default "
@@ -902,9 +1541,21 @@ def build_parser() -> argparse.ArgumentParser:
     s_check.add_argument("--threshold", type=float, default=0.5)
     s_check.add_argument("--channel-tolerance", type=int, default=8)
     s_check.add_argument("--port", type=int, default=None)
+    s_check.add_argument("--concurrency", type=int, default=1)
     s_check.add_argument("--verbosity", default="quiet",
                          choices=["quiet", "normal", "debug"])
     s_check.set_defaults(func=cmd_check)
+
+    s_report = sub.add_parser(
+        "report",
+        help="Aggregate findings.json into review.md (per theme + rollup).",
+    )
+    s_report.add_argument("theme", nargs="?", default=None,
+                          help="Theme slug; default reports on every "
+                          "theme that has snaps in tmp/snaps/.")
+    s_report.add_argument("--all", action="store_true",
+                          help="Force reporting on every discovered theme.")
+    s_report.set_defaults(func=cmd_report)
 
     return p
 

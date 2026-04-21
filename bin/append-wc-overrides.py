@@ -259,6 +259,69 @@ CSS_CO_FIX = f"""{SENTINEL_OPEN_CO_FIX}
 {SENTINEL_CLOSE_CO_FIX}"""
 
 
+# ---------------------------------------------------------------------------
+# Follow-up chunk: grid-cell fill fix for cart + checkout sidebar layout.
+# ---------------------------------------------------------------------------
+# Diagnosed via bin/snap.py and a Playwright getMatchedCSSRules probe
+# (Apr 2026). WC ships these legacy float-era rules in blocks/cart.css:
+#
+#   .wc-block-components-main    { width: 65%; padding-right: 4.5283%;  }
+#   .wc-block-components-sidebar { width: 35%; padding-left: 2.26415%;  }
+#
+# Their own width:100% override is wrapped in
+#   @container (max-width: 699px)
+# which only fires when the .wp-block-woocommerce-cart container query
+# host (set to container-type: inline-size) is below 700px. On a 1280px
+# desktop our container is 1200px wide, the @container rule does NOT
+# fire, and the legacy 35%/65% widths leak through. Because the
+# .wc-block-cart parent is `display:grid` with template-columns
+# `minmax(0,1fr) minmax(300px,360px)`, the children get sized as
+# percentages of THEIR GRID CELL widths -- 35% of 360px = 126px sidebar
+# and 65% of 752px = 489px main column. The visual symptom: the cart
+# sidebar collapses to ~126px (showing "CAR T TOT ALS" wrapping per
+# letter) and the main column squeezes line items into ~489px even
+# though the page reserves 1200px for the cart.
+#
+# Fix: bump specificity above WC's (.wc-block-components-sidebar-layout
+# .wc-block-components-main, 0,2,0) by combining the layout host class
+# with the cart/checkout host class (0,3,0), then force width:100% so
+# grid items fill their cells. Zero out WC's companion percentage
+# paddings so our own theme padding (set on .wc-block-cart__sidebar
+# below in CSS_CART_FIX) wins consistently.
+#
+# This fix is applied to BOTH cart and checkout because they share the
+# .wc-block-components-sidebar-layout shell, the same WC blocks/cart.css
+# rules apply to both, and the regression manifests identically on
+# /cart and /checkout. Discovered originally on /checkout/?demo=cart.
+SENTINEL_OPEN_GRID_FIX = "/* wc-tells-grid-cell-fill */"
+SENTINEL_CLOSE_GRID_FIX = "/* /wc-tells-grid-cell-fill */"
+# CSS_GRID_FIX has two parts:
+#
+# 1. Force the cart/checkout sidebar-layout grid CHILDREN to fill their
+#    cells (overrides WC's legacy 35%/65% width rules in blocks/cart.css).
+#
+# 2. Un-grid the OUTER checkout wrapper. WC's checkout markup is a
+#    `<div class="wp-block-woocommerce-checkout wc-block-checkout">`
+#    that contains a SECOND `<div class="wc-block-components-sidebar-
+#    layout wc-block-checkout">` — both elements match `.wc-block-
+#    checkout` so our base grid rule (display:grid;
+#    grid-template-columns:1fr 360px) hits twice. The outer steals 360px
+#    for a phantom sidebar, leaving the real inner sidebar-layout only
+#    752px to split between main + 360px sidebar (= 304px main, the
+#    "checkout main is 304px" regression). Resetting the outer to a
+#    block layout lets the inner grid use the full 1200px (~840 main +
+#    360 sidebar). Cart is unaffected because its outer wrapper
+#    (`wp-block-woocommerce-cart`) does not carry `.wc-block-cart`.
+SENTINEL_OPEN_CO_OUTER = "/* wc-tells-checkout-outer-unwrap */"
+SENTINEL_CLOSE_CO_OUTER = "/* /wc-tells-checkout-outer-unwrap */"
+CSS_CO_OUTER = f"""{SENTINEL_OPEN_CO_OUTER}
+.wp-block-woocommerce-checkout.wc-block-checkout{{display:block;grid-template-columns:none;gap:0;}}
+{SENTINEL_CLOSE_CO_OUTER}"""
+CSS_GRID_FIX = f"""{SENTINEL_OPEN_GRID_FIX}
+.wc-block-components-sidebar-layout.wc-block-cart>.wc-block-components-main,.wc-block-components-sidebar-layout.wc-block-cart>.wc-block-components-sidebar,.wc-block-components-sidebar-layout.wc-block-checkout>.wc-block-components-main,.wc-block-components-sidebar-layout.wc-block-checkout>.wc-block-components-sidebar{{width:100%;padding-left:0;padding-right:0;}}
+{SENTINEL_CLOSE_GRID_FIX}"""
+
+
 # Each entry: (sentinel_open, sentinel_close, raw_css, anchor_after).
 # `anchor_after` is the marker the chunk is spliced in after — for the
 # first chunk that's the canonical archive-page marker; for follow-ups
@@ -282,6 +345,18 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_CO_FIX,
         CSS_CO_FIX,
         SENTINEL_CLOSE_CART_FIX,
+    ),
+    (
+        SENTINEL_OPEN_GRID_FIX,
+        SENTINEL_CLOSE_GRID_FIX,
+        CSS_GRID_FIX,
+        SENTINEL_CLOSE_CO_FIX,
+    ),
+    (
+        SENTINEL_OPEN_CO_OUTER,
+        SENTINEL_CLOSE_CO_OUTER,
+        CSS_CO_OUTER,
+        SENTINEL_CLOSE_GRID_FIX,
     ),
 ]
 
