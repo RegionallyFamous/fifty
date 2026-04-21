@@ -7,6 +7,6 @@
 # moment a patch release ships; CI's `setup-python` cache uses this
 # file's hash, so widening a range invalidates the cache exactly once.
 
-pytest>=8.0,<9
-ruff>=0.6,<1
-mypy>=1.11,<2
+pytest>=8.4,<9
+ruff>=0.15,<1
+mypy>=1.19,<2

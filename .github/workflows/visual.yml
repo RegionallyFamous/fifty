@@ -74,12 +74,12 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           cache: pip
@@ -92,14 +92,14 @@ jobs:
           # is the only consumer; install the same pinned version used
           # locally. Keep this pin in lockstep with bin/snap.py's
           # required version.
-          python3 -m pip install -r requirements-dev.txt playwright==1.47.0 Pillow
+          python3 -m pip install -r requirements-dev.txt playwright==1.58.0 Pillow
 
       - name: Cache Playwright browsers
         id: playwright-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ runner.os }}-1.47.0
+          key: playwright-chromium-${{ runner.os }}-1.58.0
 
       - name: Install Playwright Chromium
         if: steps.playwright-cache.outputs.cache-hit != 'true'
@@ -143,7 +143,7 @@ jobs:
 
       - name: Upload snap artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: snap-output-${{ github.run_id }}
           path: |

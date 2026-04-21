@@ -16,11 +16,11 @@
 	<!-- /wp:heading -->
 
 	<!-- wp:accordion -->
-	<div class="wp-block-accordion">
+	<div role="group" class="wp-block-accordion">
 		<!-- wp:accordion-item -->
 		<div class="wp-block-accordion-item">
 			<!-- wp:accordion-heading -->
-			<h3 class="wp-block-accordion-heading"><button class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"><?php esc_html_e( 'When does the parcel arrive?', 'lysholm' ); ?></span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
+			<h3 class="wp-block-accordion-heading"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"><?php esc_html_e( 'When does the parcel arrive?', 'lysholm' ); ?></span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
 			<!-- /wp:accordion-heading -->
 
 			<!-- wp:accordion-panel -->
@@ -36,7 +36,7 @@
 		<!-- wp:accordion-item -->
 		<div class="wp-block-accordion-item">
 			<!-- wp:accordion-heading -->
-			<h3 class="wp-block-accordion-heading"><button class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"><?php esc_html_e( 'What if it doesn\'t suit the room?', 'lysholm' ); ?></span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
+			<h3 class="wp-block-accordion-heading"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"><?php esc_html_e( 'What if it doesn\'t suit the room?', 'lysholm' ); ?></span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
 			<!-- /wp:accordion-heading -->
 
 			<!-- wp:accordion-panel -->
@@ -52,7 +52,7 @@
 		<!-- wp:accordion-item -->
 		<div class="wp-block-accordion-item">
 			<!-- wp:accordion-heading -->
-			<h3 class="wp-block-accordion-heading"><button class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"><?php esc_html_e( 'Do you post past the country?', 'lysholm' ); ?></span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
+			<h3 class="wp-block-accordion-heading"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"><?php esc_html_e( 'Do you post past the country?', 'lysholm' ); ?></span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
 			<!-- /wp:accordion-heading -->
 
 			<!-- wp:accordion-panel -->
@@ -68,7 +68,7 @@
 		<!-- wp:accordion-item -->
 		<div class="wp-block-accordion-item">
 			<!-- wp:accordion-heading -->
-			<h3 class="wp-block-accordion-heading"><button class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"><?php esc_html_e( 'Can I follow the parcel home?', 'lysholm' ); ?></span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
+			<h3 class="wp-block-accordion-heading"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"><?php esc_html_e( 'Can I follow the parcel home?', 'lysholm' ); ?></span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
 			<!-- /wp:accordion-heading -->
 
 			<!-- wp:accordion-panel -->
@@ -84,7 +84,7 @@
 		<!-- wp:accordion-item -->
 		<div class="wp-block-accordion-item">
 			<!-- wp:accordion-heading -->
-			<h3 class="wp-block-accordion-heading"><button class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"><?php esc_html_e( 'How do I reach the studio?', 'lysholm' ); ?></span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
+			<h3 class="wp-block-accordion-heading"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"><?php esc_html_e( 'How do I reach the studio?', 'lysholm' ); ?></span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
 			<!-- /wp:accordion-heading -->
 
 			<!-- wp:accordion-panel -->
