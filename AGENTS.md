@@ -1,6 +1,6 @@
 # AGENTS.md — Fifty monorepo
 
-This is the agent guide for the **Fifty monorepo**. Each theme inside this repo (`obel/`, `chonk/`, `selvedge/`, `lysholm/`, plus any future variants you scaffold via `bin/clone.py`) has its own `AGENTS.md` with theme-specific rules. Read this file first to understand the layout, then read the theme-specific `AGENTS.md` for the theme you are editing.
+This is the agent guide for the **Fifty monorepo**. Each theme inside this repo (`obel/`, `chonk/`, `selvedge/`, `lysholm/`, `aero/`, plus any future variants you scaffold via `bin/clone.py`) has its own `AGENTS.md` with theme-specific rules. Read this file first to understand the layout, then read the theme-specific `AGENTS.md` for the theme you are editing.
 
 Agent voice and manner are defined separately in [`AGENT-PERSONA.md`](./AGENT-PERSONA.md): the agent operating in this repo is **Woo-drow**, a fussy Victorian shopdresser. That file governs how the agent speaks in chat (cadence, vocabulary, how it addresses the user as "the Proprietor"). This file (`AGENTS.md`) governs what it does. When they disagree — if cadence ever gets in the way of a rule — this file wins.
 
@@ -20,6 +20,8 @@ fifty/
 ├── selvedge/             # workwear / indigo variant
 │   └── (same shape)
 ├── lysholm/              # Nordic home goods variant
+│   └── (same shape)
+├── aero/                 # iridescent dark / glass variant
 │   └── (same shape)
 ├── bin/                  # shared CLI tooling (theme-aware)
 ├── playground/           # shared Playground PHP scaffolding + mu-plugins (read playground/AGENTS.md)

@@ -15,7 +15,6 @@ playground/                          # SHARED — no content lives here
   wo-import.php                      # generic WC catalogue importer (reads URLs from constants)
   wo-configure.php                   # generic WP/WC configurator (reads URLs from constants)
   wo-cart-mu.php                     # mu-plugin: pre-fills cart on ?demo=cart
-  wo-microcopy-mu.php                # mu-plugin: replace default WC strings (Phase B)
   wo-pages-mu.php                    # mu-plugin: branded my-account + archive header (Phase D)
   wo-payment-icons-mu.php            # mu-plugin: payment-method icons in checkout (Phase C)
   wo-swatches-mu.php                 # mu-plugin: variation <select> -> swatches (Phase C)
@@ -38,7 +37,6 @@ playground/                          # SHARED — no content lives here
 | `wo-import.php` | `wp eval-file` | yes (constants) | Imports the per-theme `products.csv` into WooCommerce, sideloads images from `WO_CONTENT_BASE_URL`. |
 | `wo-configure.php` | `wp eval-file` | yes (constants) | Sets WP/WC options (permalinks, store address, shipping, payment methods, `show_on_front`, blogname / tagline), seeds 5 sample orders, 12 reviews, the customer account. |
 | `wo-cart-mu.php` | mu-plugin | no | Pre-fills the cart with two products when the URL contains `?demo=cart`. Drives the cart / checkout demo screenshots. |
-| `wo-microcopy-mu.php` | mu-plugin | no | Replaces the six "this is default WC" strings (`Showing 1-16 of 55 results`, `Default sorting`, `Estimated total`, `Proceed to Checkout`, `Lost your password?`, the `<abbr class="required">*</abbr>` marker) site-wide via `add_filter()`. See root `AGENTS.md` rule #10 for the gate that enforces this. |
 | `wo-pages-mu.php` | mu-plugin | no | Wraps the my-account login form in a branded `wo-account-intro` panel (Phase D) and injects the editorial `wo-archive-hero` header on category / tag / shop archives. Tracked by `bin/snap_config.py::INSPECT_SELECTORS["my-account"]` and `["category"]`. |
 | `wo-payment-icons-mu.php` | mu-plugin | no | Renders payment-method icons next to each gateway label in the WC Blocks checkout (Phase C). |
 | `wo-swatches-mu.php` | mu-plugin | no | Replaces variation `<select>` elements on the PDP with colour-swatch / text-pill button groups, keeping the original select visually-hidden so WC's `variation_form` JS continues to drive price + stock + image swap (Phase C). See root `AGENTS.md` rule #11. |
@@ -123,9 +121,13 @@ array and:
    `wp eval-file` scripts (`wo-import.php`, `wo-configure.php`) get the
    per-theme constants block prepended (the set lives in
    `bin/sync-playground.py::TARGETS_NEEDING_CONSTANTS`); every mu-plugin
-   (`wo-cart-mu.php`, `wo-microcopy-mu.php`, `wo-pages-mu.php`,
-   `wo-payment-icons-mu.php`, `wo-swatches-mu.php`) is inlined verbatim
-   because it doesn't need theme-specific values.
+   (`wo-cart-mu.php`, `wo-pages-mu.php`, `wo-payment-icons-mu.php`,
+   `wo-swatches-mu.php`) is inlined verbatim because it doesn't need
+   theme-specific values. (Note: WC microcopy used to live here as
+   `wo-microcopy-mu.php`; it now ships in each theme's `functions.php`
+   between the `// === BEGIN wc microcopy ===` sentinels — see root
+   `AGENTS.md` rules #10 and #16. Don't reintroduce a shared microcopy
+   mu-plugin here; `check_no_brand_filters_in_playground` will fail.)
 2. **`importWxr` step** — rewrites `file.url` to point at
    `<WO_CONTENT_BASE_URL>content/content.xml`.
 

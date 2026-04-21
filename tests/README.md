@@ -19,7 +19,7 @@ tests/
 ├── tools/                       # round-trip / integration tests for bin/*.py
 │   └── test_*.py
 ├── validator/                   # Node.js smoke tests for bin/blocks-validator/
-│   ├── test_check_blocks.py
+│   ├── test_blocks_validator.py
 │   └── fixtures/
 │       ├── good/                # patterns that MUST validate clean
 │       └── bad/                 # patterns each tripping a known invariant
@@ -97,7 +97,7 @@ assert snapshot_a == snapshot_b, "second run drifted"
 ### The Node validator gets exit-code smoke tests
 
 `bin/blocks-validator/check-blocks.mjs` is a Node.js script. The Python
-test (`tests/validator/test_check_blocks.py`) invokes it via subprocess
+test (`tests/validator/test_blocks_validator.py`) invokes it via subprocess
 and asserts on exit codes + stderr keywords. The fixture HTML/PHP files
 live under `tests/validator/fixtures/{good,bad}/` so they double as
 documentation of what "valid" and "invalid" block markup look like.

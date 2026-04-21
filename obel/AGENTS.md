@@ -163,16 +163,20 @@ Patterns and templates are stored as serialized block markup -- block-comment de
 
 Two checks defend against this:
 
-1. **`check_block_markup_anti_patterns()`** -- a fast Python regex pass that catches the three common authoring mistakes below. Runs by default with `bin/check.py`.
+1. **`check_block_markup_anti_patterns()`** -- a fast Python regex pass that catches the five common authoring mistakes below. Runs by default with `bin/check.py`.
 2. **`check_blocks_validator()`** -- the canonical editor-parity check: a Node.js script (`bin/blocks-validator/check-blocks.mjs`) that boots `@wordpress/blocks` under JSDOM and runs the real `parse() + validateBlock()` pipeline against every pattern/template/part. Skipped if Node 18+ or `node_modules/` aren't installed; run `cd ../bin/blocks-validator && npm install` once to enable it.
 
-The fast Python check enforces three invariants. If you hit one, fix the markup -- don't suppress the check.
+The fast Python check enforces five invariants. If you hit one, fix the markup -- don't suppress the check.
 
 1. **`core/group` with a top-level `border.color` MUST carry `has-border-color`.** When the JSON declares `"border":{"color":"var:preset|color|border", ...}`, save() emits `class="...has-border-color..."`. Per-side borders (`"border":{"top":{"color":...}}`) are styled inline only and do NOT add the class.
 
 2. **`core/paragraph` MUST NOT carry legacy `wo-empty__*` classes.** That convention pre-dates the block editor's strict className handling; save() drops unknown classes on round-trip and the block fails to validate. Move the styling into `theme.json` (`styles.elements.h*` or block variations) instead.
 
 3. **`core/button` `box-shadow` belongs on the inner `<a class="wp-block-button__link wp-element-button">`, NEVER on the outer `<div class="wp-block-button">`.** Save() places the shadow on the link element. If the wrapper div carries it, the editor flags the block as invalid on load.
+
+4. **`core/accordion` wrapper MUST carry `role="group"`.** The `<div class="wp-block-accordion">` opener must declare `role="group"` because `@wordpress/block-library` 9.44+'s save() emits it. Without it the editor silently rewrites the markup on first load and the next round-trip looks like a regression. Child variants (`wp-block-accordion-item`) are unaffected.
+
+5. **Every `<button>` in a pattern/template/part MUST declare an explicit `type=`.** The HTML default is `submit`, which detonates inside any `<form>` (cart, checkout, mini-cart) on first click. Use `type="button"` for plain UI buttons and `type="submit"` only when the button really is a form submit. Belt-and-braces against the editor silently injecting `type="button"` on save() and the next round-trip looking like a "fix" in CI.
 
 Things that are NOT linted (because the validator confirmed they round-trip cleanly):
 
