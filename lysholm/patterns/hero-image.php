@@ -9,8 +9,8 @@
  * Viewport Width: 1280
  */
 ?>
-<!-- wp:cover {"overlayColor":"contrast","dimRatio":40,"contentPosition":"center center","align":"full","style":{"spacing":{"padding":{"top":"var:preset|spacing|3-xl","bottom":"var:preset|spacing|3-xl","left":"var:preset|spacing|lg","right":"var:preset|spacing|lg"}}}} -->
-<div class="wp-block-cover alignfull" style="padding-top:var(--wp--preset--spacing--3-xl);padding-right:var(--wp--preset--spacing--lg);padding-bottom:var(--wp--preset--spacing--3-xl);padding-left:var(--wp--preset--spacing--lg);min-height:var(--wp--custom--cover--hero)"><span aria-hidden="true" class="wp-block-cover__background has-contrast-background-color has-background-dim-40 has-background-dim"></span><div class="wp-block-cover__inner-container">
+<!-- wp:cover {"minHeight":640,"minHeightUnit":"px","overlayColor":"contrast","dimRatio":40,"contentPosition":"center center","align":"full","style":{"spacing":{"padding":{"top":"var:preset|spacing|3-xl","bottom":"var:preset|spacing|3-xl","left":"var:preset|spacing|lg","right":"var:preset|spacing|lg"}}}} -->
+<div class="wp-block-cover alignfull" style="padding-top:var(--wp--preset--spacing--3-xl);padding-right:var(--wp--preset--spacing--lg);padding-bottom:var(--wp--preset--spacing--3-xl);padding-left:var(--wp--preset--spacing--lg);min-height:640px"><span aria-hidden="true" class="wp-block-cover__background has-contrast-background-color has-background-dim-40 has-background-dim"></span><div class="wp-block-cover__inner-container">
 	<!-- wp:group {"layout":{"type":"constrained"}} -->
 	<div class="wp-block-group">
 		<!-- wp:heading {"level":1,"textAlign":"center","textColor":"base","fontSize":"5xl"} -->
@@ -24,7 +24,7 @@
 		<!-- wp:buttons {"layout":{"type":"flex","justifyContent":"center"}} -->
 		<div class="wp-block-buttons">
 			<!-- wp:button -->
-			<div class="wp-block-button"><a class="wp-block-button__link wp-element-button"><?php esc_html_e( 'Shop the collection', 'lysholm' ); ?></a></div>
+			<div class="wp-block-button"><a class="wp-block-button__link wp-element-button"><?php esc_html_e( 'Browse the collection', 'lysholm' ); ?></a></div>
 			<!-- /wp:button -->
 
 			<!-- wp:button {"className":"is-style-outline","textColor":"base"} -->

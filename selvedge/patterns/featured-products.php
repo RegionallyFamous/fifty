@@ -18,7 +18,7 @@
 		<!-- /wp:paragraph -->
 
 		<!-- wp:heading {"textAlign":"center","level":2,"style":{"typography":{"fontStyle":"italic","fontWeight":"700"}}} -->
-		<h2 class="wp-block-heading has-text-align-center" style="font-style:italic;font-weight:700"><?php esc_html_e( 'This season\'s picks', 'selvedge' ); ?></h2>
+		<h2 class="wp-block-heading has-text-align-center" style="font-style:italic;font-weight:700"><?php esc_html_e( 'On the bench this season\'s picks', 'selvedge' ); ?></h2>
 		<!-- /wp:heading -->
 	</div>
 	<!-- /wp:group -->

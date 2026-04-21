@@ -20,9 +20,9 @@
 	<!-- /wp:paragraph -->
 
 	<!-- wp:search <?php echo wp_json_encode( array(
-		'label'          => __( 'Email address', 'aero' ),
+		'label'          => __( 'Your signal', 'aero' ),
 		'showLabel'      => false,
-		'placeholder'    => __( 'you@example.com', 'aero' ),
+		'placeholder'    => __( 'name@orbit.example', 'aero' ),
 		'buttonText'     => __( 'Catch the dispatch ✦', 'aero' ),
 		'buttonPosition' => 'button-inside',
 		'buttonUseIcon'  => false,

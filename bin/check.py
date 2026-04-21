@@ -696,22 +696,26 @@ def check_no_hardcoded_dimensions() -> Result:
 
 def check_block_attrs_use_tokens() -> Result:
     """Fail if block attribute JSON in templates/parts/patterns uses hardcoded
-    layout widths, aspect ratios, or cover heights instead of the SSOT tokens.
+    layout widths or aspect ratios instead of the SSOT tokens.
 
     What this catches:
       - "contentSize":"720px"     -> drop the override (use settings.layout.contentSize)
       - "contentSize":"1280px"    -> use "var(--wp--style--global--wide-size)"
       - "contentSize":"<other>px" -> use "var(--wp--custom--layout--<slug>)"
       - "aspectRatio":"4/3"       -> use "var(--wp--custom--aspect-ratio--<slug>)"
-      - "minHeight":640           -> drop the attr; set inline style="min-height:var(--wp--custom--cover--<slug>)"
 
     These all break the "edit one value in theme.json -> ripple everywhere" rule.
+
+    NOTE: cover `minHeight` is intentionally NOT checked here. The cover block's
+    save() function reads `minHeight` + `minHeightUnit` from the JSON attrs and
+    emits the inline `min-height` itself; using a CSS-var-only inline style with
+    no JSON attr produces invalid block markup that the editor silently rewrites
+    on load (caught by `bin/blocks-validator/`).
     """
-    r = Result("Block attributes use design tokens (no hardcoded layout widths, aspect ratios, cover heights)")
+    r = Result("Block attributes use design tokens (no hardcoded layout widths, aspect ratios)")
     skip_dirs = {"templates/", "parts/", "patterns/"}
     content_size_re = re.compile(r'"contentSize"\s*:\s*"(\d[\w./%]+)"')
     aspect_ratio_re = re.compile(r'"aspectRatio"\s*:\s*"([\d/.]+)"')
-    min_height_re = re.compile(r'"minHeight"\s*:\s*\d')
     for path in iter_files((".html", ".php")):
         rel = path.relative_to(ROOT).as_posix()
         if not any(rel.startswith(d) for d in skip_dirs):
@@ -728,11 +732,6 @@ def check_block_attrs_use_tokens() -> Result:
                 r.fail(
                     f"{rel}:{lineno}: hardcoded aspectRatio \"{m.group(1)}\". "
                     f"Use \"var(--wp--custom--aspect-ratio--<slug>)\"."
-                )
-            if min_height_re.search(line):
-                r.fail(
-                    f"{rel}:{lineno}: hardcoded cover minHeight attribute. "
-                    f"Remove the attr and set inline style=\"min-height:var(--wp--custom--cover--<slug>)\"."
                 )
     return r
 

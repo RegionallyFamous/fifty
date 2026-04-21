@@ -20,7 +20,7 @@
 		<!-- wp:buttons -->
 		<div class="wp-block-buttons">
 			<!-- wp:button -->
-			<div class="wp-block-button"><a class="wp-block-button__link wp-element-button"><?php esc_html_e( 'Shop the catalog', 'selvedge' ); ?></a></div>
+			<div class="wp-block-button"><a class="wp-block-button__link wp-element-button"><?php esc_html_e( 'Shop the line', 'selvedge' ); ?></a></div>
 			<!-- /wp:button -->
 		</div>
 		<!-- /wp:buttons -->

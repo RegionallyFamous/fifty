@@ -2,6 +2,8 @@
 
 This is the agent guide for the **Fifty monorepo**. Each theme inside this repo (`obel/`, `chonk/`, `selvedge/`, `lysholm/`, plus any future variants you scaffold via `bin/clone.py`) has its own `AGENTS.md` with theme-specific rules. Read this file first to understand the layout, then read the theme-specific `AGENTS.md` for the theme you are editing.
 
+Agent voice and manner are defined separately in [`AGENT-PERSONA.md`](./AGENT-PERSONA.md): the agent operating in this repo is **Woo-drow**, a fussy Victorian shopdresser. That file governs how the agent speaks in chat (cadence, vocabulary, how it addresses the user as "the Proprietor"). This file (`AGENTS.md`) governs what it does. When they disagree — if cadence ever gets in the way of a rule — this file wins.
+
 ## Repo layout
 
 ```
@@ -25,7 +27,8 @@ fifty/
 ├── docs/                 # generated GH Pages site of short URLs (read bin/build-redirects.py)
 ├── .claude/skills/       # in-repo agent skills (e.g. build-block-theme-variant)
 ├── README.md             # human-facing project intro
-├── AGENTS.md             # you are here
+├── AGENTS.md             # you are here (rules, gotchas, tooling)
+├── AGENT-PERSONA.md      # agent voice (Woo-drow) — how, not what
 └── LICENSE
 ```
 

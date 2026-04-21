@@ -19,8 +19,8 @@
 	<div class="wp-block-columns alignwide" style="margin-top:var(--wp--preset--spacing--xl)">
 		<!-- wp:column -->
 		<div class="wp-block-column">
-			<!-- wp:cover {"overlayColor":"contrast","dimRatio":30,"contentPosition":"center center","style":{"spacing":{"padding":{"top":"var:preset|spacing|xl","bottom":"var:preset|spacing|xl"}},"border":{"radius":"var:custom|radius|md"}}} -->
-			<div class="wp-block-cover" style="border-radius:var(--wp--custom--radius--md);padding-top:var(--wp--preset--spacing--xl);padding-bottom:var(--wp--preset--spacing--xl);min-height:var(--wp--custom--cover--tile)"><span aria-hidden="true" class="wp-block-cover__background has-contrast-background-color has-background-dim-30 has-background-dim"></span><div class="wp-block-cover__inner-container">
+			<!-- wp:cover {"minHeight":320,"minHeightUnit":"px","overlayColor":"contrast","dimRatio":30,"contentPosition":"center center","style":{"spacing":{"padding":{"top":"var:preset|spacing|xl","bottom":"var:preset|spacing|xl"}},"border":{"radius":"var:custom|radius|md"}}} -->
+			<div class="wp-block-cover" style="border-radius:var(--wp--custom--radius--md);padding-top:var(--wp--preset--spacing--xl);padding-bottom:var(--wp--preset--spacing--xl);min-height:320px"><span aria-hidden="true" class="wp-block-cover__background has-contrast-background-color has-background-dim-30 has-background-dim"></span><div class="wp-block-cover__inner-container">
 				<!-- wp:heading {"textAlign":"center","level":3,"textColor":"base","fontSize":"xl"} -->
 				<h3 class="wp-block-heading has-text-align-center has-base-color has-text-color has-xl-font-size"><?php esc_html_e( 'Apparel', 'obel' ); ?></h3>
 				<!-- /wp:heading -->
@@ -31,8 +31,8 @@
 
 		<!-- wp:column -->
 		<div class="wp-block-column">
-			<!-- wp:cover {"overlayColor":"contrast","dimRatio":30,"contentPosition":"center center","style":{"spacing":{"padding":{"top":"var:preset|spacing|xl","bottom":"var:preset|spacing|xl"}},"border":{"radius":"var:custom|radius|md"}}} -->
-			<div class="wp-block-cover" style="border-radius:var(--wp--custom--radius--md);padding-top:var(--wp--preset--spacing--xl);padding-bottom:var(--wp--preset--spacing--xl);min-height:var(--wp--custom--cover--tile)"><span aria-hidden="true" class="wp-block-cover__background has-contrast-background-color has-background-dim-30 has-background-dim"></span><div class="wp-block-cover__inner-container">
+			<!-- wp:cover {"minHeight":320,"minHeightUnit":"px","overlayColor":"contrast","dimRatio":30,"contentPosition":"center center","style":{"spacing":{"padding":{"top":"var:preset|spacing|xl","bottom":"var:preset|spacing|xl"}},"border":{"radius":"var:custom|radius|md"}}} -->
+			<div class="wp-block-cover" style="border-radius:var(--wp--custom--radius--md);padding-top:var(--wp--preset--spacing--xl);padding-bottom:var(--wp--preset--spacing--xl);min-height:320px"><span aria-hidden="true" class="wp-block-cover__background has-contrast-background-color has-background-dim-30 has-background-dim"></span><div class="wp-block-cover__inner-container">
 				<!-- wp:heading {"textAlign":"center","level":3,"textColor":"base","fontSize":"xl"} -->
 				<h3 class="wp-block-heading has-text-align-center has-base-color has-text-color has-xl-font-size"><?php esc_html_e( 'Accessories', 'obel' ); ?></h3>
 				<!-- /wp:heading -->
@@ -43,8 +43,8 @@
 
 		<!-- wp:column -->
 		<div class="wp-block-column">
-			<!-- wp:cover {"overlayColor":"contrast","dimRatio":30,"contentPosition":"center center","style":{"spacing":{"padding":{"top":"var:preset|spacing|xl","bottom":"var:preset|spacing|xl"}},"border":{"radius":"var:custom|radius|md"}}} -->
-			<div class="wp-block-cover" style="border-radius:var(--wp--custom--radius--md);padding-top:var(--wp--preset--spacing--xl);padding-bottom:var(--wp--preset--spacing--xl);min-height:var(--wp--custom--cover--tile)"><span aria-hidden="true" class="wp-block-cover__background has-contrast-background-color has-background-dim-30 has-background-dim"></span><div class="wp-block-cover__inner-container">
+			<!-- wp:cover {"minHeight":320,"minHeightUnit":"px","overlayColor":"contrast","dimRatio":30,"contentPosition":"center center","style":{"spacing":{"padding":{"top":"var:preset|spacing|xl","bottom":"var:preset|spacing|xl"}},"border":{"radius":"var:custom|radius|md"}}} -->
+			<div class="wp-block-cover" style="border-radius:var(--wp--custom--radius--md);padding-top:var(--wp--preset--spacing--xl);padding-bottom:var(--wp--preset--spacing--xl);min-height:320px"><span aria-hidden="true" class="wp-block-cover__background has-contrast-background-color has-background-dim-30 has-background-dim"></span><div class="wp-block-cover__inner-container">
 				<!-- wp:heading {"textAlign":"center","level":3,"textColor":"base","fontSize":"xl"} -->
 				<h3 class="wp-block-heading has-text-align-center has-base-color has-text-color has-xl-font-size"><?php esc_html_e( 'Sale', 'obel' ); ?></h3>
 				<!-- /wp:heading -->

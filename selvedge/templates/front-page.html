@@ -2,8 +2,6 @@
 
 <!-- wp:group {"tagName":"main","layout":{"type":"constrained"}} -->
 <main class="wp-block-group">
-
-	<!-- HERO: Asymmetric editorial 60/40 split -->
 	<!-- wp:group {"align":"full","style":{"spacing":{"padding":{"top":"var:preset|spacing|3-xl","bottom":"var:preset|spacing|3-xl","left":"var:preset|spacing|md","right":"var:preset|spacing|md"},"blockGap":"0"}},"backgroundColor":"base","layout":{"type":"constrained","contentSize":"var(--wp--style--global--wide-size)"}} -->
 	<div class="wp-block-group alignfull has-base-background-color has-background" style="padding-top:var(--wp--preset--spacing--3-xl);padding-right:var(--wp--preset--spacing--md);padding-bottom:var(--wp--preset--spacing--3-xl);padding-left:var(--wp--preset--spacing--md)">
 		<!-- wp:columns {"align":"wide","style":{"spacing":{"blockGap":{"top":"var:preset|spacing|2-xl","left":"var:preset|spacing|3-xl"}}}} -->
@@ -27,7 +25,7 @@
 				<!-- wp:buttons {"style":{"spacing":{"blockGap":"var:preset|spacing|md"}}} -->
 				<div class="wp-block-buttons">
 					<!-- wp:button -->
-					<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop">Shop the collection</a></div>
+					<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop">Shop the bench</a></div>
 					<!-- /wp:button -->
 
 					<!-- wp:button {"className":"is-style-outline"} -->
@@ -46,7 +44,7 @@
 				<div class="wp-block-woocommerce-product-collection">
 					<!-- wp:woocommerce/product-template -->
 						<!-- wp:group {"style":{"spacing":{"blockGap":"var:preset|spacing|xs"},"border":{"color":"var:preset|color|border","width":"1px","style":"solid"}},"backgroundColor":"surface","layout":{"type":"default"}} -->
-						<div class="wp-block-group has-surface-background-color has-background" style="border-color:var(--wp--preset--color--border);border-style:solid;border-width:1px">
+						<div class="wp-block-group has-border-color has-surface-background-color has-background" style="border-color:var(--wp--preset--color--border);border-style:solid;border-width:1px">
 							<!-- wp:woocommerce/product-image {"showSaleBadge":true,"saleBadgeAlign":"left","imageSizing":"single","aspectRatio":"var(--wp--custom--aspect-ratio--square)","isDescendentOfQueryLoop":true} /-->
 							<!-- wp:group {"style":{"spacing":{"padding":{"top":"var:preset|spacing|sm","bottom":"var:preset|spacing|sm","left":"var:preset|spacing|sm","right":"var:preset|spacing|sm"},"blockGap":"var:preset|spacing|2-xs"}}} -->
 							<div class="wp-block-group" style="padding-top:var(--wp--preset--spacing--sm);padding-right:var(--wp--preset--spacing--sm);padding-bottom:var(--wp--preset--spacing--sm);padding-left:var(--wp--preset--spacing--sm)">
@@ -67,8 +65,6 @@
 		<!-- /wp:columns -->
 	</div>
 	<!-- /wp:group -->
-
-	<!-- CATEGORIES: Dynamic term tiles -->
 	<!-- wp:group {"align":"full","style":{"spacing":{"padding":{"top":"var:preset|spacing|2-xl","bottom":"var:preset|spacing|2-xl","left":"var:preset|spacing|md","right":"var:preset|spacing|md"},"blockGap":"var:preset|spacing|xl"},"border":{"top":{"color":"var:preset|color|border","width":"1px","style":"solid"}}},"backgroundColor":"surface","layout":{"type":"constrained","contentSize":"var(--wp--style--global--wide-size)"}} -->
 	<div class="wp-block-group alignfull has-surface-background-color has-background" style="border-top-color:var(--wp--preset--color--border);border-top-style:solid;border-top-width:1px;padding-top:var(--wp--preset--spacing--2-xl);padding-right:var(--wp--preset--spacing--md);padding-bottom:var(--wp--preset--spacing--2-xl);padding-left:var(--wp--preset--spacing--md)">
 
@@ -86,8 +82,8 @@
 		<!-- wp:terms-query {"align":"wide","termQuery":{"perPage":5,"taxonomy":"product_cat","order":"desc","orderBy":"count","include":[],"hideEmpty":true,"showNested":false,"inherit":false},"className":"selvedge-cats"} -->
 		<div class="wp-block-terms-query alignwide selvedge-cats">
 			<!-- wp:term-template {"layout":{"type":"grid","columnCount":5,"minimumColumnWidth":null},"style":{"spacing":{"blockGap":{"top":"var:preset|spacing|sm","left":"var:preset|spacing|sm"}}}} -->
-				<!-- wp:cover {"overlayColor":"contrast","dimRatio":40,"contentPosition":"bottom left","isDark":true,"className":"selvedge-cat-cover","style":{"border":{"color":"var:preset|color|border","width":"1px","style":"solid"},"dimensions":{"aspectRatio":"var(--wp--custom--aspect-ratio--portrait)"},"spacing":{"padding":{"top":"var:preset|spacing|md","right":"var:preset|spacing|md","bottom":"var:preset|spacing|md","left":"var:preset|spacing|md"}}}} -->
-				<div class="wp-block-cover is-dark has-custom-content-position is-position-bottom-left selvedge-cat-cover" style="border-color:var(--wp--preset--color--border);border-style:solid;border-width:1px;padding-top:var(--wp--preset--spacing--md);padding-right:var(--wp--preset--spacing--md);padding-bottom:var(--wp--preset--spacing--md);padding-left:var(--wp--preset--spacing--md);aspect-ratio:var(--wp--custom--aspect-ratio--portrait)"><span aria-hidden="true" class="wp-block-cover__background has-contrast-background-color has-background-dim-40 has-background-dim"></span><div class="wp-block-cover__inner-container">
+				<!-- wp:cover {"overlayColor":"contrast","dimRatio":40,"contentPosition":"bottom left","isDark":true,"className":"selvedge-cat-cover","style":{"border":{"color":"var:preset|color|border","width":"1px","style":"solid"},"spacing":{"padding":{"top":"var:preset|spacing|md","right":"var:preset|spacing|md","bottom":"var:preset|spacing|md","left":"var:preset|spacing|md"}}}} -->
+				<div class="wp-block-cover has-custom-content-position is-position-bottom-left is-dark selvedge-cat-cover has-border-color" style="border-color:var(--wp--preset--color--border);border-style:solid;border-width:1px;padding-top:var(--wp--preset--spacing--md);padding-right:var(--wp--preset--spacing--md);padding-bottom:var(--wp--preset--spacing--md);padding-left:var(--wp--preset--spacing--md)"><span aria-hidden="true" class="wp-block-cover__background has-contrast-background-color has-background-dim-40 has-background-dim"></span><div class="wp-block-cover__inner-container">
 					<!-- wp:term-name {"level":3,"textColor":"base","style":{"typography":{"fontSize":"var(--wp--preset--font-size--lg)","fontStyle":"italic","fontWeight":"700","lineHeight":"var(--wp--custom--line-height--snug)","letterSpacing":"var(--wp--custom--letter-spacing--tight)"}},"fontFamily":"display"} /-->
 					<!-- wp:term-count {"fontSize":"xs","textColor":"base","style":{"typography":{"letterSpacing":"var(--wp--custom--letter-spacing--wider)","textTransform":"uppercase"}}} /-->
 				</div></div>
@@ -98,8 +94,6 @@
 
 	</div>
 	<!-- /wp:group -->
-
-	<!-- FEATURED COLLECTION: 4-column dark card grid -->
 	<!-- wp:group {"align":"full","style":{"spacing":{"padding":{"top":"var:preset|spacing|3-xl","bottom":"var:preset|spacing|3-xl","left":"var:preset|spacing|md","right":"var:preset|spacing|md"},"blockGap":"var:preset|spacing|xl"}},"backgroundColor":"base","layout":{"type":"constrained","contentSize":"var(--wp--style--global--wide-size)"}} -->
 	<div class="wp-block-group alignfull has-base-background-color has-background" style="padding-top:var(--wp--preset--spacing--3-xl);padding-right:var(--wp--preset--spacing--md);padding-bottom:var(--wp--preset--spacing--3-xl);padding-left:var(--wp--preset--spacing--md)">
 
@@ -125,7 +119,7 @@
 		<div class="wp-block-woocommerce-product-collection alignwide">
 			<!-- wp:woocommerce/product-template -->
 				<!-- wp:group {"style":{"spacing":{"blockGap":"0"},"border":{"color":"var:preset|color|border","width":"1px","style":"solid"}},"backgroundColor":"surface","layout":{"type":"default"}} -->
-				<div class="wp-block-group has-surface-background-color has-background" style="border-color:var(--wp--preset--color--border);border-style:solid;border-width:1px">
+				<div class="wp-block-group has-border-color has-surface-background-color has-background" style="border-color:var(--wp--preset--color--border);border-style:solid;border-width:1px">
 					<!-- wp:woocommerce/product-image {"showSaleBadge":true,"saleBadgeAlign":"left","imageSizing":"single","aspectRatio":"var(--wp--custom--aspect-ratio--square)","isDescendentOfQueryLoop":true} /-->
 					<!-- wp:group {"style":{"spacing":{"padding":{"top":"var:preset|spacing|md","bottom":"var:preset|spacing|md","left":"var:preset|spacing|md","right":"var:preset|spacing|md"},"blockGap":"var:preset|spacing|2-xs"},"border":{"top":{"color":"var:preset|color|border","width":"1px","style":"solid"}}}} -->
 					<div class="wp-block-group" style="border-top-color:var(--wp--preset--color--border);border-top-style:solid;border-top-width:1px;padding-top:var(--wp--preset--spacing--md);padding-right:var(--wp--preset--spacing--md);padding-bottom:var(--wp--preset--spacing--md);padding-left:var(--wp--preset--spacing--md)">
@@ -141,8 +135,6 @@
 
 	</div>
 	<!-- /wp:group -->
-
-	<!-- MANIFESTO STRIP -->
 	<!-- wp:group {"align":"full","style":{"spacing":{"padding":{"top":"var:preset|spacing|3-xl","bottom":"var:preset|spacing|3-xl","left":"var:preset|spacing|md","right":"var:preset|spacing|md"},"blockGap":"var:preset|spacing|xl"},"border":{"top":{"color":"var:preset|color|border","width":"1px","style":"solid"},"bottom":{"color":"var:preset|color|border","width":"1px","style":"solid"}}},"backgroundColor":"subtle","layout":{"type":"constrained","contentSize":"var(--wp--style--global--wide-size)"}} -->
 	<div class="wp-block-group alignfull has-subtle-background-color has-background" style="border-top-color:var(--wp--preset--color--border);border-top-style:solid;border-top-width:1px;border-bottom-color:var(--wp--preset--color--border);border-bottom-style:solid;border-bottom-width:1px;padding-top:var(--wp--preset--spacing--3-xl);padding-right:var(--wp--preset--spacing--md);padding-bottom:var(--wp--preset--spacing--3-xl);padding-left:var(--wp--preset--spacing--md)">
 		<!-- wp:columns {"align":"wide","style":{"spacing":{"blockGap":{"top":"var:preset|spacing|2-xl","left":"var:preset|spacing|3-xl"}}}} -->
@@ -175,8 +167,6 @@
 		<!-- /wp:columns -->
 	</div>
 	<!-- /wp:group -->
-
-	<!-- JOURNAL: Recent posts 3-column -->
 	<!-- wp:group {"align":"full","style":{"spacing":{"padding":{"top":"var:preset|spacing|3-xl","bottom":"var:preset|spacing|3-xl","left":"var:preset|spacing|md","right":"var:preset|spacing|md"},"blockGap":"var:preset|spacing|xl"}},"backgroundColor":"base","layout":{"type":"constrained","contentSize":"var(--wp--style--global--wide-size)"}} -->
 	<div class="wp-block-group alignfull has-base-background-color has-background" style="padding-top:var(--wp--preset--spacing--3-xl);padding-right:var(--wp--preset--spacing--md);padding-bottom:var(--wp--preset--spacing--3-xl);padding-left:var(--wp--preset--spacing--md)">
 
@@ -195,7 +185,7 @@
 		<div class="wp-block-query alignwide">
 			<!-- wp:post-template {"layout":{"type":"grid","columnCount":3,"minimumColumnWidth":"18rem"},"style":{"spacing":{"blockGap":{"top":"var:preset|spacing|xl","left":"var:preset|spacing|lg"}}}} -->
 				<!-- wp:group {"style":{"spacing":{"blockGap":"var:preset|spacing|sm"},"border":{"bottom":{"color":"var:preset|color|border","width":"1px","style":"solid"},"right":{"color":"var:preset|color|border","width":"0","style":"none"},"left":{"color":"var:preset|color|border","width":"0","style":"none"},"top":{"color":"var:preset|color|border","width":"0","style":"none"}}}} -->
-				<div class="wp-block-group" style="border-bottom-color:var(--wp--preset--color--border);border-bottom-style:solid;border-bottom-width:1px">
+				<div class="wp-block-group" style="border-top-color:var(--wp--preset--color--border);border-top-style:none;border-top-width:0;border-right-color:var(--wp--preset--color--border);border-right-style:none;border-right-width:0;border-bottom-color:var(--wp--preset--color--border);border-bottom-style:solid;border-bottom-width:1px;border-left-color:var(--wp--preset--color--border);border-left-style:none;border-left-width:0">
 					<!-- wp:post-featured-image {"isLink":true,"aspectRatio":"var(--wp--custom--aspect-ratio--card)"} /-->
 					<!-- wp:group {"style":{"spacing":{"blockGap":"var:preset|spacing|xs","padding":{"top":"var:preset|spacing|md","bottom":"var:preset|spacing|md"}}}} -->
 					<div class="wp-block-group" style="padding-top:var(--wp--preset--spacing--md);padding-bottom:var(--wp--preset--spacing--md)">

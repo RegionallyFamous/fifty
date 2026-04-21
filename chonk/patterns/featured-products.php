@@ -18,7 +18,7 @@
 		<!-- /wp:paragraph -->
 
 		<!-- wp:heading {"textAlign":"center","level":2} -->
-		<h2 class="wp-block-heading has-text-align-center"><?php esc_html_e( 'This season\'s picks', 'chonk' ); ?></h2>
+		<h2 class="wp-block-heading has-text-align-center"><?php esc_html_e( 'THIS SEASON\'s picks', 'chonk' ); ?></h2>
 		<!-- /wp:heading -->
 	</div>
 	<!-- /wp:group -->
@@ -28,7 +28,9 @@
 		<!-- wp:woocommerce/product-template -->
 			<!-- wp:woocommerce/product-image {"showSaleBadge":true,"imageSizing":"thumbnail","isDescendentOfQueryLoop":true} /-->
 			<!-- wp:post-title {"level":3,"isLink":true,"style":{"typography":{"fontSize":"var(--wp--preset--font-size--md)","fontWeight":"500","lineHeight":"var(--wp--custom--line-height--snug)"},"elements":{"link":{"color":{"text":"var(--wp--preset--color--contrast)"},":hover":{"color":{"text":"var(--wp--preset--color--accent)"}}}}}} /-->
-			<!-- wp:woocommerce/product-price {"isDescendentOfSingleProductBlock":false} /-->
+			<!-- wp:woocommerce/product-price {"isDescendentOfSingleProductBlock":false} -->
+			<div class="is-loading"></div>
+			<!-- /wp:woocommerce/product-price -->
 			<!-- wp:woocommerce/product-button {"isDescendentOfQueryLoop":true} /-->
 		<!-- /wp:woocommerce/product-template -->
 

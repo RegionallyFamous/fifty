@@ -1,0 +1,14 @@
+{
+  "name": "fifty-blocks-validator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Editor-parity validator for theme patterns and templates. Wraps @wordpress/blocks parse() so we catch the same 'invalid markup' warnings the block editor would.",
+  "scripts": {
+    "validate": "node check-blocks.mjs"
+  },
+  "dependencies": {
+    "@wordpress/block-library": "9.27.0",
+    "jsdom": "24.1.0"
+  }
+}

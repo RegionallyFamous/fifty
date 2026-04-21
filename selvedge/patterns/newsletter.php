@@ -20,9 +20,9 @@
 	<!-- /wp:paragraph -->
 
 	<!-- wp:search <?php echo wp_json_encode( array(
-		'label'          => __( 'Email address', 'selvedge' ),
+		'label'          => __( 'Your address', 'selvedge' ),
 		'showLabel'      => false,
-		'placeholder'    => __( 'you@example.com', 'selvedge' ),
+		'placeholder'    => __( 'you@workshop.example', 'selvedge' ),
 		'buttonText'     => __( 'Subscribe', 'selvedge' ),
 		'buttonPosition' => 'button-inside',
 		'buttonUseIcon'  => false,

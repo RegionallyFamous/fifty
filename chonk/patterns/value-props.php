@@ -16,7 +16,7 @@
 		<!-- wp:column -->
 		<div class="wp-block-column">
 			<!-- wp:heading {"level":3,"fontSize":"lg"} -->
-			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Free shipping', 'chonk' ); ?></h3>
+			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'FREE SHIPPING', 'chonk' ); ?></h3>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph {"textColor":"secondary"} -->
 			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Free over $50, anywhere in the lower 48. Boxed heavy, taped twice.', 'chonk' ); ?></p>
@@ -27,7 +27,7 @@
 		<!-- wp:column -->
 		<div class="wp-block-column">
 			<!-- wp:heading {"level":3,"fontSize":"lg"} -->
-			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( '30-day returns', 'chonk' ); ?></h3>
+			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( '30-DAY RETURNS', 'chonk' ); ?></h3>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph {"textColor":"secondary"} -->
 			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Send it back inside 30 days. Free, fast, no awkward questionnaire.', 'chonk' ); ?></p>
@@ -38,7 +38,7 @@
 		<!-- wp:column -->
 		<div class="wp-block-column">
 			<!-- wp:heading {"level":3,"fontSize":"lg"} -->
-			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Made to last', 'chonk' ); ?></h3>
+			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'MADE TO LAST', 'chonk' ); ?></h3>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph {"textColor":"secondary"} -->
 			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Built from materials we\'d put in our own kitchens. Outlives the trend cycle on principle.', 'chonk' ); ?></p>

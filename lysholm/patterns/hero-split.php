@@ -46,7 +46,7 @@
 			<!-- wp:buttons {"style":{"spacing":{"margin":{"top":"var:preset|spacing|md"}}}} -->
 			<div class="wp-block-buttons" style="margin-top:var(--wp--preset--spacing--md)">
 				<!-- wp:button -->
-				<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop"><?php esc_html_e( 'Shop the collection', 'lysholm' ); ?></a></div>
+				<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop"><?php esc_html_e( 'Browse the collection', 'lysholm' ); ?></a></div>
 				<!-- /wp:button -->
 
 				<!-- wp:button {"className":"is-style-outline"} -->
@@ -59,8 +59,8 @@
 
 		<!-- wp:column {"verticalAlignment":"center"} -->
 		<div class="wp-block-column is-vertically-aligned-center">
-			<!-- wp:image {"sizeSlug":"large","style":{"dimensions":{"aspectRatio":"var(--wp--custom--aspect-ratio--widescreen)"}}} -->
-			<figure class="wp-block-image size-large" style="aspect-ratio:var(--wp--custom--aspect-ratio--widescreen)"><img src="<?php echo esc_url( get_theme_file_uri( 'playground/images/product-wo-bottled-morning.jpg' ) ); ?>" alt="<?php esc_attr_e( 'Bottled Morning — a cork-stoppered glass bottle of warm light, tagged in coral linen on a soft natural backdrop. The flagship product of the Wonders &amp; Oddities demo catalogue.', 'lysholm' ); ?>" /></figure>
+			<!-- wp:image {"sizeSlug":"large"} -->
+			<figure class="wp-block-image size-large"><img src="<?php echo esc_url( get_theme_file_uri( 'playground/images/product-wo-bottled-morning.jpg' ) ); ?>" alt="<?php esc_attr_e( 'Bottled Morning — a cork-stoppered glass bottle of warm light, tagged in coral linen on a soft natural backdrop. The flagship product of the Wonders & Oddities demo catalogue.', 'lysholm' ); ?>"/></figure>
 			<!-- /wp:image -->
 		</div>
 		<!-- /wp:column -->

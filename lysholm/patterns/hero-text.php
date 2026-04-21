@@ -12,7 +12,7 @@
 <!-- wp:group {"align":"full","backgroundColor":"accent-soft","style":{"spacing":{"padding":{"top":"var:preset|spacing|3-xl","bottom":"var:preset|spacing|3-xl","left":"var:preset|spacing|lg","right":"var:preset|spacing|lg"}}},"layout":{"type":"constrained"}} -->
 <div class="wp-block-group alignfull has-accent-soft-background-color has-background" style="padding-top:var(--wp--preset--spacing--3-xl);padding-right:var(--wp--preset--spacing--lg);padding-bottom:var(--wp--preset--spacing--3-xl);padding-left:var(--wp--preset--spacing--lg)">
 	<!-- wp:paragraph {"align":"center","fontSize":"xs","style":{"typography":{"letterSpacing":"var:custom|letter-spacing|wider","textTransform":"uppercase"}},"textColor":"tertiary"} -->
-	<p class="has-text-align-center has-tertiary-color has-text-color has-xs-font-size" style="letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase"><?php esc_html_e( 'New arrivals', 'lysholm' ); ?></p>
+	<p class="has-text-align-center has-tertiary-color has-text-color has-xs-font-size" style="letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase"><?php esc_html_e( 'Newly stocked', 'lysholm' ); ?></p>
 	<!-- /wp:paragraph -->
 
 	<!-- wp:heading {"level":1,"textAlign":"center","fontSize":"4xl"} -->
