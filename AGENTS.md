@@ -263,6 +263,38 @@ The shop archive header is the most-judged surface in any WooCommerce theme revi
 
 `bin/check.py` enforces (1) via `check_archive_sort_dropdown_styled` — any archive template that renders `wp:woocommerce/catalog-sorting` without the matching top-level `styles.css` rule fails the check before push. (2) is taste-driven and not auto-checked, but every archive in the monorepo follows the same pattern; deviate from it deliberately.
 
+### WooCommerce panel surfaces ("card" rule)
+
+The cart sidebar, checkout sidebar, mini-cart drawer, and order-summary panel are *card surfaces* — opaque blocks that hold dense compound content (subtotals, taxes, totals, coupon input, primary CTA). The moment we paint them with a non-transparent `background:` they READ as a panel, and they need to feel like proper panels — not tight boxes the plugin echoed onto the page.
+
+- **The default `padding: lg` (≈24-40px depending on viewport) is too small.** It's fine for type-only blocks, but on a totals card with a price column on the right and a checkout button on the bottom it visibly cramps the content against the edge. Use `xl` or larger (`2-xl`/`3-xl` are also fine) for any WC card surface that owns its own background. The hard floor is `xl`.
+- **Card chrome MUST live in top-level `styles.css`.** Block-scoped CSS in `styles.blocks["woocommerce/cart-totals-block"].css` gets wrapped in `:root :where(...)` (specificity 0,0,1) and silently loses to WC's own padding declarations on the wrapper. Only top-level rules are emitted verbatim and reliably win the cascade. Same story as `check_wc_overrides_styled` and `check_archive_sort_dropdown_styled`.
+- **Card chrome is a place to express the theme's voice, not boilerplate.** A brutalist theme should have a thick contrast border + flat box shadow on the cart sidebar, a Nordic theme should have soft warm subtle, a dark editorial theme should have a thin hairline border, and so on. If two themes are shipping byte-identical card chrome, one of them isn't doing its job.
+
+`bin/check.py` enforces the padding floor via `check_wc_card_surfaces_padded` — any WC card surface (cart sidebar, checkout sidebar, mini-cart drawer modal, etc.) that gets a `background:` in top-level `styles.css` but uses padding below `xl` fails the check before push. The list of recognised surfaces lives at the top of the check; add new entries as new card surfaces get reskinned.
+
+### Hover/focus states must stay legible (the "accent-on-base" footgun)
+
+A theme can pass every other check and still ship a hover state that paints text in a color with ~1:1 contrast against the background it lands on. Two patterns cause it; both are subtle because they only manifest *after* the palette interacts with the rule. The rule looks fine in isolation; the rendered result is invisible.
+
+- **Pattern 1 — `:hover { color: var(--accent); }` on a theme whose accent collapses against `--base`.** Chonk's `--accent` is `#FFE600` and `--base` is `#F5F1E8`; that's **1.12:1** of contrast. Lysholm's `--accent` is `#C9A97C` against base `#F7F5F1` is **2.04:1**. Both fail WCAG AA-Large badly. The same rule that's perfectly readable on Selvedge (orange accent on dark base, ~4.9:1) renders the link text unreadable on the cream-base themes. Don't use `--accent` as a text color in a hover state unless the theme's accent has ≥3:1 contrast with `--base`. Signal hover with a non-color shift instead — `text-decoration: underline` paired with `text-decoration-color: var(--accent)` and a thick `text-decoration-thickness` keeps the accent as the visual cue without making the text invisible.
+- **Pattern 2 — `:hover { background: var(--accent); }` on a button whose resting state is `color: var(--base)`.** This is the `.button:hover` family in the WC override boilerplate. The hover paints a yellow/orange surface but never declares its own `color:`, so the button keeps its resting cream text — cream-on-yellow at 1.12:1, cream-on-tan at 2.04:1. Whenever a hover/focus state changes the background, **declare `color: var(--contrast)` explicitly in the same rule** to flip the text to the dark token. Don't rely on inheritance — the resting `color: var(--base)` declared on the button itself wins over body inheritance.
+
+`bin/check.py` enforces both patterns via `check_hover_state_legibility`. For every `:hover` / `:focus` / `:focus-visible` / `:active` rule in top-level `styles.css`, it resolves the effective text color (the rule's own `color:` declaration if present; otherwise the resting state's `color:` declaration on the same exact selector; otherwise `--contrast`) and the effective background color (the rule's own `background:` if present; otherwise `--base`), looks both up in the theme's palette, and computes the WCAG 2.x contrast ratio. Anything below **3.0:1** (the AA-Large floor — relaxed for state changes since they're transient) fails with the offending selector and the resolved color tuple printed in the log. The check sits next to `check_wc_card_surfaces_padded` in the runner and catches palette/rule interactions that would otherwise only surface in browser review.
+
+### Nothing is "standard" — every theme must spin its own visible chrome
+
+The fastest way to make a WooCommerce demo read as off-the-shelf is to ship byte-identical chrome across themes. The cart sidebar, the checkout sidebar, the trust-strip pills, the primary CTA, the sale badge — these are exactly the surfaces a shopper looks at to answer "does this brand have its own taste?" If chonk and obel render the payment-icon row with byte-identical white pills, both themes lose the answer. "It's the same code, just different colors and fonts" is the failure mode a real designer notices in five seconds; it's also the reason customers describe stock-WooCommerce sites as cheap.
+
+The rule is **not** "no shared CSS rules anywhere." Utility and structural plumbing — `min-width:0` overflow fixes, screen-reader visually-hidden helpers, layout grids, `overflow-wrap:break-word` typography fixes — SHOULD be byte-identical across themes; that's not chrome, that's plumbing, and per-theme variation there means somebody forgot to backport a fix. The rule is scoped to a curated list of "premium chrome" selectors that live in `bin/check.py` as `DISTINCT_CHROME_SELECTORS`.
+
+A theme can earn a unique treatment two ways:
+
+1. **Author a different base rule body** for the selector in its own `styles.css` / `styles.blocks` — chonk just writes a different rule than obel does and the check passes.
+2. **Share the base rule but add a per-theme `body.theme-<slug> <selector>` override** in `bin/append-wc-overrides.py` Phase E/F/G. Phase E houses the original distinctive treatments (primary CTA, sale badge, etc.); Phase F houses the payment-pill voices; Phase G houses the cart/checkout card-surface voices. Add a new phase whenever a new chrome surface needs per-theme variants — the sentinel-comment pattern keeps the chunks idempotent so re-runs are no-ops.
+
+`bin/check.py` enforces this via `check_distinctive_chrome`. It loads every shipped theme's top-level `styles.css`, extracts the base rule body for each entry in `DISTINCT_CHROME_SELECTORS`, groups themes by byte-identical body, and fails any cluster of 2+ themes that share a body without a `body.theme-<slug>` override on each. Add a selector to `DISTINCT_CHROME_SELECTORS` whenever a new premium-chrome surface ships — the list is curated on purpose so structural plumbing isn't dragged in.
+
 ### Permalinks gotcha (the one footgun that will burn you)
 
 In a `wp eval-file` context (which is how `wo-configure.php` runs), the global `$wp_rewrite` was constructed at WP boot from the previous (default = empty) `permalink_structure` option. Calling

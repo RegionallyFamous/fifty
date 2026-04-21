@@ -430,7 +430,7 @@ CSS_PHASE_C = f"""{SENTINEL_OPEN_PHASE_C}
 .wo-swatch:focus-visible{{outline:2px solid var(--wp--preset--color--accent);outline-offset:2px;}}
 .wo-swatch.is-selected{{border-color:var(--wp--preset--color--contrast);background:var(--wp--preset--color--contrast);color:var(--wp--preset--color--base);}}
 .wo-swatch--color{{width:40px;min-width:40px;padding:0;border-radius:50%;}}
-.wo-swatch--color .wo-swatch__dot{{display:block;width:28px;height:28px;border-radius:50%;background:var(--wo-swatch-color,#ccc);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.08);}}
+.wo-swatch--color .wo-swatch__dot{{display:block;width:28px;height:28px;border-radius:50%;background:var(--wo-swatch-color,var(--wp--preset--color--border));box-shadow:inset 0 0 0 1px rgba(0,0,0,0.08);}}
 .wo-swatch--color.is-selected{{background:transparent;color:inherit;outline:2px solid var(--wp--preset--color--contrast);outline-offset:2px;}}
 table.variations td.label{{font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;color:var(--wp--preset--color--secondary);padding-right:var(--wp--preset--spacing--md);vertical-align:middle;}}
 .reset_variations{{font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;color:var(--wp--preset--color--secondary);}}
@@ -455,7 +455,8 @@ table.variations td.label{{font-family:var(--wp--preset--font-family--sans);font
 .wo-payment-icons{{display:flex;flex-wrap:wrap;align-items:center;gap:var(--wp--preset--spacing--sm);justify-content:flex-start;margin:var(--wp--preset--spacing--md) 0 0;padding:var(--wp--preset--spacing--md) 0 0;border-top:1px solid var(--wp--preset--color--border);}}
 .wo-payment-icons__label{{font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;color:var(--wp--preset--color--secondary);margin-right:var(--wp--preset--spacing--xs);}}
 .wo-payment-icons__list{{display:inline-flex;flex-wrap:wrap;gap:var(--wp--preset--spacing--xs);align-items:center;}}
-.wo-payment-icons__icon{{display:inline-flex;align-items:center;justify-content:center;height:24px;width:38px;border:1px solid var(--wp--preset--color--border);border-radius:3px;background:var(--wp--preset--color--base);color:var(--wp--preset--color--secondary);font-family:var(--wp--preset--font-family--sans);font-size:9px;font-weight:var(--wp--custom--font-weight--bold,700);letter-spacing:0.04em;text-transform:uppercase;}}
+.wo-payment-icons__icon{{display:inline-flex;align-items:center;justify-content:center;height:26px;width:40px;padding:0;border:0;border-radius:4px;background:transparent;overflow:hidden;line-height:0;}}
+.wo-payment-icons__icon>svg{{display:block;width:100%;height:100%;}}
 {SENTINEL_CLOSE_PHASE_C}"""
 
 
@@ -584,6 +585,85 @@ body.theme-lysholm .wp-block-product-collection .wp-block-post,body.theme-lyshol
 {SENTINEL_CLOSE_PHASE_E}"""
 
 
+# ----------------------------------------------------------------------
+# Phase F — distinctive payment-icon chrome
+# ----------------------------------------------------------------------
+# Phase C ships ONE base treatment for `.wo-payment-icons__icon` (a
+# 40×26 transparent container with 4px corners). That neutral base is
+# fine as a fallback, but if every theme renders the trust strip with
+# byte-identical chrome, the strip becomes a "standard" element — the
+# exact "feels like a default WooCommerce site" smell we're trying to
+# kill.
+#
+# Each theme overrides the pill chrome here so the strip reads in its
+# own voice:
+#   chonk    — sticker pile: 0 radius, 2px contrast border, brutalist
+#              2×2 contrast shadow. Reads as hand-applied stickers.
+#   obel     — paper stamp: warm hairline border, 4px corners. Reads
+#              as a printed mark on cream.
+#   selvedge — newsroom rule: hairline bottom only, 0 radius. Reads
+#              as inline editorial badges, not buttons.
+#   lysholm  — floating chip: full pill, no border, soft elevation.
+#              Reads as a Nordic minimalist chip.
+#
+# Phase C's `.wo-payment-icons__icon{overflow:hidden}` clips the SVG's
+# inner rounded rect to whatever shape Phase F dictates, so the brand
+# colors fill the new corner radius cleanly with no SVG edits needed.
+#
+# RULE: when a new "premium chrome" surface ships in Phase A–E (cart
+# sidebar, primary CTA, sale badge, hero, …), it MUST either differ
+# per theme in its base rule body or land here in Phase F so each
+# theme expresses its own visual voice. See the
+# `check_distinctive_chrome` rule in bin/check.py.
+SENTINEL_OPEN_PHASE_F = "/* wc-tells-phase-f-pay-pill */"
+SENTINEL_CLOSE_PHASE_F = "/* /wc-tells-phase-f-pay-pill */"
+CSS_PHASE_F = f"""{SENTINEL_OPEN_PHASE_F}
+body.theme-chonk .wo-payment-icons__icon{{border:2px solid var(--wp--preset--color--contrast);border-radius:0;box-shadow:2px 2px 0 0 var(--wp--preset--color--contrast);}}
+body.theme-obel .wo-payment-icons__icon{{border:1px solid var(--wp--preset--color--border);border-radius:var(--wp--custom--radius--md,4px);}}
+body.theme-selvedge .wo-payment-icons__icon{{border:0;border-bottom:1px solid var(--wp--preset--color--border);border-radius:0;}}
+body.theme-lysholm .wo-payment-icons__icon{{border:0;border-radius:var(--wp--custom--radius--pill,9999px);box-shadow:0 1px 2px rgba(0,0,0,0.06);}}
+{SENTINEL_CLOSE_PHASE_F}"""
+
+
+# ----------------------------------------------------------------------
+# Phase G — distinctive cart/checkout sidebar voices
+# ----------------------------------------------------------------------
+# The cart sidebar and the checkout sidebar are the two heaviest "card
+# surfaces" on a WC storefront — every shopper looking at a totals
+# panel reads the surface treatment as a brand statement. Phase A–E
+# left the BASE rule for `.wc-block-checkout__sidebar` as plumbing-
+# only (overflow-wrap, word-break, hyphens) which means every theme
+# rendered the checkout summary as an unpainted, edgeless block: the
+# textbook "looks like a default Woo checkout" smell. The cart
+# sidebar got partial per-theme treatments in earlier phases but
+# obel and lysholm still resolved to byte-identical chrome because
+# the cart sidebar in the base CSS (Phase A wc-tells) is hard-coded
+# to one warm-minimal default and only chonk + selvedge had bothered
+# to override it.
+#
+# Phase G fixes both:
+#   - Cart sidebar: lysholm gets its own Nordic-warm override
+#     (surface bg, soft accent hairline, 16px radius, soft elevation)
+#     so it's no longer a clone of obel.
+#   - Checkout sidebar: every theme gets a per-theme override that
+#     mirrors its OWN cart-sidebar treatment, so within a single
+#     theme the cart card and the checkout card read as the same
+#     visual language.
+#
+# This is exactly the pattern enforced by `check_distinctive_chrome`
+# in bin/check.py: shared "standard" base + per-theme `body.theme-<slug>`
+# overrides that visibly differentiate.
+SENTINEL_OPEN_PHASE_G = "/* wc-tells-phase-g-card-voices */"
+SENTINEL_CLOSE_PHASE_G = "/* /wc-tells-phase-g-card-voices */"
+CSS_PHASE_G = f"""{SENTINEL_OPEN_PHASE_G}
+body.theme-lysholm .wc-block-cart__sidebar{{background:var(--wp--preset--color--surface);border:1px solid var(--wp--preset--color--accent-soft,var(--wp--preset--color--border));border-radius:var(--wp--custom--radius--lg,16px);box-shadow:0 2px 12px rgba(0,0,0,0.04);}}
+body.theme-chonk .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--base);border:4px solid var(--wp--preset--color--contrast);border-radius:0;box-shadow:8px 8px 0 var(--wp--preset--color--contrast);display:flex;flex-direction:column;gap:var(--wp--preset--spacing--lg);}}
+body.theme-obel .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--subtle);border-radius:var(--wp--custom--radius--md);display:flex;flex-direction:column;gap:var(--wp--preset--spacing--lg);}}
+body.theme-selvedge .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--surface);border:1px solid var(--wp--preset--color--border);border-radius:0;display:flex;flex-direction:column;gap:var(--wp--preset--spacing--lg);}}
+body.theme-lysholm .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--surface);border:1px solid var(--wp--preset--color--accent-soft,var(--wp--preset--color--border));border-radius:var(--wp--custom--radius--lg,16px);box-shadow:0 2px 12px rgba(0,0,0,0.04);display:flex;flex-direction:column;gap:var(--wp--preset--spacing--lg);}}
+{SENTINEL_CLOSE_PHASE_G}"""
+
+
 # Each entry: (sentinel_open, sentinel_close, raw_css, anchor_after).
 # `anchor_after` is the marker the chunk is spliced in after — for the
 # first chunk that's the canonical archive-page marker; for follow-ups
@@ -655,6 +735,18 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_PHASE_E,
         CSS_PHASE_E,
         SENTINEL_CLOSE_PHASE_D_FOOTER,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_F,
+        SENTINEL_CLOSE_PHASE_F,
+        CSS_PHASE_F,
+        SENTINEL_CLOSE_PHASE_E,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_G,
+        SENTINEL_CLOSE_PHASE_G,
+        CSS_PHASE_G,
+        SENTINEL_CLOSE_PHASE_F,
     ),
 ]
 

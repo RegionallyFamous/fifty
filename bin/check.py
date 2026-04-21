@@ -158,6 +158,70 @@ def check_index_in_sync() -> Result:
 # Files where `!important` is allowed because they document the rule itself.
 IMPORTANT_RULE_DOCS = {"AGENTS.md", "README.md", "readme.txt", "CHANGELOG.md"}
 
+# Sentinel-bracketed chunks of `theme.json` `styles.css` where `!important`
+# is allowed because the cascade fight against WooCommerce plugin CSS is
+# unwinnable without it. These are emitted by `bin/append-wc-overrides.py`
+# and bracketed by paired `/* <name> */` ... `/* /<name> */` markers.
+#
+# Adding a chunk to this allow-list is a deliberate decision; do NOT add a
+# new entry without:
+#   1. trying every selector-specificity workaround first (see
+#      `bin/append-wc-overrides.py`'s other chunks for examples that won
+#      without `!important`),
+#   2. documenting in code WHY the cascade fight cannot be won without it
+#      (which exact WC plugin rule + computed specificity beats the theme),
+#   3. keeping the chunk as small as humanly possible.
+#
+# Current entries:
+#   * wc-tells-phase-a-premium     -- defends against the legacy
+#       woocommerce/product-image-gallery's `opacity:0` start state when
+#       its Flexslider/PhotoSwipe JS doesn't init (Playground / fresh-WC
+#       failure mode), hides WC blocks loading-skeletons that otherwise
+#       flash a blank panel during checkout hydration, and force-fits the
+#       variation `<select>`'s font. Without `!important` the WC plugin
+#       CSS at `(0,4,3)` wins and the PDP paints empty cream.
+#   * wc-tells-phase-c-premium     -- one rule (the WC mini-cart item image
+#       sizing for `.wc-block-mini-cart__drawer .wc-block-cart-item__image
+#       img, .wc-block-cart-items img`) needs `!important` because WC ships
+#       its own width/height on the same selector at the same specificity,
+#       and the JS-rendered cart drawer hydrates after our CSS so cascade
+#       order doesn't help. Without `!important` cart thumbnails balloon
+#       to native image dimensions on first paint.
+#   * wc-tells-phase-e-distinctive -- per-theme branded button overrides
+#       scoped under `body.theme-<slug>` for `.single_add_to_cart_button`,
+#       `.wp-block-button__link`, `.wc-block-components-checkout-place-order-button`,
+#       and `.onsale`. WC ships these with property-level `!important` on
+#       background/border/padding so the only way for the theme's branded
+#       voice to land is to also use `!important`.
+IMPORTANT_ALLOWED_SENTINELS = (
+    ("/* wc-tells-phase-a-premium */", "/* /wc-tells-phase-a-premium */"),
+    ("/* wc-tells-phase-c-premium */", "/* /wc-tells-phase-c-premium */"),
+    ("/* wc-tells-phase-e-distinctive */", "/* /wc-tells-phase-e-distinctive */"),
+)
+
+
+def _strip_allowed_important_chunks(text: str) -> str:
+    """Remove sentinel-bracketed regions from `text` so the `!important`
+    scan can ignore them. Operates on the raw string (NOT line-by-line)
+    because `bin/append-wc-overrides.py` emits the chunks as one minified
+    line each, so the open + close sentinels usually live on the same
+    line as the rules between them.
+    """
+    out = text
+    for open_marker, close_marker in IMPORTANT_ALLOWED_SENTINELS:
+        while True:
+            i = out.find(open_marker)
+            if i == -1:
+                break
+            j = out.find(close_marker, i + len(open_marker))
+            if j == -1:
+                # Unclosed marker -- bail out, leave the rest untouched so
+                # the scan still catches new !important rules added past
+                # the dangling sentinel.
+                break
+            out = out[:i] + out[j + len(close_marker):]
+    return out
+
 
 def check_no_important() -> Result:
     r = Result("No `!important` in code")
@@ -169,7 +233,8 @@ def check_no_important() -> Result:
         if rel.startswith("bin/"):
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
-        for lineno, line in enumerate(text.splitlines(), 1):
+        scanned = _strip_allowed_important_chunks(text)
+        for lineno, line in enumerate(scanned.splitlines(), 1):
             if pattern.search(line):
                 r.fail(f"{rel}:{lineno}: {line.strip()}")
     return r
@@ -1177,6 +1242,249 @@ def check_no_duplicate_stock_indicator() -> Result:
     return r
 
 
+def _srgb_lin(c: float) -> float:
+    """sRGB component (0..1) -> linear-light component for WCAG luminance."""
+    return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def _wcag_luminance(hex_color: str) -> float:
+    """WCAG 2.x relative luminance for a #RRGGBB hex string."""
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16) / 255, int(h[2:4], 16) / 255, int(h[4:6], 16) / 255
+    return 0.2126 * _srgb_lin(r) + 0.7152 * _srgb_lin(g) + 0.0722 * _srgb_lin(b)
+
+
+def _wcag_contrast(hex_a: str, hex_b: str) -> float:
+    """WCAG 2.x contrast ratio between two #RRGGBB hex strings (1..21)."""
+    la, lb = _wcag_luminance(hex_a), _wcag_luminance(hex_b)
+    lighter, darker = max(la, lb), min(la, lb)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def check_hover_state_legibility() -> Result:
+    """Fail if any `:hover` / `:focus` / `:focus-visible` / `:active` rule
+    in top-level `styles.css` produces text that's effectively invisible
+    against the background it sits on.
+
+    Why this exists:
+      A theme can pass every other check and still ship a hover state
+      that paints text in a color with ~1:1 contrast against the page.
+      The classic case (caught in production review on chonk's cart
+      page): `.button:hover { background: var(--accent); }` paints a
+      yellow surface, but the button's default `color: var(--base)` is
+      kept — so the button text becomes cream-on-yellow, contrast ~1.1:1,
+      effectively invisible. Same shape: `.link:hover { color:
+      var(--accent); }` on a theme whose accent is a saturated near-base
+      hue (chonk's `#FFE600` sits 1.12:1 above the cream `--base`;
+      lysholm's `#C9A97C` sits 2.04:1 above the cream `--base`).
+
+      The bug is endemic to themes that copy WC override boilerplate
+      across files without re-checking palette interactions: the same
+      ruleset that's fine on a theme with a high-contrast accent silently
+      fails on a theme whose accent collapses against the body bg. We
+      need a check that runs *after* the palette and *after* the rules
+      have been applied so it catches the palette/rule interaction.
+
+    What this check enforces:
+      For every rule in top-level `styles.css` whose selector contains
+      `:hover`, `:focus`, `:focus-visible`, or `:active`:
+
+      1. **Resolve effective text color.**
+         - If the rule sets `color: var(--wp--preset--color--<X>)`, use
+           palette[X].
+         - Otherwise assume default `--contrast` (the inherited body
+           text color in every theme in the monorepo).
+      2. **Resolve effective background color.**
+         - If the rule sets `background:` or `background-color:` to a
+           palette token, use that.
+         - If the rule sets a non-palette background (gradient, hex,
+           transparent, none, etc.), skip the rule — we can't reason
+           about contrast against an arbitrary value.
+         - Otherwise assume default `--base` (the body background).
+      3. **Compute WCAG contrast ratio** between the two resolved hex
+         colors and require ≥ 3.0:1 (WCAG 2.x AA-Large bar — relaxed
+         for state changes since they're typically transient and rarely
+         long-form prose). Below 3.0 fails.
+
+      Bullets 1+2 are deliberately conservative: an explicit text +
+      explicit bg in the same rule are checked against each other; an
+      explicit bg with no text declaration is checked against the
+      assumed-default text color. The latter is exactly the
+      `bg:accent` button-hover footgun.
+
+    Tokens not present in the palette (e.g. typo, theme-specific custom
+    name) are silently skipped so a typo doesn't masquerade as a
+    contrast bug — `check_no_hex_in_theme_json` and theme.json schema
+    validation catch those.
+    """
+    r = Result("Hover/focus states have legible text-vs-background contrast")
+
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.skip("theme.json missing")
+        return r
+    try:
+        data = json.loads(theme_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        r.fail(f"theme.json: invalid JSON ({exc}).")
+        return r
+
+    palette_list = (
+        ((data.get("settings") or {}).get("color") or {}).get("palette") or []
+    )
+    palette: dict[str, str] = {
+        p["slug"]: p["color"]
+        for p in palette_list
+        if isinstance(p, dict)
+        and isinstance(p.get("slug"), str)
+        and isinstance(p.get("color"), str)
+        and re.fullmatch(r"#[0-9A-Fa-f]{6}", p.get("color", ""))
+    }
+    if not palette or "base" not in palette or "contrast" not in palette:
+        r.skip("palette is missing required `base` or `contrast` slug")
+        return r
+
+    top_css = (data.get("styles", {}) or {}).get("css") or ""
+    if not top_css.strip():
+        r.skip("no top-level styles.css")
+        return r
+
+    # Default text + bg if a rule doesn't set them and no resting state
+    # is found. Every theme in the monorepo inherits
+    # body { color: contrast; background: base; }.
+    DEFAULT_TEXT = palette["contrast"]
+    DEFAULT_BG = palette["base"]
+
+    state_re = re.compile(r":(hover|focus|focus-visible|active)\b")
+    color_re = re.compile(
+        r"(?:^|[;{\s])color\s*:\s*var\(--wp--preset--color--([a-z0-9-]+)\)"
+    )
+    bg_re = re.compile(
+        r"\bbackground(?:-color)?\s*:\s*var\(--wp--preset--color--([a-z0-9-]+)\)"
+    )
+    bg_unrecognised_re = re.compile(
+        r"\bbackground(?:-color)?\s*:\s*(?!var\(--wp--preset--color--)([^;}]+)"
+    )
+    state_strip_re = re.compile(r":(?:hover|focus|focus-visible|active)\b")
+
+    # Pre-build an index of every rule body by individual selector so we
+    # can look up the resting-state declarations a `:hover` rule
+    # inherits from. Necessary because a hover rule like
+    # `.btn:hover { background: var(--accent); }` doesn't declare
+    # `color:` -- but the resting `.btn { color: var(--base); }` does,
+    # and that's the color that actually paints the hover text.
+    rest_index: dict[str, list[str]] = {}
+    for rest_match in re.finditer(r"([^{}]+)\{([^}]*)\}", top_css):
+        sel_group, body_group = rest_match.group(1), rest_match.group(2)
+        if state_re.search(sel_group):
+            continue  # Only index resting-state rules.
+        for raw_sel in sel_group.split(","):
+            key = raw_sel.strip()
+            if key:
+                rest_index.setdefault(key, []).append(body_group)
+
+    def _resting_color_token(hover_selectors: str) -> str | None:
+        """For each comma-separated selector in the hover rule, strip the
+        state pseudo-class and look up the resting rule(s). Return the
+        first palette `color:` token declared on the resting state, or
+        None if no resting rule sets one. We pick the first match in
+        source order, which mirrors how a single rule's inherited text
+        color gets resolved in practice (the most-specific resting rule
+        for that exact selector is what wins for the hover state)."""
+        for raw_sel in hover_selectors.split(","):
+            resting_sel = state_strip_re.sub("", raw_sel).strip()
+            if not resting_sel:
+                continue
+            for rest_body in rest_index.get(resting_sel, ()):
+                m = color_re.search(rest_body)
+                if m:
+                    return m.group(1)
+        return None
+
+    failures: list[str] = []
+    checked = 0
+
+    for rule_match in re.finditer(r"([^{}]+)\{([^}]*)\}", top_css):
+        sels, body = rule_match.group(1), rule_match.group(2)
+        if not state_re.search(sels):
+            continue
+
+        # Resolve text color: hover's own declaration wins; otherwise
+        # inherit from the resting state of the same selector; otherwise
+        # fall back to the body default.
+        color_match = color_re.search(body)
+        if color_match:
+            text_token = color_match.group(1)
+            text_source = "hover"
+        else:
+            inherited = _resting_color_token(sels)
+            if inherited is not None:
+                text_token = inherited
+                text_source = "inherited from resting state"
+            else:
+                text_token = None
+                text_source = "body default"
+        text_hex = palette.get(text_token) if text_token else DEFAULT_TEXT
+        if text_token and text_hex is None:
+            # Token not in palette (typo / custom name) — skip this rule.
+            continue
+
+        # Resolve background color.
+        bg_match = bg_re.search(body)
+        bg_token = bg_match.group(1) if bg_match else None
+        bg_hex = palette.get(bg_token) if bg_token else None
+        if bg_token and bg_hex is None:
+            continue
+        if bg_hex is None:
+            # No palette bg in this rule. If the rule sets a non-palette
+            # background (gradient, hex, transparent, etc.), we can't
+            # reason about it — skip. Otherwise assume body default.
+            unrec = bg_unrecognised_re.search(body)
+            if unrec:
+                continue
+            bg_hex = DEFAULT_BG
+
+        ratio = _wcag_contrast(text_hex, bg_hex)
+        checked += 1
+        if ratio < 3.0:
+            # Pretty-print the offending selector list, capped to keep
+            # the failure log scannable.
+            sel_pretty = " ".join(sels.split())
+            if len(sel_pretty) > 140:
+                sel_pretty = sel_pretty[:137] + "..."
+            color_desc = (
+                f"`color: var(--{text_token})` ({text_hex}, {text_source})"
+                if text_token
+                else f"`color: var(--contrast)` ({text_hex}, body default)"
+            )
+            bg_desc = (
+                f"`background: var(--{bg_token})` ({bg_hex})"
+                if bg_token
+                else f"inherited `background: var(--base)` ({bg_hex})"
+            )
+            failures.append(
+                f"{sel_pretty}: {color_desc} vs {bg_desc} = "
+                f"{ratio:.2f}:1, below the 3:1 floor. The hover state "
+                f"renders the text effectively invisible against its "
+                f"new background. Either flip `color:` to a palette "
+                f"token that has ≥3:1 contrast with the new background "
+                f"(usually `--contrast` for bright accents, `--base` "
+                f"for dark backgrounds), or replace the bg-color shift "
+                f"with a non-color hover signal (border, shadow, "
+                f"underline-via-text-decoration-color)."
+            )
+
+    if failures:
+        for f in failures:
+            r.fail(f)
+        return r
+
+    r.details.append(
+        f"{checked} hover/focus state rule(s) verified at ≥3:1 contrast"
+    )
+    return r
+
+
 def check_wc_card_surfaces_padded() -> Result:
     """Fail if any WC "panel/card" surface is given a `background:` in
     top-level `styles.css` without enough internal padding for the panel to
@@ -1345,6 +1653,232 @@ def check_wc_card_surfaces_padded() -> Result:
         f"{len(bg_surfaces)} painted card surface(s) — all use "
         f"≥xl internal padding"
     )
+    return r
+
+
+# Selectors that paint user-visible "chrome" — the parts of the storefront
+# where a shopper sees this theme's voice and not the next theme's. Each
+# entry is matched VERBATIM against rule selectors in top-level `styles.css`
+# (whitespace normalised, but selector lists must match in order).
+#
+# Rule: nothing in this list is allowed to ship a byte-identical CSS body in
+# two or more themes UNLESS each of those themes also provides a per-theme
+# `body.theme-<slug> <selector>` override that visually overpowers the base.
+# A "standard" treatment shared across themes is exactly the "feels like a
+# default WooCommerce site" bug we keep flagging on demos.
+#
+# Add a selector here whenever a new premium-chrome surface ships (cart
+# sidebar, primary CTA chrome, sale badge, hero, trust strip, footer mark,
+# …). Structural / utility / accessibility rules are deliberately NOT in
+# this list — a `min-width:0` overflow fix or a screen-reader visually-
+# hidden rule SHOULD be byte-identical across themes; that's not chrome,
+# that's plumbing.
+DISTINCT_CHROME_SELECTORS: list[str] = [
+    ".wc-block-cart__sidebar",
+    ".wc-block-checkout__sidebar",
+    ".wo-payment-icons__icon",
+]
+
+# All four shipped themes. Used by cross-theme checks (the ones that have
+# to load every sibling's CSS, not just the current ROOT).
+_KNOWN_THEME_SLUGS = ("chonk", "obel", "selvedge", "lysholm")
+
+
+def _normspace(s: str) -> str:
+    """Collapse all whitespace runs in a CSS fragment so two rules can be
+    compared byte-for-byte without being defeated by minifier whitespace."""
+    return re.sub(r"\s+", "", s)
+
+
+def _strip_css_comments(css: str) -> str:
+    """Remove every `/* ... */` block from a CSS string. The phase-N
+    sentinels appended by `bin/append-wc-overrides.py` live as comments
+    immediately before each rule, so without stripping them the regex
+    below ends up capturing `<comment> <selector> {...}` as one selector
+    blob — and `selector.startswith("body.theme-…")` then never matches."""
+    return re.sub(r"/\*.*?\*/", " ", css, flags=re.DOTALL)
+
+
+def _find_base_rule_body(css: str, target_selector: str) -> str | None:
+    """Return the normalised body of the FIRST top-level rule whose selector
+    list (whitespace-normalised) exactly equals `target_selector`. We compare
+    the whole selector list — comma-separated bundles like `a,b,c` must
+    match in their entirety, because changing the bundle is itself a
+    legitimate way to make a theme's chrome distinctive.
+
+    Returns None if no matching rule exists. Skips selectors that begin
+    with `body.theme-` because those are per-theme overrides, not the base.
+    """
+    target_norm = _normspace(target_selector)
+    for m in re.finditer(r"([^{}]+)\{([^}]*)\}", _strip_css_comments(css)):
+        sel_blob, body = m.group(1), m.group(2)
+        sel_norm = _normspace(sel_blob)
+        if sel_norm.startswith("body.theme-"):
+            continue
+        if sel_norm == target_norm:
+            return _normspace(body)
+    return None
+
+
+def _has_per_theme_override(css: str, theme_slug: str, target_selector: str) -> bool:
+    """Return True iff `css` contains at least one rule whose selector list
+    starts with `body.theme-<slug>` and whose remainder mentions any of the
+    comma-separated parts of `target_selector` as the trailing component.
+
+    Phase E/F overrides live in the same blob as the base rules (the
+    bin/append-wc-overrides.py CSS chunk is appended verbatim to every
+    theme's styles.css), so the override for chonk is present in *every*
+    theme's CSS — the body class is what gates which one fires at runtime.
+    Checking presence in any theme's CSS is therefore equivalent to
+    checking that the override exists at all.
+    """
+    target_parts = [_normspace(p) for p in target_selector.split(",")]
+    prefix = f"body.theme-{theme_slug}"
+    for m in re.finditer(r"([^{}]+)\{[^}]*\}", _strip_css_comments(css)):
+        sel_blob = m.group(1)
+        for raw_sel in sel_blob.split(","):
+            sel_norm = _normspace(raw_sel)
+            if not sel_norm.startswith(prefix):
+                continue
+            rest = sel_norm[len(prefix):]
+            if not rest.startswith("."):
+                # Prefix must be followed by a descendant combinator
+                # (which gets normalised away); a bare `body.theme-X` rule
+                # wouldn't be a per-selector override.
+                continue
+            for part in target_parts:
+                if rest.endswith(part):
+                    return True
+    return False
+
+
+def check_distinctive_chrome() -> Result:
+    """Fail if any "premium chrome" selector (see DISTINCT_CHROME_SELECTORS)
+    ships a byte-identical CSS body in two or more themes WITHOUT a
+    per-theme `body.theme-<slug> <selector>` override that lets each theme
+    in the cluster express its own voice.
+
+    Why this exists
+    ---------------
+    The fastest way to make a WooCommerce demo read as "off-the-shelf" is
+    to paint the visible chrome the same way in every theme variant. The
+    cart sidebar, the checkout sidebar, the trust-strip pills, the primary
+    CTA — these are exactly the surfaces a shopper looks at to answer
+    "does this brand have its own taste?" If chonk and obel render the
+    payment-icon row with byte-identical white pills, both themes lose
+    the answer.
+
+    The rule isn't "no shared CSS rules anywhere" — utility and structural
+    plumbing (overflow fixes, screen-reader helpers, layout grids) MUST
+    be byte-identical or the themes drift inconsistently. The rule is
+    scoped to the curated DISTINCT_CHROME_SELECTORS list, which lives at
+    the top of this file and is meant to grow as new chrome surfaces
+    ship.
+
+    What "distinctive" means here
+    -----------------------------
+    A theme can earn a unique treatment two ways:
+      1. Its base rule body for the selector differs from the other
+         themes' base rule bodies. (Chonk just authors a different rule
+         in `styles.blocks` or `styles.css`.)
+      2. The base rule body is shared across themes, but EACH theme in
+         the shared cluster also provides a `body.theme-<slug>
+         <selector>` override (in `bin/append-wc-overrides.py` Phase E
+         or Phase F) that visibly differentiates it.
+
+    Either path satisfies the rule.
+
+    What this check enforces
+    ------------------------
+    For every selector S in DISTINCT_CHROME_SELECTORS:
+      - Load every shipped theme's top-level styles.css (cross-theme).
+      - Group themes by the byte-identical base rule body for S.
+      - For each cluster of 2+ themes with the same body, fail any
+        theme in the cluster that does NOT also ship a per-theme
+        override for S.
+    """
+    r = Result("Visible chrome rules are theme-distinct (no shared 'standard' look)")
+
+    theme_css: dict[str, str] = {}
+    for slug in _KNOWN_THEME_SLUGS:
+        path = MONOREPO_ROOT / slug / "theme.json"
+        if not path.exists():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        css = (data.get("styles", {}) or {}).get("css") or ""
+        if css.strip():
+            theme_css[slug] = css
+
+    if len(theme_css) < 2:
+        r.skip(
+            f"need >=2 themes loaded to compare chrome; found {len(theme_css)} "
+            f"({', '.join(sorted(theme_css)) or 'none'})."
+        )
+        return r
+
+    failures: list[str] = []
+    verified: list[str] = []
+
+    for selector in DISTINCT_CHROME_SELECTORS:
+        # Bucket themes by their base rule body for this selector.
+        clusters: dict[str, list[str]] = {}
+        skipped_themes: list[str] = []
+        for slug, css in sorted(theme_css.items()):
+            body = _find_base_rule_body(css, selector)
+            if body is None:
+                # No base rule for this selector in this theme — that's
+                # fine; the theme just doesn't paint this surface yet.
+                skipped_themes.append(slug)
+                continue
+            clusters.setdefault(body, []).append(slug)
+
+        cluster_failed = False
+        for body, slugs in clusters.items():
+            if len(slugs) < 2:
+                continue
+            # Cluster of 2+ themes sharing one base body. Each theme in
+            # the cluster must provide its OWN per-theme override.
+            offenders = [
+                slug for slug in slugs
+                if not _has_per_theme_override(theme_css[slug], slug, selector)
+            ]
+            if len(offenders) < 2:
+                # At most one theme leans on the shared base — every
+                # other one in the cluster has overridden it.
+                continue
+            cluster_failed = True
+            failures.append(
+                f"`{selector}`: themes [{', '.join(offenders)}] ship "
+                f"byte-identical base CSS with no `body.theme-<slug> "
+                f"{selector.split(',')[0]}` override. Either (a) author "
+                f"a different base rule body in one of the themes' "
+                f"`styles.css` / `styles.blocks`, or (b) add per-theme "
+                f"distinctive overrides in `bin/append-wc-overrides.py` "
+                f"Phase E/F so every theme expresses its own voice on "
+                f"this surface. Shared 'standard' chrome is what makes "
+                f"WooCommerce demos read as off-the-shelf — see AGENTS.md "
+                f"\"Nothing is 'standard'\"."
+            )
+
+        if not cluster_failed:
+            covered = sorted(theme_css)
+            if skipped_themes:
+                covered = [s for s in covered if s not in skipped_themes]
+            verified.append(f"`{selector}` distinct across [{', '.join(covered)}]")
+
+    if failures:
+        for f in failures:
+            r.fail(f)
+        return r
+
+    if verified:
+        for v in verified:
+            r.details.append(v)
+    else:
+        r.skip("no DISTINCT_CHROME_SELECTORS rules present in any theme yet")
     return r
 
 
@@ -2149,6 +2683,8 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_archive_sort_dropdown_styled(),
         check_no_squeezed_wc_sidebars(),
         check_wc_card_surfaces_padded(),
+        check_hover_state_legibility(),
+        check_distinctive_chrome(),
         check_cart_checkout_pages_are_wide(),
         check_blueprint_landing_page(),
         check_front_page_unique_layout(),
