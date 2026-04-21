@@ -21,6 +21,8 @@ Checks performed:
  14. WooCommerce frontend CSS overrides (product tabs etc.) — see AGENTS.md rule 6
  15. Front-page layout differs from every other theme (no "same shape, different
      colors" reskins — see AGENTS.md rule 8)
+ 16. No unpushed commits on the current branch (a fix isn't "live" until
+     `raw.githubusercontent.com` can serve it to the Playground demo)
 
 Usage:
     python3 bin/check.py            # run everything
@@ -1669,6 +1671,95 @@ def check_no_ai_fingerprints() -> Result:
     return r
 
 
+def check_no_unpushed_commits() -> Result:
+    """Fail if local HEAD has commits that haven't reached origin yet.
+
+    This catches a recurring silent-failure mode: an agent makes a fix,
+    commits it, claims "fix is live", but never runs `git push`. The
+    Playground demos load themes from `raw.githubusercontent.com/.../main/`
+    so any commit that hasn't been pushed is invisible to anyone visiting
+    the live demo, even though the local checkout, `git log`, and
+    `bin/snap.py` (which mounts the local theme dir) all see the fix.
+
+    We treat unpushed commits as a HARD FAIL rather than a warning so the
+    CI/pre-commit loop refuses to declare success while a fix is sitting
+    only on the local branch. The user can override by pushing or by
+    rebasing the unpushed commits away.
+
+    Skips gracefully if:
+      * `git` isn't available
+      * the working tree isn't a git repo
+      * the current branch has no upstream (e.g. detached HEAD, or a
+        feature branch that hasn't been published yet)
+
+    The check is monorepo-wide -- it runs once per theme but always reports
+    the same answer for the same git state. We don't dedupe because the
+    extra ~10ms per theme is negligible and keeps the per-theme report
+    self-contained.
+    """
+    r = Result("No unpushed commits on current branch (push before claiming a fix is live)")
+    if not shutil.which("git"):
+        r.skip("git not available on PATH")
+        return r
+    try:
+        # Use the monorepo root; the per-theme ROOT is a subdirectory so
+        # `git -C` would also work, but MONOREPO_ROOT is the canonical anchor.
+        cwd = str(MONOREPO_ROOT)
+        inside = subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if inside.returncode != 0 or inside.stdout.strip() != "true":
+            r.skip("not inside a git working tree")
+            return r
+
+        upstream = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if upstream.returncode != 0:
+            r.skip("current branch has no upstream tracking ref")
+            return r
+
+        ahead = subprocess.run(
+            ["git", "rev-list", "--count", "@{u}..HEAD"],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if ahead.returncode != 0:
+            r.skip(f"git rev-list failed: {ahead.stderr.strip()}")
+            return r
+
+        n = int(ahead.stdout.strip() or "0")
+        if n > 0:
+            unpushed = subprocess.run(
+                ["git", "log", "--oneline", "@{u}..HEAD"],
+                cwd=cwd,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            r.fail(
+                f"{n} unpushed commit{'s' if n != 1 else ''} on "
+                f"{upstream.stdout.strip()}: run `git push` so the live "
+                f"Playground demo (which loads theme/ from raw.githubusercontent.com) "
+                f"actually sees them."
+            )
+            for line in unpushed.stdout.strip().splitlines():
+                r.fail(f"  {line}")
+    except (subprocess.TimeoutExpired, ValueError) as exc:
+        r.skip(f"git probe failed: {exc}")
+    return r
+
+
 def iter_files(suffixes: tuple[str, ...]):
     skip_dirs = {".git", "node_modules", "vendor", "__pycache__"}
     for path in ROOT.rglob("*"):
@@ -1709,6 +1800,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_cart_checkout_pages_are_wide(),
         check_blueprint_landing_page(),
         check_front_page_unique_layout(),
+        check_no_unpushed_commits(),
     ]
 
     for r in results:
