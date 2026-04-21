@@ -137,7 +137,7 @@ QUICK_VIEWPORTS: set[str] = {"desktop"}
 
 # Themes are auto-discovered from the repo (any folder with a theme.json).
 # Override here if you want to pin the order or skip experimental themes.
-THEME_ORDER: list[str] = ["obel", "chonk", "selvedge", "lysholm"]
+THEME_ORDER: list[str] = ["obel", "chonk", "selvedge", "lysholm", "aero"]
 
 
 # ---------------------------------------------------------------------------

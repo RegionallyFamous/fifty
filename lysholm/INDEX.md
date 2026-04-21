@@ -358,7 +358,7 @@ Read this file at the start of any LLM session to discover the project's structu
 - `subtle` = #EFEAE2 (Subtle)
 - `muted` = #E3D9C8 (Muted)
 - `border` = #D6CFC2 (Border)
-- `tertiary` = #8A867E (Tertiary)
+- `tertiary` = #605C56 (Tertiary)
 - `secondary` = #4A4842 (Secondary)
 - `contrast` = #1D1D1D (Contrast)
 - `primary` = #1D1D1D (Primary)

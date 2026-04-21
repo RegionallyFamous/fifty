@@ -197,7 +197,55 @@ IMPORTANT_ALLOWED_SENTINELS = (
     ("/* wc-tells-phase-a-premium */", "/* /wc-tells-phase-a-premium */"),
     ("/* wc-tells-phase-c-premium */", "/* /wc-tells-phase-c-premium */"),
     ("/* wc-tells-phase-e-distinctive */", "/* /wc-tells-phase-e-distinctive */"),
+    # Phase J — Aero iridescent voice. Uses !important to win over the
+    # cloned-from-obel Phase E rules with `body.theme-aero` selectors that
+    # would otherwise paint Aero with Obel's hairline-square voice. The
+    # entire chunk is body.theme-aero scoped so it's inert on every other
+    # theme.
+    ("/* wc-tells-phase-j-aero-iridescent */", "/* /wc-tells-phase-j-aero-iridescent */"),
 )
+
+
+# ----------------------------------------------------------------------
+# Sentinel-bracketed regions of styles.css where raw hex literals are
+# allowed by `check_no_hex_in_theme_json`. Same shape and same
+# justification as `IMPORTANT_ALLOWED_SENTINELS`: distinctive chrome
+# chunks that paint multi-stop gradients (iridescent buttons, y2k
+# aurora backgrounds, frosted-glass cards) need precise color stops
+# that don't have palette equivalents. Bloating the palette with one
+# token per gradient stop ("aurora-stop-1", "shine-stop-2", ...)
+# makes the palette useless as a design surface, so the explicit
+# allow-list is "yes, this hex is intentional, it's part of a
+# multi-stop gradient or a `text-shadow` rgba — not a stray brand
+# color that should have been a palette token". Each entry MUST
+# cover a chunk that is theme-scoped (`body.theme-<slug>`) so the
+# raw hex can't leak into other themes' computed style.
+HEX_ALLOWED_SENTINELS = (
+    (
+        "/* wc-tells-phase-j-aero-iridescent */",
+        "/* /wc-tells-phase-j-aero-iridescent */",
+    ),
+)
+
+
+def _strip_allowed_hex_chunks(text: str) -> str:
+    """Same shape as `_strip_allowed_important_chunks`, but for the
+    raw-hex scan inside `theme.json`'s `styles.css` string. Operates
+    on the raw string (NOT line-by-line) because
+    `bin/append-wc-overrides.py` emits each chunk as one minified
+    line (sentinels and rules glued together).
+    """
+    out = text
+    for open_marker, close_marker in HEX_ALLOWED_SENTINELS:
+        while True:
+            i = out.find(open_marker)
+            if i == -1:
+                break
+            j = out.find(close_marker, i + len(open_marker))
+            if j == -1:
+                break
+            out = out[:i] + out[j + len(close_marker):]
+    return out
 
 
 def _strip_allowed_important_chunks(text: str) -> str:
@@ -337,7 +385,12 @@ def check_no_hex_in_theme_json() -> Result:
             for i, v in enumerate(node):
                 walk(v, f"{path}[{i}]")
         elif isinstance(node, str):
-            for m in hex_re.finditer(node):
+            scanned = (
+                _strip_allowed_hex_chunks(node)
+                if path.endswith("styles.css")
+                else node
+            )
+            for m in hex_re.finditer(scanned):
                 r.fail(f"theme.json: '{m.group(0)}' at {path}")
 
     walk(data)
@@ -1834,6 +1887,198 @@ def check_wc_totals_blocks_padded() -> Result:
     return r
 
 
+def check_wc_card_padding_not_zeroed() -> Result:
+    """Fail if any rule in top-level `styles.css` zeros horizontal
+    padding on a painted WC card surface.
+
+    Why this is its own check (vs trusting
+    `check_wc_card_surfaces_padded` and `check_wc_totals_blocks_padded`
+    to enforce the floor):
+
+    Those two checks verify that *some* rule declares an `xl`-or-bigger
+    padding on the bare selector. They do NOT verify that no
+    higher-specificity rule elsewhere in the same `styles.css` quietly
+    UNDECLARES that padding — which is exactly the regression that
+    shipped in Q2 when `wc-tells-grid-cell-fill` zeroed
+    `padding-left` and `padding-right` on
+    `.wc-block-components-sidebar-layout.wc-block-cart > .wc-block-
+    components-sidebar` (specificity `(0,3,0)`). The DOM that matched
+    that selector is the SAME element that carries
+    `.wc-block-cart__sidebar` AND
+    `.wp-block-woocommerce-cart-totals-block`, so the painted-card
+    rules at specificity `(0,1,0)` lost the cascade and the "Order
+    summary" stack rendered flush at the panel's left edge across
+    every theme. The bug was visually invisible to the existing
+    "panel has padding declared" checks because the bare-selector
+    rule still declared `padding: xl` — it just got overruled.
+
+    What this check enforces:
+
+      * For each rule in top-level `styles.css`, parse the selector
+        list and the declaration block.
+      * If any selector in the list contains one of the painted card
+        surface class names listed in `_CARD_SURFACE_CLASSES` below,
+        AND the rule body declares any of `padding`, `padding-left`,
+        `padding-right`, `padding-inline`, `padding-inline-start`,
+        `padding-inline-end` with a literal `0` value (with or
+        without a unit suffix), the check fails with a pointer to
+        the offending selector and declaration.
+      * Whitelist: the bare card-surface selectors themselves
+        (e.g. `.wc-block-cart__sidebar`) are allowed to set
+        `padding: 0` on RESET-style chunks if a sibling rule re-paints
+        the padding back. We don't bother detecting that: in practice,
+        no current chunk needs to zero padding on a painted card, so
+        any match is the regression we're guarding against.
+
+    Companion to:
+      * `check_wc_card_surfaces_padded` — verifies the floor.
+      * `check_wc_totals_blocks_padded` — verifies the totals card
+        floor specifically.
+      * `bin/append-wc-overrides.py::CSS_GRID_FIX` block comment —
+        the load-bearing reminder that explains WHY GRID_FIX no
+        longer zeros padding (and what to do if WC's percentage
+        paddings ever leak back).
+    """
+    r = Result(
+        "WC painted card surfaces don't get horizontal padding zeroed"
+    )
+
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.skip("theme.json missing")
+        return r
+    try:
+        data = json.loads(theme_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        r.fail(f"theme.json: invalid JSON ({exc}).")
+        return r
+    top_css = (data.get("styles", {}) or {}).get("css") or ""
+    if not top_css.strip():
+        r.skip("no top-level styles.css")
+        return r
+
+    # The painted card surfaces. A rule that matches ANY of these
+    # classes (anywhere in any of its selectors) and zeros horizontal
+    # padding will UNDO the panel's breathing room because the DOM
+    # node carrying these classes is the visible card a shopper sees.
+    _CARD_SURFACE_CLASSES = (
+        "wc-block-cart__sidebar",
+        "wc-block-checkout__sidebar",
+        "wp-block-woocommerce-cart-totals-block",
+        "wp-block-woocommerce-checkout-totals-block",
+        # `.wc-block-components-sidebar` shares its DOM node with
+        # `.wc-block-cart__sidebar` and `.wc-block-checkout__sidebar`
+        # (verified in WC blocks 9.x markup), so a rule targeting
+        # the components-sidebar class on a cart/checkout host is
+        # ALSO painting the card. This catches the original
+        # GRID_FIX regression directly.
+        "wc-block-components-sidebar",
+    )
+
+    # CSS values that count as "zeroing horizontal padding": bare 0,
+    # 0px, 0rem, 0em, 0%, 0vh, 0vw, etc. We deliberately do NOT match
+    # `padding: 0 var(--xl)` or `padding: 0 1rem` because those leave
+    # horizontal padding intact — only the vertical is zeroed and the
+    # card still breathes left-to-right. The regex is anchored on a
+    # word boundary so we don't false-positive on `0.5rem`.
+    _ZERO_VALUE_RE = re.compile(r"^\s*0(?:px|rem|em|%|vh|vw|vmin|vmax)?\s*$")
+
+    # The padding properties that, if set to 0, would strip the
+    # horizontal breathing room. `padding-top` / `padding-bottom` are
+    # intentionally NOT in this list — vertical zero is fine, the
+    # check is about left/right inset only.
+    _HORIZONTAL_PADDING_PROPS = (
+        "padding-left",
+        "padding-right",
+        "padding-inline",
+        "padding-inline-start",
+        "padding-inline-end",
+    )
+
+    failures: list[str] = []
+
+    for m in re.finditer(r"([^{}]+)\{([^}]*)\}", top_css):
+        selectors_blob, body = m.group(1), m.group(2)
+        # Strip CSS block comments so sentinel-prefixed rules parse
+        # cleanly (mirrors the strip in
+        # `check_wc_totals_blocks_padded`).
+        selectors_blob = re.sub(r"/\*.*?\*/", "", selectors_blob)
+        selectors_blob = selectors_blob.strip()
+        if not selectors_blob:
+            continue
+        sel_list = [s.strip() for s in selectors_blob.split(",")]
+        # Find every selector that targets a painted card surface.
+        offending_selectors = [
+            s
+            for s in sel_list
+            if any(f".{cls}" in s for cls in _CARD_SURFACE_CLASSES)
+        ]
+        if not offending_selectors:
+            continue
+        # Walk the declaration block looking for any
+        # `padding-{left,right,inline,inline-start,inline-end}: 0`
+        # OR a shorthand `padding: 0` (the latter zeros all four
+        # sides, including horizontal).
+        for prop in _HORIZONTAL_PADDING_PROPS:
+            for d in re.finditer(
+                rf"\b{re.escape(prop)}\s*:\s*([^;}}]+)",
+                body,
+            ):
+                value = d.group(1).strip()
+                # Only flag rules that set the property to a literal
+                # zero. `var(--xl)`, `revert`, `unset`, etc. are all
+                # fine — they restore breathing room.
+                if _ZERO_VALUE_RE.match(value):
+                    failures.append(
+                        f"{', '.join(offending_selectors)} "
+                        f"sets `{prop}: {value}` — this strips "
+                        f"horizontal padding from a painted card "
+                        f"surface and undoes Phase G/H/cart-fix's "
+                        f"breathing room. See "
+                        f"`bin/append-wc-overrides.py::CSS_GRID_FIX` "
+                        f"comment for the regression history."
+                    )
+        # Shorthand `padding: 0` is the other way to zero horizontal
+        # padding. We allow `padding: 0 <something-non-zero>` (vertical
+        # zero, horizontal painted) and `padding: 0 ... ...` only when
+        # the second value is non-zero.
+        for d in re.finditer(r"\bpadding\s*:\s*([^;}]+)", body):
+            value = d.group(1).strip()
+            parts = value.split()
+            if not parts:
+                continue
+            # If the shorthand is JUST `0` (one value), all four sides
+            # are zero — horizontal included.
+            if len(parts) == 1 and _ZERO_VALUE_RE.match(parts[0]):
+                failures.append(
+                    f"{', '.join(offending_selectors)} sets "
+                    f"`padding: {value}` — single-value `0` zeros "
+                    f"all four sides, including horizontal, and "
+                    f"strips the painted card's breathing room."
+                )
+                continue
+            # If the shorthand is `0 0 ... ...` (two or four values
+            # where the SECOND value is zero), horizontal is zero.
+            if len(parts) >= 2 and _ZERO_VALUE_RE.match(parts[1]):
+                failures.append(
+                    f"{', '.join(offending_selectors)} sets "
+                    f"`padding: {value}` — the horizontal slot "
+                    f"is `0`, which strips the painted card's "
+                    f"breathing room."
+                )
+
+    if failures:
+        for f in failures:
+            r.fail(f)
+        return r
+
+    r.details.append(
+        f"{len(_CARD_SURFACE_CLASSES)} card-surface class(es) — no "
+        f"rule zeros horizontal padding on a painted card"
+    )
+    return r
+
+
 # Selectors that paint user-visible "chrome" — the parts of the storefront
 # where a shopper sees this theme's voice and not the next theme's. Each
 # entry is matched VERBATIM against rule selectors in top-level `styles.css`
@@ -1859,7 +2104,7 @@ DISTINCT_CHROME_SELECTORS: list[str] = [
 
 # All four shipped themes. Used by cross-theme checks (the ones that have
 # to load every sibling's CSS, not just the current ROOT).
-_KNOWN_THEME_SLUGS = ("chonk", "obel", "selvedge", "lysholm")
+_KNOWN_THEME_SLUGS = ("chonk", "obel", "selvedge", "lysholm", "aero")
 
 
 def _normspace(s: str) -> str:
@@ -2862,6 +3107,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_no_squeezed_wc_sidebars(),
         check_wc_card_surfaces_padded(),
         check_wc_totals_blocks_padded(),
+        check_wc_card_padding_not_zeroed(),
         check_hover_state_legibility(),
         check_distinctive_chrome(),
         check_cart_checkout_pages_are_wide(),

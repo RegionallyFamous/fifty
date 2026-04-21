@@ -1261,6 +1261,58 @@ def shoot_theme(
                     # Small settle for late client renders (mini-cart
                     # hydration, font swap, WC checkout XHR).
                     page.wait_for_timeout(500)
+                    # Wait for WooCommerce blocks loading skeletons to
+                    # disappear before screenshotting. Without this the
+                    # cart and checkout routes routinely shoot at a
+                    # moment where the WC blocks store API call has
+                    # finished (so `networkidle` fired) but React
+                    # hasn't yet swapped the `.wc-block-components-
+                    # skeleton` placeholder for the real markup, and
+                    # the screenshot captures gray skeleton bars
+                    # instead of the actual order summary, line items,
+                    # subtotals, etc. Bug visible on every cart-
+                    # filled / checkout-filled snap before this guard
+                    # was added.
+                    #
+                    # `wait_for_function` returns true once the page
+                    # has zero `.wc-block-components-skeleton`
+                    # elements OR every remaining skeleton is hidden
+                    # (display:none / visibility:hidden / opacity:0 —
+                    # the form Phase A's premium hide-rule takes for
+                    # the WC blocks loading mask).
+                    #
+                    # 6s timeout: long enough for a slow WC store-API
+                    # round-trip on a cold playground boot, short
+                    # enough that pages without skeletons don't slow
+                    # the run noticeably (the predicate returns true
+                    # on the FIRST evaluation when the DOM has no
+                    # skeleton at all). Failures are swallowed (some
+                    # blocks legitimately keep a skeleton up; we'd
+                    # rather shoot the page than hang the run).
+                    try:
+                        page.wait_for_function(
+                            """() => {
+                                const skeletons = document.querySelectorAll(
+                                    '.wc-block-components-skeleton, '
+                                    + '.wc-block-components-skeleton__element'
+                                );
+                                if (skeletons.length === 0) return true;
+                                return Array.from(skeletons).every((el) => {
+                                    const cs = window.getComputedStyle(el);
+                                    return (
+                                        cs.display === 'none'
+                                        || cs.visibility === 'hidden'
+                                        || parseFloat(cs.opacity) === 0
+                                    );
+                                });
+                            }""",
+                            timeout=6_000,
+                        )
+                    except Exception:
+                        # Skeleton still present after 6s — capture
+                        # anyway so the reviewer sees the regression
+                        # instead of the script hanging.
+                        pass
 
                     # Static cell. Heuristics + axe + screenshot of the
                     # page in its initial-load state.

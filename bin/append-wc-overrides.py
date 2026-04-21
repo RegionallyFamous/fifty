@@ -36,7 +36,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-THEMES = ["obel", "chonk", "selvedge", "lysholm"]
+THEMES = ["obel", "chonk", "selvedge", "lysholm", "aero"]
 
 SENTINEL_OPEN = "/* wc-tells: notices, meta, rating, variations, lightbox, mini-cart, cart, checkout, order-confirm, my-account */"
 SENTINEL_CLOSE = "/* /wc-tells */"
@@ -285,14 +285,32 @@ CSS_CO_FIX = f"""{SENTINEL_OPEN_CO_FIX}
 # Fix: bump specificity above WC's (.wc-block-components-sidebar-layout
 # .wc-block-components-main, 0,2,0) by combining the layout host class
 # with the cart/checkout host class (0,3,0), then force width:100% so
-# grid items fill their cells. Zero out WC's companion percentage
-# paddings so our own theme padding (set on .wc-block-cart__sidebar
-# below in CSS_CART_FIX) wins consistently.
+# grid items fill their cells.
 #
 # This fix is applied to BOTH cart and checkout because they share the
 # .wc-block-components-sidebar-layout shell, the same WC blocks/cart.css
 # rules apply to both, and the regression manifests identically on
 # /cart and /checkout. Discovered originally on /checkout/?demo=cart.
+#
+# IMPORTANT - do NOT add `padding-left:0; padding-right:0` here.
+# The previous version of this chunk zeroed horizontal padding on
+# `.wc-block-components-sidebar-layout.wc-block-cart > .wc-block-
+# components-sidebar` (specificity 0,3,0) to "zero out WC's companion
+# percentage paddings". The footgun: that selector matches the SAME
+# DOM node that carries `.wc-block-cart__sidebar` AND
+# `.wp-block-woocommerce-cart-totals-block` — i.e. the painted card
+# surface. Phase G's `body.theme-X .wc-block-cart__sidebar { padding:
+# xl }` is only specificity (0,2,0); GRID_FIX at (0,3,0) won the
+# cascade and silently deleted the card's left/right padding, so
+# every theme rendered "Order summary" + line items flush at the
+# panel's left edge. Phase H + `check_wc_totals_blocks_padded` cover
+# the totals selector specifically; this comment is the load-bearing
+# reminder for the SIDEBAR wrapper. If WC's legacy percentage
+# paddings ever leak back, fix them with a more targeted rule that
+# does NOT also match the painted-card class — e.g. scope by direct
+# child of `.wc-block-components-sidebar-layout` ONLY when the child
+# is the unpainted `.wc-block-components-main`, not the painted
+# `.wc-block-components-sidebar`.
 SENTINEL_OPEN_GRID_FIX = "/* wc-tells-grid-cell-fill */"
 SENTINEL_CLOSE_GRID_FIX = "/* /wc-tells-grid-cell-fill */"
 # CSS_GRID_FIX has two parts:
@@ -318,7 +336,7 @@ CSS_CO_OUTER = f"""{SENTINEL_OPEN_CO_OUTER}
 .wp-block-woocommerce-checkout.wc-block-checkout{{display:block;grid-template-columns:none;gap:0;}}
 {SENTINEL_CLOSE_CO_OUTER}"""
 CSS_GRID_FIX = f"""{SENTINEL_OPEN_GRID_FIX}
-.wc-block-components-sidebar-layout.wc-block-cart>.wc-block-components-main,.wc-block-components-sidebar-layout.wc-block-cart>.wc-block-components-sidebar,.wc-block-components-sidebar-layout.wc-block-checkout>.wc-block-components-main,.wc-block-components-sidebar-layout.wc-block-checkout>.wc-block-components-sidebar{{width:100%;padding-left:0;padding-right:0;}}
+.wc-block-components-sidebar-layout.wc-block-cart>.wc-block-components-main,.wc-block-components-sidebar-layout.wc-block-cart>.wc-block-components-sidebar,.wc-block-components-sidebar-layout.wc-block-checkout>.wc-block-components-main,.wc-block-components-sidebar-layout.wc-block-checkout>.wc-block-components-sidebar{{width:100%;}}
 {SENTINEL_CLOSE_GRID_FIX}"""
 
 
@@ -362,7 +380,7 @@ CSS_PHASE_A = f"""{SENTINEL_OPEN_PHASE_A}
 .woocommerce-product-gallery__image>a,.woocommerce-product-gallery__image>a>img{{display:block;width:100%;}}
 .woocommerce-product-gallery__image img.wp-post-image{{display:block!important;width:100%!important;height:auto!important;opacity:1!important;}}
 table.variations select,select.wo-variation{{font-family:var(--wp--preset--font-family--sans)!important;font-size:var(--wp--preset--font-size--sm)!important;}}
-.wc-block-components-skeleton,.wp-block-woocommerce-checkout .wc-block-components-skeleton,.wc-block-components-loading-mask{{display:none!important;}}
+.wc-block-components-skeleton,.wp-block-woocommerce-checkout .wc-block-components-skeleton,.wc-block-components-loading-mask,.wc-block-components-skeleton__element{{display:none!important;}}
 .wc-block-cart-items{{display:flex;flex-direction:column;}}
 .wc-block-cart-items>tbody{{display:contents;}}
 .wc-block-cart-items__row{{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:var(--wp--preset--spacing--md);align-items:start;padding:var(--wp--preset--spacing--md) 0;border-bottom:1px solid var(--wp--preset--color--border);}}
@@ -446,7 +464,8 @@ table.variations td.label{{font-family:var(--wp--preset--font-family--sans);font
 .wc-block-components-totals-item__value,.wc-block-components-formatted-money-amount,.woocommerce-Price-amount,.amount{{font-variant-numeric:tabular-nums;}}
 .wc-block-components-order-summary__button-text,.wc-block-cart-item__product-name,.wc-block-components-product-name{{font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--sm);font-weight:var(--wp--custom--font-weight--regular);}}
 .wc-block-components-totals-item--total .wc-block-components-totals-item__label,.wc-block-components-totals-footer-item .wc-block-components-totals-item__label{{font-family:var(--wp--preset--font-family--display,var(--wp--preset--font-family--serif));font-size:var(--wp--preset--font-size--md);letter-spacing:var(--wp--custom--letter-spacing--tight);text-transform:none;}}
-.wp-block-woocommerce-checkout-totals-block::before,.wp-block-woocommerce-cart-totals-block::before{{content:"Order summary";display:block;font-family:var(--wp--preset--font-family--display,var(--wp--preset--font-family--serif));font-size:var(--wp--preset--font-size--lg);letter-spacing:var(--wp--custom--letter-spacing--tight);margin:0 0 var(--wp--preset--spacing--md);padding-bottom:var(--wp--preset--spacing--sm);border-bottom:1px solid var(--wp--preset--color--border);}}
+.wp-block-woocommerce-cart-totals-block::before{{content:"Order summary";display:block;font-family:var(--wp--preset--font-family--display,var(--wp--preset--font-family--serif));font-size:var(--wp--preset--font-size--lg);letter-spacing:var(--wp--custom--letter-spacing--tight);margin:0 0 var(--wp--preset--spacing--md);padding-bottom:var(--wp--preset--spacing--sm);border-bottom:1px solid var(--wp--preset--color--border);}}
+.wc-block-components-checkout-order-summary__title .wc-block-components-checkout-order-summary__title-text{{font-family:var(--wp--preset--font-family--display,var(--wp--preset--font-family--serif));font-size:var(--wp--preset--font-size--lg);letter-spacing:var(--wp--custom--letter-spacing--tight);font-weight:var(--wp--custom--font-weight--regular,400);margin:0 0 var(--wp--preset--spacing--md);padding-bottom:var(--wp--preset--spacing--sm);border-bottom:1px solid var(--wp--preset--color--border);text-transform:none;color:inherit;}}
 .quantity input[type="number"].qty{{width:64px;height:44px;padding:0 var(--wp--preset--spacing--xs);text-align:center;font-family:var(--wp--preset--font-family--sans);font-variant-numeric:tabular-nums;font-size:var(--wp--preset--font-size--md);border:1px solid var(--wp--preset--color--border);background:transparent;-moz-appearance:textfield;}}
 .quantity input[type="number"].qty::-webkit-outer-spin-button,.quantity input[type="number"].qty::-webkit-inner-spin-button{{-webkit-appearance:none;margin:0;}}
 .quantity{{display:inline-flex;align-items:center;gap:0;border:1px solid var(--wp--preset--color--border);border-radius:var(--wp--custom--radius--sm,4px);overflow:hidden;}}
@@ -715,6 +734,129 @@ CSS_PHASE_H = f"""{SENTINEL_OPEN_PHASE_H}
 {SENTINEL_CLOSE_PHASE_H}"""
 
 
+# ----------------------------------------------------------------------
+# Phase I — form-input chrome (the "Selvedge checkout is unreadable"
+#           regression)
+# ----------------------------------------------------------------------
+# Why this exists:
+#   WooCommerce checkout blocks ship their own input/label CSS that
+#   hardcodes a WHITE input wrapper background and inherits the page
+#   `color` for the floating label. On a light-base theme that's fine
+#   (cream-on-white inputs are visible because the page color is dark
+#   anyway). On a DARK-base theme like Selvedge (where the page
+#   inherits `color: var(--wp--preset--color--contrast)` = #EDE3CE
+#   cream), every checkout `<label>` inherits the cream color and
+#   sits over WC's white input wrapper background. Result: every form
+#   field label renders cream-on-white at ~1.27:1 contrast — the
+#   entire checkout form is invisible on Selvedge. axe flags it as
+#   `color-contrast` on `label[for="email"]`,
+#   `label[for="shipping-first_name"]`, etc. (9 labels in the
+#   field-focus snap).
+#
+#   The fix is to take ownership of the form-input chrome at
+#   sufficient specificity to beat WC's per-element rules: paint the
+#   wrapper AND the input itself with `--surface` (theme-aware),
+#   force the input text to `--contrast`, and force every floating
+#   label to `--secondary`. On every theme this yields a legible
+#   form ensemble (light themes get dark text on cream-ish surface;
+#   dark themes get cream text on dark-brown surface). Selvedge's
+#   checkout becomes readable; the other themes pick up consistency.
+#
+# Why `body` prefix on every selector:
+#   WC ships its rules at specificity ~`(0,0,2)` (e.g.
+#   `.wc-block-components-text-input input`). A bare top-level rule
+#   at the same specificity loses or wins based on source-order
+#   (WC's stylesheet is enqueued AFTER theme.json's inline `styles.
+#   css` in many setups, so it can win). The `body` prefix bumps us
+#   to `(0,1,2)` — just enough to win without resorting to
+#   `!important`. We deliberately AVOID `!important` here because
+#   per-theme voice rules (Phase E, Phase G) need to be able to
+#   reskin form inputs without fighting an `!important` cascade,
+#   and reviewers (and future agents) are tired of seeing
+#   `!important` keep creeping into the codebase.
+#
+# Why these selectors specifically:
+#   * `.wc-block-components-text-input` — the wrapper that holds the
+#     floating label + input on every WC checkout text field
+#     (email, name, address, city, zip, phone). This is the element
+#     axe sees as the white background underneath the label.
+#   * `.wc-block-components-text-input input` — the actual editable
+#     input. Forcing its background to surface (instead of inheriting
+#     transparent or being painted white by WC) keeps the wrapper +
+#     input visually unified, so the floating label has a single
+#     consistent background under it.
+#   * `.wc-block-components-select`, `.wc-block-components-select
+#     select`, `.wc-blocks-components-select__label` — the
+#     country/region + state selects on the shipping/billing form.
+#     Same pattern, same fix.
+#   * `.wc-block-components-textarea`, `.wc-block-components-
+#     textarea textarea` — the order notes textarea. Same pattern.
+#   * Label rules — paint every floating label with `--secondary`
+#     (which is mid-gray on light themes and warm-tan on dark
+#     themes; both pass ≥4.5:1 against `--surface` in every
+#     palette in this monorepo).
+#
+# Enforced by:
+#   No new check (yet). The existing
+#   `check_hover_state_legibility` infrastructure could be extended
+#   to walk `:focus`-state form-input rules and resolve
+#   label-vs-wrapper contrast in a follow-up pass; for now this
+#   chunk is the source of truth and any future regression will
+#   show up in `bin/snap.py check`'s axe sweep.
+SENTINEL_OPEN_PHASE_I = "/* wc-tells-phase-i-form-input-chrome */"
+SENTINEL_CLOSE_PHASE_I = "/* /wc-tells-phase-i-form-input-chrome */"
+CSS_PHASE_I = f"""{SENTINEL_OPEN_PHASE_I}
+body .wc-block-components-text-input,body .wc-block-components-text-input input,body .wc-block-components-select,body .wc-block-components-select select,body .wc-block-components-textarea,body .wc-block-components-textarea textarea{{background:var(--wp--preset--color--surface);color:var(--wp--preset--color--contrast);}}
+body .wc-block-components-text-input label,body .wc-block-components-select label,body .wc-blocks-components-select__label,body .wc-block-components-textarea label{{color:var(--wp--preset--color--secondary);}}
+body .wc-block-components-text-input input::placeholder,body .wc-block-components-textarea textarea::placeholder{{color:var(--wp--preset--color--secondary);opacity:1;}}
+{SENTINEL_CLOSE_PHASE_I}"""
+
+
+# ----------------------------------------------------------------------
+# Phase J — Aero iridescent / glassy chrome (Y2K bubble pop)
+# ----------------------------------------------------------------------
+# Aero is the Y2K iridescent-pastel variant. The base aero theme.json
+# was cloned from obel and inherited obel's hairline-square button
+# voice in Phase E. That voice is wrong for aero — the brief is
+# "bubbly chrome": rounded glass buttons, iridescent body wash,
+# chrome wordmark, sparkle product cards, soft pastel surfaces.
+#
+# Phase J ships AFTER Phase E so its rules win on `body.theme-aero`
+# selectors via source order. Phase J only carries `body.theme-aero`
+# selectors so it has zero effect on the four other themes. The chunk
+# is appended to every theme's styles.css (idempotent + theme-agnostic
+# bytes) but only paints when the body class matches.
+#
+# Why it lives in this script and not aero/theme.json directly:
+#   - Keeps every visual override on every theme reachable from one
+#     file (the script is the audit trail for "which voice does
+#     theme X speak in which surface?").
+#   - Keeps aero's per-theme deltas idempotent + diff-clean — the
+#     chunk is sentinel-bracketed so re-running the script never
+#     duplicates rules.
+SENTINEL_OPEN_PHASE_J = "/* wc-tells-phase-j-aero-iridescent */"
+SENTINEL_CLOSE_PHASE_J = "/* /wc-tells-phase-j-aero-iridescent */"
+CSS_PHASE_J = f"""{SENTINEL_OPEN_PHASE_J}
+body.theme-aero{{background:linear-gradient(135deg,var(--wp--preset--color--base) 0%,var(--wp--preset--color--subtle) 28%,var(--wp--preset--color--accent-soft) 60%,var(--wp--preset--color--base) 100%) fixed;background-attachment:fixed;}}
+body.theme-aero .wp-site-blocks{{background:transparent;}}
+body.theme-aero .wp-block-button .wp-block-button__link,body.theme-aero .wp-block-button__link,body.theme-aero .wc-block-components-product-button__button,body.theme-aero .single-product .single_add_to_cart_button,body.theme-aero .single_add_to_cart_button,body.theme-aero .wc-block-cart__submit-container .wc-block-components-checkout-place-order-button,body.theme-aero .wc-block-cart__submit-container a.wc-block-cart__submit-button,body.theme-aero .wc-block-components-checkout-place-order-button{{border-radius:var(--wp--custom--radius--pill,9999px) !important;border:1px solid rgba(255,255,255,0.6) !important;background:linear-gradient(180deg,rgba(255,255,255,0.7) 0%,var(--wp--preset--color--accent) 55%,var(--wp--preset--color--contrast) 100%) !important;color:var(--wp--preset--color--surface) !important;font-family:var(--wp--preset--font-family--sans) !important;font-weight:var(--wp--custom--font-weight--bold,700) !important;letter-spacing:var(--wp--custom--letter-spacing--wide,0.04em) !important;text-transform:none !important;padding:var(--wp--preset--spacing--sm) var(--wp--preset--spacing--xl) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),inset 0 -2px 4px rgba(45,31,102,0.25),0 8px 18px rgba(0,153,194,0.35) !important;text-shadow:0 1px 0 rgba(45,31,102,0.4) !important;transition:transform 160ms ease,box-shadow 160ms ease,background 160ms ease !important;}}
+body.theme-aero .wp-block-button .wp-block-button__link:hover,body.theme-aero .wp-block-button__link:hover,body.theme-aero .wc-block-components-product-button__button:hover,body.theme-aero .single-product .single_add_to_cart_button:hover,body.theme-aero .single_add_to_cart_button:hover,body.theme-aero .wc-block-cart__submit-container .wc-block-components-checkout-place-order-button:hover,body.theme-aero .wc-block-components-checkout-place-order-button:hover{{background:linear-gradient(180deg,rgba(255,255,255,0.85) 0%,var(--wp--preset--color--accent-soft) 30%,var(--wp--preset--color--accent) 100%) !important;transform:translateY(-2px) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,1),inset 0 -2px 6px rgba(45,31,102,0.3),0 14px 28px rgba(0,153,194,0.4) !important;color:var(--wp--preset--color--contrast) !important;}}
+body.theme-aero .wp-block-site-title a,body.theme-aero .wp-block-site-title{{background:linear-gradient(180deg,var(--wp--preset--color--surface) 0%,var(--wp--preset--color--muted) 30%,var(--wp--preset--color--tertiary) 50%,var(--wp--preset--color--muted) 70%,var(--wp--preset--color--surface) 100%);-webkit-background-clip:text;background-clip:text;color:transparent !important;text-shadow:0 1px 0 rgba(255,255,255,0.6);font-family:var(--wp--preset--font-family--display) !important;letter-spacing:0.02em !important;}}
+body.theme-aero .wp-block-site-title a:hover{{background:linear-gradient(180deg,var(--wp--preset--color--surface) 0%,var(--wp--preset--color--iridescent) 30%,var(--wp--preset--color--accent) 50%,var(--wp--preset--color--iridescent) 70%,var(--wp--preset--color--surface) 100%);-webkit-background-clip:text;background-clip:text;color:transparent !important;}}
+body.theme-aero .wc-block-product-template>li,body.theme-aero .wc-block-product-collection .wp-block-post,body.theme-aero .products li.product,body.theme-aero .wp-block-product{{position:relative;background:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.75);border-radius:var(--wp--custom--radius--xl,36px);padding:var(--wp--preset--spacing--md);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),0 12px 28px rgba(74,63,135,0.14);overflow:hidden;}}
+body.theme-aero .wc-block-product-template>li::after,body.theme-aero .wc-block-product-collection .wp-block-post::after,body.theme-aero .products li.product::after,body.theme-aero .wp-block-product::after{{content:"\\2728";position:absolute;top:10px;right:14px;font-size:14px;line-height:1;opacity:0.7;pointer-events:none;filter:drop-shadow(0 1px 0 rgba(255,255,255,0.8));}}
+body.theme-aero .wc-block-product-template>li img,body.theme-aero .wc-block-product-collection .wp-block-post img,body.theme-aero .products li.product img,body.theme-aero .wp-block-product img{{border-radius:var(--wp--custom--radius--lg,24px);}}
+body.theme-aero .onsale,body.theme-aero span.onsale,body.theme-aero .wc-block-product-collection .wc-block-components-product-sale-badge{{background:linear-gradient(135deg,var(--wp--preset--color--iridescent) 0%,var(--wp--preset--color--accent-soft) 50%,var(--wp--preset--color--muted) 100%) !important;color:var(--wp--preset--color--contrast) !important;border:1px solid rgba(255,255,255,0.8) !important;border-radius:var(--wp--custom--radius--pill,9999px) !important;padding:6px 14px !important;font-family:var(--wp--preset--font-family--display) !important;text-transform:none !important;letter-spacing:0.01em !important;box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),0 4px 10px rgba(74,63,135,0.18) !important;transform:rotate(-4deg) !important;}}
+body.theme-aero .wc-block-cart__sidebar,body.theme-aero .wc-block-checkout__sidebar,body.theme-aero .wp-block-woocommerce-cart-totals-block,body.theme-aero .wp-block-woocommerce-checkout-totals-block{{background:rgba(255,255,255,0.6) !important;border:1px solid rgba(255,255,255,0.8) !important;border-radius:var(--wp--custom--radius--xl,36px) !important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),0 18px 40px rgba(74,63,135,0.18) !important;}}
+body.theme-aero .wo-payment-icons__icon{{background:linear-gradient(180deg,var(--wp--preset--color--surface) 0%,var(--wp--preset--color--chrome) 60%,var(--wp--preset--color--surface) 100%) !important;border:1px solid rgba(255,255,255,0.8) !important;border-radius:var(--wp--custom--radius--lg,24px) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,0.95),0 2px 6px rgba(74,63,135,0.18) !important;}}
+body.theme-aero .wp-block-search__inside-wrapper,body.theme-aero input[type="text"],body.theme-aero input[type="email"],body.theme-aero input[type="url"],body.theme-aero textarea,body.theme-aero select{{border-radius:var(--wp--custom--radius--lg,24px) !important;background:rgba(255,255,255,0.7) !important;border:1px solid rgba(212,196,242,0.8) !important;}}
+body.theme-aero .wp-block-navigation .wp-block-navigation-item__content{{padding:var(--wp--preset--spacing--xs) var(--wp--preset--spacing--md) !important;border-radius:var(--wp--custom--radius--pill,9999px) !important;transition:background 160ms ease,color 160ms ease !important;}}
+body.theme-aero .wp-block-navigation .wp-block-navigation-item__content:hover{{background:rgba(255,255,255,0.55) !important;color:var(--wp--preset--color--primary-hover) !important;}}
+body.theme-aero .wp-block-navigation .wp-block-navigation-item__content::after{{display:none !important;}}
+body.theme-aero h1,body.theme-aero h2,body.theme-aero .wp-block-heading{{text-shadow:0 1px 0 rgba(255,255,255,0.7);}}
+{SENTINEL_CLOSE_PHASE_J}"""
+
+
 # Each entry: (sentinel_open, sentinel_close, raw_css, anchor_after).
 # `anchor_after` is the marker the chunk is spliced in after — for the
 # first chunk that's the canonical archive-page marker; for follow-ups
@@ -804,6 +946,18 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_PHASE_H,
         CSS_PHASE_H,
         SENTINEL_CLOSE_PHASE_G,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_I,
+        SENTINEL_CLOSE_PHASE_I,
+        CSS_PHASE_I,
+        SENTINEL_CLOSE_PHASE_H,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_J,
+        SENTINEL_CLOSE_PHASE_J,
+        CSS_PHASE_J,
+        SENTINEL_CLOSE_PHASE_I,
     ),
 ]
 
