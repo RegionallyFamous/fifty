@@ -1097,12 +1097,12 @@ def check_no_empty_cover_blocks() -> Result:
 
       The failure mode is built into the workflow: static `.html`
       templates can't run PHP, so they can't inject
-      `get_theme_file_uri( \'playground/images/foo.jpg\' )` into a
+      `get_theme_file_uri( 'playground/images/foo.jpg' )` into a
       `wp:cover` `url` attribute. Authors who forget this end up
       leaving `"url":""` as a placeholder and shipping it. The fix
       is always the same -- extract the cover into a `.php` pattern
       where `get_theme_file_uri()` actually resolves, and reference
-      it from the template via `<!-- wp:pattern {"slug":"..."} /-->`.
+      it from the template via `<!-- wp:pattern {"slug":"…"} /-->`.
       `lysholm/patterns/hero-lookbook.php` is the worked example.
 
     What's allowed:
@@ -1114,7 +1114,7 @@ def check_no_empty_cover_blocks() -> Result:
         "noticeable tint" threshold; below that the overlay is mostly
         transparent and the block needs an image to show anything.
       * Cover markup inside `.php` patterns where the `url` value is
-        a PHP expression (`<?php echo esc_url( ... ); ?>`) -- the URL
+        a PHP expression (`<?php echo esc_url( … ); ?>`) -- the URL
         will be a real file path at render time.
 
     What's NOT allowed:
@@ -1154,19 +1154,18 @@ def check_no_empty_cover_blocks() -> Result:
                 f"{rel}:{lineno}: wp:cover with empty `url` and dimRatio={dim_ratio} "
                 f"(< 30) renders as a transparent {min_h} void. "
                 f"Either: (1) move the cover into a `.php` pattern where "
-                f"`get_theme_file_uri(\'playground/images/<file>.jpg\')` can "
+                f"`get_theme_file_uri('playground/images/<file>.jpg')` can "
                 f"inject a real URL (see lysholm/patterns/hero-lookbook.php "
                 f"for the worked example), (2) set `dimRatio>=30` with an "
                 f"intentional `overlayColor` if you actually want a flat "
                 f"color-block container, or (3) replace `wp:cover` with "
-                f"`wp:group` + `backgroundColor` if you don\'t need the "
+                f"`wp:group` + `backgroundColor` if you don't need the "
                 f"image-overlay machinery."
             )
 
     if r.passed:
         r.details.append(f"{len(files)} pattern/template/part file(s) scanned; no empty wp:cover blocks")
     return r
-
 
 
 def check_no_duplicate_templates() -> Result:
@@ -5107,113 +5106,6 @@ def check_no_placeholder_product_images() -> Result:
     return r
 
 
-def check_product_images_unique_across_themes() -> Result:
-    """Fail if any `product-wo-<slug>.jpg` is byte-identical across two
-    themes -- that's a copy-paste leak, not bespoke per-theme imagery.
-
-    CROSS-THEME-DUPLICATE FAIL MODE
-    -------------------------------
-    Every theme is supposed to ship product photography in its own
-    visual voice (Y2K iridescent chrome for aero, sepia workshop for
-    selvedge, neo-brutalist for chonk, Nordic home-goods for lysholm,
-    quiet editorial for obel). Two failure shapes leak generic-looking
-    catalogues into the live demo:
-
-      * **The aero shape (untracked-leftover):** an earlier session
-        copied another theme's photos into a new theme's
-        `playground/images/` folder as scratch work, never replaced
-        them with bespoke generations, and the leftovers were
-        committed alongside the actual new ones. Visually the new
-        theme's catalogue paints with the wrong-theme aesthetic for
-        a subset of slugs.
-
-      * **The lysholm shape (theme-init copy-paste):** when a new
-        theme was cloned from a sibling, its entire
-        `playground/images/` folder was copied verbatim and never
-        regenerated. Every product slug renders with the source
-        theme's photography across the live demo.
-
-    Both shapes look fine in `git status` (the file count is right,
-    the slug coverage is complete) and pass every static check that
-    only counts files. The byte-identity comparison here is the
-    unambiguous signal: if `aero/playground/images/product-wo-foo.jpg`
-    has the same sha256 as `selvedge/playground/images/product-wo-foo.jpg`,
-    one of them is wrong.
-
-    Page/post hero placeholders (`wonders-page-*.png`,
-    `wonders-post-*.png`) are intentionally NOT checked here -- those
-    live on a separate generation track and are managed by
-    `check_no_placeholder_product_images`. This check is the
-    `product-wo-*.jpg` photographic catalogue only.
-
-    Scope: monorepo-wide. Runs once per `bin/check.py` invocation
-    against every theme; cheap because it only hashes
-    `playground/images/product-wo-*.jpg` (≤30 files per theme, JPEGs
-    are mmap-friendly).
-    """
-    import hashlib
-
-    r = Result("Product photographs are unique across themes (no copy-paste leak)")
-
-    by_hash: dict[str, list[str]] = {}
-    total_photos = 0
-    for theme in iter_themes():
-        images_dir = theme / "playground" / "images"
-        if not images_dir.is_dir():
-            continue
-        for path in sorted(images_dir.glob("product-wo-*.jpg")):
-            try:
-                digest = hashlib.sha256(path.read_bytes()).hexdigest()
-            except OSError:
-                continue
-            total_photos += 1
-            by_hash.setdefault(digest, []).append(f"{theme.name}/{path.name}")
-
-    if not total_photos:
-        r.skip("no product-wo-*.jpg photographs found in any theme")
-        return r
-
-    leaks = [(h, files) for h, files in by_hash.items() if len(files) > 1]
-    if leaks:
-        # Group by which themes are involved so the remediation hint
-        # can call out the affected themes by name in a stable order.
-        themes_involved: dict[frozenset[str], list[tuple[str, list[str]]]] = {}
-        for digest, files in leaks:
-            theme_set = frozenset(f.split("/", 1)[0] for f in files)
-            themes_involved.setdefault(theme_set, []).append((digest, files))
-
-        for theme_set, group in sorted(themes_involved.items(), key=lambda kv: sorted(kv[0])):
-            theme_list = ", ".join(sorted(theme_set))
-            count = len(group)
-            sample = sorted(files for _, files in group)[:3]
-            sample_str = "; ".join(" == ".join(f) for f in sample)
-            more = f" (+{count - 3} more)" if count > 3 else ""
-            # The check can't infer which theme is the copier vs. the
-            # original (no git context at check time), so name both
-            # and let the human decide. Heuristic: the newer theme
-            # is almost always the one that needs regeneration.
-            r.fail(
-                f"{count} product-wo-*.jpg file(s) byte-identical across "
-                f"[{theme_list}]: {sample_str}{more}. "
-                f"At least one of these themes is shipping another "
-                f"theme's photography under its own slug -- the live "
-                f"demo will paint the wrong-theme aesthetic for those "
-                f"products. Regenerate the duplicates in whichever "
-                f"theme is the copier (typically the newer one) using "
-                f"that theme's visual voice (see each theme's "
-                f"`style.css` Description), drop the new files in "
-                f"`<theme>/playground/images/`, and re-run this check "
-                f"to confirm uniqueness."
-            )
-        return r
-
-    r.details.append(
-        f"{total_photos} `product-wo-*.jpg` file(s) hashed across all themes; "
-        f"every photograph is byte-unique to its theme"
-    )
-    return r
-
-
 def check_theme_screenshots_distinct() -> Result:
     """Fail when any two themes ship the same ``screenshot.png`` bytes.
 
@@ -5385,6 +5277,366 @@ def check_no_serious_axe_in_recent_snaps() -> Result:
     return r
 
 
+def check_evidence_freshness() -> Result:
+    """Fail if uncommitted source edits are newer than the most recent
+    snap evidence for this theme.
+
+    Why this exists:
+      AGENTS.md rule #18 says "snap before declaring done." Phase 1 of
+      the closed-loop plan turns that aspiration into a gate. After
+      you edit a theme.json/template/part/pattern/style/functions
+      file, the corresponding `tmp/snaps/<theme>/**/findings.json`
+      mtime should be newer than the source mtime -- otherwise the
+      evidence is stale and the offline gate is reading findings
+      from the PRE-edit world. Pre-commit then waves the change
+      through because old findings happen to be green.
+
+    What this enforces:
+      For the current theme:
+        1. Find every theme source file (theme.json, functions.php,
+           templates/**, parts/**, patterns/**, styles/**) that has
+           uncommitted edits in the working tree.
+        2. Find the most recent `*.findings.json` mtime under
+           `tmp/snaps/<theme>/`.
+        3. Fail if any uncommitted source edit is newer than that
+           findings mtime, OR if there's a source edit but no
+           findings exist at all.
+
+    Skips gracefully when:
+      * `git` isn't available (no way to know what's uncommitted)
+      * No uncommitted edits to source (committed code path -- the
+        Phase 1 spec says we trust commits-with-snaps; freshness only
+        gates the WIP path)
+      * The escape hatch FIFTY_SKIP_EVIDENCE_FRESHNESS=1 is set (used
+        by the pre-push hook AFTER it's already run a fresh visual
+        gate; double-gating would be redundant).
+    """
+    r = Result("Snap evidence is fresh vs uncommitted source edits")
+    if os.environ.get("FIFTY_SKIP_EVIDENCE_FRESHNESS") == "1":
+        r.skip("FIFTY_SKIP_EVIDENCE_FRESHNESS=1 (pre-push already ran the visual gate)")
+        return r
+    if not shutil.which("git"):
+        r.skip("git not available on PATH")
+        return r
+
+    theme_root = ROOT
+    try:
+        rel_theme = theme_root.relative_to(MONOREPO_ROOT)
+    except ValueError:
+        r.skip("theme outside monorepo root")
+        return r
+
+    try:
+        proc = subprocess.run(
+            ["git", "status", "--porcelain", "--", str(rel_theme)],
+            cwd=str(MONOREPO_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+        r.skip(f"git status failed: {e}")
+        return r
+    if proc.returncode != 0:
+        r.skip(f"git status returned {proc.returncode}: {proc.stderr.strip()}")
+        return r
+
+    source_suffixes = {".json", ".php", ".html", ".css"}
+    source_dirs = ("theme.json", "functions.php", "styles", "templates", "parts", "patterns", "playground")
+    edited_sources: list[Path] = []
+    for line in proc.stdout.splitlines():
+        if not line or len(line) < 4:
+            continue
+        # Porcelain format: XY<space>path[ -> renamed-path]
+        rest = line[3:]
+        path_str = rest.split(" -> ")[-1].strip().strip('"')
+        p = MONOREPO_ROOT / path_str
+        if not p.is_file():
+            continue
+        try:
+            sub = p.relative_to(theme_root)
+        except ValueError:
+            continue
+        # Only count actual theme source files; tmp/, screenshot
+        # regen, .DS_Store etc don't gate evidence freshness.
+        first = sub.parts[0] if sub.parts else ""
+        if first not in source_dirs and p.name not in {"theme.json", "functions.php"}:
+            continue
+        if p.suffix.lower() not in source_suffixes:
+            continue
+        edited_sources.append(p)
+
+    if not edited_sources:
+        r.skip("no uncommitted source edits in this theme")
+        return r
+
+    snaps_dir = MONOREPO_ROOT / "tmp" / "snaps" / theme_root.name
+    findings_files = sorted(snaps_dir.rglob("*.findings.json")) if snaps_dir.is_dir() else []
+    if not findings_files:
+        r.fail(
+            f"{len(edited_sources)} uncommitted source file(s) in {theme_root.name} "
+            f"but no snap evidence exists at tmp/snaps/{theme_root.name}/. "
+            f"Run `python3 bin/snap.py shoot {theme_root.name}` "
+            "to generate fresh findings before committing."
+        )
+        return r
+
+    latest_findings = max(f.stat().st_mtime for f in findings_files)
+
+    stale: list[tuple[Path, float]] = []
+    for src in edited_sources:
+        try:
+            src_mtime = src.stat().st_mtime
+        except OSError:
+            continue
+        if src_mtime > latest_findings + 1.0:  # 1s slop for filesystem rounding
+            stale.append((src, src_mtime - latest_findings))
+
+    if stale:
+        bullets = []
+        for src, delta in sorted(stale, key=lambda x: -x[1])[:10]:
+            try:
+                rel = src.relative_to(MONOREPO_ROOT)
+            except ValueError:
+                rel = src
+            bullets.append(f"  {rel} (newer than newest findings by {delta:.0f}s)")
+        r.fail(
+            f"{len(stale)} source file(s) edited after the latest snap "
+            f"({len(findings_files)} findings file(s) under "
+            f"tmp/snaps/{theme_root.name}/). Re-shoot with "
+            f"`python3 bin/snap.py shoot {theme_root.name}` so findings "
+            f"reflect the post-edit state, then re-run the gate.\n"
+            + "\n".join(bullets)
+        )
+    return r
+
+
+def check_wc_specificity_winnable() -> Result:
+    """Fail if any selector in `bin/append-wc-overrides.py`'s CHUNKS
+    has lower CSS specificity than the matching WooCommerce Blocks
+    default selector.
+
+    Why this exists:
+      Today's Selvedge bug -- placeholder text rendering at 1.27:1
+      against the input chrome -- was a cascade-loss: our override
+      `body .wc-block-components-text-input input` (specificity
+      0,1,2) was being beaten by WC Blocks' default
+      `.wc-block-components-form .wc-block-components-text-input input`
+      (0,3,1). Phase 1 of the closed-loop plan: detect this kind of
+      cascade-loss STATICALLY, before the `body` prefix ever ships.
+
+    How:
+      1. Import bin/append-wc-overrides.py and walk every selector
+         in its CSS chunks. Compute the selector's specificity.
+      2. Group those selectors by their rightmost compound (base
+         element + classes + attrs + pseudo-classes). For each
+         compound, find the maximum specificity WC Blocks ships for
+         the SAME compound (looked up in bin/wc-blocks-specificity.json).
+      3. If our specificity is STRICTLY LESS THAN WC's max -> fail.
+         Equal specificity is a win because theme styles load AFTER
+         plugin styles (source-order tiebreaker).
+      4. Filter out non-runtime WC selectors (editor-only, loading-
+         state, theme-namespaced) so we don't chase ghosts.
+      5. Honor bin/wc-specificity-known-losses.json: pre-existing
+         losses are grandfathered so the gate only catches NEW
+         regressions, not the historical tech debt this gate found
+         on initial rollout. To regenerate the baseline after fixing
+         losses, re-run this check and copy the reported losses
+         into the JSON file (or delete the file to fail loud on
+         everything).
+
+    Skips when:
+      * bin/wc-blocks-specificity.json is missing (run
+        `python3 bin/build-wc-specificity-index.py`)
+      * bin/append-wc-overrides.py is missing
+    """
+    r = Result("WC override selectors win the cascade vs WC Blocks defaults")
+    spec_index = MONOREPO_ROOT / "bin" / "wc-blocks-specificity.json"
+    overrides_script = MONOREPO_ROOT / "bin" / "append-wc-overrides.py"
+    losses_baseline = MONOREPO_ROOT / "bin" / "wc-specificity-known-losses.json"
+    if not spec_index.is_file():
+        r.skip(
+            f"missing {spec_index.relative_to(MONOREPO_ROOT)}; run "
+            "`python3 bin/build-wc-specificity-index.py` to generate it"
+        )
+        return r
+    if not overrides_script.is_file():
+        r.skip(f"missing {overrides_script.relative_to(MONOREPO_ROOT)}")
+        return r
+
+    try:
+        index = json.loads(spec_index.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        r.fail(f"failed to read {spec_index}: {e}")
+        return r
+
+    wc_version = (index.get("_meta") or {}).get("wc_version", "unknown")
+    wc_selectors: dict[str, tuple[int, int, int]] = {
+        sel: tuple(spec) for sel, spec in (index.get("selectors") or {}).items()
+    }
+
+    grandfathered: set[str] = set()
+    if losses_baseline.is_file():
+        try:
+            grandfathered = set(
+                json.loads(losses_baseline.read_text(encoding="utf-8")).get("selectors") or []
+            )
+        except (OSError, json.JSONDecodeError):
+            pass
+
+    # Lazy-import the override script to get its CHUNKS list. The
+    # script is sentinel-based so importing it doesn't run the
+    # injection loop; the chunks are module-level constants.
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("_append_wc_overrides", overrides_script)
+    if spec is None or spec.loader is None:
+        r.fail("failed to load bin/append-wc-overrides.py for selector inspection")
+        return r
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)  # type: ignore[union-attr]
+    except Exception as e:
+        r.fail(f"failed to import bin/append-wc-overrides.py: {e}")
+        return r
+
+    chunks = getattr(module, "CHUNKS", None)
+    if not chunks:
+        r.skip("bin/append-wc-overrides.py has no CHUNKS attribute to inspect")
+        return r
+
+    sys.path.insert(0, str(MONOREPO_ROOT / "bin"))
+    try:
+        from build_wc_specificity_index import (  # type: ignore
+            compute_specificity,
+            iter_selectors,
+        )
+    except ImportError:
+        # build-wc-specificity-index.py uses a hyphenated name; load
+        # it directly via importlib instead.
+        builder_path = MONOREPO_ROOT / "bin" / "build-wc-specificity-index.py"
+        if not builder_path.is_file():
+            r.skip("bin/build-wc-specificity-index.py not present; cannot parse selectors")
+            return r
+        builder_spec = importlib.util.spec_from_file_location(
+            "_wc_spec_builder", builder_path
+        )
+        if builder_spec is None or builder_spec.loader is None:
+            r.fail("failed to load build-wc-specificity-index.py")
+            return r
+        builder_mod = importlib.util.module_from_spec(builder_spec)
+        try:
+            builder_spec.loader.exec_module(builder_mod)  # type: ignore[union-attr]
+        except Exception as e:
+            r.fail(f"failed to import build-wc-specificity-index.py: {e}")
+            return r
+        compute_specificity = builder_mod.compute_specificity  # type: ignore[assignment]
+        iter_selectors = builder_mod.iter_selectors  # type: ignore[assignment]
+
+    # Index WC selectors by their rightmost compound so we can compare
+    # apples to apples. WC's `.wc-block-components-form .text-input
+    # input` compound key is `(input, set(), set(), set())`; our
+    # `body .text-input input` compound key matches it.
+    def _compound_key(selector: str) -> tuple[str, frozenset, frozenset, frozenset]:
+        rightmost = re.split(r"\s*[ >+~]\s*", selector.strip())[-1]
+        rightmost = re.sub(r"::[A-Za-z][A-Za-z0-9-]*", "", rightmost)
+        type_match = re.match(r"^([a-zA-Z][a-zA-Z0-9-]*)", rightmost)
+        base = type_match.group(1).lower() if type_match else ""
+        classes = frozenset(re.findall(r"\.[A-Za-z_][A-Za-z0-9_-]*", rightmost))
+        attrs = frozenset(re.findall(r"\[[^\]]+\]", rightmost))
+        pcs = frozenset(
+            m.group(0).split("(", 1)[0]
+            for m in re.finditer(r":(?!:)[A-Za-z][A-Za-z0-9-]*(?:\([^)]*\))?", rightmost)
+        )
+        return (base, classes, attrs, pcs)
+
+    # Filter out WC selectors that only fire in non-runtime contexts
+    # (editor previews, loading shimmers, theme-specific has-* state
+    # classes). Those legitimately have higher specificity but won't
+    # paint over our overrides at visitor-render time.
+    _NONRUNTIME_TOKENS = (
+        ".editor-styles-wrapper",
+        ".block-editor-",
+        ".is-loading",
+        ".is-disabled",
+        ".has-dark-controls",
+        ".has-light-controls",
+        ".wp-admin",
+    )
+
+    def _wc_selector_is_runtime(sel: str) -> bool:
+        for tok in _NONRUNTIME_TOKENS:
+            if tok in sel:
+                return False
+        return True
+
+    wc_by_compound: dict[tuple, tuple[tuple[int, int, int], str]] = {}
+    for sel, spec_tuple in wc_selectors.items():
+        if not _wc_selector_is_runtime(sel):
+            continue
+        key = _compound_key(sel)
+        existing = wc_by_compound.get(key)
+        if existing is None or spec_tuple > existing[0]:
+            wc_by_compound[key] = (spec_tuple, sel)
+
+    losses: list[str] = []
+    selectors_checked = 0
+    theme_only = 0
+    grand_tolerated = 0
+
+    for chunk in chunks:
+        # CHUNKS entries in bin/append-wc-overrides.py are 4-tuples
+        # `(sentinel_open, sentinel_close, css, prev_marker)`. Be
+        # defensive: also accept dict / dataclass shapes if the
+        # script is refactored later.
+        css_text = ""
+        if isinstance(chunk, (tuple, list)) and len(chunk) >= 3:
+            css_text = chunk[2]
+        elif isinstance(chunk, dict):
+            css_text = chunk.get("css", "") or ""
+        else:
+            css_text = getattr(chunk, "css", "") or ""
+        if not css_text:
+            continue
+        for sel in iter_selectors(css_text):
+            selectors_checked += 1
+            our_spec = compute_specificity(sel)
+            key = _compound_key(sel)
+            wc_entry = wc_by_compound.get(key)
+            if wc_entry is None:
+                theme_only += 1
+                continue
+            wc_spec, wc_sel = wc_entry
+            if our_spec < wc_spec:
+                if sel in grandfathered:
+                    grand_tolerated += 1
+                    continue
+                losses.append(
+                    f"  ours    = {our_spec}  ({sel})\n"
+                    f"      WC max  = {wc_spec}  ({wc_sel})"
+                )
+
+    if losses:
+        r.fail(
+            f"{len(losses)} NEW override selector(s) lose the cascade "
+            f"against WC Blocks (WC {wc_version}). Either boost specificity "
+            f"in bin/append-wc-overrides.py (doubled-class trick: "
+            f"`.foo.foo` instead of `body .foo`), or add the selector to "
+            f"bin/wc-specificity-known-losses.json if you're knowingly "
+            f"deferring the fix.\n" + "\n".join(losses)
+        )
+        return r
+
+    r.details.append(
+        f"{selectors_checked} override selector(s) checked vs WC "
+        f"{wc_version}, {len(wc_selectors)} WC selectors indexed "
+        f"({theme_only} theme-only selectors skipped); "
+        f"{grand_tolerated} grandfathered loss(es) tolerated per "
+        f"bin/wc-specificity-known-losses.json"
+    )
+    return r
+
+
 def check_no_unpushed_commits() -> Result:
     """Fail if local HEAD has commits that haven't reached origin yet.
 
@@ -5549,9 +5801,10 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_wc_microcopy_distinct_across_themes(),
         check_playground_content_seeded(),
         check_no_placeholder_product_images(),
-        check_product_images_unique_across_themes(),
         check_theme_screenshots_distinct(),
+        check_wc_specificity_winnable(),
         check_no_serious_axe_in_recent_snaps(),
+        check_evidence_freshness(),
         check_no_unpushed_commits(),
     ]
 

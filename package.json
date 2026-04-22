@@ -1,0 +1,18 @@
+{
+  "name": "fifty-monorepo-tooling",
+  "private": true,
+  "description": "Monorepo tooling for the fifty theme family. The only npm dep here is the pinned @wp-playground/cli that bin/snap.py spawns; everything else is Python (see bin/).",
+  "scripts": {
+    "playground:install": "npm install --no-save @wp-playground/cli@$npm_package_config_playground_cli_version",
+    "playground:version": "node -e \"console.log(require('./package.json').dependencies['@wp-playground/cli'])\""
+  },
+  "config": {
+    "playgroundCliVersion": "3.1.20"
+  },
+  "dependencies": {
+    "@wp-playground/cli": "3.1.20"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}

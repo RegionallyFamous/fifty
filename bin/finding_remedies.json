@@ -1,0 +1,97 @@
+{
+  "_meta": {
+    "schema": 1,
+    "purpose": "Maps (axe_rule|finding_kind, selector_pattern) -> (file_to_edit, strategy, example_diff). Consumed by bin/dispatch-watch.py and bin/fix-loop.py to build suggested_fixes / next_actions in tmp/dispatch-state.json. Phase 2 of the closed-loop dispatcher plan.",
+    "match_semantics": "First entry in `remedies[]` whose `axe_rule` (case-insensitive exact match on the finding's `kind`) AND `selector_pattern` (case-insensitive substring match on the finding's `selector`) both match wins. An empty `axe_rule` matches any rule; an empty `selector_pattern` matches any selector.",
+    "see_also": ["bin/dispatch-watch.py", "bin/fix-loop.py", ".cursor/rules/dispatch-state.mdc"]
+  },
+  "remedies": [
+    {
+      "id": "wc-input-contrast",
+      "axe_rule": "color-contrast",
+      "selector_pattern": ".wc-block-components-text-input",
+      "file": "bin/append-wc-overrides.py",
+      "strategy": "Boost selector specificity in CSS_PHASE_I so the theme's input/label colors win the cascade against WC Blocks' built-in `.wc-block-components-text-input input` (specificity 0,2,1). Use a doubled-class selector like `.wc-block-components-text-input.wc-block-components-text-input input` (0,3,1) and explicitly set `color`, `background`, and `--wp--preset--color--contrast` on the input + the floating label.",
+      "example_diff": "- body .wc-block-components-text-input input { color: var(--wp--preset--color--contrast); }\n+ .wc-block-components-text-input.wc-block-components-text-input input { color: var(--wp--preset--color--contrast); background: var(--wp--preset--color--base); }\n+ .wc-block-components-text-input.wc-block-components-text-input label { color: var(--wp--preset--color--contrast); background: var(--wp--preset--color--base); padding: 0 .25em; }",
+      "verify": "python3 bin/check.py <theme> --offline   # check_wc_specificity_winnable() must pass"
+    },
+    {
+      "id": "wc-button-contrast",
+      "axe_rule": "color-contrast",
+      "selector_pattern": ".wc-block-components-button",
+      "file": "bin/append-wc-overrides.py",
+      "strategy": "WC Blocks ships dark-text buttons by default. Override `color`, `background-color`, and `border-color` in CSS_PHASE_I keyed off the theme's `--wp--preset--color--accent` / `--contrast`. Doubled-class `.wc-block-components-button.wc-block-components-button` keeps specificity above WC's `.wc-block-components-button.contained` (0,2,0).",
+      "example_diff": "+ .wc-block-components-button.wc-block-components-button.contained {\n+   background: var(--wp--preset--color--accent);\n+   color: var(--wp--preset--color--base);\n+   border: 1px solid var(--wp--preset--color--accent);\n+ }",
+      "verify": "python3 bin/check.py <theme> --offline"
+    },
+    {
+      "id": "wc-placeholder-contrast",
+      "axe_rule": "color-contrast",
+      "selector_pattern": "::placeholder",
+      "file": "bin/append-wc-overrides.py",
+      "strategy": "Browser default placeholder color is ~rgba(0,0,0,.54) which fails WCAG against most off-white surfaces. Add an explicit placeholder rule in CSS_PHASE_I that sets `color` to a token meeting 4.5:1 against `--wp--preset--color--base` (typically `--wp--preset--color--contrast` at `opacity: 0.7`).",
+      "example_diff": "+ .wc-block-components-text-input.wc-block-components-text-input input::placeholder {\n+   color: var(--wp--preset--color--contrast);\n+   opacity: 0.7;\n+ }",
+      "verify": "python3 bin/check.py <theme> --offline"
+    },
+    {
+      "id": "wc-link-contrast",
+      "axe_rule": "color-contrast",
+      "selector_pattern": ".wc-block-components-product-name",
+      "file": "bin/append-wc-overrides.py",
+      "strategy": "Product-link colors fall through to `<a>` defaults which often fail contrast in dark themes. Pin the link color in CSS_PHASE_II using the theme's accent token. Doubled-class selector required because WC Blocks' `.wc-block-components-product-name` is paired with a layout class.",
+      "example_diff": "+ .wc-block-components-product-name.wc-block-components-product-name {\n+   color: var(--wp--preset--color--contrast);\n+   text-decoration-color: var(--wp--preset--color--accent);\n+ }"
+    },
+    {
+      "id": "wc-overflow-x",
+      "axe_rule": "horizontal-overflow",
+      "selector_pattern": ".wc-block",
+      "file": "bin/append-wc-overrides.py",
+      "strategy": "WC blocks rely on `min-width: 0` cascading from grid parents. When a theme uses `min-width: max-content` anywhere upstream the order summary spills past the viewport. Add `min-width: 0` in CSS_PHASE_II on `.wc-block-components-sidebar-layout > *` and any direct grid child the theme introduces.",
+      "example_diff": "+ .wc-block-components-sidebar-layout > .wc-block-components-sidebar > * { min-width: 0; }"
+    },
+    {
+      "id": "wc-cart-padding",
+      "axe_rule": "spacing-too-tight",
+      "selector_pattern": ".wc-block-components-totals-item",
+      "file": "bin/append-wc-overrides.py",
+      "strategy": "Phase II override should set `padding-block: var(--wp--preset--spacing--20)` on totals rows when the theme's spacing scale is sparser than WC's defaults. Touch only `.wc-block-components-totals-item` so non-totals lines (cart line items) keep their own rhythm.",
+      "example_diff": "+ .wc-block-components-totals-item { padding-block: var(--wp--preset--spacing--20); }"
+    },
+    {
+      "id": "image-alt",
+      "axe_rule": "image-alt",
+      "selector_pattern": "",
+      "file": "<theme>/templates/ or <theme>/parts/",
+      "strategy": "axe-core flagged a non-decorative <img> with no alt. Decide intent: decorative -> add `alt=\"\"` and `role=\"presentation\"`; informational -> populate `alt` with a description matching the surrounding copy. For dynamic blocks (cover, image), set the Alt text in the block's attributes, not via CSS.",
+      "example_diff": "- <img src=\"hero.jpg\" />\n+ <img src=\"hero.jpg\" alt=\"\" role=\"presentation\" />"
+    },
+    {
+      "id": "label-missing",
+      "axe_rule": "label",
+      "selector_pattern": "input",
+      "file": "<theme>/templates/ or <theme>/parts/",
+      "strategy": "axe-core requires every form input to have an accessible name. For WC Blocks inputs the label is generated by WC and the failure usually means a custom <input> the theme injected. Wrap with <label> or add `aria-label` / `aria-labelledby`. Do NOT rely on placeholder-as-label."
+    },
+    {
+      "id": "wc-missing-cart-empty-state",
+      "axe_rule": "wc-empty-cart-broken",
+      "selector_pattern": ".wp-block-woocommerce-empty-cart-block",
+      "file": "<theme>/parts/cart.html or templates/page-cart.html",
+      "strategy": "The cart template must include the WC Empty Cart Block as a sibling of the filled cart, otherwise the page renders blank when the cart clears. Insert the block via `wp:woocommerce/empty-cart-block` and verify the snap on /cart with an empty cart."
+    },
+    {
+      "id": "console-error-generic",
+      "axe_rule": "console-error",
+      "selector_pattern": "",
+      "file": "varies (check console message for source URL)",
+      "strategy": "A JS error fires during the snap. Open the matching `<route>.findings.json` -> `console[]` array and read the message + source. Most theme-introduced cases are missing `wp_enqueue_script` deps (wp-element, wp-blocks). Fix by registering the dep in `functions.php`'s enqueue callback."
+    },
+    {
+      "id": "broken-network-asset",
+      "axe_rule": "broken-asset",
+      "selector_pattern": "",
+      "file": "<theme>/playground/blueprint.json or <theme>/styles/",
+      "strategy": "An asset 404'd during the snap. Check `<route>.findings.json` -> `network_failures[]` for the URL. If it's a theme asset, verify it exists in the repo and is referenced with a `wp-content/themes/<slug>/...` path. If it's a Playground-seeded image, add it to `<theme>/playground/content/` and reference it from `blueprint.json`."
+    }
+  ]
+}
