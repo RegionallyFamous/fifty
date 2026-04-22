@@ -197,6 +197,76 @@ Every cell's findings are classified into one of three buckets:
 
 The verdict appears as a `STATUS: PASS | WARN | FAIL` line at the end of every `report` and `check` run. It also lives at the top of each per-theme `review.md` as a `**GATE: …**` badge so triage starts with the verdict, not the table.
 
+### Content-correctness heuristics
+
+On top of the broad page-level checks (`horizontal-overflow`, `placeholder-image`, `view-transition-name-collision`, etc.) `_HEURISTICS_JS` runs eight per-element invariants designed to catch the "looks bad at a glance" failure modes a pixel diff misses (text overflowing its container, the same nav link rendered twice, a cover-block whose background image 404'd, a 1200px hero that lost its content). All eight emit `error` severity by default and feed the same gate as everything else; the allowlist (next section) tames false positives so they ship without first fixing every existing offence.
+
+| Kind | What it catches |
+|---|---|
+| `element-overflow-x` | A visible element whose `scrollWidth > clientWidth + 2` while computed `overflow-x: visible` (i.e. the overflow paints past the box). Skips `inline` display + opt-in scroll containers. |
+| `heading-clipped-vertical` | A visible `h1`-`h4` whose `scrollHeight > clientHeight + 2` — typically a wrapping headline inside a parent with `max-height` + `overflow: hidden` eating the second line. |
+| `button-label-overflow` | A `<button>`, `.wp-block-button__link`, `[role=button]`, or `input[type=submit/button]` whose label is wider than the button. Special-cased because button overflow is uniquely jarring (visible borders + backgrounds make the spill impossible to miss). |
+| `duplicate-nav-link` | The same `(text, href)` link rendered in two _different_ visible nav containers at the same time — the "Shop appears in both desktop nav and mobile drawer" bug. Within one container, dupes are intentional (mega-menu mirrors). |
+| `duplicate-h1` | More than one visible `<h1>`, or two `<h1>`s with identical text. Catches templates rendering both site title and post title as `<h1>`, or hero patterns that hard-code an `<h1>` on a route that already has one. |
+| `background-image-broken` | A computed `background-image: url(...)` whose URL `404`'d (or any `>=400`). Wired by intersecting the JS-collected `(selector, url)` pairs with the response listener's `network_failures` — no async JS needed. |
+| `region-void` | A visible element occupying `>=15%` of the viewport area with NO text, NO `img/svg/video/picture/iframe/canvas` descendants, NO `background-image`, AND a `background-color` that matches the body's. The lysholm "transparent cover" regression generalised. |
+| `region-low-density` (warn) | A region taller than 40% of viewport height whose `(text_chars + 50 * media_count) / area_kpx < 0.05`. Information-only — too easy to false-positive on legitimate hero compositions to ship as `error`. |
+
+Each detector caps reports at 5 instances per page so a single structural bug doesn't drown the findings list. Every emitted finding carries a stable `selector` (and, for `duplicate-nav-link`, a `text|href` `fingerprint`) so the allowlist can address it precisely.
+
+### Cropped evidence per finding
+
+`_capture_cell` follows up every finding that exposes a `selector` (or an `axe_first_selectors[0]`) with a small JPG screenshot of just that element padded ±20px, written next to the full-page PNG as `<route>.<kind>.<idx>.crop.jpg` and recorded as `crop_path` on the finding. `bin/snap.py report` links each finding's row to its crop in `review.md`; `bin/build-snap-gallery.py` renders the crops inline below the failing cell on the per-theme gallery page so a reviewer can see exactly which element fired which check without scrubbing through a 3000px-tall full-page screenshot.
+
+Crops are best-effort: a flaky scroll, an axe selector Playwright can't parse, or an element that scrolled out of the viewport just yields no `crop_path` and no warning — the snap pipeline's job is to record what happened, not to fail because evidence capture had a bad moment.
+
+### The heuristic-finding allowlist
+
+`tests/visual-baseline/heuristics-allowlist.json` snapshots the set of `error`-tier heuristic findings that exist on the current shoot, so the new content-correctness checks can ship without first fixing every pre-existing violation. Going forward only NEW findings (anything not in the file) fail the gate. Same pattern Stylelint, ESLint, and Knip use for "fail on new violations only".
+
+File shape:
+
+```json
+{
+  "obel:desktop:home": {
+    "element-overflow-x": ["nav.primary > ul > li:nth-of-type(3) > a"],
+    "duplicate-nav-link": ["shop|/shop/"]
+  },
+  "chonk:mobile:cart-filled": {
+    "button-label-overflow": ["button.wp-block-button__link"]
+  }
+}
+```
+
+Key shape: `<theme>:<viewport>:<route>` → `<kind>` → list of fingerprints (selectors for layout bugs; `text|href` tuples for `duplicate-nav-link`; whatever the heuristic emitted as `fingerprint`). When a finding matches an allowlist entry it is **demoted to `info`** and tagged `allowlisted: true` — the original finding is still in the JSON artifact and still appears in `review.md` (with an `_(allowlisted; demoted to info)_` suffix), but it no longer counts toward the gate.
+
+The matching pass runs in two places (defence-in-depth):
+1. **`_capture_cell`** at shoot time, so each cell's recorded `error_count` and the gallery badges built from it reflect the post-allowlist gate.
+2. **`cmd_report`** at report time, so re-running `bin/snap.py report` against an existing `findings.json` after editing the allowlist takes effect immediately (and so parity findings, which are spliced in only at report time, get filtered too).
+
+#### Managing the allowlist
+
+```bash
+python3 bin/snap.py allowlist regenerate           # all themes (after a shoot)
+python3 bin/snap.py allowlist regenerate --theme obel
+python3 bin/snap.py allowlist diff                 # show pending changes; exits 1 on new findings
+```
+
+`regenerate` reads every `tmp/snaps/<theme>/<viewport>/<slug>.findings.json`, collects every `error`-tier finding with a stable fingerprint, and writes the canonical allowlist file. It **merges** rather than overwrites: cells/themes you didn't re-scan keep their existing entries, so a partial shoot doesn't accidentally drop allowlist entries for themes you didn't touch.
+
+`diff` is the same scan but read-only — it prints any new findings (would fail the gate), any resolved ones (would shrink the allowlist), and exits non-zero when there are new findings, so CI / pre-push can plug it in as a check. Run this after any visual change to spot allowlist drift before it lands.
+
+Re-run `regenerate` only when the team has consciously decided to accept a new batch of pre-existing offences. The default path is "fix the new finding, don't add it to the allowlist".
+
+#### Allowlist vs `A11Y_SUPPRESSIONS`: when to use which
+
+These are different tools for different problems and should not be conflated:
+
+- **`A11Y_SUPPRESSIONS`** in `bin/snap_config.py` is for **broad** per-rule axe drops — "skip the `region` rule on every cell, because it fires on the WC mini-cart drawer that ships from upstream and we can't fix it." It silences a whole `(rule, route, selector_substring)` tuple regardless of how many nodes match.
+- **`heuristics-allowlist.json`** is for **narrow** per-finding waivers — "this one specific selector on this one cell is a known exception we've decided to accept." It demotes one matched fingerprint at a time.
+
+Reach for `A11Y_SUPPRESSIONS` when an axe rule is structurally unfixable in our themes (upstream WC markup, non-applicable rule). Reach for the heuristics allowlist when one specific element is a known false positive or an accepted technical debt that the team will revisit.
+
 ### Recommended loops
 
 When you make ANY change that could affect rendered output (template, theme.json, CSS, pattern, blueprint), the loop is:

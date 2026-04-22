@@ -28,6 +28,11 @@ Conventions
   ratios. Playwright's `full_page=True` overrides the height anyway so
   the value only matters for above-the-fold-only screenshots, which we
   don't currently take.
+* Captured bitmaps are 2x the logical viewport width (Playwright is
+  configured with `device_scale_factor=2`), so a `desktop` shot lands
+  on disk as a 2560px-wide PNG. Layout/responsive breakpoints are
+  driven by the CSS-pixel width above; the 2x is purely for retina
+  sharpness during human review.
 
 Route selection rationale
 -------------------------

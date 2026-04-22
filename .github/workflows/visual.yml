@@ -1,6 +1,6 @@
 name: visual
 
-# Pixel-diff visual regression gate.
+# Pixel-diff visual regression gate AND cloud-side gallery regenerator.
 #
 # Runs `python3 bin/snap.py check --changed` — which boots WordPress
 # Playground in headless Chromium for each touched theme, re-shoots
@@ -19,8 +19,17 @@ name: visual
 #     the pull_request trigger).
 #   * `pull_request` — only when theme files change. Keeps docs-only
 #     or tooling-only PRs from paying the 10-minute Playwright cost.
-#   * `workflow_dispatch` — manual re-run after baseline updates or
-#     when debugging a flaky screenshot.
+#   * `workflow_dispatch` — manual run with two modes:
+#       - `check-changed` (default for PR/push): re-shoot only changed
+#         themes and gate against the baseline. Same as before.
+#       - `regenerate-gallery`: nuke `tmp/snaps/`, run a full
+#         `snap.py shoot --all` (or `--themes <list>`), rebuild the
+#         committed gallery via `build-snap-gallery.py`, and commit
+#         the diff back to the triggering branch. Use this to refresh
+#         `docs/snaps/` after a snap.py / theme change without paying
+#         the laptop-overheating cost of shooting locally. The auto
+#         commit message contains `[skip ci]` so it does not trigger
+#         another visual.yml run.
 #
 # Warn-only rollout:
 #   For the first week after this workflow lands, the final `snap.py
@@ -56,6 +65,13 @@ on:
       - '.github/workflows/visual.yml'
   workflow_dispatch:
     inputs:
+      mode:
+        type: choice
+        description: 'What to do'
+        options:
+          - check-changed
+          - regenerate-gallery
+        default: regenerate-gallery
       themes:
         description: 'Space-separated theme slugs (blank = all)'
         required: false
@@ -67,16 +83,31 @@ concurrency:
   group: visual-${{ github.ref }}
   cancel-in-progress: true
 
+# `regenerate-gallery` mode commits the rebuilt `docs/snaps/` back to
+# the triggering branch, so the job needs write access to repo
+# contents. `check-changed` mode is read-only but the elevated scope
+# is harmless there (no `git push` happens).
+permissions:
+  contents: write
+
 jobs:
   visual:
-    name: bin/snap.py check --changed
+    name: bin/snap.py
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # Bumped from 25 to 60 to fit a full 5-theme retina shoot
+    # (~6-8 min per theme at concurrency=2 + gallery rebuild) when
+    # mode=regenerate-gallery. The `check-changed` path still
+    # finishes in ~5-10 min so the higher ceiling is no penalty.
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          # Persist the GITHUB_TOKEN credential so the
+          # `regenerate-gallery` mode can `git push` the rebuilt
+          # `docs/snaps/` directory back to the triggering branch.
+          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -109,28 +140,48 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: python3 -m playwright install-deps chromium
 
-      - name: Determine theme scope
+      - name: Determine job mode
         id: scope
         run: |
-          # workflow_dispatch may pass explicit theme slugs; pull_request
-          # + push use --changed so only themes touched by the diff get
-          # re-shot.
-          themes="${{ github.event.inputs.themes }}"
-          if [ -n "$themes" ]; then
-            echo "mode=manual" >> "$GITHUB_OUTPUT"
-            echo "themes=$themes" >> "$GITHUB_OUTPUT"
+          # Resolve the (mode, themes) tuple used by every step below.
+          #
+          # `mode` is one of:
+          #   * `regenerate-gallery` — workflow_dispatch only. Wipe
+          #     `tmp/snaps/`, run a full shoot, rebuild the committed
+          #     gallery, and push `docs/snaps/` back to the branch.
+          #   * `check-manual`       — workflow_dispatch with explicit
+          #     theme list. Re-shoot just those themes and gate.
+          #   * `check-changed`      — push / pull_request (default).
+          #     Run `snap.py check --changed` against origin/main.
+          #
+          # `themes` is a space-separated list. Empty string means
+          # "all themes" (only valid in `regenerate-gallery` mode).
+          input_mode="${{ github.event.inputs.mode }}"
+          input_themes="${{ github.event.inputs.themes }}"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] \
+              && [ "$input_mode" = "regenerate-gallery" ]; then
+            echo "mode=regenerate-gallery" >> "$GITHUB_OUTPUT"
+            echo "themes=$input_themes" >> "$GITHUB_OUTPUT"
+          elif [ -n "$input_themes" ]; then
+            echo "mode=check-manual" >> "$GITHUB_OUTPUT"
+            echo "themes=$input_themes" >> "$GITHUB_OUTPUT"
           else
-            echo "mode=changed" >> "$GITHUB_OUTPUT"
+            echo "mode=check-changed" >> "$GITHUB_OUTPUT"
             echo "themes=" >> "$GITHUB_OUTPUT"
           fi
 
+      # ------------------------------------------------------------
+      # check-changed / check-manual paths (PRs, pushes, manual gates)
+      # ------------------------------------------------------------
       # The workflow is warn-only for now (see header comment). Flip
       # `continue-on-error` off once the baselines have stabilised.
       - name: Run snap check
         id: snap
+        if: steps.scope.outputs.mode != 'regenerate-gallery'
         continue-on-error: true
         run: |
-          if [ "${{ steps.scope.outputs.mode }}" = "manual" ]; then
+          if [ "${{ steps.scope.outputs.mode }}" = "check-manual" ]; then
             echo ">> manual run: themes=${{ steps.scope.outputs.themes }}"
             for theme in ${{ steps.scope.outputs.themes }}; do
               python3 bin/snap.py shoot "$theme"
@@ -141,15 +192,86 @@ jobs:
             python3 bin/snap.py check --changed --changed-base origin/main
           fi
 
+      # ------------------------------------------------------------
+      # regenerate-gallery path (workflow_dispatch only)
+      # ------------------------------------------------------------
+      # Full retina shoot of every (or specified) theme, gallery rebuild,
+      # then commit `docs/snaps/` back to the triggering branch. We do
+      # NOT run `bin/snap.py check`/`diff` here because the goal is "give
+      # me a fresh batch of pixels for human review", not "gate against
+      # the baseline" — the gate is what `check-changed` does on the
+      # follow-up PR commits.
+      - name: Wipe stale tmp/snaps before full shoot
+        if: steps.scope.outputs.mode == 'regenerate-gallery'
+        run: |
+          rm -rf tmp/snaps
+          mkdir -p tmp/snaps
+
+      - name: Full retina shoot
+        id: shoot
+        if: steps.scope.outputs.mode == 'regenerate-gallery'
+        run: |
+          themes="${{ steps.scope.outputs.themes }}"
+          if [ -n "$themes" ]; then
+            echo ">> regenerate-gallery: shooting themes=$themes"
+            args="$themes"
+          else
+            echo ">> regenerate-gallery: shooting --all themes"
+            args="--all"
+          fi
+          # concurrency=2 is the safe ceiling on a 4-vCPU ubuntu-latest
+          # runner — each Playground worker pegs ~1.5 CPU cores during
+          # boot. Bumping higher trades job duration for EADDRINUSE
+          # flakiness (we hit that locally at concurrency=3).
+          python3 bin/snap.py shoot $args --concurrency 2
+
+      - name: Rebuild gallery
+        if: steps.scope.outputs.mode == 'regenerate-gallery'
+        run: python3 bin/build-snap-gallery.py
+
+      - name: Commit regenerated gallery
+        if: steps.scope.outputs.mode == 'regenerate-gallery'
+        run: |
+          # Bot identity used for the auto-commit. Matches the convention
+          # github-actions/bot uses elsewhere in the org.
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add docs/snaps
+
+          # Bail without erroring if the regenerated gallery is byte-
+          # identical to what's already committed (no theme/snap drift).
+          if git diff --cached --quiet; then
+            echo "No gallery changes to commit; tree is identical."
+            exit 0
+          fi
+
+          # `[skip ci]` in the subject line keeps the bot's commit from
+          # re-triggering visual.yml (which would loop forever). It also
+          # short-circuits check.yml — that's fine, the human pushes
+          # that follow will still run the static gate.
+          msg="snap: regenerate retina gallery via cloud workflow [skip ci]
+
+          Auto-generated by .github/workflows/visual.yml run #${{ github.run_id }}
+          Mode: regenerate-gallery
+          Themes: ${{ steps.scope.outputs.themes || 'all' }}
+          "
+          git commit -m "$msg"
+          git push origin "HEAD:${{ github.ref_name }}"
+
+      # ------------------------------------------------------------
+      # Artifacts (both paths)
+      # ------------------------------------------------------------
       - name: Upload snap artifacts
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: snap-output-${{ github.run_id }}
           path: |
-            tmp/snap/**/review.md
-            tmp/snap/**/review.json
-            tmp/snap/**/diffs/
+            tmp/snaps/**/review.md
+            tmp/snaps/**/review.json
+            tmp/snaps/**/findings.json
+            tmp/snaps/**/diffs/
           if-no-files-found: ignore
           retention-days: 14
 

@@ -92,12 +92,17 @@ def _require_pillow():
         sys.exit(2)
     return Image
 
-# Re-encoding knobs. 600px wide is the smallest size where the desktop
-# checkout layout is still legible at thumbnail scale; q=80 hits the
-# bytes-per-cell sweet spot (~50-100KB per JPEG; full gallery commit
-# ~25MB across all 5 themes). Bump WIDTH_PX if you need finer detail
-# (every theme's pixel-perfect spacing audit will want 1024 instead).
-THUMB_WIDTH_PX = 600
+# Re-encoding knobs. 1280px is the natural retina width for the
+# gallery's ~640px CSS slot (2x physical density on the typical retina
+# monitor): downsampling a 2x-DPR source PNG (snap.py captures at
+# device_scale_factor=2 so a desktop shot lands on disk as 2560px-wide)
+# to 1280px hits the sharpness sweet spot without upscaling. q=80
+# keeps bytes-per-cell reasonable (~150-300KB per JPEG; full gallery
+# commit ~75MB across all 5 themes). Drop back to 600 if disk pressure
+# ever becomes a concern; the trade-off is a visibly soft thumbnail
+# when reviewing on retina hardware (which is, in practice, every
+# reviewer's hardware).
+THUMB_WIDTH_PX = 1280
 THUMB_MAX_HEIGHT_PX = 4000  # cap full-page screenshots so Pillow doesn't OOM
 JPEG_QUALITY = 80
 
@@ -157,6 +162,11 @@ class Cell(NamedTuple):
     src_png: Path
     error_count: int | None
     warn_count: int | None
+    # Per-finding evidence crops captured by `bin/snap.py` next to the
+    # full PNG. Each entry is (severity, kind, message, src_jpg_path).
+    # `src_jpg_path` is repo-relative; build() copies it into the gallery
+    # output dir alongside the cell thumbnail.
+    crops: tuple[tuple[str, str, str, str], ...] = ()
 
     @property
     def is_interaction(self) -> bool:
@@ -193,6 +203,33 @@ def _cells_from_manifest(theme: str) -> list[Cell] | None:
             continue
         slug = str(shot["route"])
         base_route, _, flow = slug.partition(".")
+
+        # Pull per-finding evidence crops out of the sibling
+        # findings.json so the gallery can render them inline below the
+        # failing thumbnail. Best-effort -- a missing/corrupt findings
+        # JSON just yields zero crops, no exception.
+        crops: list[tuple[str, str, str, str]] = []
+        findings_rel = shot.get("findings_path")
+        if findings_rel:
+            try:
+                fp_data = json.loads(
+                    (ROOT / findings_rel).read_text(encoding="utf-8")
+                )
+                for f in fp_data.get("findings", []) or []:
+                    crop_path = f.get("crop_path")
+                    if not crop_path:
+                        continue
+                    if not (ROOT / crop_path).is_file():
+                        continue
+                    crops.append((
+                        str(f.get("severity", "info")),
+                        str(f.get("kind", "")),
+                        str(f.get("message", "")),
+                        str(crop_path),
+                    ))
+            except (OSError, ValueError, json.JSONDecodeError):
+                pass
+
         cells.append(
             Cell(
                 theme=theme,
@@ -203,6 +240,7 @@ def _cells_from_manifest(theme: str) -> list[Cell] | None:
                 src_png=png,
                 error_count=int(shot.get("error_count", 0)) if "error_count" in shot else None,
                 warn_count=int(shot.get("warn_count", 0)) if "warn_count" in shot else None,
+                crops=tuple(crops),
             )
         )
     return cells
@@ -536,6 +574,58 @@ SHARED_CSS = """\
 .cell .badge.warn { color: var(--ink); }
 .cell .badge.flow { color: var(--ink); border-style: dashed; }
 
+/* Per-finding evidence crops -- a horizontal strip of small JPGs of
+   the offending elements, captured by bin/snap.py alongside the full
+   page screenshot. Reviewers see the full-page thumbnail to set
+   context, then the crops to identify exactly which element fired
+   which check, without scrubbing through a 3000px tall PNG. */
+.cell .crops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  padding: .25rem 0 0;
+}
+.cell .crop {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  text-decoration: none;
+  color: inherit;
+  border: var(--hairline) solid var(--rule);
+  background: var(--paper);
+  padding: 2px;
+  max-width: 110px;
+  font-family: var(--mono);
+  font-size: .54rem;
+  line-height: 1.35;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  transition: border-color .12s ease;
+}
+.cell .crop:hover, .cell .crop:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+.cell .crop img {
+  display: block;
+  width: 100%;
+  height: 60px;
+  object-fit: cover;
+  object-position: center top;
+}
+.cell .crop-kind {
+  display: block;
+  padding: 1px 3px 0;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cell .crop-error { border-color: var(--accent); }
+.cell .crop-error .crop-kind { color: var(--accent); }
+.cell .crop-warn  { border-color: var(--ink); }
+.cell .crop-info  { opacity: .8; }
+
 /* Snap-page header (re-uses .subhero from /assets/style.css) */
 .snap-header {
   display: flex;
@@ -571,6 +661,37 @@ def _render_badges(cell: Cell) -> str:
     return f'<span class="badges">{"".join(parts)}</span>'
 
 
+def _render_crops(cell: Cell) -> str:
+    """Render per-finding evidence crops below the failing thumbnail.
+
+    Each crop is a small JPG of the offending element captured by
+    `bin/snap.py`'s `_capture_finding_crops`. The reviewer sees the
+    full-page thumbnail to set context, then a row of cropped offenders
+    to identify exactly which element fired which check, without having
+    to scrub through a 3000px tall full-page screenshot.
+    """
+    if not cell.crops:
+        return ""
+    items: list[str] = []
+    for sev, kind, msg, src_rel in cell.crops:
+        src = ROOT / src_rel
+        href = f"{cell.viewport}/{src.name}"
+        # Truncate the message a bit so the caption stays a one-liner;
+        # the full message is in review.md / findings.json.
+        short = (msg[:140] + "…") if len(msg) > 140 else msg
+        sev_class = sev if sev in ("error", "warn", "info") else "info"
+        items.append(
+            f'<a class="crop crop-{sev_class}" href="{_esc(href)}" '
+            f'target="_blank" rel="noopener" '
+            f'title="{_esc(sev.upper())} · {_esc(kind)} · {_esc(short)}">'
+            f'<img loading="lazy" decoding="async" src="{_esc(href)}" '
+            f'alt="{_esc(kind)}: {_esc(short)}">'
+            f'<span class="crop-kind">{_esc(kind)}</span>'
+            f'</a>'
+        )
+    return f'<div class="crops">{"".join(items)}</div>'
+
+
 def _render_theme_page(theme: str, cells: list[Cell], source_label: str) -> str:
     """Build the per-theme HTML grid, grouped by viewport. Layered on top
     of the site-wide /assets/style.css so the gallery shares the magazine-
@@ -595,6 +716,7 @@ def _render_theme_page(theme: str, cells: list[Cell], source_label: str) -> str:
   <a class="frame" href="{_esc(c.thumb_rel)}" target="_blank" rel="noopener">
     <img loading="lazy" decoding="async" src="{_esc(c.thumb_rel)}" alt="{_esc(theme)} {_esc(vp)} {_esc(c.slug)}">
   </a>
+  {_render_crops(c)}
   <div class="meta">
     <span class="slug">{_esc(c.slug)}</span>
     {_render_badges(c)}
@@ -769,6 +891,22 @@ def build(themes: list[str], source: str, *, clean: bool) -> int:
             dst = theme_dir / c.viewport / f"{c.slug}.jpg"
             if _encode_thumb(c.src_png, dst, force=clean):
                 encoded += 1
+            # Mirror the per-finding evidence crops into the gallery dir
+            # so the per-theme page can link to them with a viewport-
+            # relative href. Same filename as the source so the cell
+            # renderer doesn't need to track a separate name.
+            for _sev, _kind, _msg, src_rel in c.crops:
+                src = ROOT / src_rel
+                if not src.is_file():
+                    continue
+                crop_dst = theme_dir / c.viewport / src.name
+                crop_dst.parent.mkdir(parents=True, exist_ok=True)
+                if (
+                    clean
+                    or not crop_dst.is_file()
+                    or crop_dst.stat().st_mtime < src.stat().st_mtime
+                ):
+                    shutil.copy2(src, crop_dst)
 
         index_html = _render_theme_page(theme, cells, source_label)
         (theme_dir / "index.html").write_text(index_html, encoding="utf-8")
