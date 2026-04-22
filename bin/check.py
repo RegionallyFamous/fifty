@@ -5732,6 +5732,123 @@ def check_wc_specificity_winnable() -> Result:
     return r
 
 
+def check_view_transitions_wired() -> Result:
+    """Rule #22 — every theme MUST wire the four pieces of the cross-
+    document View Transitions contract documented in AGENTS.md
+    "View Transitions (cross-document)":
+
+      1. CSS prelude in `theme.json` declares the opt-in plus a
+         default `view-transition-type` (so `:root:active-view-
+         transition-type(fifty-default)` selectors have something to
+         match on the cold-path navigation).
+      2. `render_block` filter in `functions.php` covers the four
+         block names that render product/post titles and images
+         (core/post-title, core/post-featured-image,
+         woocommerce/product-image, woocommerce/product-image-gallery).
+      3. The per-request dedup tracker is reset on `init` (otherwise
+         long-lived PHP workers leak `view-transition-name` state
+         between requests and silently drop names on later pages).
+      4. The inline `pageswap`/`pagereveal` handler is registered on
+         `wp_head` priority 1 (parser-blocking, classic script) AND
+         the `<script type="speculationrules">` block is emitted from
+         `wp_head`. Both must be present — the first makes the per-
+         route flavor selectable from CSS, the second is the largest
+         perceived-perf lever for cross-document VT.
+
+    Failure mode this catches: a theme regressing on any of the four
+    pieces (e.g. a clone that shipped before the WC product-image
+    block was added to the filter) silently breaks the morph at
+    runtime — `bin/snap.py`'s click-through probe will eventually
+    catch it too, but this static gate fails the pre-push hook with
+    a precise diagnostic instead of a manifest entry buried in tmp/.
+    """
+    r = Result("rule #22 — view transitions wired (theme.json + functions.php)")
+    theme_json = ROOT / "theme.json"
+    functions_php = ROOT / "functions.php"
+    if not theme_json.exists():
+        r.skip("no theme.json (not a theme directory)")
+        return r
+    if not functions_php.exists():
+        r.fail("missing functions.php (theme cannot wire VT without it)")
+        return r
+
+    css = theme_json.read_text(encoding="utf-8")
+    php = functions_php.read_text(encoding="utf-8")
+
+    # Piece 1 — CSS prelude with @view-transition + at least one
+    # named type that pairs with the JS handler in piece 4.
+    if "@view-transition" not in css:
+        r.fail(
+            "theme.json styles.css is missing `@view-transition` opt-in "
+            "(no cross-document transitions will fire)"
+        )
+    if "fifty-default" not in css:
+        r.fail(
+            "theme.json styles.css is missing the `types: fifty-default` "
+            "descriptor on `@view-transition` — required so CSS rules can "
+            "use `:root:active-view-transition-type(fifty-default)` for "
+            "the cold-path navigation"
+        )
+
+    # Piece 2 — render_block filter MUST cover the four block names.
+    # We grep for the literal block strings rather than parsing PHP
+    # so a theme that registers an additional block name (e.g. a
+    # custom card block) still passes — we only require the four
+    # core+Woo blocks to be present.
+    required_blocks = (
+        "core/post-title",
+        "core/post-featured-image",
+        "woocommerce/product-image",
+        "woocommerce/product-image-gallery",
+    )
+    missing_blocks = [b for b in required_blocks if b not in php]
+    if missing_blocks:
+        r.fail(
+            "functions.php render_block filter does not name "
+            + ", ".join(f"`{b}`" for b in missing_blocks)
+            + " — cross-document image morph will silently no-op for "
+            + "those block(s); extend the `$names` map in the "
+            + "`render_block` filter"
+        )
+
+    # Piece 3 — per-request dedup reset on `init`.
+    if "fifty_vt_assigned" not in php:
+        r.fail(
+            "functions.php is missing the `fifty_vt_assigned` per-page "
+            "dedup tracker (long-lived PHP workers will leak "
+            "`view-transition-name` state across requests)"
+        )
+
+    # Piece 4 — pageswap/pagereveal handler + speculationrules.
+    if "fifty_view_transitions_inline_script" not in php:
+        r.fail(
+            "functions.php is missing the inline pageswap/pagereveal "
+            "handler (`fifty_view_transitions_inline_script`) — without "
+            "it the per-route flavor classes (fifty-shop-to-detail, "
+            "fifty-paginate, fifty-cart-flow) never get added and the "
+            "CSS in theme.json has nothing to match against"
+        )
+    elif "wp_head" not in php or "fifty_view_transitions_inline_script" not in php:
+        r.fail(
+            "the inline VT handler must be registered on `wp_head` so "
+            "the pagereveal listener installs before the destination's "
+            "first paint"
+        )
+    if "speculationrules" not in php:
+        r.fail(
+            "functions.php is missing the `<script type=\"speculationrules\">` "
+            "block (`fifty_view_transitions_speculation_rules`) — the "
+            "largest perceived-perf lever for cross-document VT"
+        )
+
+    if r.passed and not r.skipped:
+        r.details.append(
+            "@view-transition opt-in, types descriptor, 4 named blocks, "
+            "dedup reset, inline pageswap handler, speculation rules — all wired"
+        )
+    return r
+
+
 def check_no_unpushed_commits() -> Result:
     """Fail if local HEAD has commits that haven't reached origin yet.
 
@@ -5901,6 +6018,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_wc_specificity_winnable(),
         check_no_serious_axe_in_recent_snaps(),
         check_evidence_freshness(),
+        check_view_transitions_wired(),
         check_no_unpushed_commits(),
     ]
 

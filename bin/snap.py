@@ -1095,6 +1095,107 @@ _HEURISTICS_JS = r"""
              {vt_name: name, count: els.length});
     }
 
+    // `view-transition-name-coverage` — every internal "card" link
+    // (a product link on shop/category, a post link on journal) MUST
+    // have at least one descendant with a non-`none` computed
+    // `view-transition-name`. Without it the cross-document image
+    // morph silently no-ops: Chrome runs the root crossfade but the
+    // hero image on the destination page has no source to morph
+    // from. This heuristic catches the regression class that bit us
+    // when WooCommerce blocks renamed product-card image markup
+    // from `core/post-featured-image` to `woocommerce/product-image`
+    // (the `render_block` filter only knew about the core block, so
+    // the new card markup quietly stopped getting named).
+    //
+    // Run on any page that has card-shaped product/post links —
+    // listing routes (shop, journal, home), but also PDPs that
+    // render cross-sells / related-products / "you might also like"
+    // grids, which is exactly where the regression most often hides
+    // (the listing pages get tested first; the long-tail PDP grids
+    // do not).
+    {
+        const cardSelector = (
+            'a[href*="/product/"]'
+            + ', a.woocommerce-LoopProduct-link'
+            + ', .wp-block-post-template a[href]'
+            + ', .wp-block-post a[href]'
+            + ', li.product a.woocommerce-LoopProduct-link'
+        );
+        const cardLinks = Array.from(document.querySelectorAll(cardSelector));
+        // Distinct cards only — the same product link often appears
+        // multiple times (image link + title link). Group by closest
+        // card-shaped ancestor so we count one card once.
+        const cards = new Set();
+        for (const a of cardLinks) {
+            const card = a.closest(
+                'li.product, .wp-block-product, .wp-block-post, article'
+            ) || a;
+            cards.add(card);
+        }
+        let missing = 0;
+        let total = 0;
+        const samples = [];
+        // Dedupe by destination URL. If the same product is
+        // featured twice on a page (e.g. once in a "featured"
+        // product collection and again in a "latest" one), only
+        // ONE card can carry `view-transition-name:
+        // fifty-post-<id>-image` — page-level uniqueness is a
+        // hard browser invariant. Counting both as missing would
+        // be a false positive, so we score by destination URL,
+        // not card identity. The user only sees one of them
+        // morph anyway; that's the one that matters.
+        const seenHrefs = new Set();
+        for (const card of cards) {
+            if (!isVisible(card)) continue;
+            // …AND only if the card actually has an <img> to
+            // morph. A title-only product link in body copy or a
+            // hero CTA wrapped around a static
+            // `<a href="/product/foo/">` has nothing to morph,
+            // so flagging it would only produce noise.
+            if (!card.querySelector('img')) continue;
+            const a = card.querySelector('a[href]');
+            const href = a ? a.getAttribute('href') : '<no link>';
+            if (seenHrefs.has(href)) continue;
+            const named = Array.from(card.querySelectorAll('*')).some((el) => {
+                const cs = window.getComputedStyle(el);
+                const n = cs.viewTransitionName;
+                return n && n !== 'none' && n !== 'auto';
+            });
+            if (named) {
+                seenHrefs.add(href);
+            }
+        }
+        // Second pass: for any href that was NEVER named on ANY
+        // of its visible card occurrences, count it as missing.
+        const allHrefs = new Set();
+        for (const card of cards) {
+            if (!isVisible(card)) continue;
+            if (!card.querySelector('img')) continue;
+            const a = card.querySelector('a[href]');
+            const href = a ? a.getAttribute('href') : '<no link>';
+            allHrefs.add(href);
+        }
+        for (const href of allHrefs) {
+            total += 1;
+            if (!seenHrefs.has(href)) {
+                missing += 1;
+                if (samples.length < 4) samples.push(href);
+            }
+        }
+        if (total > 0 && missing > 0) {
+            push("error", "view-transition-name-coverage",
+                 `${missing} of ${total} card(s) on this listing have `
+                 + `no descendant with a \`view-transition-name\`, so `
+                 + `the cross-document image morph will silently no-op `
+                 + `for those cards. Samples: ${samples.join(', ')}. `
+                 + `Fix by extending the \`render_block\` filter in `
+                 + `\`functions.php\` to cover the block name(s) used `
+                 + `to render the card image (e.g. add `
+                 + `\`woocommerce/product-image\` to the \`$names\` map).`,
+                 {missing: missing, total: total, samples: samples});
+        }
+    }
+
     // Captured measurements for the user-supplied INSPECT_SELECTORS.
     const wanted = args.inspectSelectors || [];
     for (const sel of wanted) {
@@ -1351,6 +1452,197 @@ def _attach_diagnostics(page) -> dict:
     page.on("pageerror", on_pageerror)
     page.on("response", on_response)
     return bag
+
+
+# ---------------------------------------------------------------------------
+# Cross-document View Transitions click-through probe
+# ---------------------------------------------------------------------------
+# Source routes the probe will try, in order. First one that yields a
+# clickable internal link wins. Slugs map to Route.path via a lookup
+# in the caller — the probe itself just talks URL paths.
+_VT_PROBE_SOURCES: tuple[tuple[str, str], ...] = (
+    ("shop", "main a[href*='/product/'], main a.woocommerce-LoopProduct-link"),
+    ("journal",
+     "main .wp-block-post a[href], main .wp-block-post-template a[href]"),
+)
+
+# Init script installed on the probe page BEFORE any navigation.
+# Stashes pageswap/pagereveal observation results on `window.
+# __fiftyVtProbe` so the Python side can read them after the cross-
+# document swap. Re-fires automatically on every new document (so the
+# pagereveal listener IS registered before the destination's first
+# rendering opportunity, per the Chrome cross-document VT spec).
+_VT_PROBE_INIT_SCRIPT = """
+(() => {
+  if (window.__fiftyVtProbeInstalled) return;
+  window.__fiftyVtProbeInstalled = true;
+  window.__fiftyVtProbe = {pageswap: null, pagereveal: null,
+                           types: [], at: null};
+  // The probe is installed via Playwright's add_init_script, which
+  // runs BEFORE any document <script> — so this listener registers
+  // BEFORE the theme's wp_head priority-1 pageswap/pagereveal
+  // handler. That means our listener fires FIRST and snapshots the
+  // types Set BEFORE the theme handler has called
+  // `e.viewTransition.types.add(<flavor>)`. To capture the flavor
+  // anyway, defer the types read to a microtask so it runs AFTER
+  // every synchronous pagereveal listener has had a chance to add
+  // its types.
+  addEventListener('pageswap', (e) => {
+    try {
+      window.__fiftyVtProbe.pageswap = !!e.viewTransition;
+    } catch (_) {}
+  });
+  addEventListener('pagereveal', (e) => {
+    try {
+      window.__fiftyVtProbe.pagereveal = !!e.viewTransition;
+      window.__fiftyVtProbe.at = location.href;
+      if (e.viewTransition && e.viewTransition.types) {
+        const vt = e.viewTransition;
+        Promise.resolve().then(() => {
+          try {
+            window.__fiftyVtProbe.types = Array.from(vt.types);
+          } catch (_) {}
+        });
+      }
+    } catch (_) {}
+  });
+})();
+"""
+
+
+def _probe_view_transitions_click(ctx, server_url: str, vp_name: str) -> list:
+    """Click an internal card link from a listing route and assert
+    that a real cross-document View Transition fires.
+
+    Implementation notes:
+      * We use a dedicated probe page (not the shoot page) so the
+        existing per-route accumulators stay clean and the probe
+        doesn't bleed `pageswap` artefacts into other findings.
+      * `add_init_script` re-runs in every new document, so the
+        `pagereveal` listener IS registered before the destination
+        page's first paint — the Chrome spec requires this.
+      * We try each source route in `_VT_PROBE_SOURCES` and stop at
+        the first one that yields a visible internal link. Themes
+        without a journal (Woo-only) silently skip the journal probe;
+        themes without a shop (blog-only) silently skip the shop one.
+
+    Returns a list of finding-shaped dicts. Severity:
+      * `error` if any probed source navigates but the destination
+        document reports `pagereveal.viewTransition === null` (the
+        transition silently aborted).
+      * `warn` if no probeable source link could be clicked at all
+        (probably a config issue, not a bug — but worth surfacing).
+      * `info` for successful probes (so the manifest records what
+        was checked, not just what failed).
+    """
+    findings: list[dict] = []
+    page = ctx.new_page()
+    try:
+        page.add_init_script(_VT_PROBE_INIT_SCRIPT)
+    except Exception as e:
+        findings.append({
+            "severity": "info", "kind": "vt-probe-skipped",
+            "viewport": vp_name,
+            "message": f"could not install probe init script: {e}",
+        })
+        page.close()
+        return findings
+
+    any_probed = False
+    for slug, link_sel in _VT_PROBE_SOURCES:
+        url = f"{server_url}/{slug}/"
+        try:
+            page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+        except Exception as e:
+            findings.append({
+                "severity": "info", "kind": "vt-probe-skipped",
+                "viewport": vp_name, "source": slug,
+                "message": f"could not load source route: {e}",
+            })
+            continue
+        # Reset probe state — the goto itself triggers pageswap/
+        # pagereveal in some Chrome builds, and we only care about the
+        # subsequent click.
+        try:
+            page.evaluate(
+                "() => { window.__fiftyVtProbe = "
+                "{pageswap: null, pagereveal: null, types: [], at: null}; }"
+            )
+        except Exception:
+            pass
+        try:
+            link = page.locator(link_sel).first
+            link.wait_for(state="visible", timeout=2_500)
+            href = link.get_attribute("href") or ""
+        except Exception:
+            # No clickable card — try the next source. Not an error
+            # in itself; some themes legitimately skip a route.
+            continue
+        any_probed = True
+        try:
+            link.click(timeout=4_000)
+            page.wait_for_load_state(
+                "domcontentloaded", timeout=15_000)
+            # Tiny wait so pagereveal definitely fired.
+            page.wait_for_timeout(120)
+        except Exception as e:
+            findings.append({
+                "severity": "warn", "kind": "vt-probe-click-failed",
+                "viewport": vp_name, "source": slug, "href": href,
+                "message": f"click did not navigate cleanly: {e}",
+            })
+            continue
+        probe = None
+        try:
+            probe = page.evaluate("() => window.__fiftyVtProbe || null")
+        except Exception:
+            probe = None
+        if not probe or probe.get("pagereveal") is None:
+            findings.append({
+                "severity": "warn", "kind": "vt-probe-no-event",
+                "viewport": vp_name, "source": slug, "href": href,
+                "message": (
+                    "pagereveal event was not observed on the "
+                    "destination document. The browser may not "
+                    "support cross-document View Transitions."),
+            })
+            continue
+        if probe.get("pagereveal") is True:
+            findings.append({
+                "severity": "info", "kind": "view-transition-fires-on-click",
+                "viewport": vp_name, "source": slug, "href": href,
+                "types": probe.get("types") or [],
+                "destination": probe.get("at"),
+                "message": (
+                    "Cross-document View Transition fired on "
+                    f"{slug} → {href}."),
+            })
+        else:
+            findings.append({
+                "severity": "error", "kind": "view-transition-aborted",
+                "viewport": vp_name, "source": slug, "href": href,
+                "message": (
+                    "Clicked an internal card link from "
+                    f"/{slug}/ but `pagereveal.viewTransition` was "
+                    "null on the destination — the transition was "
+                    "silently aborted (e.g. duplicate "
+                    "`view-transition-name`, CSP blocking the inline "
+                    "pageswap script, or `prefers-reduced-motion`)."),
+            })
+    if not any_probed:
+        findings.append({
+            "severity": "warn", "kind": "vt-probe-no-source",
+            "viewport": vp_name,
+            "message": (
+                "No probeable internal card link was found on any "
+                "configured source route. Add a product or post and "
+                "re-shoot, or update _VT_PROBE_SOURCES."),
+        })
+    try:
+        page.close()
+    except Exception:
+        pass
+    return findings
 
 
 # ---------------------------------------------------------------------------
@@ -1721,6 +2013,22 @@ def shoot_theme(
                         if flow_entry:
                             flow_entry["interaction"] = flow.name
                             manifest["shots"].append(flow_entry)
+                # `view-transition-fires-on-click` — once per viewport,
+                # navigate to a listing route, click the first internal
+                # card link, and assert a real cross-document View
+                # Transition fires (i.e. `pagereveal.viewTransition` is
+                # not null on the destination doc). This catches the
+                # regression class where the static collision check
+                # passes (no duplicates) but the transition silently
+                # aborts at runtime — e.g. a content-security-policy
+                # breaking the inline pageswap script, or a
+                # `view-transition-name` attached to an off-screen
+                # element so Chrome considers the morph empty.
+                vt_probe_findings = _probe_view_transitions_click(
+                    ctx, server_url, vp.name,
+                )
+                for entry in vt_probe_findings:
+                    manifest.setdefault("vt_probes", []).append(entry)
                 ctx.close()
         finally:
             browser.close()
