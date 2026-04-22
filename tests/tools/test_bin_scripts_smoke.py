@@ -42,10 +42,11 @@ _NO_ARGPARSE_HELP = frozenset(
 
 
 def _script_names() -> list[str]:
+    # Files starting with `_` are private library modules (e.g. `_lib.py`,
+    # `_design_lib.py`), tested transitively via the scripts that import
+    # them. They have no CLI of their own.
     return sorted(
-        p.name
-        for p in BIN_DIR.glob("*.py")
-        if p.is_file() and p.name != "_lib.py"  # _lib is tested transitively
+        p.name for p in BIN_DIR.glob("*.py") if p.is_file() and not p.name.startswith("_")
     )
 
 
