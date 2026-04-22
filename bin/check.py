@@ -5108,6 +5108,102 @@ def check_no_placeholder_product_images() -> Result:
     return r
 
 
+def check_product_images_unique_across_themes() -> Result:
+    """Fail if any `product-wo-<slug>.jpg` is byte-identical across two
+    themes -- that's a copy-paste leak, not bespoke per-theme imagery.
+
+    CROSS-THEME COPY-PASTE FAIL MODE
+    --------------------------------
+    Even when every theme ships the right *count* of
+    `product-wo-<slug>.jpg` files (`check_no_placeholder_product_images`
+    passes), an entire `playground/images/` folder can still have been
+    cloned wholesale from another theme without per-theme regeneration.
+    The catalogue then renders with the source theme's photography
+    while everything else (`theme.json`, `style.css`, templates,
+    patterns) tries to be a different brand. The two real-world hits:
+
+      * **The aero shape (untracked-leftover):** during a generation
+        pass, 7 product slugs were skipped, leaving `selvedge`'s
+        scratch-copies in `aero/playground/images/`. Those 7 files
+        were byte-identical to the matching `selvedge` photos. `git
+        status` showed 30 added files and looked complete; only an
+        md5/sha256 cross-check across themes surfaced the leak.
+
+      * **The lysholm shape (theme-init copy-paste):** when `lysholm`
+        was cloned from `obel` as a starting point, the entire
+        `playground/images/` folder was copied verbatim. All 30
+        `product-wo-<slug>.jpg` files were byte-identical to `obel`'s.
+        The catalogue rendered with obel's quiet-editorial photography
+        while the rest of the theme tried to be Nordic home-goods.
+
+    The check sha256-hashes every theme's `playground/images/product-wo-*.jpg`
+    files and fails when any two themes share the same digest. Page +
+    post hero placeholders (`wonders-page-*.png`, `wonders-post-*.png`)
+    live on a separate generation track and are intentionally excluded.
+
+    Remediation hint: the check can't infer which theme is the copier
+    vs. the original (no git context at check time), so it names both
+    themes involved in the duplication and asks the human to regenerate
+    the copier (typically the newer theme) using that theme's voice
+    from `<theme>/style.css`'s Description.
+    """
+    import hashlib
+
+    r = Result("Product photographs are unique across themes (no copy-paste leak)")
+
+    by_hash: dict[str, list[str]] = {}
+    total_photos = 0
+    for theme in iter_themes():
+        images_dir = theme / "playground" / "images"
+        if not images_dir.is_dir():
+            continue
+        for path in sorted(images_dir.glob("product-wo-*.jpg")):
+            try:
+                digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            except OSError:
+                continue
+            total_photos += 1
+            by_hash.setdefault(digest, []).append(f"{theme.name}/{path.name}")
+
+    if not total_photos:
+        r.skip("no product-wo-*.jpg photographs found in any theme")
+        return r
+
+    leaks = [(h, files) for h, files in by_hash.items() if len(files) > 1]
+    if leaks:
+        themes_involved: dict[frozenset[str], list[tuple[str, list[str]]]] = {}
+        for digest, files in leaks:
+            theme_set = frozenset(f.split("/", 1)[0] for f in files)
+            themes_involved.setdefault(theme_set, []).append((digest, files))
+
+        for theme_set, group in sorted(themes_involved.items(), key=lambda kv: sorted(kv[0])):
+            theme_list = ", ".join(sorted(theme_set))
+            count = len(group)
+            sample = sorted(files for _, files in group)[:3]
+            sample_str = "; ".join(" == ".join(f) for f in sample)
+            more = f" (+{count - 3} more)" if count > 3 else ""
+            r.fail(
+                f"{count} product-wo-*.jpg file(s) byte-identical across "
+                f"[{theme_list}]: {sample_str}{more}. "
+                f"At least one of these themes is shipping another "
+                f"theme's photography under its own slug -- the live "
+                f"demo will paint the wrong-theme aesthetic for those "
+                f"products. Regenerate the duplicates in whichever "
+                f"theme is the copier (typically the newer one) using "
+                f"that theme's visual voice (see each theme's "
+                f"`style.css` Description), drop the new files in "
+                f"`<theme>/playground/images/`, and re-run this check "
+                f"to confirm uniqueness."
+            )
+        return r
+
+    r.details.append(
+        f"{total_photos} `product-wo-*.jpg` file(s) hashed across all themes; "
+        f"every photograph is byte-unique to its theme"
+    )
+    return r
+
+
 def check_theme_screenshots_distinct() -> Result:
     """Fail when any two themes ship the same ``screenshot.png`` bytes.
 
@@ -5800,6 +5896,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_wc_microcopy_distinct_across_themes(),
         check_playground_content_seeded(),
         check_no_placeholder_product_images(),
+        check_product_images_unique_across_themes(),
         check_theme_screenshots_distinct(),
         check_wc_specificity_winnable(),
         check_no_serious_axe_in_recent_snaps(),
