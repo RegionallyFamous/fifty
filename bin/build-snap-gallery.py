@@ -378,7 +378,21 @@ SHARED_CSS = """\
   .snap-picker .theme { grid-template-columns: 1fr; }
 }
 
-/* Per-theme page (docs/snaps/<theme>/index.html) */
+/* Per-theme page (docs/snaps/<theme>/index.html) — one section per
+   viewport (mobile / tablet / desktop / wide), each section sized to
+   reflect what that viewport actually shoots:
+
+     - mobile + tablet: tall portrait cells in a denser grid
+     - desktop + wide: short landscape cells in a sparser grid
+
+   Without per-viewport tuning, every cell shared a single 4/5 portrait
+   frame — desktop and wide screenshots (which are landscape full-page
+   PNGs averaging ~600x1100) ended up slivered into a tiny strip across
+   the top of an oversized portrait box, leaving the rest of the cell
+   blank and the whole grid reading as broken. The classes below are
+   stamped onto each `<section class="viewport-section viewport-{vp}">`
+   wrapper by `_render_theme_page` so the grid + frame ratio always
+   tracks the source aspect. */
 .viewport-section { margin-top: clamp(2rem, 4vw, 3rem); }
 .viewport-section h2 {
   margin: 0 0 1rem;
@@ -398,8 +412,13 @@ SHARED_CSS = """\
 .cells {
   display: grid;
   gap: 1.5rem 1.25rem;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 }
+.viewport-mobile .cells   { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+.viewport-tablet .cells   { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.viewport-desktop .cells  { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.viewport-wide .cells     { grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); }
+
 .cell { display: flex; flex-direction: column; gap: .5rem; }
 .cell .frame {
   border: var(--hairline) solid var(--rule);
@@ -409,6 +428,13 @@ SHARED_CSS = """\
   display: block;
   transition: outline .12s ease;
 }
+/* Per-viewport frame ratios: roughly mirror each viewport's actual
+   aspect so the cropped top-of-page preview reads as "a phone" or
+   "a desktop" at a glance, not as a uniformly portrait postage stamp. */
+.viewport-mobile  .cell .frame { aspect-ratio: 9 / 16; }
+.viewport-tablet  .cell .frame { aspect-ratio: 3 / 4; }
+.viewport-desktop .cell .frame { aspect-ratio: 16 / 11; }
+.viewport-wide    .cell .frame { aspect-ratio: 16 / 9; }
 .cell .frame:hover, .cell .frame:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -1px;
@@ -513,7 +539,7 @@ def _render_theme_page(theme: str, cells: list[Cell], source_label: str) -> str:
 </div>'''
             )
         sections.append(
-            f'''<section class="viewport-section">
+            f'''<section class="viewport-section viewport-{_esc(vp)}">
   <h2><span>{_esc(vp)}</span><span class="count">{len(vp_cells)} shot{"s" if len(vp_cells) != 1 else ""}</span></h2>
   <div class="cells">
     {"".join(cell_html)}
