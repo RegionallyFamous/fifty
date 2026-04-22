@@ -254,6 +254,15 @@ def render_redirector(
 # public). All visual rules live in /assets/style.css; this template is
 # just semantic HTML hooks for that stylesheet to attach to.
 #
+# Cover shape (post-redesign): the wordmark and deck sit side-by-side as a
+# single magazine-cover lockup (`.lockup` 2-column grid with shared
+# baseline) rather than the previous stacked wordmark → hairline-rule →
+# deck arrangement. The hairline rule moved INTO the lockup as its
+# `border-bottom` so the markup ships one fewer element. The deck is a
+# single sentence with no hardcoded <br> tags — `text-wrap: balance` in
+# the stylesheet handles wrap at every viewport. Below 880px the lockup
+# collapses to single-column with a smaller wordmark.
+#
 # Hard rules baked into the copy below:
 #   * No theme / concept counts. The repo grows constantly and any number
 #     in this template would be stale within days; the deck makes a
@@ -287,9 +296,10 @@ INDEX_HEAD = """<!doctype html>
 \t</header>
 \t<main>
 \t\t<section class="cover">
-\t\t\t<h1>fifty<span style="color:var(--accent)">.</span></h1>
-\t\t\t<hr class="rule">
-\t\t\t<p class="deck">WooCommerce powers more stores than Shopify<br>and ships nothing like Shopify&rsquo;s themes.<br>Rich and I are closing that gap, in public.</p>
+\t\t\t<div class="lockup">
+\t\t\t\t<h1 class="wordmark">fifty<span style="color:var(--accent)">.</span></h1>
+\t\t\t\t<p class="deck">WooCommerce powers more stores than Shopify and ships nothing like Shopify&rsquo;s themes. Rich&nbsp;and&nbsp;I are closing that gap, in public.</p>
+\t\t\t</div>
 \t\t\t<div class="lede">
 \t\t\t\t<p>Every storefront below boots a real WordPress + WooCommerce site in your browser &mdash; no install, no signup, no card. Click anything: shop, single product, the pre-filled cart, checkout, the customer dashboard. Break it, refresh.</p>
 \t\t\t\t<p>The themes are the demo. The repo is the point. Every rule that keeps the agent honest, every check that catches WordPress&rsquo;s footguns, every visual test that pins the pixels &mdash; it&rsquo;s all in <a href="https://github.com/{org}/{repo}">github.com/{org}/{repo}</a>. Fork any theme, restyle it in an evening, ship to a real store on Monday.</p>

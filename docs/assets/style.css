@@ -96,35 +96,78 @@ main,
 }
 
 /* ------------------------------------------------------------------------
-   Cover — the giant "fifty." block at the top of the landing page.
-   ------------------------------------------------------------------------ */
-.cover { padding: clamp(1.5rem, 4vw, 3rem) 0 0; }
+   Cover — split-lockup magazine masthead.
+   ------------------------------------------------------------------------
+   Layout choices and why:
 
-.cover h1 {
+   1. WORDMARK + DECK SHARE A BASELINE in a 2-column grid (.lockup). The
+      hairline rule sits BELOW the lockup (as the lockup's border-bottom)
+      — not between wordmark and deck. The shared baseline is what makes
+      it read as a real masthead lockup instead of two stacked elements.
+      `align-items: end` pins the wordmark's descender baseline to the
+      deck's last-line baseline so the cobalt period and the deck's
+      final period sit on the same horizontal line. Below 880px the
+      lockup collapses to a single column and the wordmark shrinks to
+      keep its descender from blowing out narrow viewports.
+
+   2. WORDMARK SIZE was reduced from clamp(6rem, 22vw, 19rem) to
+      clamp(5rem, 14vw, 12rem). At the previous size the wordmark filled
+      most of a 1280px viewport on its own and forced the deck to
+      compete for vertical space below it. At 12rem max it shares
+      horizontal space with the deck on one line and keeps the cover
+      tight (~3 rule-divided rows above the theme-rows section).
+
+   3. DECK uses `text-wrap: balance` and ships as a single sentence in
+      the markup (no hardcoded <br> tags) so every viewport gets an
+      evenly-wrapped 2-3 line block at the deck's natural measure.
+
+   4. CTA-ROW uses an inline-list-with-middot-separators pattern via
+      `:not(:last-child)::after` rather than flex column-gap. The
+      previous gap-only approach produced a 2+1 wrap at narrow desktop
+      widths (one orphaned CTA on its own row that read as accidental).
+      The separator-pseudo-element approach has two correctness
+      properties: (a) the dot sits INSIDE the preceding .cta flex item
+      so when item N wraps to the next line the dot wraps with it
+      instead of orphaning at the start of the wrapped line; (b) the
+      `:not(:last-child)` selector means the trailing CTA never gets a
+      trailing dot.
+   ------------------------------------------------------------------------ */
+.cover {
+  padding: clamp(1.5rem, 4vw, 3rem) 0 clamp(2rem, 4vw, 3rem);
+  --cover-rhythm: clamp(1.25rem, 3vw, 2.25rem);
+}
+.cover > * + * { margin-top: var(--cover-rhythm); }
+
+.cover .lockup {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: end;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  padding-bottom: clamp(1.25rem, 3vw, 2rem);
+  border-bottom: var(--hairline) solid var(--rule);
+}
+
+.cover .wordmark {
   font-family: var(--serif-display);
   font-weight: 400;
-  font-size: clamp(6rem, 22vw, 19rem);
+  font-size: clamp(5rem, 14vw, 12rem);
   line-height: .8;
   letter-spacing: -.045em;
   margin: 0;
-}
-
-.cover .rule {
-  border: 0;
-  border-top: var(--hairline) solid var(--rule);
-  margin: clamp(1rem, 3vw, 2rem) 0;
-  width: 100%;
 }
 
 .cover .deck {
   font-family: var(--serif-text);
   font-style: italic;
   font-weight: 400;
-  font-size: clamp(1.75rem, 4.5vw, 3.75rem);
-  line-height: 1.05;
+  font-size: clamp(1.4rem, 2.6vw, 2.25rem);
+  line-height: 1.15;
   letter-spacing: -.005em;
-  margin: 0 0 clamp(1.5rem, 3vw, 2rem);
-  max-width: 60rem;
+  margin: 0 0 .25rem;
+  /* `text-wrap: balance` distributes characters evenly across all lines,
+     so every viewport gets a magazine-clean wrap. Markup ships as a
+     single sentence with no hardcoded <br> tags. */
+  text-wrap: balance;
 }
 
 .cover .lede {
@@ -136,19 +179,50 @@ main,
   font-size: 1rem;
   line-height: 1.55;
 }
-.cover .lede p { margin: 0 0 1rem; }
+.cover .lede p { margin: 0; }
+.cover .lede p + p { margin-top: 1rem; }
 .cover .lede a { color: var(--accent); text-decoration: none; }
 .cover .lede a:hover { text-decoration: underline; text-underline-offset: 2px; }
-
-@media (max-width: 720px) {
-  .cover .lede { grid-template-columns: 1fr; }
-}
 
 .cover .cta-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.25rem clamp(2rem, 5vw, 4rem);
-  margin: clamp(1rem, 3vw, 1.5rem) 0 clamp(2rem, 4vw, 3rem);
+  align-items: baseline;
+  /* Row gap when the row wraps; column gap is zero because the separator
+     pseudo-element below provides all horizontal spacing. */
+  gap: .65rem 0;
+}
+.cover .cta-row .cta:not(:last-child)::after {
+  content: "·";
+  display: inline-block;
+  padding: 0 clamp(.85rem, 2vw, 1.4rem);
+  color: var(--ink);
+  font-style: normal;
+  opacity: .45;
+}
+
+/* Below the split-lockup breakpoint, the wordmark stacks above the deck
+   and shrinks to keep its descender inside the viewport. The lede also
+   stacks here (the @media (max-width: 720px) block below handles the
+   narrower mobile case). */
+@media (max-width: 880px) {
+  .cover .lockup {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 1.25rem;
+  }
+  .cover .wordmark { font-size: clamp(5rem, 22vw, 9rem); }
+}
+
+@media (max-width: 720px) {
+  .cover .lede { grid-template-columns: 1fr; }
+  .cover .lede > p:first-child + p { margin-top: 1rem; }
+  /* When the CTA row stacks vertically (one CTA per line), the middot
+     separators end up hanging at the end of each line and read as
+     accidental punctuation rather than as inline-list separators. Drop
+     them at the same breakpoint as the lede stack. */
+  .cover .cta-row { flex-direction: column; align-items: flex-start; }
+  .cover .cta-row .cta:not(:last-child)::after { content: none; }
 }
 
 .cta {
