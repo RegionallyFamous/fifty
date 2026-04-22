@@ -359,11 +359,19 @@ CSS_GRID_FIX = f"""{SENTINEL_OPEN_GRID_FIX}
 #      which is why the size/finish dropdowns rendered as a single em-dash
 #      glyph in the desktop screenshot. Pin variation selects to the
 #      sans-serif preset so the option text always renders.
-#   4. Suppress lingering loading skeletons. WC Blocks renders skeleton
-#      placeholders during hydration; on slow first-loads the skeleton
-#      can persist visibly long enough to look like the page is broken.
-#      Hide the skeleton entirely on the frontend (the real content
-#      replaces it ~50ms later anyway).
+#   4. Loading-skeleton ground-truth (moved). The original Phase A
+#      shipped a `display:none!important` blanket on
+#      `.wc-block-components-skeleton{,__element}` and
+#      `.wc-block-components-loading-mask`. Rationale at the time was
+#      "real content replaces it ~50ms later anyway", which held for
+#      warm dev runs but failed on first-load and on slow XHR rounds:
+#      the cart/checkout pages flashed a blank wide column for the
+#      ~300-800ms WC Blocks needs to hydrate the cart store, which
+#      reads to shoppers as a broken layout. The skeleton is the
+#      *correct* loading affordance — we just want it painted in each
+#      theme's tokens instead of WC's default neutral grey. The
+#      paint chunk ships separately as Phase N (`wc-tells-phase-n-
+#      skeleton`); Phase A no longer touches the skeleton at all.
 #   5. Cart line items: enforce flex-column layout on `.wc-block-cart-
 #      items` and grid-card layout on each row, so even if WC ever serves
 #      the legacy <table> markup our CSS reframes it as a card list.
@@ -379,7 +387,6 @@ CSS_PHASE_A = f"""{SENTINEL_OPEN_PHASE_A}
 .woocommerce-product-gallery__image>a,.woocommerce-product-gallery__image>a>img{{display:block;width:100%;}}
 .woocommerce-product-gallery__image img.wp-post-image{{display:block!important;width:100%!important;height:auto!important;opacity:1!important;}}
 table.variations select,select.wo-variation{{font-family:var(--wp--preset--font-family--sans)!important;font-size:var(--wp--preset--font-size--sm)!important;}}
-.wc-block-components-skeleton,.wp-block-woocommerce-checkout .wc-block-components-skeleton,.wc-block-components-loading-mask,.wc-block-components-skeleton__element{{display:none!important;}}
 .wc-block-cart-items{{display:flex;flex-direction:column;}}
 .wc-block-cart-items>tbody{{display:contents;}}
 .wc-block-cart-items__row{{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:var(--wp--preset--spacing--md);align-items:start;padding:var(--wp--preset--spacing--md) 0;border-bottom:1px solid var(--wp--preset--color--border);}}
@@ -1095,6 +1102,56 @@ body .wc-block-cart-items .is-disabled,body .wc-block-cart-items .is-disabled .w
 {SENTINEL_CLOSE_PHASE_M}"""
 
 
+# ---------------------------------------------------------------------------
+# Follow-up chunk: Phase N loading-skeleton paint.
+# ---------------------------------------------------------------------------
+# Replaces the old Phase A `display:none!important` blanket (see the
+# Phase A comment block #4 for the post-mortem). WC Blocks renders
+# `.wc-block-components-skeleton__element` placeholder bars while the
+# cart-store / checkout-store XHR finishes; the skeleton is the right
+# loading affordance, but at default-WC neutral grey it reads as
+# "stock WC, not part of this theme". This chunk repaints two
+# surfaces in each theme's tokens so the loading state carries the
+# brand voice instead of looking like an unstyled placeholder:
+#
+#   N1. The bar itself (`.wc-block-components-skeleton__element`)
+#       gets `--subtle` for its ground colour and our shared
+#       `--radius--md` so the bar shape matches every other painted
+#       card in the theme.
+#
+#   N2. The shimmer pseudo (`.wc-block-components-skeleton__element
+#       :after`, plus the static variant) gets a horizontal
+#       `--border` gradient that animates over `--subtle`. We
+#       deliberately don't override `animation`/`animation-duration`
+#       — WC's keyframes are fine; we only need to swap the colour.
+#
+# Specificity: WC's deepest skeleton selector inside the checkout
+# order-summary is `.wc-block-components-order-summary
+# .wc-block-components-skeleton--cart-line-items-checkout
+# .wc-block-components-order-summary-item__description
+# .wc-block-components-skeleton__element` -- (0,4,0). We use the
+# doubled-class trick (4× the same class) prefixed with `body` so
+# every rule lands at (0,4,1), beating the deepest WC selector
+# without `!important`. Same idiom Phase I uses on input chrome.
+#
+# The corresponding `.wc-block-components-loading-mask` (covers an
+# in-place update like a quantity bump) intentionally stays at WC's
+# default semi-transparent overlay — it works against any palette
+# because it reads as a tint of whatever sits behind it. If a future
+# theme needs to recolour it, add the rule here so the mask stays a
+# documented part of the loading-state contract.
+SENTINEL_OPEN_PHASE_N = "/* wc-tells-phase-n-skeleton */"
+SENTINEL_CLOSE_PHASE_N = "/* /wc-tells-phase-n-skeleton */"
+_SK = ".wc-block-components-skeleton__element"
+_SKS = ".wc-block-components-skeleton__element--static"
+_SK4 = f"{_SK}{_SK}{_SK}{_SK}"
+_SKS4 = f"{_SKS}{_SKS}{_SKS}{_SKS}"
+CSS_PHASE_N = f"""{SENTINEL_OPEN_PHASE_N}
+body {_SK4}{{background-color:var(--wp--preset--color--subtle);border-radius:var(--wp--custom--radius--md);}}
+body {_SK4}:after,body {_SKS4}:after{{background:linear-gradient(90deg,transparent,var(--wp--preset--color--border),transparent);}}
+{SENTINEL_CLOSE_PHASE_N}"""
+
+
 # Each entry: (sentinel_open, sentinel_close, raw_css, anchor_after).
 # `anchor_after` is the marker the chunk is spliced in after — for the
 # first chunk that's the canonical archive-page marker; for follow-ups
@@ -1214,6 +1271,12 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_PHASE_M,
         CSS_PHASE_M,
         SENTINEL_CLOSE_PHASE_L,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_N,
+        SENTINEL_CLOSE_PHASE_N,
+        CSS_PHASE_N,
+        SENTINEL_CLOSE_PHASE_M,
     ),
 ]
 
