@@ -97,21 +97,53 @@ add_filter(
 	}
 );
 
-/**
- * Per-post View Transitions: name the post title and featured image with a
- * stable, post-scoped identifier so the browser can morph between the archive
- * card and the single-post hero across a real cross-document navigation.
- *
- * The cross-document opt-in (`@view-transition { navigation: auto }`) and the
- * persistent header/footer/site-title names live in `theme.json` styles.css.
- * This filter only assigns the per-post names; it adds no other behavior.
- */
+// === BEGIN view-transitions ===
+//
+// Cross-document View Transitions contract. Four pieces, all theme-side
+// (no MU-plugin, no playground/ scaffolding) so they ship with the
+// released theme:
+//
+//   1. `render_block` filter — assigns stable per-post `view-transition-
+//      name` and `view-transition-class` to title and image blocks
+//      across both core (`core/post-title`, `core/post-featured-image`)
+//      and WooCommerce (`woocommerce/product-image`,
+//      `woocommerce/product-image-gallery`) markup. Naming convention:
+//      `fifty-post-{ID}-{title|image}` so a shop-card image and a PDP
+//      hero image with the same post ID auto-morph.
+//   2. `init` reset — clears the per-request dedup tracker so a
+//      long-lived PHP worker (Playground, FPM) doesn't leak state
+//      between requests.
+//   3. `wp_head` priority 1 inline pageswap/pagereveal handler
+//      (~25 LOC, classic parser-blocking IIFE) — classifies the
+//      navigation by URL pattern and adds a `view-transition-type` so
+//      the CSS in `theme.json` can flavor the animation per route
+//      (shop→detail, paginate, cart-flow). Treated as the documented
+//      JS exception alongside swatches/payment-icons.
+//   4. `wp_head` speculation rules JSON — data-only `<script type=
+//      "speculationrules">` block telling Chrome to prerender same-
+//      origin links on hover. Excludes cart/checkout/wp-admin and any
+//      `.no-prerender` link. Massive perceived-perf win for VT.
+//
+// AGENTS.md "View Transitions (cross-document)" section is the source
+// of truth for the contract; bin/check.py rule #22 enforces it
+// statically; bin/snap.py click-through heuristics enforce it at
+// runtime.
+
 add_filter(
 	'render_block',
 	static function ( string $block_content, array $block, WP_Block $instance ): string {
+		// Map block name → kind. `image` covers both core featured
+		// image (used on PDP and journal posts) AND WooCommerce
+		// product-image / product-image-gallery (shop cards, related,
+		// cross-sells, order-confirm, PDP gallery). All four resolve
+		// to the same `fifty-post-{id}-image` so the morph fires
+		// regardless of which block markup the source/destination
+		// pages use.
 		$names = array(
-			'core/post-title'          => 'title',
-			'core/post-featured-image' => 'image',
+			'core/post-title'                   => 'title',
+			'core/post-featured-image'          => 'image',
+			'woocommerce/product-image'         => 'image',
+			'woocommerce/product-image-gallery' => 'image',
 		);
 		$kind = $names[ $block['blockName'] ?? '' ] ?? null;
 		if ( null === $kind || '' === trim( $block_content ) ) {
@@ -160,8 +192,15 @@ add_filter(
 			return $block_content;
 		}
 		$existing = $processor->get_attribute( 'style' );
-		$decl     = 'view-transition-name:' . $vt_name;
-		$value    = is_string( $existing ) && '' !== trim( $existing )
+		// Also assign a `view-transition-class` so the CSS in
+		// theme.json can use one rule like
+		// `::view-transition-group(.fifty-card-img)` to tune all
+		// per-post images instead of repeating the selector for every
+		// `fifty-post-N-image`. Unsupported in older browsers but
+		// silently ignored (no parse error).
+		$class_tok = ( 'image' === $kind ) ? 'fifty-card-img' : 'fifty-card-title';
+		$decl      = sprintf( 'view-transition-name:%s;view-transition-class:%s', $vt_name, $class_tok );
+		$value     = is_string( $existing ) && '' !== trim( $existing )
 			? rtrim( trim( $existing ), ';' ) . ';' . $decl
 			: $decl;
 		$processor->set_attribute( 'style', $value );
@@ -185,6 +224,128 @@ add_action(
 		$GLOBALS['fifty_vt_assigned'] = array();
 	}
 );
+
+/**
+ * Inline pageswap / pagereveal handler — classifies the navigation by
+ * URL pattern and assigns a `view-transition-type` so the CSS in
+ * theme.json can flavor the animation per route. Five types:
+ *   - fifty-default          (no other type matched — base crossfade)
+ *   - fifty-shop-to-detail   (any /shop/ or /product-category/ → /product/)
+ *   - fifty-archive-to-single(any blog/journal/category → single post)
+ *   - fifty-paginate         (same path, /page/N/ change)
+ *   - fifty-cart-flow        (cart ↔ checkout ↔ order-received)
+ *
+ * Also does just-in-time naming on the clicked source card image so
+ * BFCache traversal back doesn't see a leaked `view-transition-name`.
+ *
+ * Hard requirements:
+ *   - Priority 1 on `wp_head` so it lands BEFORE other plugin/theme
+ *     scripts and BEFORE the first paint.
+ *   - Classic parser-blocking script (no `defer`, no `async`, no
+ *     `type=module`). The pagereveal listener MUST be installed
+ *     before the first rendering opportunity per the Chrome cross-
+ *     document VT spec.
+ *   - Inline IIFE (~25 LOC). No external file, no bundle, no
+ *     `package.json`. Treated as the documented JS exception
+ *     alongside the swatches and payment-icons inline scripts.
+ */
+function fifty_view_transitions_inline_script(): void {
+	?>
+<script>(function(){
+  if(!('startViewTransition' in document)&&!('PageSwapEvent' in window))return;
+  var origin=location.origin;
+  function classify(toUrl,fromUrl){
+    if(!toUrl)return 'fifty-default';
+    var to=new URL(toUrl,origin),from=fromUrl?new URL(fromUrl,origin):null;
+    var p=to.pathname,fp=from?from.pathname:'';
+    var pageRe=/\/page\/\d+\/?$/;
+    if(from&&p.replace(pageRe,'/')===fp.replace(pageRe,'/')&&(pageRe.test(p)||pageRe.test(fp)))return 'fifty-paginate';
+    var cartFlow=/^\/(cart|checkout|order-received|my-account)(\/|$)/;
+    if(cartFlow.test(p)||(from&&cartFlow.test(fp)))return 'fifty-cart-flow';
+    if(/^\/product\//.test(p)&&from&&/^\/(shop|product-category)/.test(fp))return 'fifty-shop-to-detail';
+    if(from&&/^\/(blog|category|tag|author|archives|\d{4})/.test(fp)&&!/^\/product\//.test(fp))return 'fifty-archive-to-single';
+    return 'fifty-default';
+  }
+  var lastClickEl=null;
+  document.addEventListener('click',function(e){
+    var a=e.target&&e.target.closest&&e.target.closest('a[href]');
+    if(!a||a.origin!==origin)return;
+    lastClickEl=a;
+  },true);
+  window.addEventListener('pageswap',function(e){
+    if(!e.viewTransition)return;
+    var toUrl=e.activation&&e.activation.entry&&e.activation.entry.url;
+    var fromUrl=e.activation&&e.activation.from&&e.activation.from.url;
+    e.viewTransition.types.add(classify(toUrl,fromUrl));
+    if(lastClickEl){
+      var card=lastClickEl.closest('li.product, .wp-block-product, .wp-block-post, article')||lastClickEl;
+      var img=card.querySelector('img');
+      if(img&&!img.style.viewTransitionName){
+        img.style.viewTransitionName='fifty-jit-card-image';
+        e.viewTransition.finished.finally(function(){img.style.viewTransitionName='';});
+      }
+    }
+  });
+  window.addEventListener('pagereveal',function(e){
+    if(!e.viewTransition)return;
+    var act=window.navigation&&navigation.activation;
+    var toUrl=act&&act.entry&&act.entry.url;
+    var fromUrl=act&&act.from&&act.from.url;
+    e.viewTransition.types.add(classify(toUrl,fromUrl));
+  });
+})();</script>
+	<?php
+}
+add_action( 'wp_head', 'fifty_view_transitions_inline_script', 1 );
+
+/**
+ * Speculation rules — data-only `<script type="speculationrules">`
+ * block. Chrome (and recent Edge) parse it; nothing executes. Tells
+ * the browser to prerender same-origin links on hover so the
+ * destination is already painted by the time the user clicks. Pairs
+ * naturally with cross-document View Transitions: the transition runs
+ * against an in-memory page instead of a network round-trip, which is
+ * the single biggest perceived-perf win available in 2026.
+ *
+ * Excludes mutation-prone routes (cart/checkout/wp-admin/login) and
+ * gives a `.no-prerender` opt-out class for any future link a theme
+ * author wants to keep cold (e.g. an "Add to cart" button styled as a
+ * link). Eagerness `moderate` triggers on hover, balancing CPU/memory.
+ *
+ * Not output for logged-in users on the front-end either, since
+ * cookies and CSRF state make prerender misses much more likely and
+ * the admin bar adds dynamic markup.
+ */
+function fifty_view_transitions_speculation_rules(): void {
+	if ( is_admin() || is_user_logged_in() ) {
+		return;
+	}
+	$rules = array(
+		'prerender' => array(
+			array(
+				'where'     => array(
+					'and' => array(
+						array( 'href_matches' => '/*' ),
+						array( 'not' => array( 'href_matches' => '/wp-admin/*' ) ),
+						array( 'not' => array( 'href_matches' => '/wp-login.php*' ) ),
+						array( 'not' => array( 'href_matches' => '/cart/*' ) ),
+						array( 'not' => array( 'href_matches' => '/checkout/*' ) ),
+						array( 'not' => array( 'href_matches' => '/my-account/*' ) ),
+						array( 'not' => array( 'selector_matches' => '.no-prerender' ) ),
+						array( 'not' => array( 'selector_matches' => '[rel~="nofollow"]' ) ),
+					),
+				),
+				'eagerness' => 'moderate',
+			),
+		),
+	);
+	echo "<script type=\"speculationrules\">\n";
+	echo wp_json_encode( $rules, JSON_UNESCAPED_SLASHES );
+	echo "\n</script>\n";
+}
+add_action( 'wp_head', 'fifty_view_transitions_speculation_rules', 1 );
+
+// === END view-transitions ===
 
 // === BEGIN wc microcopy ===
 //
