@@ -605,6 +605,10 @@ _HEURISTICS_JS = r"""
         ['.woocommerce-info', 'warn', 'wc-info'],
         ['.woocommerce-message', 'info', 'wc-message'],
         ['.wc-block-components-validation-error', 'warn', 'wc-validation-error'],
+        ['.wc-block-components-notice-banner.is-error', 'error', 'wc-banner-error'],
+        ['.wc-block-components-notice-banner.is-warning', 'warn', 'wc-banner-warning'],
+        ['.wc-block-components-notice-banner.is-info', 'info', 'wc-banner-info'],
+        ['.wc-block-components-notice-banner.is-success', 'info', 'wc-banner-success'],
     ];
     for (const [sel, sev, kind] of noticeSelectors) {
         document.querySelectorAll(sel).forEach((el) => {

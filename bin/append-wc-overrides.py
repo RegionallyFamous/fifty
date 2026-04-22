@@ -51,7 +51,7 @@ CSS = f"""{SENTINEL_OPEN}
 .woocommerce-message::before,.woocommerce-error::before,.woocommerce-info::before{{display:none;content:none;}}
 .woocommerce-error{{color:var(--wp--preset--color--error,var(--wp--preset--color--contrast));}}
 .added_to_cart{{display:inline-flex;align-items:center;gap:var(--wp--preset--spacing--xs);background:transparent;color:var(--wp--preset--color--contrast);border:0;padding:0;text-decoration:none;font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;border-bottom:1px solid currentColor;}}
-.added_to_cart:hover{{color:var(--wp--preset--color--accent);}}
+.added_to_cart:hover{{text-decoration:underline;text-decoration-color:var(--wp--preset--color--accent);text-decoration-thickness:2px;text-underline-offset:0.2em;}}
 .product_meta .sku_wrapper>:first-child,.product_meta .posted_in>:first-child,.product_meta .tagged_as>:first-child{{display:none;}}
 .product_meta .sku,.product_meta .posted_in a,.product_meta .tagged_as a{{font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;color:var(--wp--preset--color--contrast);text-decoration:none;}}
 .star-rating{{display:inline-block;position:relative;width:6rem;height:2px;overflow:hidden;background:var(--wp--preset--color--border);color:transparent;font-size:0;line-height:0;}}
@@ -86,7 +86,7 @@ table.variations select:focus{{outline:none;border-color:var(--wp--preset--color
 .wc-block-mini-cart__footer{{border-top:1px solid var(--wp--preset--color--border);padding-top:var(--wp--preset--spacing--md);margin-top:var(--wp--preset--spacing--md);}}
 .wc-block-mini-cart__footer-actions{{display:grid;grid-template-columns:1fr 1fr;gap:var(--wp--preset--spacing--sm);}}
 .wc-block-mini-cart__footer-actions a,.wc-block-mini-cart__footer-actions .wc-block-components-button{{display:inline-flex;align-items:center;justify-content:center;font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);font-weight:var(--wp--custom--font-weight--medium);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;background:var(--wp--preset--color--contrast);color:var(--wp--preset--color--base);border:1px solid var(--wp--preset--color--contrast);border-radius:var(--wp--custom--radius--pill);padding:var(--wp--preset--spacing--sm) var(--wp--preset--spacing--md);text-decoration:none;transition:background 160ms ease,color 160ms ease;}}
-.wc-block-mini-cart__footer-actions a:hover,.wc-block-mini-cart__footer-actions .wc-block-components-button:hover{{background:var(--wp--preset--color--accent);border-color:var(--wp--preset--color--accent);}}
+.wc-block-mini-cart__footer-actions a:hover,.wc-block-mini-cart__footer-actions .wc-block-components-button:hover{{background:var(--wp--preset--color--accent);border-color:var(--wp--preset--color--accent);color:var(--wp--preset--color--contrast);}}
 .wp-block-woocommerce-empty-mini-cart-contents-block{{text-align:center;font-family:var(--wp--preset--font-family--sans);}}
 .wc-block-cart{{display:grid;grid-template-columns:1fr;gap:var(--wp--preset--spacing--2-xl);}}
 @media (min-width:782px){{.wc-block-cart{{grid-template-columns:minmax(0,1fr) minmax(300px,360px);}}}}
@@ -95,14 +95,14 @@ table.variations select:focus{{outline:none;border-color:var(--wp--preset--color
 .wc-block-cart-items .wc-block-cart-items__row{{display:grid;grid-template-columns:96px 1fr auto;gap:var(--wp--preset--spacing--md);align-items:start;padding:var(--wp--preset--spacing--md) 0;border-bottom:1px solid var(--wp--preset--color--border);}}
 .wc-block-cart-item__image img{{display:block;width:96px;height:auto;border-radius:var(--wp--custom--radius--md);}}
 .wc-block-cart-item__product .wc-block-components-product-name{{font-family:var(--wp--preset--font-family--display);font-size:var(--wp--preset--font-size--md);font-weight:var(--wp--custom--font-weight--regular);color:var(--wp--preset--color--contrast);text-decoration:none;}}
-.wc-block-cart-item__product .wc-block-components-product-name:hover{{color:var(--wp--preset--color--accent);}}
+.wc-block-cart-item__product .wc-block-components-product-name:hover{{text-decoration:underline;text-decoration-color:var(--wp--preset--color--accent);text-decoration-thickness:2px;text-underline-offset:0.2em;}}
 .wc-block-cart-item__product .wc-block-components-product-metadata{{font-size:var(--wp--preset--font-size--xs);color:var(--wp--preset--color--secondary);margin-top:var(--wp--preset--spacing--2-xs);}}
 .wc-block-cart-item__total{{font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--sm);color:var(--wp--preset--color--contrast);text-align:right;}}
 .wc-block-components-quantity-selector{{display:inline-flex;align-items:stretch;border:1px solid var(--wp--preset--color--border);border-radius:var(--wp--custom--radius--pill);overflow:hidden;background:var(--wp--preset--color--surface);}}
 .wc-block-components-quantity-selector__input{{width:48px;border:0;background:transparent;text-align:center;font-family:inherit;font-size:var(--wp--preset--font-size--sm);color:var(--wp--preset--color--contrast);appearance:textfield;-moz-appearance:textfield;}}
 .wc-block-components-quantity-selector__input::-webkit-inner-spin-button,.wc-block-components-quantity-selector__input::-webkit-outer-spin-button{{-webkit-appearance:none;margin:0;}}
 .wc-block-components-quantity-selector__button{{background:transparent;border:0;color:var(--wp--preset--color--contrast);width:32px;cursor:pointer;font-size:var(--wp--preset--font-size--base);transition:color 160ms ease;}}
-.wc-block-components-quantity-selector__button:hover{{color:var(--wp--preset--color--accent);}}
+.wc-block-components-quantity-selector__button:hover{{background:var(--wp--preset--color--accent-soft,var(--wp--preset--color--subtle,transparent));color:var(--wp--preset--color--contrast);}}
 .wc-block-cart__sidebar{{padding:var(--wp--preset--spacing--lg);background:var(--wp--preset--color--subtle);border-radius:var(--wp--custom--radius--md);display:flex;flex-direction:column;gap:var(--wp--preset--spacing--md);}}
 .wc-block-components-totals-item{{display:flex;justify-content:space-between;align-items:baseline;padding:var(--wp--preset--spacing--xs) 0;font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--sm);color:var(--wp--preset--color--contrast);}}
 .wc-block-components-totals-item__label{{font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;color:var(--wp--preset--color--secondary);}}
@@ -111,9 +111,9 @@ table.variations select:focus{{outline:none;border-color:var(--wp--preset--color
 .wc-block-components-totals-coupon__form{{display:flex;gap:var(--wp--preset--spacing--xs);}}
 .wc-block-components-totals-coupon__input,.wc-block-components-totals-coupon input[type=text]{{flex:1;background:var(--wp--preset--color--surface);border:1px solid var(--wp--preset--color--border);border-radius:var(--wp--custom--radius--md);padding:var(--wp--preset--spacing--sm) var(--wp--preset--spacing--md);font:inherit;color:var(--wp--preset--color--contrast);}}
 .wc-block-components-totals-coupon__button,.wc-block-components-totals-coupon button{{background:var(--wp--preset--color--contrast);color:var(--wp--preset--color--base);border:1px solid var(--wp--preset--color--contrast);border-radius:var(--wp--custom--radius--pill);padding:var(--wp--preset--spacing--sm) var(--wp--preset--spacing--lg);font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);font-weight:var(--wp--custom--font-weight--medium);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;cursor:pointer;transition:background 160ms ease;}}
-.wc-block-components-totals-coupon__button:hover,.wc-block-components-totals-coupon button:hover{{background:var(--wp--preset--color--accent);border-color:var(--wp--preset--color--accent);}}
+.wc-block-components-totals-coupon__button:hover,.wc-block-components-totals-coupon button:hover{{background:var(--wp--preset--color--accent);border-color:var(--wp--preset--color--accent);color:var(--wp--preset--color--contrast);}}
 .wc-block-cart__submit-container .wc-block-components-checkout-place-order-button,.wc-block-cart__submit-container a.wc-block-cart__submit-button{{display:inline-flex;align-items:center;justify-content:center;width:100%;font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--sm);font-weight:var(--wp--custom--font-weight--medium);letter-spacing:var(--wp--custom--letter-spacing--wide);background:var(--wp--preset--color--contrast);color:var(--wp--preset--color--base);border:1px solid var(--wp--preset--color--contrast);border-radius:var(--wp--custom--radius--pill);padding:var(--wp--preset--spacing--md) var(--wp--preset--spacing--xl);text-decoration:none;cursor:pointer;transition:background 160ms ease,transform 160ms ease;}}
-.wc-block-cart__submit-container .wc-block-components-checkout-place-order-button:hover,.wc-block-cart__submit-container a.wc-block-cart__submit-button:hover{{background:var(--wp--preset--color--accent);border-color:var(--wp--preset--color--accent);transform:translateY(-1px);}}
+.wc-block-cart__submit-container .wc-block-components-checkout-place-order-button:hover,.wc-block-cart__submit-container a.wc-block-cart__submit-button:hover{{background:var(--wp--preset--color--accent);border-color:var(--wp--preset--color--accent);color:var(--wp--preset--color--contrast);transform:translateY(-1px);}}
 .wc-block-cart-cross-sells{{margin-top:var(--wp--preset--spacing--3-xl);}}
 .wc-block-cart-cross-sells>h2,.wc-block-cart-cross-sells .wp-block-heading{{font-family:var(--wp--preset--font-family--display);font-size:var(--wp--preset--font-size--2-xl);margin:0 0 var(--wp--preset--spacing--lg);}}
 .wc-block-components-shipping-calculator-address{{display:grid;gap:var(--wp--preset--spacing--sm);margin-top:var(--wp--preset--spacing--md);}}
@@ -127,7 +127,7 @@ table.variations select:focus{{outline:none;border-color:var(--wp--preset--color
 .wc-block-components-checkout-step__container::before{{display:none;content:none;}}
 .wc-block-components-checkout-step__heading-content{{font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;color:var(--wp--preset--color--secondary);}}
 .wc-block-checkout__login-prompt,.wc-block-checkout__contact-information .wc-block-components-checkout-step__heading-content a{{font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;color:var(--wp--preset--color--contrast);text-decoration:none;border-bottom:1px solid currentColor;}}
-.wc-block-checkout__login-prompt:hover,.wc-block-checkout__contact-information .wc-block-components-checkout-step__heading-content a:hover{{color:var(--wp--preset--color--accent);}}
+.wc-block-checkout__login-prompt:hover,.wc-block-checkout__contact-information .wc-block-components-checkout-step__heading-content a:hover{{text-decoration:underline;text-decoration-color:var(--wp--preset--color--accent);text-decoration-thickness:2px;text-underline-offset:0.2em;}}
 .wc-block-components-text-input input{{width:100%;background:var(--wp--preset--color--surface);border:1px solid var(--wp--preset--color--border);border-radius:var(--wp--custom--radius--md);padding:var(--wp--preset--spacing--md) var(--wp--preset--spacing--md);font:inherit;color:var(--wp--preset--color--contrast);transition:border-color 160ms ease,box-shadow 160ms ease;}}
 .wc-block-components-text-input input:focus{{outline:none;border-color:var(--wp--preset--color--contrast);box-shadow:0 0 0 3px var(--wp--preset--color--accent-soft);}}
 .wc-block-components-text-input label{{font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;color:var(--wp--preset--color--secondary);}}
@@ -138,7 +138,7 @@ table.variations select:focus{{outline:none;border-color:var(--wp--preset--color
 .wc-block-components-payment-method:hover{{border-color:var(--wp--preset--color--contrast);}}
 .wc-block-components-payment-method label{{font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--sm);font-weight:var(--wp--custom--font-weight--medium);color:var(--wp--preset--color--contrast);}}
 .wc-block-components-checkout-place-order-button{{display:inline-flex;align-items:center;justify-content:center;width:100%;font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--sm);font-weight:var(--wp--custom--font-weight--medium);letter-spacing:var(--wp--custom--letter-spacing--wide);text-transform:uppercase;background:var(--wp--preset--color--contrast);color:var(--wp--preset--color--base);border:1px solid var(--wp--preset--color--contrast);border-radius:var(--wp--custom--radius--pill);padding:var(--wp--preset--spacing--md) var(--wp--preset--spacing--xl);text-decoration:none;cursor:pointer;transition:background 160ms ease,transform 160ms ease;}}
-.wc-block-components-checkout-place-order-button:hover{{background:var(--wp--preset--color--accent);border-color:var(--wp--preset--color--accent);transform:translateY(-1px);}}
+.wc-block-components-checkout-place-order-button:hover{{background:var(--wp--preset--color--accent);border-color:var(--wp--preset--color--accent);color:var(--wp--preset--color--contrast);transform:translateY(-1px);}}
 .wc-block-components-order-summary{{display:flex;flex-direction:column;gap:var(--wp--preset--spacing--md);}}
 .wc-block-components-order-summary-item{{display:grid;grid-template-columns:64px 1fr auto;gap:var(--wp--preset--spacing--md);align-items:start;padding:var(--wp--preset--spacing--sm) 0;border-bottom:1px solid var(--wp--preset--color--border);}}
 .wc-block-components-order-summary-item__image img{{display:block;width:64px;height:auto;border-radius:var(--wp--custom--radius--md);}}
@@ -148,7 +148,7 @@ table.variations select:focus{{outline:none;border-color:var(--wp--preset--color
 .wp-block-woocommerce-order-confirmation-downloads th,.wp-block-woocommerce-order-confirmation-downloads td{{padding:var(--wp--preset--spacing--md);border-bottom:1px solid var(--wp--preset--color--border);text-align:left;vertical-align:top;}}
 .wp-block-woocommerce-order-confirmation-downloads thead th{{background:var(--wp--preset--color--subtle);font-weight:var(--wp--custom--font-weight--semibold);text-transform:uppercase;letter-spacing:var(--wp--custom--letter-spacing--wider);font-size:var(--wp--preset--font-size--xs);color:var(--wp--preset--color--secondary);}}
 .wp-block-woocommerce-order-confirmation-downloads .button{{display:inline-flex;align-items:center;justify-content:center;font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);font-weight:var(--wp--custom--font-weight--medium);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;background:var(--wp--preset--color--contrast);color:var(--wp--preset--color--base);border:1px solid var(--wp--preset--color--contrast);border-radius:var(--wp--custom--radius--pill);padding:var(--wp--preset--spacing--xs) var(--wp--preset--spacing--md);text-decoration:none;transition:background 160ms ease;}}
-.wp-block-woocommerce-order-confirmation-downloads .button:hover{{background:var(--wp--preset--color--accent);border-color:var(--wp--preset--color--accent);}}
+.wp-block-woocommerce-order-confirmation-downloads .button:hover{{background:var(--wp--preset--color--accent);border-color:var(--wp--preset--color--accent);color:var(--wp--preset--color--contrast);}}
 .wp-block-woocommerce-order-confirmation-create-account form{{display:grid;gap:var(--wp--preset--spacing--md);padding:var(--wp--preset--spacing--lg);background:var(--wp--preset--color--subtle);border-radius:var(--wp--custom--radius--md);}}
 .wp-block-woocommerce-order-confirmation-create-account label{{font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;color:var(--wp--preset--color--secondary);}}
 .wp-block-woocommerce-order-confirmation-create-account input[type=password],.wp-block-woocommerce-order-confirmation-create-account input[type=text]{{width:100%;background:var(--wp--preset--color--surface);border:1px solid var(--wp--preset--color--border);border-radius:var(--wp--custom--radius--md);padding:var(--wp--preset--spacing--sm) var(--wp--preset--spacing--md);font:inherit;color:var(--wp--preset--color--contrast);}}
@@ -905,6 +905,121 @@ body.theme-aero .aero-signal-strip .aero-signal-chip{{margin:0;padding:6px 14px;
 {SENTINEL_CLOSE_PHASE_K}"""
 
 
+# ----------------------------------------------------------------------
+# Phase L — WooCommerce notices (banner + validation + snackbar)
+# ----------------------------------------------------------------------
+# WooCommerce's notice surfaces are the loudest "default WooCommerce" tell
+# on the entire shop AFTER the cart sidebar and the catalog-sorting
+# select — they appear at exactly the moments a shopper is paying the
+# most attention (failed login, invalid coupon, sold-out variation,
+# checkout validation error, "item removed from cart") and ship in five
+# different markup shapes that all paint differently:
+#
+#   1. `.wc-block-components-notice-banner.is-info|is-warning|is-error|
+#      is-success` — the modern WC Blocks notice surface (Cart, Checkout,
+#      Mini-Cart, Store Notices block). WC ships it with a hardcoded
+#      pastel-pill voice (round corners, white background, sans-serif,
+#      stock SVG icon in a tinted circle on the left). It looks
+#      identical on every WooCommerce site on the internet, which makes
+#      the moment it appears the moment the storefront stops feeling
+#      bespoke.
+#   2. `.wc-block-components-validation-error` — per-field inline error
+#      shown beneath checkout/billing inputs after a failed submit.
+#      WC paints it red Helvetica with a stock exclamation-circle SVG.
+#   3. `.wc-block-components-snackbar-notice` — the floating bottom-
+#      center toast WC injects when `useStoreSnackbarNotices()` fires
+#      (e.g. cart line removal "Item removed. Undo?"). WC paints it
+#      black-on-white with a hard square corner and a bottom shadow.
+#   4. `.wc-block-store-notices` / `.woocommerce-notices-wrapper` /
+#      `.wc-block-components-notices` — the wrapper containers that
+#      hold any of the above. They ship with default `margin` and
+#      no `display: none` when empty, which leaves a stray gap above
+#      every Cart and Checkout view.
+#   5. `.woocommerce-message` / `.woocommerce-error` / `.woocommerce-info`
+#      — the legacy classic-template notices used by My Account login,
+#      `wc_add_notice()` from PHP, the Lost Password flow, and any
+#      `[woocommerce_*]` shortcode page. The original `wc-tells` block
+#      at the top of this file renders them flat-uppercase-hairline,
+#      which clashes with the modern Blocks banner voice (different
+#      font weight, different padding, different border treatment).
+#
+# Phase L unifies all five surfaces under a single token-driven voice:
+#
+#   * Wrapper containers collapse when empty (`:empty { display: none }`)
+#     so the gap-above-cart goes away when there's nothing to show.
+#   * The banner itself uses `body` selector prefix to bump specificity
+#     to (0,1,N), enough to win over WC's plugin CSS at (0,0,2-3) by
+#     specificity AND source order, without needing `!important` (Phase L
+#     is intentionally NOT in `IMPORTANT_ALLOWED_SENTINELS`; the cascade
+#     wins on its own).
+#   * Variant signal color comes from each theme's existing palette
+#     tokens (`--wp--preset--color--info|success|warning|error`) — every
+#     theme already declares them with brand-tuned values. The whole
+#     chunk is therefore theme-agnostic bytes that paint per-theme
+#     signal automatically.
+#   * The tinted background uses CSS `color-mix(in oklab, <signal> 8%,
+#     var(--wp--preset--color--surface))` so each variant gets a
+#     subtle wash of its own color over the theme's surface — readable
+#     on light AND dark themes. `color-mix()` is supported in every
+#     browser in WooCommerce's official compatibility matrix
+#     (Chrome 111+, Safari 16.2+, Firefox 113+, May 2023+); on older
+#     browsers the declaration is ignored and the wrapper falls back
+#     to the plain surface color, which still reads correctly.
+#   * Typography matches the rest of the storefront chrome: theme
+#     sans family, `sm` size, normal letter-spacing, normal case
+#     (the original chunk uppercased everything, which made notice
+#     copy unreadable at a glance).
+#   * The leading SVG icon WC blocks injects gets colored to match
+#     the variant signal via `currentColor` propagation.
+#   * Inline-validation errors get the `error` token's color directly,
+#     plus a subtle inset border on the failed input wrapper so the
+#     shopper can see WHICH field failed without hunting.
+#   * Snackbars use the theme's contrast/base inversion (dark bubble
+#     on light themes, light bubble on dark themes) with a pill
+#     radius for a clearly transient affordance distinct from the
+#     persistent banner.
+#   * Inline action buttons inside notices ("Undo", "Dismiss",
+#     "Apply now") render as underlined links that signal hover with
+#     a thicker decoration (NOT a `color: accent` flip — that would
+#     trip `check_hover_state_legibility` on themes whose accent
+#     collapses against the body background, e.g. chonk's #FFE600
+#     yellow vs cream).
+#
+# Enforced by:
+#   `bin/check.py::check_wc_notices_styled` — fails if Phase L's
+#   sentinel block is missing from any theme's `theme.json` root
+#   `styles.css`, or if the block is present but doesn't carry the
+#   canonical surface restyles.
+SENTINEL_OPEN_PHASE_L = "/* wc-tells-phase-l-notices */"
+SENTINEL_CLOSE_PHASE_L = "/* /wc-tells-phase-l-notices */"
+CSS_PHASE_L = f"""{SENTINEL_OPEN_PHASE_L}
+body .woocommerce-notices-wrapper:empty,body .wc-block-store-notices:empty,body .wc-block-components-notices:empty,body .wc-block-store-notices > .woocommerce-notices-wrapper:empty{{display:none;margin:0;padding:0;}}
+body .woocommerce-notices-wrapper,body .wc-block-store-notices,body .wc-block-components-notices{{display:flex;flex-direction:column;gap:var(--wp--preset--spacing--sm);margin-block:var(--wp--preset--spacing--md);}}
+body .wc-block-components-notice-banner,body .woocommerce-message,body .woocommerce-error,body .woocommerce-info{{position:relative;display:flex;align-items:flex-start;justify-content:flex-start;gap:var(--wp--preset--spacing--sm);margin:0;padding:var(--wp--preset--spacing--md) var(--wp--preset--spacing--lg);border:1px solid var(--wp--preset--color--border);border-left-width:4px;border-radius:var(--wp--custom--radius--md,6px);background:var(--wp--preset--color--surface);color:var(--wp--preset--color--contrast);font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--sm);font-weight:var(--wp--custom--font-weight--regular,400);letter-spacing:normal;text-transform:none;line-height:1.45;list-style:none;box-shadow:0 1px 0 rgba(0,0,0,0.04);}}
+body .wc-block-components-notice-banner.is-info,body .woocommerce-info{{border-left-color:var(--wp--preset--color--info);background:color-mix(in oklab,var(--wp--preset--color--info) 8%,var(--wp--preset--color--surface));color:var(--wp--preset--color--contrast);}}
+body .wc-block-components-notice-banner.is-success,body .woocommerce-message{{border-left-color:var(--wp--preset--color--success);background:color-mix(in oklab,var(--wp--preset--color--success) 8%,var(--wp--preset--color--surface));color:var(--wp--preset--color--contrast);}}
+body .wc-block-components-notice-banner.is-warning{{border-left-color:var(--wp--preset--color--warning);background:color-mix(in oklab,var(--wp--preset--color--warning) 9%,var(--wp--preset--color--surface));color:var(--wp--preset--color--contrast);}}
+body .wc-block-components-notice-banner.is-error,body .woocommerce-error{{border-left-color:var(--wp--preset--color--error);background:color-mix(in oklab,var(--wp--preset--color--error) 9%,var(--wp--preset--color--surface));color:var(--wp--preset--color--contrast);}}
+body .wc-block-components-notice-banner > svg,body .wc-block-components-notice-banner__content + svg{{flex:0 0 auto;width:20px;height:20px;margin-block-start:2px;}}
+body .wc-block-components-notice-banner.is-info > svg{{color:var(--wp--preset--color--info);fill:currentColor;}}
+body .wc-block-components-notice-banner.is-success > svg{{color:var(--wp--preset--color--success);fill:currentColor;}}
+body .wc-block-components-notice-banner.is-warning > svg{{color:var(--wp--preset--color--warning);fill:currentColor;}}
+body .wc-block-components-notice-banner.is-error > svg{{color:var(--wp--preset--color--error);fill:currentColor;}}
+body .wc-block-components-notice-banner__content{{flex:1 1 auto;margin:0;padding:0;font:inherit;color:inherit;line-height:inherit;}}
+body .wc-block-components-notice-banner__content > p,body .wc-block-components-notice-banner__content > a,body .woocommerce-message > a,body .woocommerce-info > a,body .woocommerce-error > a{{color:inherit;}}
+body .wc-block-components-notice-banner .wc-block-components-button:not(.wc-block-components-button--primary),body .wc-block-components-notice-banner .wc-block-components-notice-banner__dismiss,body .woocommerce-message .button,body .woocommerce-info .button,body .woocommerce-error .button{{margin-inline-start:auto;background:transparent;border:0;padding:var(--wp--preset--spacing--2-xs) 0 var(--wp--preset--spacing--2-xs) var(--wp--preset--spacing--md);color:inherit;font-family:inherit;font-size:var(--wp--preset--font-size--xs);font-weight:var(--wp--custom--font-weight--medium,500);letter-spacing:var(--wp--custom--letter-spacing--wider,0.04em);text-transform:uppercase;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;cursor:pointer;}}
+body .wc-block-components-notice-banner .wc-block-components-button:not(.wc-block-components-button--primary):hover,body .woocommerce-message .button:hover,body .woocommerce-info .button:hover,body .woocommerce-error .button:hover{{text-decoration-thickness:2px;text-decoration-color:currentColor;}}
+body .wc-block-components-validation-error{{display:block;margin-block-start:var(--wp--preset--spacing--2-xs);padding:0;background:transparent;border:0;font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);font-weight:var(--wp--custom--font-weight--medium,500);color:var(--wp--preset--color--error);letter-spacing:normal;text-transform:none;line-height:1.4;}}
+body .wc-block-components-validation-error > p{{margin:0;color:inherit;font:inherit;}}
+body .wc-block-components-text-input.has-error input,body .wc-block-components-text-input.has-error textarea,body .wc-block-components-select.has-error select,body .wc-block-components-textarea.has-error textarea{{border-color:var(--wp--preset--color--error);box-shadow:0 0 0 1px var(--wp--preset--color--error) inset;}}
+body .wc-block-components-text-input.has-error label,body .wc-block-components-select.has-error label,body .wc-block-components-textarea.has-error label{{color:var(--wp--preset--color--error);}}
+body .wc-block-components-notices__snackbar,body .wc-block-components-notice-snackbar-list{{position:fixed;left:50%;bottom:var(--wp--preset--spacing--lg);transform:translateX(-50%);display:flex;flex-direction:column;gap:var(--wp--preset--spacing--xs);max-width:calc(100vw - var(--wp--preset--spacing--lg) * 2);z-index:1000;pointer-events:none;}}
+body .wc-block-components-snackbar-notice,body .wc-block-components-snackbar-list__notice,body .wc-block-components-snackbar{{pointer-events:auto;display:inline-flex;align-items:center;gap:var(--wp--preset--spacing--md);margin:0;padding:var(--wp--preset--spacing--sm) var(--wp--preset--spacing--lg);border:0;border-radius:var(--wp--custom--radius--pill,9999px);background:var(--wp--preset--color--contrast);color:var(--wp--preset--color--base);font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);font-weight:var(--wp--custom--font-weight--medium,500);letter-spacing:var(--wp--custom--letter-spacing--wider,0.04em);text-transform:uppercase;line-height:1.3;box-shadow:0 8px 24px rgba(0,0,0,0.18);}}
+body .wc-block-components-snackbar-notice .wc-block-components-button,body .wc-block-components-snackbar .wc-block-components-button,body .wc-block-components-snackbar-list__notice .wc-block-components-button{{background:transparent;border:0;padding:0;color:inherit;font:inherit;text-transform:inherit;letter-spacing:inherit;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;cursor:pointer;}}
+body .wc-block-components-snackbar-notice .wc-block-components-button:hover,body .wc-block-components-snackbar .wc-block-components-button:hover{{text-decoration-thickness:2px;text-decoration-color:currentColor;}}
+{SENTINEL_CLOSE_PHASE_L}"""
+
+
 # Each entry: (sentinel_open, sentinel_close, raw_css, anchor_after).
 # `anchor_after` is the marker the chunk is spliced in after — for the
 # first chunk that's the canonical archive-page marker; for follow-ups
@@ -1012,6 +1127,12 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_PHASE_K,
         CSS_PHASE_K,
         SENTINEL_CLOSE_PHASE_J,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_L,
+        SENTINEL_CLOSE_PHASE_L,
+        CSS_PHASE_L,
+        SENTINEL_CLOSE_PHASE_K,
     ),
 ]
 

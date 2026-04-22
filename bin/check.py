@@ -2263,6 +2263,139 @@ def check_wc_totals_blocks_padded() -> Result:
     return r
 
 
+def check_wc_notices_styled() -> Result:
+    """Fail if the Phase L `wc-tells-phase-l-notices` sentinel block is
+    missing from a theme's `theme.json` root `styles.css`, or if the
+    block is present but doesn't carry the canonical surface-restyling
+    rules.
+
+    Why this exists:
+      WooCommerce paints notices in five different markup shapes
+      (modern Blocks notice banner, per-field validation error,
+      snackbar, store-notices wrapper, and the classic
+      `.woocommerce-message`/`-error`/`-info` triad). Out of the box
+      every one of them paints with WC's hardcoded plugin voice
+      (white pill background, stock SVG icon, sans-serif at a fixed
+      size, no theme tokens) — exactly the "this is a free
+      WooCommerce site" failure mode this monorepo exists to prevent.
+      The fix lives in `bin/append-wc-overrides.py` Phase L, which
+      ships token-driven chrome that uses each theme's existing
+      `info` / `success` / `warning` / `error` palette tokens for the
+      variant signal so the same chunk paints per-theme without any
+      raw hex.
+
+      A regression on this surface is invisible during normal demo
+      browsing (notices only appear when the shopper triggers
+      something — failed login, invalid coupon, sold-out variation,
+      etc.), so the static gate has to enforce the chunk's presence
+      directly. Without this check, someone hand-stripping the
+      Phase L chunk to re-author it inline (and forgetting to commit
+      the replacement) ships a theme whose notice surfaces silently
+      revert to WC's plugin defaults, and the regression only shows
+      up the next time a shopper triggers a notice in the live demo.
+
+    What this check enforces:
+      - The Phase L sentinel pair (`/* wc-tells-phase-l-notices */`
+        … `/* /wc-tells-phase-l-notices */`) is present in
+        `theme.json` root `styles.css`.
+      - Inside the sentinel block, the canonical surface restyles
+        are present:
+          * the modern banner selector
+            `.wc-block-components-notice-banner`,
+          * the four variant signals (`.is-info`, `.is-success`,
+            `.is-warning`, `.is-error`),
+          * the per-field validation error
+            (`.wc-block-components-validation-error`),
+          * the snackbar list
+            (`.wc-block-components-notices__snackbar` OR
+            `.wc-block-components-notice-snackbar-list`),
+          * the legacy classic triad
+            (`.woocommerce-message`, `.woocommerce-error`,
+            `.woocommerce-info`).
+
+    Enforced at write time by:
+      `bin/append-wc-overrides.py` Phase L (`wc-tells-phase-l-notices`).
+      Re-run the script after any styles.css drift to regenerate
+      the chunk.
+    """
+    r = Result("WC notice surfaces are restyled (banner + validation + snackbar)")
+
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.skip("theme.json missing")
+        return r
+    try:
+        data = json.loads(theme_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        r.fail(f"theme.json: invalid JSON ({exc}).")
+        return r
+    top_css = (data.get("styles", {}) or {}).get("css") or ""
+    if not top_css.strip():
+        r.skip("no top-level styles.css")
+        return r
+
+    open_marker = "/* wc-tells-phase-l-notices */"
+    close_marker = "/* /wc-tells-phase-l-notices */"
+    open_idx = top_css.find(open_marker)
+    close_idx = top_css.find(close_marker)
+    if open_idx < 0 or close_idx < 0 or close_idx <= open_idx:
+        r.fail(
+            "Phase L sentinel block (wc-tells-phase-l-notices) is "
+            "missing from `theme.json` root `styles.css`. The chunk "
+            "ships token-driven restyles for every WC notice surface "
+            "(modern banner, per-field validation error, snackbar, "
+            "store-notices wrapper, classic message/error/info). "
+            "Without it, every notice paints with WC's hardcoded "
+            "plugin voice. Re-run `python3 bin/append-wc-overrides.py` "
+            "to (re-)emit Phase L."
+        )
+        return r
+
+    chunk = top_css[open_idx:close_idx]
+    chunk_norm = re.sub(r"\s+", "", chunk)
+
+    required = (
+        ("modern banner", ".wc-block-components-notice-banner"),
+        ("info variant", ".wc-block-components-notice-banner.is-info"),
+        ("success variant", ".wc-block-components-notice-banner.is-success"),
+        ("warning variant", ".wc-block-components-notice-banner.is-warning"),
+        ("error variant", ".wc-block-components-notice-banner.is-error"),
+        ("validation error", ".wc-block-components-validation-error"),
+        ("legacy message", ".woocommerce-message"),
+        ("legacy error", ".woocommerce-error"),
+        ("legacy info", ".woocommerce-info"),
+    )
+    missing: list[str] = []
+    for label, selector in required:
+        if re.sub(r"\s+", "", selector) not in chunk_norm:
+            missing.append(f"{label} (`{selector}`)")
+
+    snackbar_selectors = (
+        ".wc-block-components-notices__snackbar",
+        ".wc-block-components-notice-snackbar-list",
+    )
+    if not any(re.sub(r"\s+", "", s) in chunk_norm for s in snackbar_selectors):
+        missing.append(
+            "snackbar (one of `.wc-block-components-notices__snackbar` "
+            "or `.wc-block-components-notice-snackbar-list`)"
+        )
+
+    if missing:
+        r.fail(
+            "Phase L sentinel block exists but is missing canonical "
+            "notice surface restyles for: " + ", ".join(missing) + ". "
+            "Re-run `python3 bin/append-wc-overrides.py` to regenerate "
+            "the chunk."
+        )
+        return r
+
+    r.details.append(
+        f"Phase L block present + {len(required)} surface restyles + "
+        f"snackbar covered"
+    )
+    return r
+
+
 def check_wc_card_padding_not_zeroed() -> Result:
     """Fail if any rule in top-level `styles.css` zeros horizontal
     padding on a painted WC card surface.
@@ -4603,6 +4736,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_no_squeezed_wc_sidebars(),
         check_wc_card_surfaces_padded(),
         check_wc_totals_blocks_padded(),
+        check_wc_notices_styled(),
         check_wc_card_padding_not_zeroed(),
         check_hover_state_legibility(),
         check_distinctive_chrome(),
