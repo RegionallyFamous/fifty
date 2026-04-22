@@ -61,23 +61,42 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    # Type-only imports: lets mypy resolve the Pillow annotations on
+    # `_load_serif` / `_draw_favicon` without forcing a real Pillow
+    # install at runtime. Pillow is loaded lazily via `_require_pillow`
+    # inside the rendering functions instead — see the docstring there
+    # for the rationale (stdlib-only `bin/` convention).
+    from PIL import Image, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 SVG_MASTER = DOCS / "favicon.svg"
 
-# Pre-flight: refuse to run with a broken Pillow install rather than
-# producing a half-built favicon set. .ico assembly relies on Image.save's
-# native multi-size support which landed in Pillow 7+.
-try:
-    from PIL import Image, ImageDraw, ImageFont
-except ImportError:
-    print(
-        "ERROR: Pillow is required (it's already in requirements-dev.txt).\n"
-        "       pip install Pillow",
-        file=sys.stderr,
-    )
-    sys.exit(2)
+
+def _require_pillow() -> tuple:
+    """Lazy import for Pillow. The repo's convention (per
+    `requirements-dev.txt`) is that everything under `bin/` is stdlib-only
+    so a fresh `python3 bin/<script>.py --help` works on a vanilla install.
+    Pillow is the one external dep this script genuinely needs (for PNG /
+    ICO encoding + image cropping), so we defer the import until the
+    moment a render is actually about to happen — that way `--help` and
+    `--check` argparse wiring stays usable without Pillow installed, and
+    the CI smoke gate (which only invokes `--help`) doesn't need to
+    install anything extra. The .ico assembly relies on Image.save's
+    native multi-size support which landed in Pillow 7+."""
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+    except ImportError:
+        print(
+            "ERROR: Pillow is required to render brand assets.\n"
+            "       pip install Pillow",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    return Image, ImageDraw, ImageFont
 
 
 def _find_chrome() -> str:
@@ -103,9 +122,6 @@ def _find_chrome() -> str:
     sys.exit(2)
 
 
-CHROME = _find_chrome()
-
-
 def _chrome_screenshot(html_path: Path, out_png: Path, width: int, height: int) -> None:
     """Drive headless Chrome to render `html_path` at the exact pixel
     dimensions and dump the result to `out_png`. `--virtual-time-budget`
@@ -115,9 +131,10 @@ def _chrome_screenshot(html_path: Path, out_png: Path, width: int, height: int) 
     block sized in `em` since the fallback metrics differ from DM
     Serif's, collapsing or expanding entire layout sections."""
     out_png.parent.mkdir(parents=True, exist_ok=True)
+    chrome = _find_chrome()
     subprocess.run(
         [
-            CHROME,
+            chrome,
             "--headless=new",
             "--disable-gpu",
             "--hide-scrollbars",
@@ -165,6 +182,7 @@ def _load_serif(size: int) -> ImageFont.FreeTypeFont:
     """Return the highest-priority installed serif at the requested
     pixel size. Raises if no candidate resolves — that is a setup error
     worth surfacing rather than silently rendering a default sans."""
+    _, _, ImageFont = _require_pillow()
     for path in _FONT_CANDIDATES:
         if Path(path).is_file():
             try:
@@ -183,6 +201,7 @@ def _draw_favicon(size: int) -> Image.Image:
     pure black, with the cobalt period rendered as a solid square in the
     bottom-right (a square instead of a circle so it reliably survives
     the 16x16 bake without rounding into a single grey antialiased pixel)."""
+    Image, ImageDraw, _ = _require_pillow()
     im = Image.new("RGBA", (size, size), PAPER)
     draw = ImageDraw.Draw(im)
 
@@ -230,7 +249,10 @@ def _build_favicons(*, dry_run: bool) -> list[Path]:
         180: DOCS / "apple-touch-icon.png",
     }
     written: list[Path] = []
-    rendered_pngs: dict[int, Image.Image] = {}
+    # `Any` rather than `Image.Image` so the dict annotation evaluates
+    # cleanly when Pillow isn't installed (it isn't on the CI smoke
+    # runner — Pillow is only needed for the actual render path).
+    rendered_pngs: dict[int, Any] = {}
     for size, dst in targets.items():
         im = _draw_favicon(size)
         rendered_pngs[size] = im
@@ -360,6 +382,7 @@ def _build_og_card(*, dry_run: bool) -> Path:
     scrollbar gutter reservation), pushing the colophon into the
     cropped strip. Rendering tall + cropping eliminates that whole class
     of clipping bug."""
+    Image, _, _ = _require_pillow()
     out = DOCS / "assets" / "og-default.png"
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td)
@@ -392,7 +415,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     print("Fifty brand assets — rendering from docs/favicon.svg + OG template")
-    print(f"  Chrome:  {CHROME}")
+    print(f"  Chrome:  {_find_chrome()}")
     print(f"  Master:  {SVG_MASTER.relative_to(ROOT)}")
     print()
 
