@@ -126,7 +126,7 @@ ROUTE_BY_SLUG = {r.slug: r for r in ROUTES}
 # the landing page.
 THEME_BLURBS: dict[str, str] = {
     "obel": "Editorial: hairline borders, generous whitespace, warm cream palette.",
-    "chonk": "Neo-brutalist: cream + 4px black borders, hard offset shadows, no rounded corners.",
+    "chonk": "Neo-brutalist: cream + 4px black borders, hard offset shadows, no rounded corners. For shops that want to be loud on purpose.",
     "selvedge": "Workwear-heritage: warm dark palette, italic display serif, small-batch maker's voice.",
     "lysholm": "Nordic home goods: pale cream, soft tan accents, unhurried serif typography.",
     "aero": "Y2K iridescent: holographic pastels, glassy chrome buttons, sparkle product cards.",
@@ -355,7 +355,7 @@ BRAND_HEAD_TAGS = """\
 <meta property="og:image" content="https://demo.regionallyfamous.com/assets/og-default.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="fifty. \u2014 a quarterly of WordPress block themes, set as a magazine cover with a giant serif headline and a cobalt accent.">
+<meta property="og:image:alt" content="fifty. \u2014 AI-built WooCommerce themes on strict rails, set in DM Serif Display with a cobalt accent.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://demo.regionallyfamous.com/assets/og-default.png">"""
 
@@ -635,12 +635,12 @@ def _render_theme_page(theme: str, cells: list[Cell], source_label: str) -> str:
 <body>
 <header class="masthead">
   <span class="left"><a href="/">← Fifty</a></span>
-  <span class="center">A quarterly of WordPress block themes</span>
+  <span class="center">AI agents, on strict rails</span>
   <span class="right">Snaps · {_esc(theme)}</span>
 </header>
 <main>
   <section class="subhero">
-    <p class="eyebrow">Snap gallery · {_esc(theme)}</p>
+    <p class="eyebrow">Pixel contract · {_esc(theme)}</p>
     <h1>{_esc(theme)}<span style="color:var(--accent)">.</span></h1>
     <p class="deck">{_esc(blurb)}</p>
   </section>
@@ -714,14 +714,14 @@ def _render_index_page(theme_summaries: list[dict]) -> str:
 <body>
 <header class="masthead">
   <span class="left"><a href="/">← Fifty</a></span>
-  <span class="center">A quarterly of WordPress block themes</span>
-  <span class="right">Snap gallery</span>
+  <span class="center">AI agents, on strict rails</span>
+  <span class="right">The visual contract</span>
 </header>
 <main>
   <section class="subhero">
-    <p class="eyebrow">Section III · The contact sheets</p>
+    <p class="eyebrow">The visual contract</p>
     <h1>snap gallery<span style="color:var(--accent)">.</span></h1>
-    <p class="deck">Every snap PNG for every theme, grouped by viewport. Generated from on-disk PNGs by <code>bin/build-snap-gallery.py</code>; rebuild after <code>bin/snap.py shoot</code>.</p>
+    <p class="deck">The visual contract for every theme, at every viewport. Screenshots are baselined; any pixel diff turns CI red. This is how the agent ships designs that don&rsquo;t quietly regress between sessions.</p>
   </section>
   <section class="snap-picker" aria-label="Themes">
     {"".join(rows)}

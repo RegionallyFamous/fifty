@@ -166,7 +166,7 @@ BRAND_HEAD_TAGS = """\t<link rel="icon" href="/favicon.svg" type="image/svg+xml"
 \t<meta property="og:image" content="https://demo.regionallyfamous.com/assets/og-default.png">
 \t<meta property="og:image:width" content="1200">
 \t<meta property="og:image:height" content="630">
-\t<meta property="og:image:alt" content="fifty. \u2014 a quarterly of WordPress block themes, set as a magazine cover with a giant serif headline and a cobalt accent.">
+\t<meta property="og:image:alt" content="fifty. \u2014 AI-built WooCommerce themes on strict rails, set in DM Serif Display with a cobalt accent.">
 \t<meta name="twitter:card" content="summary_large_image">
 \t<meta name="twitter:image" content="https://demo.regionallyfamous.com/assets/og-default.png">"""
 
@@ -199,7 +199,7 @@ REDIRECT_TEMPLATE = """<!doctype html>
 \t<header class="masthead">
 \t\t<span class="left"><a href="/">Fifty</a></span>
 \t\t<span class="center">{label_html} · {theme_name_html}</span>
-\t\t<span class="right">Vol. 01 · WP Playground</span>
+\t\t<span class="right">WordPress Playground</span>
 \t</header>
 \t<main>
 \t\t<section class="boot">
@@ -212,7 +212,7 @@ REDIRECT_TEMPLATE = """<!doctype html>
 \t</main>
 \t<footer class="colophon">
 \t\t<span class="left">github.com/RegionallyFamous/fifty</span>
-\t\t<span class="center">MIT · CC0 imagery</span>
+\t\t<span class="center">GPL-2.0+ · Built in public</span>
 \t\t<span class="right"><a href="/">← All themes</a></span>
 \t</footer>
 \t<script>location.replace({deeplink_json});</script>
@@ -245,20 +245,33 @@ def render_redirector(
     )
 
 
-# Magazine-cover landing page. The shape of the page (masthead → cover →
-# theme-rows → colophon) is fixed; only the row content varies per theme.
-# All visual rules live in /assets/style.css; this template is just
-# semantic HTML hooks for that stylesheet to attach to.
+# Manifesto-voice landing page. The shape (masthead → cover → theme-rows →
+# colophon) and the visual system (DM Serif Display brand, cobalt accent
+# dot, hairline rules, mono caps masthead) are unchanged from the earlier
+# magazine framing — only the copy was rewritten to match the README's
+# opening pitch (WooCommerce > Shopify in installs, ships nothing like
+# Shopify's themes; Rich and I are closing that gap with AI on rails, in
+# public). All visual rules live in /assets/style.css; this template is
+# just semantic HTML hooks for that stylesheet to attach to.
+#
+# Hard rules baked into the copy below:
+#   * No theme / concept counts. The repo grows constantly and any number
+#     in this template would be stale within days; the deck makes a
+#     standing claim instead of a leaderboard report.
+#   * "Rich and I", never "Regionally Famous" — see the README opening
+#     for the canonical voice.
+#   * Acknowledge that WooCommerce knows we're doing this; never claim
+#     it was solicited.
 INDEX_HEAD = """<!doctype html>
 <html lang="en">
 <head>
 \t<meta charset="utf-8">
-\t<title>Fifty — WordPress Block Theme Variants</title>
+\t<title>Fifty — AI-built WooCommerce themes, on strict rails</title>
 \t<meta name="viewport" content="width=device-width,initial-scale=1">
-\t<meta name="description" content="A monorepo of opinionated WordPress block themes. Each one boots in WordPress Playground — no install, runs entirely in your browser.">
+\t<meta name="description" content="WooCommerce powers more stores than Shopify and ships nothing like Shopify's themes. Rich and I are closing that gap with AI agents on very strict rails — every storefront below boots in your browser, every rail is in the repo.">
 \t<meta property="og:type" content="website">
-\t<meta property="og:title" content="Fifty — WordPress Block Theme Variants">
-\t<meta property="og:description" content="A monorepo of opinionated WordPress block themes. Each one boots in WordPress Playground — no install, runs entirely in your browser.">
+\t<meta property="og:title" content="Fifty — AI-built WooCommerce themes, on strict rails">
+\t<meta property="og:description" content="WooCommerce powers more stores than Shopify and ships nothing like Shopify's themes. Rich and I are closing that gap with AI agents on very strict rails — every storefront below boots in your browser, every rail is in the repo.">
 \t<meta property="og:url" content="{base_url}">
 {brand_head_tags}
 \t<link rel="preconnect" href="https://fonts.googleapis.com">
@@ -268,21 +281,22 @@ INDEX_HEAD = """<!doctype html>
 </head>
 <body>
 \t<header class="masthead">
-\t\t<span class="left">{issue_html}</span>
-\t\t<span class="center">A quarterly of WordPress block themes</span>
+\t\t<span class="left">An experiment for WooCommerce</span>
+\t\t<span class="center">AI agents, on strict rails</span>
 \t\t<span class="right"><a href="https://github.com/{org}/{repo}">{repo_short}</a></span>
 \t</header>
 \t<main>
 \t\t<section class="cover">
 \t\t\t<h1>fifty<span style="color:var(--accent)">.</span></h1>
 \t\t\t<hr class="rule">
-\t\t\t<p class="deck">{shipped_words} WordPress block themes,<br>{unbuilt_words} unbuilt concepts on the bench,<br>and every viewport, shot.</p>
+\t\t\t<p class="deck">WooCommerce powers more stores than Shopify<br>and ships nothing like Shopify&rsquo;s themes.<br>Rich and I are closing that gap, in public.</p>
 \t\t\t<div class="lede">
-\t\t\t\t<p>A monorepo of opinionated WooCommerce block themes built around a shared <a href="https://github.com/{org}/{repo}/blob/{branch}/obel/">Obel</a> base. Each theme boots in WordPress Playground &mdash; no install required, the entire stack runs in your browser.</p>
-\t\t\t\t<p>First boot takes 20 to 60 seconds while WordPress, WooCommerce, and the demo content download. Subsequent boots are nearly instant. Every screenshot in the gallery was captured by automated visual regression.</p>
+\t\t\t\t<p>Every storefront below boots a real WordPress + WooCommerce site in your browser &mdash; no install, no signup, no card. Click anything: shop, single product, the pre-filled cart, checkout, the customer dashboard. Break it, refresh.</p>
+\t\t\t\t<p>The themes are the demo. The repo is the point. Every rule that keeps the agent honest, every check that catches WordPress&rsquo;s footguns, every visual test that pins the pixels &mdash; it&rsquo;s all in <a href="https://github.com/{org}/{repo}">github.com/{org}/{repo}</a>. Fork any theme, restyle it in an evening, ship to a real store on Monday.</p>
 \t\t\t</div>
 \t\t\t<div class="cta-row">
-\t\t\t\t<a class="cta" href="concepts/">Browse {unbuilt_count} unbuilt concepts <span class="arrow">→</span></a>
+\t\t\t\t<a class="cta" href="concepts/">See the concepts on the bench <span class="arrow">→</span></a>
+\t\t\t\t<a class="cta" href="https://github.com/{org}/{repo}/blob/{branch}/AGENTS.md">Read the rails <span class="arrow">→</span></a>
 \t\t\t\t<a class="cta" href="snaps/">Open the snap gallery <span class="arrow">→</span></a>
 \t\t\t</div>
 \t\t</section>
@@ -293,68 +307,32 @@ INDEX_FOOT = """\t\t</section>
 \t</main>
 \t<footer class="colophon">
 \t\t<span class="left"><a href="https://github.com/{org}/{repo}">github.com/{org}/{repo}</a></span>
-\t\t<span class="center">MIT license · CC0 imagery · Built in public</span>
-\t\t<span class="right">Printed for the web, {issue_label_html}</span>
+\t\t<span class="center">GPL-2.0+ · Forks welcome · WooCommerce knows</span>
+\t\t<span class="right">Built in public by Rich &amp; Nick</span>
 \t</footer>
 </body>
 </html>
 """
 
 
-def _issue_strings() -> tuple[str, str]:
-    """Return ('VOL. 01 · ISSUE NN · MMM YYYY', 'mmm yyyy') for the
-    masthead and footer. The issue number tracks shipped theme count so it
-    bumps automatically as the repo grows; the date pulls from the build
-    machine's clock (close enough for a magazine that exists only on the
-    web)."""
-    from datetime import UTC, datetime
-    now = datetime.now(UTC)
-    issue_num = sum(1 for _ in iter_themes())
-    issue = f"Vol. 01 · Issue {issue_num:02d} · {now.strftime('%b %Y')}"
-    footer_label = now.strftime('%b %Y')
-    return issue, footer_label
+def render_index(themes_html: list[str]) -> str:
+    """Render the manifesto-voice landing page.
 
-
-_NUM_WORDS = {
-    1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six", 7: "Seven",
-    8: "Eight", 9: "Nine", 10: "Ten", 11: "Eleven", 12: "Twelve", 13: "Thirteen",
-    14: "Fourteen", 15: "Fifteen", 16: "Sixteen", 17: "Seventeen", 18: "Eighteen",
-    19: "Nineteen", 20: "Twenty",
-}
-
-
-def _spell_number(n: int) -> str:
-    """Spell small integers (1-30) for the magazine deck. Anything above 30
-    or below 0 falls back to the digit form — the deck is editorial copy,
-    not a leaderboard, so we only really need the low-counts case."""
-    if 1 <= n <= 20:
-        return _NUM_WORDS[n]
-    if 21 <= n <= 29:
-        return f"Twenty-{_NUM_WORDS[n - 20].lower()}"
-    if n == 30:
-        return "Thirty"
-    return str(n)
-
-
-def render_index(themes_html: list[str], unbuilt_count: int, shipped_count: int) -> str:
-    issue, issue_label = _issue_strings()
+    No more `unbuilt_count` / `shipped_count` parameters: the deck makes a
+    standing claim ("Rich and I are closing that gap") instead of reporting
+    inventory, so the count plumbing is gone. Theme rows still come from
+    the caller — those are the only per-build variant content."""
     head = INDEX_HEAD.format(
         base_url=html_escape(GH_PAGES_BASE_URL),
         org=html_escape(GITHUB_ORG),
         repo=html_escape(GITHUB_REPO),
         repo_short=html_escape(f"github.com/{GITHUB_ORG}/{GITHUB_REPO}"),
         branch=html_escape(GITHUB_BRANCH),
-        unbuilt_count=unbuilt_count,
-        shipped_count=shipped_count,
-        unbuilt_words=html_escape(_spell_number(unbuilt_count)),
-        shipped_words=html_escape(_spell_number(shipped_count)),
-        issue_html=html_escape(issue),
         brand_head_tags=BRAND_HEAD_TAGS,
     )
     foot = INDEX_FOOT.format(
         org=html_escape(GITHUB_ORG),
         repo=html_escape(GITHUB_REPO),
-        issue_label_html=html_escape(issue_label),
     )
     return head + "".join(themes_html) + foot
 
@@ -487,15 +465,14 @@ CONCEPTS_HEAD = """<!doctype html>
 <body>
 \t<header class="masthead">
 \t\t<span class="left"><a href="/">← Fifty</a></span>
-\t\t<span class="center">A quarterly of WordPress block themes</span>
-\t\t<span class="right">Concept queue</span>
+\t\t<span class="center">AI agents, on strict rails</span>
+\t\t<span class="right">On the bench</span>
 \t</header>
 \t<main>
 \t\t<section class="subhero">
-\t\t\t<p class="eyebrow">Section II · The bench</p>
+\t\t\t<p class="eyebrow">On the bench</p>
 \t\t\t<h1>concept queue<span style="color:var(--accent)">.</span></h1>
-\t\t\t<p class="deck">Every entry below is a hand-drawn or AI-rendered mockup waiting for a theme to be built around it. Pick whichever one you want to ship next &mdash; clicking opens a prefilled GitHub issue the build agent watches.</p>
-\t\t\t<p class="stats"><span><strong>{unbuilt_count}</strong> in the queue</span><span><strong>{built_count}</strong> shipped with mockup</span></p>
+\t\t\t<p class="deck">Mockups waiting for the agent to pick them up. Each becomes a fully-built WooCommerce storefront &mdash; same template chassis as the live themes, completely different visual language. Click the one you want shipped next; an issue opens for the build agent.</p>
 \t\t</section>
 """
 
@@ -565,8 +542,6 @@ def render_concept_card(concept: dict, *, shipped: bool) -> str:
 def render_concepts_page(unbuilt: list[dict], built: list[dict]) -> str:
     head = CONCEPTS_HEAD.format(
         base_url=html_escape(GH_PAGES_BASE_URL),
-        unbuilt_count=len(unbuilt),
-        built_count=len(built),
         brand_head_tags=BRAND_HEAD_TAGS,
     )
     foot = CONCEPTS_FOOT.format(
@@ -772,7 +747,7 @@ def build(*, dry_run: bool = False) -> int:
 
     write_file(
         DOCS_DIR / "index.html",
-        render_index(cards, unbuilt_count=len(unbuilt), shipped_count=total_shipped),
+        render_index(cards),
         dry_run=dry_run, written=written,
     )
 

@@ -340,8 +340,11 @@ OG_TEMPLATE = """<!doctype html>
     margin: 0;
   }
   .title .dot { color: #1f4fe0; }
+  /* 28px keeps the longer manifesto deck (~22 words) inside two lines at
+     1080px max-width without webfont reflow risk; the previous 30px
+     overflowed to three lines after the README-voice rewrite. */
   .deck {
-    font-size: 30px; line-height: 1.15; letter-spacing: -.005em;
+    font-size: 28px; line-height: 1.18; letter-spacing: -.005em;
     margin: 0; max-width: 1080px;
   }
 </style>
@@ -349,12 +352,12 @@ OG_TEMPLATE = """<!doctype html>
 <body>
 <div class="card">
   <div class="row masthead">
-    <span>Vol. 01 &middot; A quarterly of WordPress block themes</span>
+    <span>An experiment for WooCommerce &middot; AI agents, on strict rails</span>
     <span>demo.regionallyfamous.com</span>
   </div>
   <div class="body">
     <h1 class="title">fifty<span class="dot">.</span></h1>
-    <p class="deck">Five WordPress block themes &mdash; and twenty&#8209;four unbuilt concepts on the bench &mdash; every one bootable in your browser.</p>
+    <p class="deck">WooCommerce powers more stores than Shopify and ships nothing like Shopify&rsquo;s themes. Rich and I are closing that gap, in public.</p>
   </div>
   <div class="row colophon">
     <span>WordPress &middot; WooCommerce &middot; Playground</span>
