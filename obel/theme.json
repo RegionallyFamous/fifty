@@ -2257,7 +2257,7 @@
 		{
 			"name": "announcement-bar",
 			"title": "Announcement Bar",
-			"area": "header"
+			"area": "uncategorized"
 		},
 		{
 			"name": "checkout-header",

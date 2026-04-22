@@ -308,6 +308,18 @@ A11Y_SUPPRESSIONS: tuple[A11ySuppression, ...] = (
             "<theme>` usually clears it. Not a theme bug."
         ),
     ),
+    A11ySuppression(
+        rule="region",
+        selector_contains="a11y-speak-intro-text",
+        reason=(
+            "WordPress core's `wp_a11y_speak()` injects "
+            "`#a11y-speak-intro-text` as a sibling of `<body>`'s landmark "
+            "children to back assistive-tech announcements. It is a "
+            "screen-reader-only utility node and (correctly) does not live "
+            "inside any landmark. axe's `region` rule flags it on every "
+            "page; the fix is upstream in core, not the theme."
+        ),
+    ),
 )
 
 
