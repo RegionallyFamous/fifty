@@ -2508,6 +2508,154 @@ def check_navigation_overlay_opaque() -> Result:
     return r
 
 
+def check_outline_button_paired_with_primary() -> Result:
+    """Fail if `theme.json` defines an `is-style-outline` variation for
+    `core/button` that isn't visually paired with the primary button —
+    i.e. its border-radius doesn't match the primary, or its border-width
+    is hairline-thin (≤1px) while the primary carries visible heft.
+
+    Why this exists:
+      Primary and outline buttons almost always render side-by-side
+      ("Shop the bench" + "Read the journal", "Add to cart" + "Continue
+      shopping", etc.). For the pair to read as ONE coordinated CTA,
+      they need to share the same shape grammar — same corner radius,
+      comparable border weight, the same approximate footprint. WP
+      core's stock `is-style-outline` ships with a 1px hairline border
+      and inherits whatever radius the variation declares, but that
+      radius is independent of `styles.elements.button.border.radius`.
+      The two can drift apart silently:
+
+        * a designer rounds the primary to a pill but leaves the outline
+          square (or vice-versa), and suddenly the pair looks like two
+          different design systems mashed together;
+        * the outline ships at `border-width: 1px` next to a primary
+          that sits at `var(--border--width--thick)` (2-3px), and the
+          outline reads as a faint suggestion rather than a real CTA.
+
+      Both failure modes are baked into WP's stock outline style. The
+      fix is to declare an outline variation in
+      `styles.blocks.core/button.variations.outline` whose `border.radius`
+      matches the primary's `styles.elements.button.border.radius` and
+      whose `border.width` is ≥ 2px (or a `--border--width--thick`-style
+      token that resolves to ≥ 2px).
+
+    What this check enforces:
+      For every theme that declares
+      `styles.blocks.core/button.variations.outline.border`:
+        - `outline.border.radius` MUST equal
+          `styles.elements.button.border.radius` when both are set.
+          (If primary has no `border.radius` set, the outline's radius
+          is unconstrained — WP defaults to the same UA value for both.)
+        - `outline.border.width` MUST NOT be a literal `1px` / `0` /
+          `none`. The check passes any token reference
+          (`var(--wp--custom--border--width--*)`) under the assumption
+          that the token itself is ≥ 2px (the
+          `check_distinctive_chrome` companion already verifies token
+          values across themes); literal `2px`/`3px`/`4px` etc. are
+          also accepted.
+        - `outline.border.style` MUST be present and not `none`.
+        - `outline.color.background` MUST be `transparent` (or absent —
+          WP defaults to transparent for outline) so the variation
+          actually reads as outlined; if it's a solid color, the
+          author probably meant to add a third button variation, not
+          an "outline".
+
+      Themes with no `outline` variation declared are skipped (the
+      check has nothing to enforce — no outline means no mispairing).
+    """
+    r = Result("Outline button variation is visually paired with primary")
+
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.skip("theme.json missing")
+        return r
+    try:
+        data = json.loads(theme_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        r.fail(f"theme.json: invalid JSON ({exc}).")
+        return r
+
+    styles = data.get("styles") or {}
+    btn_elem = (styles.get("elements") or {}).get("button") or {}
+    primary_border = (btn_elem.get("border") or {}) if isinstance(btn_elem, dict) else {}
+    primary_radius = primary_border.get("radius")
+
+    blocks_btn = (styles.get("blocks") or {}).get("core/button") or {}
+    outline = (blocks_btn.get("variations") or {}).get("outline") or {}
+    if not outline:
+        r.skip("no outline variation declared on core/button")
+        return r
+
+    out_border = outline.get("border") or {}
+    out_color = outline.get("color") or {}
+
+    failures: list[str] = []
+
+    out_radius = out_border.get("radius")
+    if primary_radius is not None and out_radius != primary_radius:
+        failures.append(
+            f"`styles.blocks.core/button.variations.outline.border.radius`="
+            f"`{out_radius}` does not match the primary "
+            f"`styles.elements.button.border.radius`=`{primary_radius}`. "
+            f"A primary + outline pair that disagrees on corner shape "
+            f"reads as two different design systems mashed together. "
+            f"Set both to the same value (or remove the outline radius "
+            f"to inherit the primary's)."
+        )
+
+    out_width = out_border.get("width")
+    if out_width is None:
+        failures.append(
+            "`styles.blocks.core/button.variations.outline.border.width` "
+            "is not set. Outline buttons need an explicit border-width — "
+            "WP's UA default of 0 is invisible. Set it to "
+            "`var(--wp--custom--border--width--thick)` (or any value ≥2px)."
+        )
+    else:
+        # Reject anything that resolves to a hairline / nothing.
+        # Accept token references (assumed ≥2px; verified by token check).
+        thin = {"0", "0px", "none", "1px", ".5px", "0.5px"}
+        if isinstance(out_width, str):
+            ws = out_width.strip().lower()
+            if ws in thin:
+                failures.append(
+                    f"`styles.blocks.core/button.variations.outline.border.width`="
+                    f"`{out_width}` is too thin to balance a primary CTA. "
+                    f"A 1px outline next to a chunky filled primary reads "
+                    f"as a faint suggestion rather than a real button. "
+                    f"Use `var(--wp--custom--border--width--thick)` (or "
+                    f"any literal ≥2px)."
+                )
+
+    out_style = out_border.get("style")
+    if out_style in (None, "none"):
+        failures.append(
+            f"`styles.blocks.core/button.variations.outline.border.style`="
+            f"`{out_style}` — an outline variation needs a visible "
+            f"border-style (typically `solid`)."
+        )
+
+    out_bg = out_color.get("background")
+    if out_bg not in (None, "transparent"):
+        failures.append(
+            f"`styles.blocks.core/button.variations.outline.color.background`="
+            f"`{out_bg}` — an `is-style-outline` variation should paint "
+            f"`transparent` so the border carries the chrome. If you want "
+            f"a third filled-but-different variation, register it under a "
+            f"different name (e.g. `secondary`) so its intent is explicit."
+        )
+
+    if failures:
+        for f in failures:
+            r.fail(f)
+        return r
+
+    r.details.append(
+        f"outline variation paired with primary (radius=`{out_radius}`, width=`{out_width}`)"
+    )
+    return r
+
+
 def check_wc_card_padding_not_zeroed() -> Result:
     """Fail if any rule in top-level `styles.css` zeros horizontal
     padding on a painted WC card surface.
@@ -4925,6 +5073,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_wc_totals_blocks_padded(),
         check_wc_notices_styled(),
         check_navigation_overlay_opaque(),
+        check_outline_button_paired_with_primary(),
         check_wc_card_padding_not_zeroed(),
         check_hover_state_legibility(),
         check_distinctive_chrome(),
