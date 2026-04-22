@@ -68,7 +68,7 @@ import json
 import shutil
 import sys
 from pathlib import Path
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "bin"))
@@ -82,7 +82,7 @@ def _require_pillow():
     over a missing optional dep. Real work paths call this and exit
     cleanly if Pillow isn't there."""
     try:
-        from PIL import Image  # type: ignore
+        from PIL import Image
     except ImportError:
         print(
             "ERROR: Pillow is required. Install with `pip install Pillow` "
@@ -141,10 +141,10 @@ class Cell(NamedTuple):
     viewport: str
     slug: str
     base_route: str
-    interaction: Optional[str]
+    interaction: str | None
     src_png: Path
-    error_count: Optional[int]
-    warn_count: Optional[int]
+    error_count: int | None
+    warn_count: int | None
 
     @property
     def is_interaction(self) -> bool:
@@ -280,9 +280,8 @@ def _encode_thumb(src_png: Path, dst_jpg: Path, *, force: bool) -> bool:
     work if `dst_jpg` already exists and is newer than `src_png` (and
     `--clean` wasn't passed). Returns True if the file was (re)written."""
     dst_jpg.parent.mkdir(parents=True, exist_ok=True)
-    if not force and dst_jpg.is_file():
-        if dst_jpg.stat().st_mtime >= src_png.stat().st_mtime:
-            return False
+    if not force and dst_jpg.is_file() and dst_jpg.stat().st_mtime >= src_png.stat().st_mtime:
+        return False
     Image = _require_pillow()
     with Image.open(src_png) as im:
         im.thumbnail((THUMB_WIDTH_PX, THUMB_MAX_HEIGHT_PX), Image.LANCZOS)
