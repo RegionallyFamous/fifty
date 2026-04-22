@@ -1073,6 +1073,102 @@ def check_no_fake_forms() -> Result:
     return r
 
 
+def check_no_empty_cover_blocks() -> Result:
+    """Fail if any pattern/template/part contains a `wp:cover` whose `url`
+    is empty/missing AND `dimRatio` is below 30 -- i.e., a cover that
+    paints nothing at all.
+
+    Why this exists:
+      `wp:cover` is the WP-blessed block for "image-with-text-overlay"
+      hero/lookbook/banner surfaces. The block's `url` attribute is
+      what gives it the actual cover painting; if you author it as
+      `{"url":""}` (or omit `url` entirely) AND leave `dimRatio` at
+      the default 0/low values, the block renders as a transparent
+      box of `min-height` pixels with text positioned inside it.
+      Visually that's a giant empty void above your headline -- the
+      exact failure mode this check exists to catch (it shipped on
+      Lysholm's front-page lookbook hero from 969b7f6 through 94dface,
+      a ~720px transparent base-on-base box that nobody noticed because
+      the text inside it WAS painted correctly and axe-core has no
+      "huge empty space above headline" rule -- 0dfccab fixed the
+      symptom by extracting the hero into
+      `lysholm/patterns/hero-lookbook.php`; this gate prevents the
+      same shape from re-appearing on a sixth theme).
+
+      The failure mode is built into the workflow: static `.html`
+      templates can't run PHP, so they can't inject
+      `get_theme_file_uri( \'playground/images/foo.jpg\' )` into a
+      `wp:cover` `url` attribute. Authors who forget this end up
+      leaving `"url":""` as a placeholder and shipping it. The fix
+      is always the same -- extract the cover into a `.php` pattern
+      where `get_theme_file_uri()` actually resolves, and reference
+      it from the template via `<!-- wp:pattern {"slug":"..."} /-->`.
+      `lysholm/patterns/hero-lookbook.php` is the worked example.
+
+    What's allowed:
+      * `wp:cover` with a non-empty `url` (image-backed cover -- the
+        normal case).
+      * `wp:cover` with `dimRatio >= 30` (a deliberately-painted color
+        block masquerading as a cover -- used by selvedge's
+        front-page.html for category cards). 30 is the WP editor's
+        "noticeable tint" threshold; below that the overlay is mostly
+        transparent and the block needs an image to show anything.
+      * Cover markup inside `.php` patterns where the `url` value is
+        a PHP expression (`<?php echo esc_url( ... ); ?>`) -- the URL
+        will be a real file path at render time.
+
+    What's NOT allowed:
+      * `wp:cover` with `url` empty/missing AND `dimRatio` < 30 in
+        ANY file -- the block paints nothing.
+    """
+    r = Result("No empty `wp:cover` blocks (no transparent placeholder hero boxes)")
+
+    cover_re = re.compile(r"<!--\s*wp:cover\s*(\{[^}]*\})\s*-->")
+    skip_dirs = ("templates/", "parts/", "patterns/")
+
+    files: list[Path] = []
+    for path in iter_files((".html", ".php")):
+        rel = path.relative_to(ROOT).as_posix()
+        if any(rel.startswith(d) for d in skip_dirs):
+            files.append(path)
+
+    for path in files:
+        rel = path.relative_to(ROOT).as_posix()
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for m in cover_re.finditer(text):
+            attrs_blob = m.group(1)
+            url_match = re.search(r'"url"\s*:\s*"([^"]*)"', attrs_blob)
+            url_value = url_match.group(1) if url_match else ""
+            if "<?php" in url_value or "<?=" in url_value:
+                continue
+            if url_value.strip():
+                continue
+            dim_match = re.search(r'"dimRatio"\s*:\s*(\d+)', attrs_blob)
+            dim_ratio = int(dim_match.group(1)) if dim_match else 0
+            if dim_ratio >= 30:
+                continue
+            lineno = text.count("\n", 0, m.start()) + 1
+            min_h_match = re.search(r"min-height:(\d+)px", text[m.start():m.start() + 800])
+            min_h = (min_h_match.group(1) + "px") if min_h_match else "unknown-height"
+            r.fail(
+                f"{rel}:{lineno}: wp:cover with empty `url` and dimRatio={dim_ratio} "
+                f"(< 30) renders as a transparent {min_h} void. "
+                f"Either: (1) move the cover into a `.php` pattern where "
+                f"`get_theme_file_uri(\'playground/images/<file>.jpg\')` can "
+                f"inject a real URL (see lysholm/patterns/hero-lookbook.php "
+                f"for the worked example), (2) set `dimRatio>=30` with an "
+                f"intentional `overlayColor` if you actually want a flat "
+                f"color-block container, or (3) replace `wp:cover` with "
+                f"`wp:group` + `backgroundColor` if you don\'t need the "
+                f"image-overlay machinery."
+            )
+
+    if r.passed:
+        r.details.append(f"{len(files)} pattern/template/part file(s) scanned; no empty wp:cover blocks")
+    return r
+
+
+
 def check_no_duplicate_templates() -> Result:
     """Fail if any two files in templates/ have identical content."""
     r = Result("No duplicate template files in templates/")
@@ -5321,6 +5417,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_block_markup_anti_patterns(),
         check_blocks_validator(),
         check_no_fake_forms(),
+        check_no_empty_cover_blocks(),
         check_no_duplicate_templates(),
         check_no_duplicate_stock_indicator(),
         check_archive_sort_dropdown_styled(),
