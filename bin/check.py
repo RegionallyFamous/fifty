@@ -4870,6 +4870,147 @@ def check_playground_content_seeded() -> Result:
     return r
 
 
+def check_no_placeholder_product_images() -> Result:
+    """Fail if a theme's `playground/content/products.csv` (or content.xml)
+    references the upstream `wonders-<product-slug>.png` flat-cartoon
+    placeholders instead of bespoke per-theme `product-wo-<slug>.jpg`
+    photographs.
+
+    PLACEHOLDER-IMAGERY FAIL MODE
+    -----------------------------
+    `bin/seed-playground-content.py` pulls the canonical
+    `RegionallyFamous/wonders-oddities` catalogue, which ships flat
+    illustrated cartoons under `wonders-<slug>.png` (mug silhouette on
+    a yellow background, etc.). Those cartoons are never the look any
+    theme actually wants -- every theme is supposed to ship its own
+    visual voice as `product-wo-<slug>.jpg` photographs (Y2K iridescent
+    chrome for aero, sepia workshop for selvedge, etc.). The seeder
+    runs an *upgrade pass* that, when bespoke photos are present in
+    `<theme>/playground/images/`, rewrites every CSV/XML reference from
+    `wonders-<slug>.png` to `product-wo-<slug>.jpg` and deletes the
+    cartoon files.
+
+    The fail modes this check guards:
+
+      * **No bespoke photos generated yet (the aero shape).** The
+        seeder copied the upstream cartoons in but no one has produced
+        per-theme photographs. The catalogue paints the demo with flat
+        cartoons that look nothing like the theme. Fix: generate
+        `product-wo-<slug>.jpg` photos for every product slug in this
+        theme's voice, drop them in `playground/images/`, then re-run
+        the seeder so the upgrade pass swaps the refs.
+
+      * **Photos exist but the seeder upgrade pass never ran (the
+        lysholm shape).** The bespoke `product-wo-<slug>.jpg` files
+        sit on disk but the CSV/XML still point at the upstream
+        cartoons. Fix: re-run `bin/seed-playground-content.py
+        --theme <slug>` (idempotent -- it rewrites the refs and cleans
+        up the now-unused cartoon PNGs).
+
+      * **CSV references a `product-wo-<slug>.jpg` that's missing on
+        disk.** The blueprint will 404 on that URL at boot. Fix: make
+        sure the photo is committed at the expected path.
+
+    Page/post hero placeholders (`wonders-page-*.png`,
+    `wonders-post-*.png`) are deliberately excluded -- they live on a
+    separate generation track and don't have `product-wo-*`
+    counterparts.
+    """
+    r = Result("Product imagery is bespoke (no upstream placeholder cartoons)")
+    csv_path = ROOT / "playground" / "content" / "products.csv"
+    xml_path = ROOT / "playground" / "content" / "content.xml"
+    images_dir = ROOT / "playground" / "images"
+
+    if not csv_path.exists():
+        r.skip("no playground/content/products.csv (theme without a Playground demo)")
+        return r
+
+    placeholder_re = re.compile(r"wonders-([a-z0-9-]+)\.png")
+    bespoke_re = re.compile(r"product-wo-([a-z0-9-]+)\.jpg")
+
+    on_disk = (
+        {p.name for p in images_dir.iterdir() if p.is_file()} if images_dir.is_dir() else set()
+    )
+
+    failures: list[str] = []
+    placeholder_slugs: set[str] = set()
+    bespoke_slugs: set[str] = set()
+
+    for label, path in (("products.csv", csv_path), ("content.xml", xml_path)):
+        if not path.exists():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for m in placeholder_re.finditer(text):
+            slug = m.group(1)
+            if slug.startswith(("page-", "post-")):
+                continue
+            placeholder_slugs.add(slug)
+        for m in bespoke_re.finditer(text):
+            slug = m.group(1)
+            bespoke_slugs.add(slug)
+            if f"product-wo-{slug}.jpg" not in on_disk:
+                failures.append(
+                    f"playground/content/{label} references "
+                    f"`product-wo-{slug}.jpg` but the file is missing from "
+                    f"playground/images/. The live demo will 404 on that URL "
+                    f"at boot. Re-run `python3 bin/seed-playground-content.py "
+                    f"--theme {ROOT.name}` to re-pull the missing asset, or "
+                    f"regenerate it."
+                )
+
+    if placeholder_slugs:
+        sample = sorted(placeholder_slugs)[:5]
+        more = f" (+{len(placeholder_slugs) - 5} more)" if len(placeholder_slugs) > 5 else ""
+        sample_list = ", ".join(f"`wonders-{s}.png`" for s in sample)
+        missing_photos = sorted(
+            s for s in placeholder_slugs if f"product-wo-{s}.jpg" not in on_disk
+        )
+        if missing_photos:
+            failures.append(
+                f"playground/content/ references {len(placeholder_slugs)} "
+                f"upstream cartoon placeholder image(s): "
+                f"{sample_list}{more}.\n"
+                f"  Of those, {len(missing_photos)} have NO bespoke "
+                f"`product-wo-<slug>.jpg` photograph on disk for this theme -- "
+                f"the catalogue will paint flat illustrated cartoons instead "
+                f"of branded photography. Generate the missing photos as "
+                f"`{ROOT.name}/playground/images/product-wo-<slug>.jpg` (one "
+                f"per slug, in this theme's visual voice), then re-run "
+                f"`python3 bin/seed-playground-content.py --theme {ROOT.name}` "
+                f"to swap the CSV/XML refs and clean up the cartoons."
+            )
+        else:
+            failures.append(
+                f"playground/content/ references {len(placeholder_slugs)} "
+                f"upstream cartoon placeholder image(s) "
+                f"({sample_list}{more}) even though every "
+                f"matching `product-wo-<slug>.jpg` photograph is already "
+                f"on disk. The seeder's upgrade pass never ran on this "
+                f"theme -- fix it by running `python3 "
+                f"bin/seed-playground-content.py --theme {ROOT.name}` "
+                f"(idempotent; rewrites the refs and deletes the now-unused "
+                f"cartoons)."
+            )
+
+    if failures:
+        for f in failures:
+            r.fail(f)
+        return r
+
+    if not bespoke_slugs:
+        r.skip("no product image refs found in CSV/XML")
+        return r
+
+    r.details.append(
+        f"{len(bespoke_slugs)} bespoke `product-wo-<slug>.jpg` ref(s); "
+        f"no upstream placeholder cartoons remaining"
+    )
+    return r
+
+
 def check_theme_screenshots_distinct() -> Result:
     """Fail when any two themes ship the same ``screenshot.png`` bytes.
 
@@ -4978,16 +5119,12 @@ def check_no_serious_axe_in_recent_snaps() -> Result:
     r = Result("Recent snaps carry no serious axe-core errors")
     snaps_dir = MONOREPO_ROOT / "tmp" / "snaps" / ROOT.name
     if not snaps_dir.is_dir():
-        r.skip(
-            f"no tmp/snaps/{ROOT.name}/ on disk (snap not run for this theme)"
-        )
+        r.skip(f"no tmp/snaps/{ROOT.name}/ on disk (snap not run for this theme)")
         return r
 
     findings_files = sorted(snaps_dir.rglob("*.findings.json"))
     if not findings_files:
-        r.skip(
-            f"tmp/snaps/{ROOT.name}/ exists but has no *.findings.json files"
-        )
+        r.skip(f"tmp/snaps/{ROOT.name}/ exists but has no *.findings.json files")
         return r
 
     failures: list[str] = []
@@ -5011,9 +5148,7 @@ def check_no_serious_axe_in_recent_snaps() -> Result:
             if f.get("severity") != "error":
                 continue
             kind = f.get("kind", "unknown")
-            entry = by_kind.setdefault(
-                kind, {"count": 0, "first": None, "axe_url": None}
-            )
+            entry = by_kind.setdefault(kind, {"count": 0, "first": None, "axe_url": None})
             entry["count"] += 1
             if entry["first"] is None:
                 entry["first"] = f.get("message", "")[:200]
@@ -5025,9 +5160,7 @@ def check_no_serious_axe_in_recent_snaps() -> Result:
                 rel = fp
             for kind, info in sorted(by_kind.items()):
                 error_total += info["count"]
-                msg = (
-                    f"  {rel}: {kind} x{info['count']} -- {info['first']}"
-                )
+                msg = f"  {rel}: {kind} x{info['count']} -- {info['first']}"
                 if info["axe_url"]:
                     msg += f" (see {info['axe_url']})"
                 failures.append(msg)
@@ -5211,6 +5344,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_theme_ships_cart_page_pattern(),
         check_wc_microcopy_distinct_across_themes(),
         check_playground_content_seeded(),
+        check_no_placeholder_product_images(),
         check_theme_screenshots_distinct(),
         check_no_serious_axe_in_recent_snaps(),
         check_no_unpushed_commits(),

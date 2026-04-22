@@ -9,7 +9,7 @@ Read this file at the start of any LLM session to discover the project's structu
 ## At a glance
 
 - 25 templates, 8 parts
-- 14 starter patterns
+- 15 starter patterns
 - 3 style variations
 - 156 block style entries in `theme.json` (85 core, 71 woocommerce)
 
@@ -40,6 +40,7 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- footer-columns.php
 |   |-- front-feature.php
 |   |-- hero-image.php
+|   |-- hero-lookbook.php
 |   |-- hero-split.php
 |   |-- hero-text.php
 |   |-- testimonials.php
@@ -91,27 +92,6 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |   |-- product-wo-tangible-wifi.jpg
 |   |   |-- product-wo-void-sampler.jpg
 |   |   |-- product-wo-whispering-stone.jpg
-|   |   |-- wonders-borrowed-nostalgia.png
-|   |   |-- wonders-bottled-morning.png
-|   |   |-- wonders-chaos-seasoning.png
-|   |   |-- wonders-cosmic-mystery-box.png
-|   |   |-- wonders-deja-vu-session.png
-|   |   |-- wonders-discount-gravity.png
-|   |   |-- wonders-dread-repellent.png
-|   |   |-- wonders-fog-in-bottle.png
-|   |   |-- wonders-forbidden-honey.png
-|   |   |-- wonders-gently-used-luck.png
-|   |   |-- wonders-handcrafted-echo.png
-|   |   |-- wonders-haunted-candle.png
-|   |   |-- wonders-imaginary-deed.png
-|   |   |-- wonders-interdim-bazaar.png
-|   |   |-- wonders-invisible-umbrella.png
-|   |   |-- wonders-left-sock.png
-|   |   |-- wonders-lost-recipe-time.png
-|   |   |-- wonders-memory-foam-memory.png
-|   |   |-- wonders-monday-kit.png
-|   |   |-- wonders-moon-dust.png
-|   |   |-- wonders-one-hand-clapping.png
 |   |   |-- wonders-page-about.png
 |   |   |-- wonders-page-contact.png
 |   |   |-- wonders-page-faq.png
@@ -120,8 +100,6 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |   |-- wonders-page-lookbook.png
 |   |   |-- wonders-page-privacy-policy.png
 |   |   |-- wonders-page-shipping-returns.png
-|   |   |-- wonders-pocket-thunder.png
-|   |   |-- wonders-portable-hole.png
 |   |   |-- wonders-post-behind-the-scenes-bottling-mondays.png
 |   |   |-- wonders-post-caring-for-your-portable-hole.png
 |   |   |-- wonders-post-carl-on-the-moon.png
@@ -141,14 +119,7 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |   |-- wonders-post-tangible-wifi-30-day-review.png
 |   |   |-- wonders-post-the-art-of-artisanal-silence.png
 |   |   |-- wonders-post-welcome-to-wonders-and-oddities.png
-|   |   |-- wonders-post-year-one-abridged.png
-|   |   |-- wonders-sensory-starter.png
-|   |   |-- wonders-silence-jar.png
-|   |   |-- wonders-spare-key-nowhere.png
-|   |   |-- wonders-spare-tuesday.png
-|   |   |-- wonders-tangible-wifi.png
-|   |   |-- wonders-void-sampler.png
-|   |   `-- wonders-whispering-stone.png
+|   |   `-- wonders-post-year-one-abridged.png
 |   `-- blueprint.json
 |-- styles/
 |   |-- dark.json
@@ -320,6 +291,14 @@ Read this file at the start of any LLM session to discover the project's structu
 - **Categories:** lysholm, featured
 - **Keywords:** hero, banner, header, cover
 - **Description:** Full-width cover image with headline, subhead, and primary CTA. Replace the placeholder image.
+
+### `patterns/hero-lookbook.php`
+
+- **Slug:** `lysholm/hero-lookbook`
+- **Title:** Lookbook hero — Quiet objects, slow days
+- **Categories:** lysholm, featured
+- **Keywords:** hero, cover, lookbook, editorial
+- **Description:** Editorial lookbook cover used at the top of the front page.
 
 ### `patterns/hero-split.php`
 
