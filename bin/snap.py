@@ -126,6 +126,7 @@ SNAPS_DIR = TMP_DIR / "snaps"
 DIFFS_DIR = TMP_DIR / "diffs"
 BLUEPRINTS_DIR = TMP_DIR / "snap-blueprints"
 BASELINE_DIR = REPO_ROOT / "tests" / "visual-baseline"
+ALLOWLIST_PATH = BASELINE_DIR / "heuristics-allowlist.json"
 
 
 # ---------------------------------------------------------------------------
@@ -814,6 +815,42 @@ _HEURISTICS_JS = r"""
             && cs.opacity !== '0';
     };
 
+    // Build a stable-ish CSS selector for an element. Used as the
+    // `selector` field on findings so the Python side can re-locate
+    // the offender to crop a JPG of evidence, AND as the fingerprint
+    // the allowlist matches against. Walks up the tree until either an
+    // id is found or we hit body. Falls back to `tag.classes:nth-of-type`.
+    const cssPath = (el) => {
+        if (!(el instanceof Element)) return '';
+        const parts = [];
+        let cur = el;
+        while (cur && cur.nodeType === 1 && cur !== document.documentElement) {
+            if (cur.id) {
+                parts.unshift('#' + cur.id);
+                break;
+            }
+            let part = cur.tagName.toLowerCase();
+            if (cur.className && typeof cur.className === 'string') {
+                const cls = cur.className.trim().split(/\s+/)
+                    .filter(Boolean).slice(0, 2).join('.');
+                if (cls) part += '.' + cls;
+            }
+            const parent = cur.parentNode;
+            if (parent) {
+                const sibs = Array.from(parent.children).filter(
+                    (s) => s.tagName === cur.tagName
+                );
+                if (sibs.length > 1) {
+                    part += `:nth-of-type(${sibs.indexOf(cur) + 1})`;
+                }
+            }
+            parts.unshift(part);
+            if (parts.length >= 5) break;
+            cur = cur.parentElement;
+        }
+        return parts.join(' > ');
+    };
+
     // Horizontal page overflow -- the body is wider than the viewport.
     // Anything > 1px is treated as accidental (browsers report 0 or 1
     // even on perfectly fitting pages depending on rounding).
@@ -1031,6 +1068,374 @@ _HEURISTICS_JS = r"""
                  {tag: el.tagName.toLowerCase()});
         }
     });
+
+    // ====================================================================
+    // Theme content-correctness heuristics (the eight ERROR-tier checks
+    // that catch overflow / duplicates / broken backgrounds / voids).
+    // Each detector caps reports at 5 instances per page so a single
+    // structural bug doesn't drown the findings list. All emit a stable
+    // `selector` so the Python side can crop a JPG of the offender, AND
+    // a `fingerprint` the allowlist matches against (the most invariant
+    // identifier we can produce -- the selector for layout bugs, the
+    // text+href tuple for duplicate-link bugs, and so on).
+    // ====================================================================
+
+    // 1. element-overflow-x: any visible element whose own content is
+    // wider than its content box, while computed `overflow-x` says
+    // `visible` -- i.e. the overflow is actually painted past the
+    // box edge. Skips elements that opted into scrolling
+    // (`auto`/`scroll`/`hidden`) and inline elements (line-box width
+    // semantics make `scrollWidth > clientWidth` legitimate there).
+    {
+        let n = 0;
+        const all = document.querySelectorAll('body *');
+        for (const el of all) {
+            if (n >= 5) break;
+            if (!isVisible(el)) continue;
+            const cs = window.getComputedStyle(el);
+            if (cs.overflowX !== 'visible') continue;
+            if (cs.display === 'inline') continue;
+            // Skip very small elements (decorative icons etc) -- the
+            // overflow has to be on something big enough to be visually
+            // disruptive.
+            const r = el.getBoundingClientRect();
+            if (r.width < 50) continue;
+            const overflow = el.scrollWidth - el.clientWidth;
+            if (overflow <= 2) continue;
+            // Skip the document root + body (already covered by
+            // `horizontal-overflow`).
+            if (el === document.body || el === document.documentElement) continue;
+            const sel = cssPath(el);
+            const tag = el.tagName.toLowerCase();
+            const txt = (el.innerText || '').trim().slice(0, 80);
+            push("error", "element-overflow-x",
+                 `<${tag}> content overflows its box by ${overflow}px (scrollWidth ${el.scrollWidth} > clientWidth ${el.clientWidth}). Text: "${txt}".`,
+                 {selector: sel, fingerprint: sel,
+                  overflow_px: overflow,
+                  scroll_width: el.scrollWidth,
+                  client_width: el.clientWidth});
+            n += 1;
+        }
+    }
+
+    // 2. heading-clipped-vertical: a heading whose rendered text is
+    // taller than its own box (parent constrained the height with
+    // `max-height` + `overflow: hidden`, hiding the second line of a
+    // wrapped headline). We only check h1-h4 because longer prose
+    // headings (h5/h6) are typically not styled with hard heights and
+    // would produce noise.
+    {
+        let n = 0;
+        document.querySelectorAll('h1, h2, h3, h4').forEach((el) => {
+            if (n >= 5) return;
+            if (!isVisible(el)) return;
+            const cs = window.getComputedStyle(el);
+            if (cs.overflow === 'hidden' || cs.overflowY === 'hidden') {
+                // Heading itself has overflow hidden -- its scrollHeight
+                // will still be the full content height even when clipped.
+            }
+            const overflow = el.scrollHeight - el.clientHeight;
+            if (overflow <= 2) return;
+            const sel = cssPath(el);
+            const tag = el.tagName.toLowerCase();
+            const txt = (el.innerText || '').trim().slice(0, 80);
+            push("error", "heading-clipped-vertical",
+                 `<${tag}> "${txt}" is taller than its box by ${overflow}px (scrollHeight ${el.scrollHeight} > clientHeight ${el.clientHeight}). Likely a max-height + overflow:hidden parent eating part of the headline.`,
+                 {selector: sel, fingerprint: sel,
+                  overflow_px: overflow,
+                  scroll_height: el.scrollHeight,
+                  client_height: el.clientHeight});
+            n += 1;
+        });
+    }
+
+    // 3. button-label-overflow: a button-shaped element whose label is
+    // wider than the button. Special-cased because button overflow is
+    // uniquely jarring -- buttons have visible borders/backgrounds, so
+    // text spilling out of them is impossible to miss.
+    {
+        let n = 0;
+        const sel = (
+            'button, '
+            + 'a.wp-block-button__link, '
+            + 'a.wc-block-cart__submit-button, '
+            + 'a.wc-block-components-button, '
+            + 'button.wc-block-components-button, '
+            + 'button.wp-block-button__link, '
+            + '[role="button"], '
+            + 'input[type="submit"], '
+            + 'input[type="button"]'
+        );
+        const buttons = document.querySelectorAll(sel);
+        for (const el of buttons) {
+            if (n >= 5) break;
+            if (!isVisible(el)) continue;
+            const overflow = el.scrollWidth - el.clientWidth;
+            if (overflow <= 1) continue;
+            const cs = window.getComputedStyle(el);
+            // A button with `overflow: hidden` AND `text-overflow: ellipsis`
+            // is intentionally truncating -- the existing
+            // `text-overflow-truncated` heuristic handles that case at
+            // info severity. Skip here to avoid double-reporting.
+            if ((cs.overflow === 'hidden' || cs.overflowX === 'hidden')
+                && cs.textOverflow === 'ellipsis') continue;
+            const path = cssPath(el);
+            const txt = (el.innerText || el.value || '').trim().slice(0, 80);
+            push("error", "button-label-overflow",
+                 `Button label "${txt}" overflows its button by ${overflow}px (scrollWidth ${el.scrollWidth} > clientWidth ${el.clientWidth}).`,
+                 {selector: path, fingerprint: path,
+                  overflow_px: overflow,
+                  label: txt});
+            n += 1;
+        }
+    }
+
+    // 4. duplicate-nav-link: the same link rendered in two DIFFERENT
+    // visible navigation containers at the same time. Catches the
+    // "Shop" twice bug where both the desktop nav and the mobile
+    // drawer are visible, or two `<nav>`s both rendering the same
+    // primary menu (a footer that accidentally re-uses the header
+    // template, etc.). Within a single nav container, duplicates are
+    // intentional (mega-menu mirrors the top items, etc.), so we
+    // group by nav-container identity AND link signature.
+    {
+        const navContainers = document.querySelectorAll(
+            'header, nav, [role="navigation"], '
+            + '.wp-block-navigation, '
+            + '.wp-block-navigation__container, '
+            + '.wp-block-navigation__responsive-container-content'
+        );
+        // Map of "text|href" -> Set of distinct top-level nav containers
+        // that contain a visible link with that signature.
+        const sigToContainers = new Map();
+        // Also map signature -> sample selector (for the finding payload).
+        const sigToSample = new Map();
+        navContainers.forEach((nav) => {
+            if (!isVisible(nav)) return;
+            // Find the OUTERMOST nav-shaped ancestor of this container so
+            // a `.wp-block-navigation__container` nested inside its own
+            // `<nav>` only counts as one container.
+            const outer = nav.closest(
+                'header, nav, [role="navigation"]'
+            ) || nav;
+            nav.querySelectorAll('a[href]').forEach((a) => {
+                if (!isVisible(a)) return;
+                const text = (a.innerText || a.textContent || '').trim();
+                if (!text) return;
+                const href = a.getAttribute('href') || '';
+                const sig = text.toLowerCase() + '|' + href;
+                const set = sigToContainers.get(sig) || new Set();
+                set.add(outer);
+                sigToContainers.set(sig, set);
+                if (!sigToSample.has(sig)) {
+                    sigToSample.set(sig, {
+                        text, href, selector: cssPath(a),
+                    });
+                }
+            });
+        });
+        let n = 0;
+        for (const [sig, containers] of sigToContainers.entries()) {
+            if (n >= 5) break;
+            if (containers.size < 2) continue;
+            const sample = sigToSample.get(sig);
+            push("error", "duplicate-nav-link",
+                 `Link "${sample.text}" -> "${sample.href}" appears in ${containers.size} different visible navigation containers. (A primary menu rendered in two navs at the same time is almost always a template bug -- usually a mobile drawer that should be display:none at this viewport, or a footer accidentally re-using the header pattern.)`,
+                 {selector: sample.selector,
+                  fingerprint: sample.text + '|' + sample.href,
+                  text: sample.text, href: sample.href,
+                  container_count: containers.size});
+            n += 1;
+        }
+    }
+
+    // 5. duplicate-h1: more than one visible <h1> on the page. A common
+    // bug class is a template rendering BOTH the site title and the
+    // post title as <h1>, or a hero pattern that hard-codes <h1> on a
+    // page that already has one from the post template. We also flag
+    // identical text across multiple h1s -- a softer signal of the same
+    // template-double-render bug, surfaced separately for clarity.
+    {
+        const h1s = Array.from(document.querySelectorAll('h1'))
+            .filter(isVisible);
+        if (h1s.length > 1) {
+            const samples = h1s.slice(0, 4).map((el) => {
+                const txt = (el.innerText || '').trim().slice(0, 60);
+                return `"${txt}"`;
+            });
+            push("error", "duplicate-h1",
+                 `${h1s.length} visible <h1> elements on this page (samples: ${samples.join(', ')}). Pages should have exactly one <h1> for both SEO and a11y.`,
+                 {selector: cssPath(h1s[1]),
+                  fingerprint: 'count=' + h1s.length,
+                  count: h1s.length});
+        }
+        // Identical-text double <h1>s warrant a separate, more pointed
+        // finding (template re-render, not just "too many landmarks").
+        const byText = new Map();
+        h1s.forEach((el) => {
+            const t = (el.innerText || '').trim();
+            if (!t) return;
+            (byText.get(t) || byText.set(t, []).get(t)).push(el);
+        });
+        for (const [text, els] of byText.entries()) {
+            if (els.length < 2) continue;
+            push("error", "duplicate-h1",
+                 `Two visible <h1> elements have IDENTICAL text "${text.slice(0, 80)}" -- almost certainly the same template rendered twice on the page.`,
+                 {selector: cssPath(els[1]),
+                  fingerprint: 'text=' + text,
+                  text: text, count: els.length});
+            break;  // one is plenty; first occurrence describes the rest.
+        }
+    }
+
+    // 6. background-image-broken: collect every visible element with a
+    // computed `background-image: url(...)` and return the
+    // (selector, url) pairs to the Python side, which intersects them
+    // with the response listener's network failures (>= 400). We can't
+    // probe load state here without going async, and the response
+    // listener already has 100% network coverage -- so reuse it.
+    out.bg_image_pairs = [];
+    {
+        const seen = new Set();
+        const walk = document.querySelectorAll('body *');
+        for (const el of walk) {
+            if (!isVisible(el)) continue;
+            const cs = window.getComputedStyle(el);
+            const bg = cs.backgroundImage;
+            if (!bg || bg === 'none') continue;
+            // Extract every url(...) reference (multi-bg layers possible).
+            const re = /url\((['"]?)([^'")]+)\1\)/g;
+            let m;
+            while ((m = re.exec(bg)) !== null) {
+                const url = m[2];
+                if (url.startsWith('data:')) continue;
+                const key = url + '|' + cssPath(el);
+                if (seen.has(key)) continue;
+                seen.add(key);
+                out.bg_image_pairs.push({
+                    url: url,
+                    selector: cssPath(el),
+                });
+                if (out.bg_image_pairs.length >= 200) break;
+            }
+            if (out.bg_image_pairs.length >= 200) break;
+        }
+    }
+
+    // 7. region-void: a large visible element with NO content at all
+    // (no text, no media, no background image) AND a background-color
+    // that matches the body's -- i.e. the region renders as a chunk of
+    // page-background void. This is the lysholm "transparent cover"
+    // bug, generalized: any region where the cover/section block lost
+    // its content AND lost its visual background, leaving a 1000px
+    // gap of paper.
+    {
+        const bodyCS = window.getComputedStyle(document.body);
+        const bodyBg = bodyCS.backgroundColor;
+        const viewportArea = vw * vh;
+        const allEls = document.querySelectorAll(
+            'main *, [role="main"] *, body > div, body > section'
+        );
+        let n = 0;
+        const reported = new Set();
+        for (const el of allEls) {
+            if (n >= 5) break;
+            if (!isVisible(el)) continue;
+            const r = el.getBoundingClientRect();
+            const area = r.width * r.height;
+            if (area < viewportArea * 0.15) continue;
+            // Has any text?
+            const txt = (el.innerText || '').trim();
+            if (txt.length > 0) continue;
+            // Has any media descendant?
+            if (el.querySelector('img, svg, video, picture, iframe, canvas')) continue;
+            // Has its own background image?
+            const cs = window.getComputedStyle(el);
+            if (cs.backgroundImage && cs.backgroundImage !== 'none') continue;
+            // Background-color matches body's -> renders as page void.
+            // (transparent or rgba(0,0,0,0) also count as void since they
+            // pass through to the body background.)
+            const isVoidBg = (
+                cs.backgroundColor === bodyBg
+                || cs.backgroundColor === 'rgba(0, 0, 0, 0)'
+                || cs.backgroundColor === 'transparent'
+            );
+            if (!isVoidBg) continue;
+            // Skip if any ANCESTOR already reported (otherwise a void
+            // <section> reports itself AND every nested wrapper inside it).
+            let skip = false;
+            let p = el.parentElement;
+            while (p) {
+                if (reported.has(p)) { skip = true; break; }
+                p = p.parentElement;
+            }
+            if (skip) continue;
+            reported.add(el);
+            const sel = cssPath(el);
+            push("error", "region-void",
+                 `<${el.tagName.toLowerCase()}> at ${Math.round(r.width)}x${Math.round(r.height)}px (${Math.round(100 * area / viewportArea)}% of viewport) has no text, no media, and no background -- renders as a void of page-background. (The lysholm-style "cover lost its content" bug.)`,
+                 {selector: sel, fingerprint: sel,
+                  width: Math.round(r.width),
+                  height: Math.round(r.height),
+                  viewport_pct: Math.round(100 * area / viewportArea)});
+            n += 1;
+        }
+    }
+
+    // 8. region-low-density: a tall region (>40% of viewport height)
+    // with very little content -- one floating word, one tiny icon.
+    // Different from `region-void` (which catches NO content) -- this
+    // catches "barely any content, surrounded by acres of whitespace,
+    // that almost certainly looks broken at a glance." WARN tier
+    // because this one false-positives on intentional hero compositions
+    // more easily than `region-void`.
+    {
+        let n = 0;
+        const reported = new Set();
+        const allEls = document.querySelectorAll(
+            'main > *, [role="main"] > *, '
+            + 'main section, main > div > section'
+        );
+        for (const el of allEls) {
+            if (n >= 5) break;
+            if (!isVisible(el)) continue;
+            const r = el.getBoundingClientRect();
+            if (r.height < vh * 0.4) continue;
+            // Skip ancestors already reported.
+            let skip = false;
+            let p = el.parentElement;
+            while (p) {
+                if (reported.has(p)) { skip = true; break; }
+                p = p.parentElement;
+            }
+            if (skip) continue;
+            const txt = (el.innerText || '').trim();
+            const mediaCount = el.querySelectorAll(
+                'img, svg, video, picture, iframe, canvas'
+            ).length;
+            // Density score: text characters + 50 per media element,
+            // normalized to area in kilo-pixels. Threshold of 0.05
+            // tuned to flag "one word in a 600px section" while
+            // letting normal hero patterns (a paragraph + image)
+            // through.
+            const areaKpx = (r.width * r.height) / 1000;
+            const score = (txt.length + 50 * mediaCount) / Math.max(1, areaKpx);
+            if (score >= 0.05) continue;
+            // Skip "void" cases -- already covered by region-void above.
+            if (txt.length === 0 && mediaCount === 0) continue;
+            reported.add(el);
+            const sel = cssPath(el);
+            push("warn", "region-low-density",
+                 `<${el.tagName.toLowerCase()}> ${Math.round(r.width)}x${Math.round(r.height)}px contains ${txt.length} chars of text and ${mediaCount} media element(s) -- density score ${score.toFixed(3)} (< 0.05). Probably a section that lost most of its content.`,
+                 {selector: sel, fingerprint: sel,
+                  width: Math.round(r.width),
+                  height: Math.round(r.height),
+                  text_chars: txt.length,
+                  media_count: mediaCount,
+                  density_score: Number(score.toFixed(3))});
+            n += 1;
+        }
+    }
 
     // Duplicate `view-transition-name` collisions. Chrome's view-
     // transitions API REQUIRES every active `view-transition-name`
@@ -1689,6 +2094,74 @@ def _run_interaction(page, flow: Interaction) -> str | None:
     return None
 
 
+def _capture_finding_crops(
+    page, findings: list[dict], out_dir: Path, slug: str
+) -> None:
+    """For every finding that carries a stable `selector`, capture a small
+    JPG crop of the offending element padded ±20px so reviewers don't
+    have to hunt through a 3000px full-page screenshot to locate the bug.
+
+    Mutates each finding in-place to add a `crop_path` field pointing at
+    `<out_dir>/<slug>.<kind>.<idx>.crop.jpg` (relative to repo root).
+    Failures are swallowed -- the snap pipeline's job is to record what
+    happened, not to fail because evidence capture had a flaky moment.
+
+    Per-kind index ensures multiple findings of the same kind on the
+    same cell get distinct paths (e.g. five `element-overflow-x` findings
+    on a sloppy footer all get their own crop).
+    """
+    seen_kinds: dict[str, int] = {}
+    vp_size = page.viewport_size or {"width": 1920, "height": 1080}
+    vw = vp_size.get("width", 1920)
+    vh = vp_size.get("height", 1080)
+    for f in findings:
+        # Heuristics put the selector under `selector`; axe findings
+        # surface it under `axe_first_selectors[0]`. Accept either.
+        sel = f.get("selector")
+        if not sel and isinstance(f.get("axe_first_selectors"), list):
+            axe_sels = f["axe_first_selectors"]
+            if axe_sels:
+                sel = axe_sels[0]
+        if not sel or not isinstance(sel, str):
+            continue
+        kind = str(f.get("kind") or "unknown")
+        idx = seen_kinds.get(kind, 0)
+        seen_kinds[kind] = idx + 1
+        crop_path = out_dir / f"{slug}.{kind}.{idx}.crop.jpg"
+        try:
+            loc = page.locator(sel).first
+            loc.scroll_into_view_if_needed(timeout=1500)
+            bbox = loc.bounding_box(timeout=1000)
+            if not bbox:
+                continue
+            bw = bbox.get("width", 0) or 0
+            bh = bbox.get("height", 0) or 0
+            if bw < 1 or bh < 1:
+                continue
+            # Pad +/-20px, then clamp to the viewport bounds (Playwright
+            # rejects clip rectangles that extend off-screen). bounding_box
+            # is reported in viewport coordinates after scroll-into-view,
+            # so this clip lives in viewport space.
+            pad = 20
+            x = max(0.0, bbox["x"] - pad)
+            y = max(0.0, bbox["y"] - pad)
+            w = min(float(vw) - x, bw + 2 * pad)
+            h = min(float(vh) - y, bh + 2 * pad)
+            if w < 1 or h < 1:
+                continue
+            page.screenshot(
+                path=str(crop_path),
+                clip={"x": x, "y": y, "width": w, "height": h},
+                type="jpeg",
+                quality=80,
+            )
+            f["crop_path"] = str(crop_path.relative_to(REPO_ROOT))
+        except Exception:
+            # Selector unresolvable, element scrolled off, page nav'd, or
+            # the screenshot itself failed -- crops are best-effort.
+            continue
+
+
 def _capture_cell(
     *,
     page,
@@ -1768,9 +2241,63 @@ def _capture_cell(
         })
 
     base_findings = list(findings.get("findings", []))
+
+    # background-image-broken: cross-reference the (selector, url) pairs
+    # collected by _HEURISTICS_JS with the response-listener's network
+    # failures. Any CSS background-image URL that 404'd is an ERROR --
+    # this is the cover-block "the image silently disappeared but the
+    # box stayed there" failure mode that a pixel diff won't catch
+    # because the box is the same shape with or without the image.
+    bg_pairs = findings.get("bg_image_pairs") or []
+    if bg_pairs:
+        failed_urls = {
+            nf.get("url"): nf.get("status")
+            for nf in bag.get("network_failures", [])
+            if nf.get("url")
+        }
+        bg_findings: list[dict] = []
+        for pair in bg_pairs:
+            url = pair.get("url", "")
+            sel = pair.get("selector", "")
+            status = failed_urls.get(url)
+            if status is None:
+                continue
+            bg_findings.append({
+                "severity": "error",
+                "kind": "background-image-broken",
+                "message": (
+                    f"CSS background-image failed to load (HTTP {status}): "
+                    f"{url} on `{sel}`."
+                ),
+                "selector": sel,
+                "fingerprint": sel + "|" + url,
+                "url": url,
+                "status": status,
+            })
+            if len(bg_findings) >= 5:
+                break
+        base_findings.extend(bg_findings)
+
     findings["findings"] = (
         base_findings + axe_findings + budget_findings + (extra_findings or [])
     )
+
+    # Apply the heuristic-finding allowlist BEFORE capturing crops, so
+    # the cell's recorded `error_count` (and the gallery badge built
+    # from it) reflects the post-allowlist gate. Demoted findings stay
+    # in the JSON artifact tagged `allowlisted: true` so reviewers can
+    # still see what's being intentionally accepted.
+    _apply_allowlist_to_findings(theme, vp.name, slug, findings["findings"])
+
+    # Capture per-finding cropped JPGs of each offender (where a stable
+    # selector is available). This MUST run after findings are
+    # consolidated but before they're written to disk so `crop_path`
+    # ends up in the JSON artifact. Best-effort -- a flaky scroll or
+    # an axe selector Playwright can't parse won't fail the cell.
+    try:
+        _capture_finding_crops(page, findings["findings"], out_dir, slug)
+    except Exception as e:  # pragma: no cover -- defensive only
+        print(f"    {YELLOW}warn:{RESET} finding-crop capture: {e}")
 
     findings_payload = {
         **findings,
@@ -1863,7 +2390,17 @@ def shoot_theme(
             for vp in viewports:
                 ctx = browser.new_context(
                     viewport={"width": vp.width, "height": vp.height},
-                    device_scale_factor=1,
+                    # Capture at 2x DPR so source PNGs are retina-sharp
+                    # for human review (zoomed inspection, retina
+                    # monitors, gallery downsamples). The viewport
+                    # (logical CSS pixels) is unchanged so layout and
+                    # responsive breakpoints are identical to a 1x
+                    # capture; only the bitmap doubles in resolution.
+                    # axe-core, the heuristics engine, and findings.json
+                    # all read the DOM/computed styles, not the
+                    # bitmap, so warn counts and the static gate are
+                    # byte-identical to a 1x shoot.
+                    device_scale_factor=2,
                     user_agent=(
                         "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) "
                         "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -2722,6 +3259,129 @@ def cmd_diff(args: argparse.Namespace) -> int:
 _SEVERITY_RANK = {"error": 0, "warn": 1, "info": 2}
 
 
+# ---------------------------------------------------------------------------
+# Heuristic-finding allowlist
+# ---------------------------------------------------------------------------
+# `tests/visual-baseline/heuristics-allowlist.json` snapshots the set of
+# ERROR-tier heuristic findings that exist on the current shoot, so the
+# new content-correctness checks can ship without first fixing every
+# pre-existing violation. Going forward only NEW findings (anything not
+# in the allowlist) fail the gate. Same pattern Stylelint, ESLint, Knip
+# use for "fail on new violations only".
+#
+# File shape:
+#   {
+#     "<theme>:<viewport>:<route>": {
+#       "<kind>": ["<fingerprint>", "<fingerprint>", ...]
+#     }
+#   }
+#
+# A finding's fingerprint is whatever stable identifier the heuristic
+# produced -- usually the `selector`, but `duplicate-nav-link` uses the
+# `text|href` tuple because the link could be reordered without that
+# being a regression.
+
+_ALLOWLIST_CACHE: dict[str, dict[str, list[str]]] | None = None
+
+
+def _load_allowlist() -> dict[str, dict[str, list[str]]]:
+    """Load + cache `tests/visual-baseline/heuristics-allowlist.json`.
+
+    Missing or malformed file is treated as an empty allowlist (no
+    suppressions) so the gate stays usable even on a fresh checkout
+    that hasn't run `bin/snap.py allowlist regenerate` yet.
+    """
+    global _ALLOWLIST_CACHE
+    if _ALLOWLIST_CACHE is not None:
+        return _ALLOWLIST_CACHE
+    if not ALLOWLIST_PATH.is_file():
+        _ALLOWLIST_CACHE = {}
+        return _ALLOWLIST_CACHE
+    try:
+        data = json.loads(ALLOWLIST_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError) as e:
+        print(f"{YELLOW}warn:{RESET} could not parse "
+              f"{ALLOWLIST_PATH.relative_to(REPO_ROOT)} ({e}); "
+              f"treating as empty.")
+        _ALLOWLIST_CACHE = {}
+        return _ALLOWLIST_CACHE
+    if not isinstance(data, dict):
+        _ALLOWLIST_CACHE = {}
+        return _ALLOWLIST_CACHE
+    cleaned: dict[str, dict[str, list[str]]] = {}
+    for key, kinds in data.items():
+        if not isinstance(kinds, dict):
+            continue
+        cleaned[str(key)] = {
+            str(k): [str(s) for s in (v or [])]
+            for k, v in kinds.items()
+            if isinstance(v, list)
+        }
+    _ALLOWLIST_CACHE = cleaned
+    return _ALLOWLIST_CACHE
+
+
+def _reset_allowlist_cache() -> None:
+    """Re-read the allowlist on next call. Used by `cmd_allowlist` after
+    it rewrites the file so a same-process re-shoot picks up the new
+    state without restarting Python."""
+    global _ALLOWLIST_CACHE
+    _ALLOWLIST_CACHE = None
+
+
+def _finding_fingerprint(f: dict) -> str | None:
+    """Stable identifier for an allowlist match. Prefer the explicit
+    `fingerprint` field (heuristics emit one), fall back to `selector`.
+    Returns None when neither is available -- such findings can't be
+    allowlisted (correct behaviour: a finding without any address is
+    an unconditional failure)."""
+    fp = f.get("fingerprint")
+    if isinstance(fp, str) and fp:
+        return fp
+    sel = f.get("selector")
+    if isinstance(sel, str) and sel:
+        return sel
+    return None
+
+
+def _allowlist_key(theme: str, viewport: str, route: str) -> str:
+    """Canonical lookup key for the allowlist file."""
+    return f"{theme}:{viewport}:{route}"
+
+
+def _apply_allowlist_to_findings(
+    theme: str, viewport: str, route: str, findings: list[dict]
+) -> int:
+    """Demote ERROR findings whose (kind, fingerprint) is in the
+    allowlist for this (theme, viewport, route) cell. Mutates each
+    matched finding in-place: `severity` becomes `info` and
+    `allowlisted` is set to True. Returns the number demoted.
+
+    Findings already marked `allowlisted` are left alone (idempotent
+    for cmd_report re-runs against a cached findings.json)."""
+    allowlist = _load_allowlist()
+    cell = allowlist.get(_allowlist_key(theme, viewport, route))
+    if not cell:
+        return 0
+    demoted = 0
+    for f in findings:
+        if f.get("severity") != "error":
+            continue
+        if f.get("allowlisted"):
+            continue
+        kind = str(f.get("kind") or "")
+        if kind not in cell:
+            continue
+        fp = _finding_fingerprint(f)
+        if fp is None:
+            continue
+        if fp in cell[kind]:
+            f["severity"] = "info"
+            f["allowlisted"] = True
+            demoted += 1
+    return demoted
+
+
 # Tier policy (Phase 1). Tiered gate:
 #   * HARD-fail (gate="fail")  -> bin/check.py --visual exits 1
 #       - any heuristic finding with severity "error"
@@ -2994,6 +3654,20 @@ def cmd_report(args: argparse.Namespace) -> int:
                         and p.get("route") == pf["route"]):
                     p.setdefault("findings", []).append(pf)
                     break
+
+        # Apply the heuristic-finding allowlist. `_capture_cell` already
+        # demotes findings at shoot time; this is a defence-in-depth pass
+        # for the case where someone re-runs `bin/snap.py report` against
+        # an older findings.json after editing the allowlist (or for
+        # parity findings that were spliced in just above and never went
+        # through `_capture_cell`).
+        for p in payloads:
+            _apply_allowlist_to_findings(
+                theme, str(p.get("viewport", "")),
+                str(p.get("route", "")),
+                p.setdefault("findings", []),
+            )
+
         # Per-route severity totals.
         route_summary: list[dict] = []
         all_findings: list[tuple[dict, dict]] = []
@@ -3073,13 +3747,29 @@ def cmd_report(args: argparse.Namespace) -> int:
 
         if all_findings:
             lines.append("## Findings (worst first)\n")
+            theme_dir = SNAPS_DIR / theme
             for p, f in all_findings:
                 sev = f.get("severity", "info").upper()
                 kind = f.get("kind", "")
                 msg = f.get("message", "")
+                crop = f.get("crop_path")
+                crop_suffix = ""
+                if crop:
+                    # crop_path is repo-relative; rewrite to theme-relative
+                    # so the markdown link works when review.md is opened
+                    # in place at tmp/snaps/<theme>/review.md.
+                    try:
+                        rel = (REPO_ROOT / crop).relative_to(theme_dir)
+                        crop_suffix = f" [[evidence]({rel})]"
+                    except ValueError:
+                        crop_suffix = f" [[evidence]({crop})]"
+                allow_suffix = (
+                    " _(allowlisted; demoted to info)_"
+                    if f.get("allowlisted") else ""
+                )
                 lines.append(
                     f"- **{sev}** `{p['viewport']}/{p['route']}` "
-                    f"`{kind}`: {msg}"
+                    f"`{kind}`: {msg}{crop_suffix}{allow_suffix}"
                 )
             lines.append("")
         else:
@@ -3241,6 +3931,166 @@ def cmd_report(args: argparse.Namespace) -> int:
     if getattr(args, "strict", False) and overall_gate == "fail":
         return 1
     return 0
+
+
+def _collect_current_error_findings(
+    themes: list[str],
+) -> dict[str, dict[str, list[str]]]:
+    """Walk `tmp/snaps/<theme>/<viewport>/<slug>.findings.json` for each
+    theme and gather every ERROR-tier finding that has a fingerprint
+    (or a selector to fall back on). The result is shaped like the
+    on-disk allowlist file: `<theme>:<viewport>:<route>` -> kind ->
+    sorted list of fingerprints.
+
+    Findings already tagged `allowlisted` are reapplied at read time
+    by `_load_allowlist`, so this scan sees them as `info` and skips
+    them -- meaning a `regenerate` call is idempotent.
+    """
+    out: dict[str, dict[str, list[str]]] = {}
+    for theme in themes:
+        theme_dir = SNAPS_DIR / theme
+        if not theme_dir.is_dir():
+            continue
+        for fp_path in sorted(theme_dir.glob("*/*.findings.json")):
+            try:
+                data = json.loads(fp_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError, json.JSONDecodeError):
+                continue
+            viewport = str(data.get("viewport", ""))
+            route = str(data.get("route", fp_path.stem.removesuffix(".findings")))
+            for f in data.get("findings", []) or []:
+                if f.get("severity") != "error":
+                    continue
+                kind = str(f.get("kind") or "")
+                if not kind:
+                    continue
+                fp = _finding_fingerprint(f)
+                if not fp:
+                    continue
+                key = _allowlist_key(theme, viewport, route)
+                cell = out.setdefault(key, {})
+                bucket = cell.setdefault(kind, [])
+                if fp not in bucket:
+                    bucket.append(fp)
+    # Sort fingerprints inside each kind for stable diffs.
+    for cell in out.values():
+        for kind in cell:
+            cell[kind].sort()
+    return out
+
+
+def _format_allowlist(data: dict[str, dict[str, list[str]]]) -> str:
+    """Stable, diff-friendly JSON for the on-disk allowlist file:
+    keys sorted, two-space indent, trailing newline."""
+    return json.dumps(data, indent=2, sort_keys=True) + "\n"
+
+
+def cmd_allowlist(args: argparse.Namespace) -> int:
+    """Manage the heuristic-finding allowlist baseline.
+
+    Two actions:
+      * regenerate -- snapshot every current ERROR-tier finding (with a
+        stable fingerprint) into
+        tests/visual-baseline/heuristics-allowlist.json. Run this once
+        at rollout, and again any time the team intentionally accepts a
+        new batch of pre-existing offences. Going forward only NEW
+        findings (not in the file) fail the gate.
+      * diff -- show what would change if you regenerated right now.
+        Useful in PRs to spot when the baseline drifts under the radar.
+
+    Both actions read findings from `tmp/snaps/<theme>/**/findings.json`,
+    so run a `bin/snap.py shoot` first.
+    """
+    if getattr(args, "all", False) or args.theme is None:
+        themes = discover_themes()
+    else:
+        themes = [args.theme]
+    if not themes:
+        raise SystemExit("No themes to scan.")
+
+    current = _collect_current_error_findings(themes)
+    existing = _load_allowlist()
+
+    if args.action == "regenerate":
+        # Merge: keep every existing entry for cells/kinds we DIDN'T
+        # re-scan this run (so a partial shoot doesn't accidentally drop
+        # entries for themes/routes the user didn't touch). For cells
+        # we DID re-scan, replace the per-cell dict entirely so removed
+        # findings disappear and new ones land.
+        merged: dict[str, dict[str, list[str]]] = {}
+        rescanned_themes = set(themes)
+        for key, cell in existing.items():
+            theme = key.split(":", 1)[0]
+            if theme in rescanned_themes:
+                continue
+            merged[key] = cell
+        for key, cell in current.items():
+            merged[key] = cell
+        ALLOWLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        before_total = sum(len(v) for cell in existing.values() for v in cell.values())
+        after_total = sum(len(v) for cell in merged.values() for v in cell.values())
+        ALLOWLIST_PATH.write_text(
+            _format_allowlist(merged), encoding="utf-8"
+        )
+        _reset_allowlist_cache()
+        rel = ALLOWLIST_PATH.relative_to(REPO_ROOT)
+        print(f"{GREEN}Wrote {rel}{RESET}")
+        print(f"  cells: {len(merged)} (was {len(existing)})")
+        print(f"  fingerprints: {after_total} (was {before_total})")
+        if rescanned_themes:
+            print(f"  rescanned themes: {', '.join(sorted(rescanned_themes))}")
+        return 0
+
+    if args.action == "diff":
+        # For an apples-to-apples diff we have to merge the same way
+        # `regenerate` would, otherwise themes/cells the user didn't
+        # rescan show up as spurious removals.
+        rescanned_themes = set(themes)
+        proposed: dict[str, dict[str, list[str]]] = {}
+        for key, cell in existing.items():
+            theme = key.split(":", 1)[0]
+            if theme in rescanned_themes:
+                continue
+            proposed[key] = cell
+        for key, cell in current.items():
+            proposed[key] = cell
+
+        added: list[str] = []
+        removed: list[str] = []
+        # Walk the union of keys.
+        all_keys = sorted(set(existing) | set(proposed))
+        for key in all_keys:
+            old_cell = existing.get(key, {})
+            new_cell = proposed.get(key, {})
+            kinds = sorted(set(old_cell) | set(new_cell))
+            for kind in kinds:
+                old_fps = set(old_cell.get(kind, []))
+                new_fps = set(new_cell.get(kind, []))
+                for fp in sorted(new_fps - old_fps):
+                    added.append(f"  + {key} {kind}: {fp}")
+                for fp in sorted(old_fps - new_fps):
+                    removed.append(f"  - {key} {kind}: {fp}")
+
+        if not added and not removed:
+            print(f"{GREEN}No allowlist changes.{RESET}")
+            return 0
+        print("Allowlist changes vs current findings:")
+        if added:
+            print(f"{RED}New findings ({len(added)}) -- not yet allowlisted; "
+                  f"these would FAIL the gate today:{RESET}")
+            for line in added:
+                print(line)
+        if removed:
+            print(f"{GREEN}Resolved findings ({len(removed)}) -- previously "
+                  f"allowlisted, no longer present:{RESET}")
+            for line in removed:
+                print(line)
+        # Non-zero exit when there are NEW findings, so CI / pre-push
+        # can plug this in as a check (`bin/snap.py allowlist diff`
+        # exits 0 unless something new appeared).
+        return 1 if added else 0
+
+    raise SystemExit(f"Unknown allowlist action: {args.action!r}")
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
@@ -3610,6 +4460,32 @@ def build_parser() -> argparse.ArgumentParser:
         help="Verify Playwright/Pillow/axe/baselines are ready.",
     )
     s_doctor.set_defaults(func=cmd_doctor)
+
+    s_allow = sub.add_parser(
+        "allowlist",
+        help=(
+            "Manage the heuristic-finding allowlist baseline "
+            "(tests/visual-baseline/heuristics-allowlist.json)."
+        ),
+    )
+    s_allow.add_argument(
+        "action",
+        choices=("regenerate", "diff"),
+        help=(
+            "regenerate: snapshot current ERROR findings into the "
+            "allowlist file. diff: show what would change without "
+            "writing (exits 1 if new un-allowlisted findings exist)."
+        ),
+    )
+    s_allow.add_argument(
+        "--theme", default=None,
+        help="Limit to one theme (defaults to all discovered themes).",
+    )
+    s_allow.add_argument(
+        "--all", action="store_true",
+        help="Explicit alias for 'all themes' (default behaviour).",
+    )
+    s_allow.set_defaults(func=cmd_allowlist)
 
     return p
 
