@@ -1,0 +1,111 @@
+---
+description: Auto-load tmp/dispatch-state.json so every agent turn opens with the freshest snap findings (Phase 2 of the closed-loop dispatcher).
+alwaysApply: true
+---
+
+# Closed-loop dispatch state
+
+Phase 2 of the "closed loop theme building" plan keeps the agent's
+context fresh: a watchdog daemon (`bin/dispatch-watch.py`) snaps
+themes whenever the source changes and writes a compact summary to
+`tmp/dispatch-state.json`. **Read that file at the start of every turn
+that touches a theme.** It tells you what the most recent snap saw
+without forcing a fresh boot of `bin/snap.py shoot`.
+
+## How to use
+
+1. At the start of any turn that edits CSS / `theme.json` /
+   `templates` / `parts` / `patterns`, open
+   `@tmp/dispatch-state.json`. Treat its contents as ground truth for
+   the visual state of the listed themes.
+2. Look at `next_actions` first -- it's a pre-ranked list of the
+   loudest fixes pending (per the remedy table in
+   `bin/finding_remedies.json`). If `next_actions` is non-empty, work
+   from it before snapping anything new.
+3. Use `errors_by_route_viewport` to triage by route + viewport
+   pair. Each entry includes `kind` (axe rule slug or DOM
+   heuristic), `severity`, `message`, and `selector` -- enough to
+   diagnose without re-reading the raw `findings.json`.
+4. `last_run_at` (epoch seconds) tells you how stale the state is.
+   If it's older than your last edit's mtime, the daemon hasn't seen
+   your change yet -- give it the debounce window
+   (`--debounce`, default 0.5s) plus the snap time, or run
+   `python3 bin/snap.py shoot <theme>` once manually to refresh.
+5. `last_dispatch_kind` is one of:
+   - `noop` -- daemon just started, no snaps yet
+   - `snap-only` -- a theme source file changed, daemon re-snapped
+   - `overrides+snap` -- `bin/append-wc-overrides.py` itself
+     changed, daemon re-ran the override generator THEN re-snapped
+6. **Do not invent state when the file is missing.** If
+   `tmp/dispatch-state.json` doesn't exist, the daemon isn't
+   running. Either start it (`python3 bin/dispatch-watch.py
+   --theme <slug>`) or accept that you'll be relying on whatever's
+   in `tmp/snaps/<theme>/` from the previous shoot.
+
+## Schema
+
+```jsonc
+{
+  "schema": 1,
+  "started_at": 1776860500,           // epoch when daemon started
+  "last_run_at": 1776860590,          // epoch of most recent dispatch
+  "last_dispatch_kind": "snap-only",  // noop|snap-only|overrides+snap
+  "themes_dispatched": ["selvedge"],  // themes that triggered this run
+  "themes_snapped": ["selvedge"],     // themes that completed shoot
+  "errors_by_route_viewport": {
+    "selvedge:checkout-filled:desktop": [
+      {
+        "theme": "selvedge",
+        "route": "checkout-filled",
+        "viewport": "desktop",
+        "kind": "color-contrast",
+        "severity": "error",
+        "message": "Element has insufficient color contrast of 1.27...",
+        "selector": ".wc-block-components-text-input label",
+        "axe_help_url": "https://dequeuniversity.com/rules/axe/.../color-contrast"
+      }
+    ]
+  },
+  "suggested_fixes": [
+    {
+      "theme": "selvedge",
+      "route": "checkout-filled",
+      "viewport": "desktop",
+      "axe_rule": "color-contrast",
+      "selector": ".wc-block-components-text-input label",
+      "remedy_id": "wc-input-contrast",
+      "file": "bin/append-wc-overrides.py",
+      "strategy": "boost specificity in CSS_PHASE_I",
+      "example_diff": "..."
+    }
+  ],
+  "next_actions": [
+    "selvedge checkout-filled/desktop: color-contrast -> boost specificity in CSS_PHASE_I"
+  ]
+}
+```
+
+## When the daemon isn't running
+
+Two valid recovery paths:
+
+1. **Manual one-shot**: `python3 bin/dispatch-watch.py --once` runs a
+   single dispatch cycle (debounce + snap) and exits. Re-reads
+   `tmp/dispatch-state.json` afterwards.
+2. **Long-running**: `python3 bin/dispatch-watch.py --theme <slug>`
+   in a separate terminal. State refreshes automatically as you
+   edit. Use `--no-snap` if Playground is wedged and you only want
+   override-script reruns flowing.
+
+## Related files
+
+- `bin/dispatch-watch.py` -- the watcher daemon
+- `bin/snap.py serve --shoot-on-demand` -- warm-server endpoint that
+  the daemon talks to (Phase 2; ~3s/shot vs ~127s cold)
+- `bin/finding_remedies.json` -- the (axe_rule, selector_pattern) ->
+  (file, strategy, diff) table that powers `suggested_fixes` and
+  `next_actions`
+- `bin/check.py` -- the static gate that reads
+  `tmp/snaps/<theme>/**/findings.json` directly during pre-commit
+- `bin/fix-loop.py` -- the optional bracketing harness (3-attempt
+  cap, hold-for-agent, structured failure report)

@@ -64,4 +64,32 @@ if echo "$DRIFT_OUTPUT" | grep -qE '^\+|FAIL'; then
   exit 1
 fi
 
+echo "▸ pre-push: bin/snap.py check --changed (visual + axe gate)"
+# Phase 1 (`phase1-prepush-visual`) of the closed-loop plan: pre-push
+# now boots Playground for any theme touched by the diff and runs
+# the visual + axe gate. This is what catches the cascade-loss /
+# placeholder-contrast / overflow regressions that the static gate
+# above can't see (they're paint-time, not source-time).
+#
+# Cost: one Playground cold-boot per touched theme (~127s). Pre-commit
+# remains static-only because that cost is intolerable on every save;
+# pre-push is the right place because pushing happens 1-2 orders of
+# magnitude less often than committing.
+#
+# Escape hatch: FIFTY_SKIP_VISUAL_PUSH=1 git push   (use sparingly;
+# CI runs the same gate and will turn the PR red).
+if [ "${FIFTY_SKIP_VISUAL_PUSH:-0}" = "1" ]; then
+  echo "  SKIPPED (FIFTY_SKIP_VISUAL_PUSH=1)."
+else
+  if ! FIFTY_SKIP_UNPUSHED_CHECK=1 FIFTY_SKIP_EVIDENCE_FRESHNESS=1 \
+        python3 bin/snap.py check --changed; then
+    echo
+    echo "✘ pre-push blocked: bin/snap.py check --changed reported"
+    echo "  visual or accessibility regressions. Fix locally, re-snap,"
+    echo "  commit, then re-push. To bypass once (NOT recommended):"
+    echo "      FIFTY_SKIP_VISUAL_PUSH=1 git push"
+    exit 1
+  fi
+fi
+
 echo "✓ pre-push: all gates green."
