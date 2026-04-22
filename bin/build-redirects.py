@@ -26,13 +26,26 @@ What this script does:
     bounce the browser to the right Playground deeplink.
 
     It also writes:
-      * docs/index.html        — landing page listing every theme + its
-                                 short links, suitable as the public face
-                                 of the repo.
-      * docs/.nojekyll         — tells GH Pages not to run Jekyll, which
-                                 would otherwise drop files / folders
-                                 starting with `_` and slow builds for no
-                                 reason on a static site like this one.
+      * docs/index.html             — landing page listing every theme + its
+                                      short links, suitable as the public
+                                      face of the repo.
+      * docs/concepts/index.html    — "queue" page listing every concept in
+                                      mockups/ that hasn't shipped yet, with
+                                      a "Pick this one" CTA that opens a
+                                      prefilled GitHub issue. Lets the
+                                      Proprietor see at a glance which
+                                      concepts are still on the bench and
+                                      claim the next one to build.
+      * docs/mockups/<slug>.png     — copies of the relevant mockup PNGs so
+                                      the concepts page can render them
+                                      without leaning on raw.githubusercontent
+                                      (cheaper, and survives the repo going
+                                      private later).
+      * docs/.nojekyll              — tells GH Pages not to run Jekyll, which
+                                      would otherwise drop files / folders
+                                      starting with `_` and slow builds for
+                                      no reason on a static site like this
+                                      one.
 
     The script is fully idempotent: every file under docs/ is regenerated
     from scratch on each run, so removing a PAGES entry deletes the
@@ -63,6 +76,7 @@ import re
 import shutil
 import sys
 from pathlib import Path
+from urllib.parse import quote as url_quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _lib import (
@@ -78,6 +92,7 @@ from _lib import (
 )
 
 DOCS_DIR = MONOREPO_ROOT / "docs"
+MOCKUPS_DIR = MONOREPO_ROOT / "mockups"
 
 # Each entry becomes one redirector under docs/<theme>/<slug>/index.html.
 # The blank-slug entry produces the theme root: docs/<theme>/index.html.
@@ -213,6 +228,8 @@ INDEX_HEAD = """<!doctype html>
 \t\t.theme p{{margin:0;color:#a8a29e;font-size:.95rem}}
 \t\t.cta{{display:inline-flex;align-items:center;gap:.5rem;background:#fafaf9;color:#0f0f10;padding:.55rem .95rem;border-radius:9999px;text-decoration:none;font-weight:600;font-size:.9rem;align-self:flex-start;transition:background 160ms ease}}
 \t\t.cta:hover{{background:#fff}}
+\t\t.queue-link{{display:inline-flex;align-items:center;gap:.4rem;margin-top:1rem;color:#fafaf9;text-decoration:none;font-weight:600;font-size:.95rem;border-bottom:1px solid #44403c;padding-bottom:.15rem}}
+\t\t.queue-link:hover{{border-bottom-color:#fafaf9}}
 \t\tfooter{{margin-top:3rem;padding-top:2rem;border-top:1px solid #2c2a27;color:#78716c;font-size:.85rem}}
 \t\tfooter a{{color:#d6d3d1}}
 \t\t@media (prefers-color-scheme:light){{
@@ -222,6 +239,8 @@ INDEX_HEAD = """<!doctype html>
 \t\t\t.theme:hover{{border-color:#a8a29e}}
 \t\t\t.cta{{background:#1c1917;color:#fafaf9}}
 \t\t\t.cta:hover{{background:#0c0a09}}
+\t\t\t.queue-link{{color:#1c1917;border-bottom-color:#d6d3d1}}
+\t\t\t.queue-link:hover{{border-bottom-color:#1c1917}}
 \t\t\tfooter{{border-color:#e7e5e4;color:#78716c}}
 \t\t\tfooter a{{color:#44403c}}
 \t\t}}
@@ -232,6 +251,7 @@ INDEX_HEAD = """<!doctype html>
 \t\t<header>
 \t\t\t<h1>Fifty</h1>
 \t\t\t<p>A monorepo of WordPress block themes built around a shared <a href="https://github.com/{org}/{repo}/blob/{branch}/obel/">Obel</a> base. Click any theme below to boot a live demo storefront in WordPress Playground — no install, runs entirely in your browser.</p>
+\t\t\t<p><a class="queue-link" href="concepts/">Browse the concept queue ({unbuilt_count} unbuilt) →</a></p>
 \t\t</header>
 \t\t<section class="themes">
 """
@@ -246,12 +266,13 @@ INDEX_FOOT = """\t\t</section>
 """
 
 
-def render_index(themes_html: list[str]) -> str:
+def render_index(themes_html: list[str], unbuilt_count: int) -> str:
     head = INDEX_HEAD.format(
         base_url=html_escape(GH_PAGES_BASE_URL),
         org=html_escape(GITHUB_ORG),
         repo=html_escape(GITHUB_REPO),
         branch=html_escape(GITHUB_BRANCH),
+        unbuilt_count=unbuilt_count,
     )
     foot = INDEX_FOOT.format(
         org=html_escape(GITHUB_ORG),
@@ -314,6 +335,209 @@ def render_theme_card(theme_dir: Path, theme_name: str, theme_slug: str) -> str:
     )
 
 
+# --- Concepts queue page --------------------------------------------------
+#
+# `mockups/mockup-<slug>.png` is the canonical place we drop a hand-drawn
+# (or AI-rendered) mock for a candidate theme before deciding whether to
+# build it. A concept is "shipped" once a sibling theme directory with the
+# same slug exists at the monorepo root (e.g. mockup-aero.png + aero/).
+# The concepts page surfaces every mockup that *doesn't* yet have a paired
+# theme directory, so the Proprietor can browse the queue and pick the
+# next one to build.
+#
+# We deliberately re-host the mockup PNGs under docs/mockups/<slug>.png
+# rather than hot-linking raw.githubusercontent. This keeps the page
+# rendering even if (a) the repo goes private, (b) raw.* gets rate-limited
+# by an over-eager crawler, or (c) we add a CDN later. The Pages site
+# owns its own assets.
+
+CONCEPT_MOCKUP_RE = re.compile(r"^mockup-([a-z0-9][a-z0-9-]*)\.png$")
+
+
+def discover_concepts(built_theme_slugs: set[str]) -> tuple[list[dict], list[dict]]:
+    """Return (unbuilt, built) concept lists, each sorted by slug.
+
+    Each concept is a dict ``{"slug": str, "name": str, "mockup": Path}``.
+    ``built`` is also surfaced so the page can say "5 shipped, 24 in the
+    queue" without re-counting at render time."""
+    if not MOCKUPS_DIR.is_dir():
+        return [], []
+    unbuilt: list[dict] = []
+    built: list[dict] = []
+    for path in sorted(MOCKUPS_DIR.glob("mockup-*.png")):
+        m = CONCEPT_MOCKUP_RE.match(path.name)
+        if not m:
+            continue
+        slug = m.group(1)
+        record = {
+            "slug": slug,
+            "name": slug[:1].upper() + slug[1:],
+            "mockup": path,
+        }
+        (built if slug in built_theme_slugs else unbuilt).append(record)
+    return unbuilt, built
+
+
+CONCEPTS_HEAD = """<!doctype html>
+<html lang="en">
+<head>
+\t<meta charset="utf-8">
+\t<title>Concept queue — Fifty</title>
+\t<meta name="viewport" content="width=device-width,initial-scale=1">
+\t<meta name="description" content="WordPress block-theme concepts on the bench, waiting to be built. Click any to claim it.">
+\t<meta property="og:type" content="website">
+\t<meta property="og:title" content="Concept queue — Fifty">
+\t<meta property="og:description" content="WordPress block-theme concepts on the bench, waiting to be built. Click any to claim it.">
+\t<meta property="og:url" content="{base_url}concepts/">
+\t<style>
+\t\t:root{{color-scheme:dark light}}
+\t\thtml,body{{margin:0;background:#0f0f10;color:#f5f5f4;font:16px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}}
+\t\tmain{{max-width:78rem;margin:0 auto;padding:clamp(2rem,5vw,4rem) clamp(1.25rem,4vw,2rem)}}
+\t\theader{{margin-bottom:3rem}}
+\t\theader h1{{font-size:clamp(1.75rem,3.5vw,2.5rem);margin:0 0 .5rem;font-weight:700;letter-spacing:-.01em}}
+\t\theader p{{margin:0;color:#a8a29e;max-width:48rem}}
+\t\theader p a{{color:#fafaf9}}
+\t\t.back{{display:inline-block;margin-bottom:1.5rem;color:#a8a29e;text-decoration:none;font-size:.9rem}}
+\t\t.back:hover{{color:#fafaf9}}
+\t\t.stats{{display:flex;gap:1.5rem;margin:1.5rem 0 0;color:#a8a29e;font-size:.9rem}}
+\t\t.stats strong{{color:#fafaf9;font-weight:600}}
+\t\tsection h2{{font-size:1.1rem;font-weight:600;margin:2.5rem 0 1.25rem;color:#a8a29e;letter-spacing:.02em;text-transform:uppercase;font-size:.8rem}}
+\t\t.concepts{{display:grid;gap:1.25rem;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))}}
+\t\t.concept{{border:1px solid #2c2a27;border-radius:14px;background:#1a1917;display:flex;flex-direction:column;overflow:hidden;transition:border-color 160ms ease,transform 160ms ease;text-decoration:none;color:inherit}}
+\t\t.concept:hover{{border-color:#57534e;transform:translateY(-2px)}}
+\t\t.concept.shipped{{opacity:.55}}
+\t\t.concept.shipped:hover{{border-color:#2c2a27;transform:none;opacity:.75}}
+\t\t.concept .thumb{{aspect-ratio:4/3;background:#0c0a09 center/cover no-repeat;border-bottom:1px solid #2c2a27}}
+\t\t.concept .body{{padding:1rem 1.25rem;display:flex;flex-direction:column;gap:.4rem}}
+\t\t.concept h3{{margin:0;font-size:1.05rem;font-weight:600}}
+\t\t.concept .meta{{margin:0;color:#a8a29e;font-size:.85rem;display:flex;gap:.5rem;align-items:center}}
+\t\t.concept .pick{{margin:.6rem 0 0;color:#fafaf9;font-size:.9rem;font-weight:600}}
+\t\t.concept.shipped .pick{{color:#a8a29e}}
+\t\t.badge{{display:inline-block;padding:.1rem .5rem;border-radius:9999px;background:#292524;color:#d6d3d1;font-size:.7rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase}}
+\t\t.badge.shipped{{background:#14532d;color:#bbf7d0}}
+\t\tfooter{{margin-top:4rem;padding-top:2rem;border-top:1px solid #2c2a27;color:#78716c;font-size:.85rem}}
+\t\tfooter a{{color:#d6d3d1}}
+\t\t@media (prefers-color-scheme:light){{
+\t\t\thtml,body{{background:#fafaf9;color:#1c1917}}
+\t\t\theader p,.concept .meta,.stats,section h2{{color:#57534e}}
+\t\t\t.back{{color:#57534e}}
+\t\t\t.back:hover{{color:#1c1917}}
+\t\t\t.concept{{background:#fff;border-color:#e7e5e4}}
+\t\t\t.concept:hover{{border-color:#a8a29e}}
+\t\t\t.concept .thumb{{background-color:#f5f5f4;border-color:#e7e5e4}}
+\t\t\t.concept .pick{{color:#1c1917}}
+\t\t\t.concept.shipped .pick{{color:#57534e}}
+\t\t\t.badge{{background:#e7e5e4;color:#44403c}}
+\t\t\t.badge.shipped{{background:#dcfce7;color:#166534}}
+\t\t\tfooter{{border-color:#e7e5e4;color:#78716c}}
+\t\t\tfooter a{{color:#44403c}}
+\t\t\tsection h2{{color:#78716c}}
+\t\t\t.stats strong{{color:#1c1917}}
+\t\t}}
+\t</style>
+</head>
+<body>
+\t<main>
+\t\t<a class="back" href="../">← Back to live themes</a>
+\t\t<header>
+\t\t\t<h1>Concept queue</h1>
+\t\t\t<p>Every concept here is a hand-drawn / AI-rendered mockup waiting for a theme to be built around it. Pick whichever one you want to ship next — clicking a card opens a prefilled GitHub issue that the build agent watches.</p>
+\t\t\t<p class="stats"><span><strong>{unbuilt_count}</strong> in the queue</span><span><strong>{built_count}</strong> shipped</span></p>
+\t\t</header>
+"""
+
+CONCEPTS_FOOT = """\t\t<footer>
+\t\t\t<p>Source: <a href="https://github.com/{org}/{repo}">github.com/{org}/{repo}</a> · Drop a new mockup at <code>mockups/mockup-&lt;slug&gt;.png</code> in the repo and re-run <code>bin/build-redirects.py</code> to add it to this queue.</p>
+\t\t</footer>
+\t</main>
+</body>
+</html>
+"""
+
+
+def _new_issue_url(slug: str, name: str) -> str:
+    """Prefilled GitHub `new issue` URL for "build this concept" requests."""
+    title = f"Build the {name} theme"
+    body = (
+        f"Build the **{name}** theme from `mockups/mockup-{slug}.png`.\n\n"
+        f"- Mockup: "
+        f"https://github.com/{GITHUB_ORG}/{GITHUB_REPO}/blob/{GITHUB_BRANCH}"
+        f"/mockups/mockup-{slug}.png\n"
+        f"- Suggested slug: `{slug}`\n"
+        f"- Use `bin/clone.py {slug}` to scaffold from the Obel base, then "
+        f"hand the mockup + new theme dir to the agent."
+    )
+    return (
+        f"https://github.com/{GITHUB_ORG}/{GITHUB_REPO}/issues/new"
+        f"?title={url_quote(title)}&body={url_quote(body)}&labels=concept"
+    )
+
+
+def render_concept_card(concept: dict, *, shipped: bool) -> str:
+    slug = concept["slug"]
+    name = concept["name"]
+    mockup_src = f"../mockups/{slug}.png"
+    if shipped:
+        href = f"../{slug}/"
+        cta = "Live demo →"
+        badge = '<span class="badge shipped">Shipped</span>'
+        cls = "concept shipped"
+    else:
+        href = _new_issue_url(slug, name)
+        cta = "Pick this one →"
+        badge = '<span class="badge">In queue</span>'
+        cls = "concept"
+    return (
+        f'\t\t\t<a class="{cls}" href="{html_escape(href)}"'
+        + ('' if shipped else ' target="_blank" rel="noopener"')
+        + '>\n'
+        f'\t\t\t\t<div class="thumb" role="img" aria-label="{html_escape(name)} mockup" '
+        f'style="background-image:url({html_escape(mockup_src)})"></div>\n'
+        f'\t\t\t\t<div class="body">\n'
+        f'\t\t\t\t\t<h3>{html_escape(name)}</h3>\n'
+        f'\t\t\t\t\t<p class="meta">{badge}<span>mockup-{html_escape(slug)}.png</span></p>\n'
+        f'\t\t\t\t\t<p class="pick">{cta}</p>\n'
+        f'\t\t\t\t</div>\n'
+        f'\t\t\t</a>\n'
+    )
+
+
+def render_concepts_page(unbuilt: list[dict], built: list[dict]) -> str:
+    head = CONCEPTS_HEAD.format(
+        base_url=html_escape(GH_PAGES_BASE_URL),
+        unbuilt_count=len(unbuilt),
+        built_count=len(built),
+    )
+    foot = CONCEPTS_FOOT.format(
+        org=html_escape(GITHUB_ORG),
+        repo=html_escape(GITHUB_REPO),
+    )
+    parts: list[str] = [head]
+    if unbuilt:
+        parts.append('\t\t<section>\n\t\t\t<h2>In queue</h2>\n\t\t\t<div class="concepts">\n')
+        for c in unbuilt:
+            parts.append(render_concept_card(c, shipped=False))
+        parts.append("\t\t\t</div>\n\t\t</section>\n")
+    else:
+        parts.append(
+            '\t\t<section><p style="color:#a8a29e">'
+            'No unbuilt mockups — every concept in <code>mockups/</code> '
+            'has a sibling theme directory. Drop a new <code>mockup-&lt;slug&gt;.png</code> '
+            'into <code>mockups/</code> and re-run <code>bin/build-redirects.py</code>.'
+            '</p></section>\n'
+        )
+    if built:
+        parts.append(
+            '\t\t<section>\n\t\t\t<h2>Already shipped</h2>\n'
+            '\t\t\t<div class="concepts">\n'
+        )
+        for c in built:
+            parts.append(render_concept_card(c, shipped=True))
+        parts.append("\t\t\t</div>\n\t\t</section>\n")
+    parts.append(foot)
+    return "".join(parts)
+
+
 def write_file(path: Path, contents: str, *, dry_run: bool, written: list[Path]) -> None:
     """Write `contents` to `path` (mkdir -p the parent). Track every file
     we touch so the caller can print a summary."""
@@ -323,6 +547,17 @@ def write_file(path: Path, contents: str, *, dry_run: bool, written: list[Path])
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(contents)
     written.append(path)
+
+
+def copy_binary(src: Path, dst: Path, *, dry_run: bool, written: list[Path]) -> None:
+    """Copy a binary file (mockup PNG) into the docs/ tree. Logged the same
+    way `write_file` is so the build summary stays accurate."""
+    if dry_run:
+        written.append(dst)
+        return
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(src, dst)
+    written.append(dst)
 
 
 def build(*, dry_run: bool = False) -> int:
@@ -380,15 +615,39 @@ def build(*, dry_run: bool = False) -> int:
         # the docs/ links would 404 in Playground.
         _ = theme_blueprint_raw_url(theme_slug)
 
-    write_file(DOCS_DIR / "index.html", render_index(cards), dry_run=dry_run, written=written)
+    # Concept queue page. Built theme slugs are derived from the live
+    # `themes` list above (via `iter_themes()`, which is the canonical
+    # "what shipped" source) so a concept flips from queue -> shipped
+    # automatically when its theme directory lands.
+    built_slugs = {t.name for t in themes}
+    unbuilt, built_concepts = discover_concepts(built_slugs)
+    for concept in unbuilt + built_concepts:
+        copy_binary(
+            concept["mockup"],
+            DOCS_DIR / "mockups" / f"{concept['slug']}.png",
+            dry_run=dry_run, written=written,
+        )
+    write_file(
+        DOCS_DIR / "concepts" / "index.html",
+        render_concepts_page(unbuilt, built_concepts),
+        dry_run=dry_run, written=written,
+    )
+
+    write_file(
+        DOCS_DIR / "index.html",
+        render_index(cards, unbuilt_count=len(unbuilt)),
+        dry_run=dry_run, written=written,
+    )
 
     verb = "would write" if dry_run else "wrote"
     print(f"{verb} {len(written)} files under {DOCS_DIR.relative_to(MONOREPO_ROOT)}/")
     print(f"  themes: {', '.join(t.name for t in themes)}")
     print(f"  pages per theme: {len(PAGES)}")
+    print(f"  concepts: {len(unbuilt)} in queue, {len(built_concepts)} shipped (with mockup)")
     print()
     print(f"Public URL once GH Pages is enabled: {GH_PAGES_BASE_URL}")
     print(f"Per-theme root example: {gh_pages_short_url(themes[0].name)}")
+    print(f"Concepts queue: {GH_PAGES_BASE_URL}concepts/")
     return 0
 
 
