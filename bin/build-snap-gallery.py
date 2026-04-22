@@ -297,98 +297,170 @@ def _encode_thumb(src_png: Path, dst_jpg: Path, *, force: bool) -> bool:
 
 
 SHARED_CSS = """\
-:root { color-scheme: dark light; }
-*, *::before, *::after { box-sizing: border-box; }
-html, body {
-  margin: 0;
-  background: #0f0f10;
-  color: #f5f5f4;
-  font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-}
-a { color: inherit; }
-main { max-width: 90rem; margin: 0 auto; padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem); }
-header.page { margin-bottom: 2.5rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: baseline; justify-content: space-between; }
-header.page h1 { font-size: clamp(1.5rem, 3vw, 2.25rem); margin: 0; font-weight: 700; letter-spacing: -.01em; }
-header.page p { margin: .25rem 0 0; color: #a8a29e; font-size: .9rem; max-width: 38rem; }
-header.page .crumbs { font-size: .85rem; color: #a8a29e; }
-header.page .crumbs a { color: #d6d3d1; text-decoration: none; }
-header.page .crumbs a:hover { text-decoration: underline; }
+/* ========================================================================
+   Snap gallery — magazine-cover system
+   ------------------------------------------------------------------------
+   Layered on top of the site-wide /assets/style.css (loaded first), this
+   stylesheet adds the gallery-specific rules: the theme picker hero
+   layout, the per-theme viewport sections, and the cell grid + badges.
+   Same monochrome palette + cobalt accent + hairline rules + DM Serif /
+   IBM Plex Mono typography as the rest of demo.regionallyfamous.com.
+   ======================================================================== */
 
-/* Theme picker (top-level) */
-.themes { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); }
-.theme-card {
-  display: flex; flex-direction: column; gap: .75rem;
-  border: 1px solid #2c2a27; border-radius: 14px; padding: 1.25rem;
-  background: #1a1917; text-decoration: none; color: inherit;
-  transition: border-color 160ms ease, transform 160ms ease;
+/* Theme picker (top-level docs/snaps/index.html) — full-width "magazine
+   spreads", one per theme: large hero shot on the left, italic blurb +
+   stats on the right, hairline rule between rows. Replaces the old
+   rounded-card grid. */
+.snap-picker {
+  border-top: var(--hairline) solid var(--rule);
+  margin-top: 1.5rem;
 }
-.theme-card:hover { border-color: #57534e; transform: translateY(-1px); }
-.theme-card h2 { margin: 0; font-size: 1.25rem; font-weight: 600; }
-.theme-card p { margin: 0; color: #a8a29e; font-size: .9rem; }
-.theme-card .hero {
-  width: 100%; aspect-ratio: 16/10;
-  background: #0a0a0b center/cover no-repeat;
-  border-radius: 8px; border: 1px solid #2c2a27;
+.snap-picker .theme {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+  padding: clamp(1.5rem, 3vw, 2.25rem) 0;
+  border-bottom: var(--hairline) solid var(--rule);
+  text-decoration: none;
+  color: inherit;
+  align-items: center;
+}
+.snap-picker .theme .hero {
+  aspect-ratio: 16 / 10;
+  border: var(--hairline) solid var(--rule);
+  background: var(--paper) center / cover no-repeat;
   overflow: hidden;
 }
-.theme-card .hero img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
-.theme-card .stats { display: flex; gap: .75rem; font-size: .8rem; color: #a8a29e; }
-.theme-card .stats span.bad { color: #fda4af; }
-.theme-card .stats span.warn { color: #fcd34d; }
-
-/* Per-theme page */
-.viewport-section { margin-top: 2.5rem; }
-.viewport-section h2 {
-  margin: 0 0 1rem; font-size: 1rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
-  color: #a8a29e; padding-bottom: .5rem; border-bottom: 1px solid #2c2a27;
+.snap-picker .theme .hero img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
+.snap-picker .theme .meta { display: flex; flex-direction: column; gap: .75rem; }
+.snap-picker .theme .index {
+  font-family: var(--mono);
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
 }
+.snap-picker .theme h2 {
+  font-family: var(--serif-display);
+  font-weight: 400;
+  font-size: clamp(2.5rem, 7vw, 5.5rem);
+  line-height: .9;
+  letter-spacing: -.03em;
+  margin: 0;
+}
+.snap-picker .theme .blurb {
+  font-family: var(--serif-text);
+  font-style: italic;
+  font-size: 1.05rem;
+  line-height: 1.4;
+  margin: 0;
+}
+.snap-picker .theme .stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem 1.5rem;
+  font-family: var(--mono);
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+.snap-picker .theme .stats .bad { color: var(--accent); }
+.snap-picker .theme .stats .warn { color: var(--ink); border-bottom: 1px dotted var(--ink); padding-bottom: 1px; }
+.snap-picker .theme .open {
+  font-family: var(--mono);
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  margin-top: .25rem;
+}
+.snap-picker .theme .open .arrow { color: var(--accent); }
+.snap-picker .theme:hover .hero { outline: 2px solid var(--accent); outline-offset: -1px; }
+@media (max-width: 720px) {
+  .snap-picker .theme { grid-template-columns: 1fr; }
+}
+
+/* Per-theme page (docs/snaps/<theme>/index.html) */
+.viewport-section { margin-top: clamp(2rem, 4vw, 3rem); }
+.viewport-section h2 {
+  margin: 0 0 1rem;
+  font-family: var(--mono);
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding-bottom: .65rem;
+  border-bottom: var(--hairline) solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.viewport-section h2 .count { opacity: .55; font-weight: 400; }
+
 .cells {
-  display: grid; gap: 1.25rem;
+  display: grid;
+  gap: 1.5rem 1.25rem;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 }
-.cell { display: flex; flex-direction: column; gap: .4rem; }
+.cell { display: flex; flex-direction: column; gap: .5rem; }
 .cell .frame {
-  background: #0a0a0b; border: 1px solid #2c2a27; border-radius: 8px;
-  overflow: hidden; aspect-ratio: 4/5; display: block;
-  transition: border-color 160ms ease, transform 160ms ease;
+  border: var(--hairline) solid var(--rule);
+  background: var(--paper);
+  overflow: hidden;
+  aspect-ratio: 4/5;
+  display: block;
+  transition: outline .12s ease;
 }
-.cell .frame:hover { border-color: #78716c; transform: translateY(-1px); }
+.cell .frame:hover, .cell .frame:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: var(--accent);
+}
 .cell .frame img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
-.cell .meta { display: flex; flex-wrap: wrap; gap: .35rem; align-items: baseline; }
-.cell .meta .slug { font-size: .85rem; font-weight: 500; }
-.cell .meta .desc { color: #78716c; font-size: .75rem; flex-basis: 100%; line-height: 1.35; }
-.cell .badges { display: inline-flex; gap: .35rem; }
-.badge {
-  display: inline-block; padding: .1rem .45rem; border-radius: 9999px;
-  font-size: .7rem; font-weight: 600; line-height: 1.4;
+.cell .meta { display: flex; flex-wrap: wrap; gap: .35rem .65rem; align-items: baseline; }
+.cell .meta .slug {
+  font-family: var(--mono);
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .03em;
 }
-.badge.err { background: #7f1d1d; color: #fecaca; }
-.badge.warn { background: #78350f; color: #fde68a; }
-.badge.flow { background: #1e3a8a; color: #c7d2fe; }
+.cell .meta .desc {
+  font-family: var(--serif-text);
+  font-style: italic;
+  color: var(--muted);
+  font-size: .82rem;
+  flex-basis: 100%;
+  line-height: 1.35;
+}
+.cell .badges { display: inline-flex; gap: .3rem; }
+.cell .badge {
+  display: inline-block;
+  padding: 0 .35rem;
+  border: 1px solid var(--ink);
+  font-family: var(--mono);
+  font-size: .58rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  line-height: 1.55;
+}
+.cell .badge.err { color: var(--accent); border-color: var(--accent); }
+.cell .badge.warn { color: var(--ink); }
+.cell .badge.flow { color: var(--ink); border-style: dashed; }
 
-footer.page {
-  margin-top: 4rem; padding-top: 1.5rem;
-  border-top: 1px solid #2c2a27;
-  font-size: .8rem; color: #78716c;
-  display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between;
+/* Snap-page header (re-uses .subhero from /assets/style.css) */
+.snap-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: baseline;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  padding: .5rem 0 .25rem;
 }
-footer.page a { color: #d6d3d1; }
-
-@media (prefers-color-scheme: light) {
-  html, body { background: #fafaf9; color: #1c1917; }
-  header.page p, header.page .crumbs, .theme-card p, .cell .meta .desc, footer.page { color: #57534e; }
-  header.page .crumbs a, footer.page a { color: #1c1917; }
-  .theme-card { background: #fff; border-color: #e7e5e4; }
-  .theme-card:hover { border-color: #a8a29e; }
-  .theme-card .hero { background-color: #f5f5f4; border-color: #e7e5e4; }
-  .viewport-section h2 { color: #57534e; border-bottom-color: #e7e5e4; }
-  .cell .frame { background: #f5f5f4; border-color: #e7e5e4; }
-  .cell .frame:hover { border-color: #78716c; }
-  .badge.err { background: #fee2e2; color: #991b1b; }
-  .badge.warn { background: #fef3c7; color: #92400e; }
-  .badge.flow { background: #e0e7ff; color: #3730a3; }
-  footer.page { border-top-color: #e7e5e4; }
-}
+.snap-header a { text-decoration: none; }
+.snap-header a:hover { color: var(--accent); }
 """
 
 
@@ -410,7 +482,10 @@ def _render_badges(cell: Cell) -> str:
 
 
 def _render_theme_page(theme: str, cells: list[Cell], source_label: str) -> str:
-    """Build the per-theme HTML grid, grouped by viewport."""
+    """Build the per-theme HTML grid, grouped by viewport. Layered on top
+    of the site-wide /assets/style.css so the gallery shares the magazine-
+    cover system (mono labels, hairline rules, cobalt accent on hover)
+    with the landing page and the concept queue."""
     by_viewport: dict[str, list[Cell]] = {v: [] for v in VIEWPORT_ORDER}
     for c in cells:
         by_viewport.setdefault(c.viewport, []).append(c)
@@ -439,12 +514,18 @@ def _render_theme_page(theme: str, cells: list[Cell], source_label: str) -> str:
             )
         sections.append(
             f'''<section class="viewport-section">
-  <h2>{_esc(vp)} <span style="opacity:.6;font-weight:400">· {len(vp_cells)} shot{"s" if len(vp_cells) != 1 else ""}</span></h2>
+  <h2><span>{_esc(vp)}</span><span class="count">{len(vp_cells)} shot{"s" if len(vp_cells) != 1 else ""}</span></h2>
   <div class="cells">
     {"".join(cell_html)}
   </div>
 </section>'''
         )
+
+    body = (
+        "".join(sections)
+        if sections
+        else f'<p class="empty-note">No snaps on disk for this theme. Run <code>python3 bin/snap.py shoot {_esc(theme)}</code> first.</p>'
+    )
 
     return f"""<!doctype html>
 <html lang="en">
@@ -454,60 +535,73 @@ def _render_theme_page(theme: str, cells: list[Cell], source_label: str) -> str:
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="Every snap PNG for the {_esc(theme)} block theme, grouped by viewport. Source: {_esc(source_label)}.">
 <meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Serif+Text:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/assets/style.css">
 <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
+<header class="masthead">
+  <span class="left"><a href="/">← Fifty</a></span>
+  <span class="center">A quarterly of WordPress block themes</span>
+  <span class="right">Snaps · {_esc(theme)}</span>
+</header>
 <main>
-  <header class="page">
-    <div>
-      <div class="crumbs"><a href="../">snaps</a> / <strong>{_esc(theme)}</strong></div>
-      <h1>{_esc(theme)}</h1>
-      <p>{_esc(blurb)}</p>
-    </div>
-    <div class="crumbs">
-      Source: <code>{_esc(source_label)}</code>
-      · <a href="../../{_esc(theme)}/">Open in Playground →</a>
-    </div>
-  </header>
-  {"".join(sections) if sections else "<p>No snaps on disk for this theme. Run <code>python3 bin/snap.py shoot " + _esc(theme) + "</code> first.</p>"}
-  <footer class="page">
-    <span><a href="../">All themes</a> · <a href="../../">Fifty home</a></span>
-    <span><a href="https://github.com/RegionallyFamous/fifty">github.com/RegionallyFamous/fifty</a></span>
-  </footer>
+  <section class="subhero">
+    <p class="eyebrow">Snap gallery · {_esc(theme)}</p>
+    <h1>{_esc(theme)}<span style="color:var(--accent)">.</span></h1>
+    <p class="deck">{_esc(blurb)}</p>
+  </section>
+  <div class="snap-header">
+    <span><a href="../">← all themes</a> · source <code>{_esc(source_label)}</code></span>
+    <span><a href="../../{_esc(theme)}/">Open {_esc(theme)} in Playground →</a></span>
+  </div>
+  {body}
 </main>
+<footer class="colophon">
+  <span class="left"><a href="https://github.com/RegionallyFamous/fifty">github.com/RegionallyFamous/fifty</a></span>
+  <span class="center">Generated by <code>bin/build-snap-gallery.py</code></span>
+  <span class="right"><a href="../">← All themes</a></span>
+</footer>
 </body>
 </html>
 """
 
 
 def _render_index_page(theme_summaries: list[dict]) -> str:
-    """Top-level docs/snaps/index.html. Each theme card carries the
-    desktop/home shot as its hero image (or whatever it falls back to if
-    desktop/home isn't available)."""
-    cards: list[str] = []
-    for s in theme_summaries:
+    """Top-level docs/snaps/index.html — magazine-cover spread per theme.
+    Each row pairs the desktop/home shot (or first available cell) with a
+    serif-display name, italic blurb, and mono-stat strip. Replaces the
+    rounded-card grid."""
+    total = len(theme_summaries)
+    rows: list[str] = []
+    for i, s in enumerate(theme_summaries, start=1):
         theme = s["theme"]
         blurb = THEME_BLURBS.get(theme, "")
         hero_rel = s["hero_rel"]
         stats = s["stats"]
-        stat_bits: list[str] = []
-        stat_bits.append(f'<span>{stats["cells"]} shots</span>')
+        stat_bits: list[str] = [f'<span>{stats["cells"]} shots</span>']
         if stats.get("err"):
             stat_bits.append(f'<span class="bad">{stats["err"]} err</span>')
         if stats.get("warn"):
             stat_bits.append(f'<span class="warn">{stats["warn"]} warn</span>')
-        stat_bits.append(f'<span>· {s["source"]}</span>')
+        stat_bits.append(f'<span>source {_esc(s["source"])}</span>')
         hero_html = (
             f'<img loading="lazy" decoding="async" src="{_esc(hero_rel)}" alt="{_esc(theme)} desktop home">'
             if hero_rel
             else ""
         )
-        cards.append(
-            f'''<a class="theme-card" href="{_esc(theme)}/">
+        rows.append(
+            f'''<a class="theme" href="{_esc(theme)}/">
   <div class="hero">{hero_html}</div>
-  <h2>{_esc(theme)}</h2>
-  <p>{_esc(blurb)}</p>
-  <div class="stats">{"".join(stat_bits)}</div>
+  <div class="meta">
+    <span class="index">Theme {i:02d} / {total:02d}</span>
+    <h2>{_esc(theme)}</h2>
+    <p class="blurb">{_esc(blurb)}</p>
+    <div class="stats">{"".join(stat_bits)}</div>
+    <span class="open">View grid <span class="arrow">→</span></span>
+  </div>
 </a>'''
         )
 
@@ -519,26 +613,33 @@ def _render_index_page(theme_summaries: list[dict]) -> str:
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="Every theme's snap PNGs at a glance — no Playground boot required.">
 <meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Serif+Text:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/assets/style.css">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
+<header class="masthead">
+  <span class="left"><a href="/">← Fifty</a></span>
+  <span class="center">A quarterly of WordPress block themes</span>
+  <span class="right">Snap gallery</span>
+</header>
 <main>
-  <header class="page">
-    <div>
-      <div class="crumbs"><a href="../">fifty</a> / <strong>snaps</strong></div>
-      <h1>Snap gallery</h1>
-      <p>Every snap PNG for every theme, grouped by viewport. Generated from on-disk PNGs by <code>bin/build-snap-gallery.py</code>; rebuild after <code>bin/snap.py shoot</code>.</p>
-    </div>
-    <div class="crumbs"><a href="../">← Open a Playground</a></div>
-  </header>
-  <section class="themes">
-    {"".join(cards)}
+  <section class="subhero">
+    <p class="eyebrow">Section III · The contact sheets</p>
+    <h1>snap gallery<span style="color:var(--accent)">.</span></h1>
+    <p class="deck">Every snap PNG for every theme, grouped by viewport. Generated from on-disk PNGs by <code>bin/build-snap-gallery.py</code>; rebuild after <code>bin/snap.py shoot</code>.</p>
   </section>
-  <footer class="page">
-    <span>Generated by <code>bin/build-snap-gallery.py</code> from on-disk PNGs (no live Playground required).</span>
-    <span><a href="https://github.com/RegionallyFamous/fifty">github.com/RegionallyFamous/fifty</a></span>
-  </footer>
+  <section class="snap-picker" aria-label="Themes">
+    {"".join(rows)}
+  </section>
 </main>
+<footer class="colophon">
+  <span class="left"><a href="https://github.com/RegionallyFamous/fifty">github.com/RegionallyFamous/fifty</a></span>
+  <span class="center">Generated from on-disk PNGs · no live Playground required</span>
+  <span class="right"><a href="/">← All themes</a></span>
+</footer>
 </body>
 </html>
 """

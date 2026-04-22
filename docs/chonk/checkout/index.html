@@ -12,24 +12,31 @@
 	<meta property="og:title" content="Chonk — Checkout">
 	<meta property="og:description" content="Boot the Chonk demo storefront in WordPress Playground (Checkout). No install, runs entirely in your browser.">
 	<meta property="og:url" content="https://demo.regionallyfamous.com/chonk/checkout/">
-	<style>
-		html,body{height:100%;margin:0;background:#0f0f10;color:#f5f5f4;font:16px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-		main{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;gap:1rem}
-		h1{font-size:1.25rem;font-weight:600;letter-spacing:.01em;margin:0}
-		p{margin:0;color:#a8a29e;max-width:34rem}
-		a{color:#fafaf9}
-		.spinner{width:32px;height:32px;border-radius:50%;border:2px solid #44403c;border-top-color:#fafaf9;animation:spin .8s linear infinite}
-		@keyframes spin{to{transform:rotate(360deg)}}
-		@media (prefers-reduced-motion:reduce){.spinner{animation:none}}
-	</style>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Serif+Text:ital@1&family=IBM+Plex+Mono:wght@400;500&display=swap">
+	<link rel="stylesheet" href="/assets/style.css">
 </head>
-<body>
+<body class="redirector">
+	<header class="masthead">
+		<span class="left"><a href="/">Fifty</a></span>
+		<span class="center">Checkout · Chonk</span>
+		<span class="right">Vol. 01 · WP Playground</span>
+	</header>
 	<main>
-		<div class="spinner" aria-hidden="true"></div>
-		<h1>Loading Chonk — Checkout…</h1>
-		<p>Booting <strong>Chonk</strong> (Checkout) in WordPress Playground. The first boot fetches WordPress, WooCommerce, and the demo content, so it can take 20–60 seconds.</p>
-		<p><a href="https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/RegionallyFamous/fifty/main/chonk/playground/blueprint.json&amp;url=/checkout/?demo=cart">Click here if you are not redirected.</a></p>
+		<section class="boot">
+			<p class="eyebrow"><span class="spinner" aria-hidden="true"></span>Booting WordPress Playground</p>
+			<h1>chonk<span style="color:var(--accent)">.</span></h1>
+			<p class="lede">Loading the Checkout entry of the <em>Chonk</em> demo storefront. First boot takes 20&ndash;60 seconds while WordPress, WooCommerce, and the demo content download.</p>
+			<hr>
+			<p class="fallback"><a href="https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/RegionallyFamous/fifty/main/chonk/playground/blueprint.json&amp;url=/checkout/?demo=cart">Continue manually if you are not redirected →</a></p>
+		</section>
 	</main>
+	<footer class="colophon">
+		<span class="left">github.com/RegionallyFamous/fifty</span>
+		<span class="center">MIT · CC0 imagery</span>
+		<span class="right"><a href="/">← All themes</a></span>
+	</footer>
 	<script>location.replace("https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/RegionallyFamous/fifty/main/chonk/playground/blueprint.json&url=/checkout/?demo=cart");</script>
 </body>
 </html>

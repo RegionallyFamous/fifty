@@ -6,50 +6,77 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="Every theme's snap PNGs at a glance — no Playground boot required.">
 <meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Serif+Text:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/assets/style.css">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
+<header class="masthead">
+  <span class="left"><a href="/">← Fifty</a></span>
+  <span class="center">A quarterly of WordPress block themes</span>
+  <span class="right">Snap gallery</span>
+</header>
 <main>
-  <header class="page">
-    <div>
-      <div class="crumbs"><a href="../">fifty</a> / <strong>snaps</strong></div>
-      <h1>Snap gallery</h1>
-      <p>Every snap PNG for every theme, grouped by viewport. Generated from on-disk PNGs by <code>bin/build-snap-gallery.py</code>; rebuild after <code>bin/snap.py shoot</code>.</p>
-    </div>
-    <div class="crumbs"><a href="../">← Open a Playground</a></div>
-  </header>
-  <section class="themes">
-    <a class="theme-card" href="obel/">
+  <section class="subhero">
+    <p class="eyebrow">Section III · The contact sheets</p>
+    <h1>snap gallery<span style="color:var(--accent)">.</span></h1>
+    <p class="deck">Every snap PNG for every theme, grouped by viewport. Generated from on-disk PNGs by <code>bin/build-snap-gallery.py</code>; rebuild after <code>bin/snap.py shoot</code>.</p>
+  </section>
+  <section class="snap-picker" aria-label="Themes">
+    <a class="theme" href="obel/">
   <div class="hero"><img loading="lazy" decoding="async" src="obel/desktop/home.jpg" alt="obel desktop home"></div>
-  <h2>obel</h2>
-  <p>Editorial: hairline borders, generous whitespace, warm cream palette.</p>
-  <div class="stats"><span>61 shots</span><span class="warn">494 warn</span><span>· tmp/snaps</span></div>
-</a><a class="theme-card" href="chonk/">
+  <div class="meta">
+    <span class="index">Theme 01 / 05</span>
+    <h2>obel</h2>
+    <p class="blurb">Editorial: hairline borders, generous whitespace, warm cream palette.</p>
+    <div class="stats"><span>61 shots</span><span class="warn">494 warn</span><span>source tmp/snaps</span></div>
+    <span class="open">View grid <span class="arrow">→</span></span>
+  </div>
+</a><a class="theme" href="chonk/">
   <div class="hero"><img loading="lazy" decoding="async" src="chonk/desktop/home.jpg" alt="chonk desktop home"></div>
-  <h2>chonk</h2>
-  <p>Neo-brutalist: cream + 4px black borders, hard offset shadows, no rounded corners.</p>
-  <div class="stats"><span>61 shots</span><span class="warn">474 warn</span><span>· tmp/snaps</span></div>
-</a><a class="theme-card" href="selvedge/">
+  <div class="meta">
+    <span class="index">Theme 02 / 05</span>
+    <h2>chonk</h2>
+    <p class="blurb">Neo-brutalist: cream + 4px black borders, hard offset shadows, no rounded corners.</p>
+    <div class="stats"><span>61 shots</span><span class="warn">474 warn</span><span>source tmp/snaps</span></div>
+    <span class="open">View grid <span class="arrow">→</span></span>
+  </div>
+</a><a class="theme" href="selvedge/">
   <div class="hero"><img loading="lazy" decoding="async" src="selvedge/desktop/home.jpg" alt="selvedge desktop home"></div>
-  <h2>selvedge</h2>
-  <p>Workwear-heritage: warm dark palette, italic display serif, small-batch maker&#x27;s voice.</p>
-  <div class="stats"><span>61 shots</span><span class="warn">552 warn</span><span>· tmp/snaps</span></div>
-</a><a class="theme-card" href="lysholm/">
+  <div class="meta">
+    <span class="index">Theme 03 / 05</span>
+    <h2>selvedge</h2>
+    <p class="blurb">Workwear-heritage: warm dark palette, italic display serif, small-batch maker&#x27;s voice.</p>
+    <div class="stats"><span>61 shots</span><span class="warn">552 warn</span><span>source tmp/snaps</span></div>
+    <span class="open">View grid <span class="arrow">→</span></span>
+  </div>
+</a><a class="theme" href="lysholm/">
   <div class="hero"><img loading="lazy" decoding="async" src="lysholm/desktop/home.jpg" alt="lysholm desktop home"></div>
-  <h2>lysholm</h2>
-  <p>Nordic home goods: pale cream, soft tan accents, unhurried serif typography.</p>
-  <div class="stats"><span>61 shots</span><span class="warn">524 warn</span><span>· tmp/snaps</span></div>
-</a><a class="theme-card" href="aero/">
+  <div class="meta">
+    <span class="index">Theme 04 / 05</span>
+    <h2>lysholm</h2>
+    <p class="blurb">Nordic home goods: pale cream, soft tan accents, unhurried serif typography.</p>
+    <div class="stats"><span>61 shots</span><span class="warn">524 warn</span><span>source tmp/snaps</span></div>
+    <span class="open">View grid <span class="arrow">→</span></span>
+  </div>
+</a><a class="theme" href="aero/">
   <div class="hero"><img loading="lazy" decoding="async" src="aero/desktop/home.jpg" alt="aero desktop home"></div>
-  <h2>aero</h2>
-  <p>Y2K iridescent: holographic pastels, glassy chrome buttons, sparkle product cards.</p>
-  <div class="stats"><span>61 shots</span><span class="warn">512 warn</span><span>· tmp/snaps</span></div>
+  <div class="meta">
+    <span class="index">Theme 05 / 05</span>
+    <h2>aero</h2>
+    <p class="blurb">Y2K iridescent: holographic pastels, glassy chrome buttons, sparkle product cards.</p>
+    <div class="stats"><span>61 shots</span><span class="warn">512 warn</span><span>source tmp/snaps</span></div>
+    <span class="open">View grid <span class="arrow">→</span></span>
+  </div>
 </a>
   </section>
-  <footer class="page">
-    <span>Generated by <code>bin/build-snap-gallery.py</code> from on-disk PNGs (no live Playground required).</span>
-    <span><a href="https://github.com/RegionallyFamous/fifty">github.com/RegionallyFamous/fifty</a></span>
-  </footer>
 </main>
+<footer class="colophon">
+  <span class="left"><a href="https://github.com/RegionallyFamous/fifty">github.com/RegionallyFamous/fifty</a></span>
+  <span class="center">Generated from on-disk PNGs · no live Playground required</span>
+  <span class="right"><a href="/">← All themes</a></span>
+</footer>
 </body>
 </html>

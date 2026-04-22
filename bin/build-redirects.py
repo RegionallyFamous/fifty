@@ -142,6 +142,10 @@ def theme_display_name(theme_dir: Path) -> str:
     return slug[:1].upper() + slug[1:].lower()
 
 
+# Magazine-cover styled redirector. Inline `<style>` is gone — every page
+# loads /assets/style.css (served from the GH Pages root), so the visual
+# system is shared with the landing page, the concept queue, and the snap
+# gallery. The cobalt pulsing dot replaces the wheel spinner.
 REDIRECT_TEMPLATE = """<!doctype html>
 <html lang="en">
 <head>
@@ -156,24 +160,31 @@ REDIRECT_TEMPLATE = """<!doctype html>
 \t<meta property="og:title" content="{title}">
 \t<meta property="og:description" content="{description}">
 \t<meta property="og:url" content="{short_url_html}">
-\t<style>
-\t\thtml,body{{height:100%;margin:0;background:#0f0f10;color:#f5f5f4;font:16px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}}
-\t\tmain{{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;gap:1rem}}
-\t\th1{{font-size:1.25rem;font-weight:600;letter-spacing:.01em;margin:0}}
-\t\tp{{margin:0;color:#a8a29e;max-width:34rem}}
-\t\ta{{color:#fafaf9}}
-\t\t.spinner{{width:32px;height:32px;border-radius:50%;border:2px solid #44403c;border-top-color:#fafaf9;animation:spin .8s linear infinite}}
-\t\t@keyframes spin{{to{{transform:rotate(360deg)}}}}
-\t\t@media (prefers-reduced-motion:reduce){{.spinner{{animation:none}}}}
-\t</style>
+\t<link rel="preconnect" href="https://fonts.googleapis.com">
+\t<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+\t<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Serif+Text:ital@1&family=IBM+Plex+Mono:wght@400;500&display=swap">
+\t<link rel="stylesheet" href="/assets/style.css">
 </head>
-<body>
+<body class="redirector">
+\t<header class="masthead">
+\t\t<span class="left"><a href="/">Fifty</a></span>
+\t\t<span class="center">{label_html} · {theme_name_html}</span>
+\t\t<span class="right">Vol. 01 · WP Playground</span>
+\t</header>
 \t<main>
-\t\t<div class="spinner" aria-hidden="true"></div>
-\t\t<h1>Loading {title}…</h1>
-\t\t<p>Booting <strong>{theme_name_html}</strong> ({label_html}) in WordPress Playground. The first boot fetches WordPress, WooCommerce, and the demo content, so it can take 20–60 seconds.</p>
-\t\t<p><a href="{deeplink_html}">Click here if you are not redirected.</a></p>
+\t\t<section class="boot">
+\t\t\t<p class="eyebrow"><span class="spinner" aria-hidden="true"></span>Booting WordPress Playground</p>
+\t\t\t<h1>{theme_name_lower_html}<span style="color:var(--accent)">.</span></h1>
+\t\t\t<p class="lede">Loading the {label_html} entry of the <em>{theme_name_html}</em> demo storefront. First boot takes 20&ndash;60 seconds while WordPress, WooCommerce, and the demo content download.</p>
+\t\t\t<hr>
+\t\t\t<p class="fallback"><a href="{deeplink_html}">Continue manually if you are not redirected →</a></p>
+\t\t</section>
 \t</main>
+\t<footer class="colophon">
+\t\t<span class="left">github.com/RegionallyFamous/fifty</span>
+\t\t<span class="center">MIT · CC0 imagery</span>
+\t\t<span class="right"><a href="/">← All themes</a></span>
+\t</footer>
 \t<script>location.replace({deeplink_json});</script>
 </body>
 </html>
@@ -195,6 +206,7 @@ def render_redirector(
         title=html_escape(title),
         description=html_escape(description),
         theme_name_html=html_escape(theme_name),
+        theme_name_lower_html=html_escape(theme_name.lower()),
         label_html=html_escape(page_label),
         short_url_html=html_escape(short_url),
         deeplink_html=html_escape(deeplink),
@@ -202,81 +214,114 @@ def render_redirector(
     )
 
 
+# Magazine-cover landing page. The shape of the page (masthead → cover →
+# theme-rows → colophon) is fixed; only the row content varies per theme.
+# All visual rules live in /assets/style.css; this template is just
+# semantic HTML hooks for that stylesheet to attach to.
 INDEX_HEAD = """<!doctype html>
 <html lang="en">
 <head>
 \t<meta charset="utf-8">
 \t<title>Fifty — WordPress Block Theme Variants</title>
 \t<meta name="viewport" content="width=device-width,initial-scale=1">
-\t<meta name="description" content="Open one of the Fifty WordPress block theme variants live in WordPress Playground. No install, runs entirely in your browser.">
+\t<meta name="description" content="A monorepo of opinionated WordPress block themes. Each one boots in WordPress Playground — no install, runs entirely in your browser.">
 \t<meta property="og:type" content="website">
 \t<meta property="og:title" content="Fifty — WordPress Block Theme Variants">
-\t<meta property="og:description" content="Open one of the Fifty WordPress block theme variants live in WordPress Playground. No install, runs entirely in your browser.">
+\t<meta property="og:description" content="A monorepo of opinionated WordPress block themes. Each one boots in WordPress Playground — no install, runs entirely in your browser.">
 \t<meta property="og:url" content="{base_url}">
-\t<style>
-\t\t:root{{color-scheme:dark light}}
-\t\thtml,body{{margin:0;background:#0f0f10;color:#f5f5f4;font:16px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}}
-\t\tmain{{max-width:64rem;margin:0 auto;padding:clamp(2rem,5vw,4rem) clamp(1.25rem,4vw,2rem)}}
-\t\theader{{margin-bottom:3rem}}
-\t\theader h1{{font-size:clamp(1.75rem,3.5vw,2.5rem);margin:0 0 .5rem;font-weight:700;letter-spacing:-.01em}}
-\t\theader p{{margin:0;color:#a8a29e;max-width:42rem}}
-\t\theader p a{{color:#fafaf9}}
-\t\t.themes{{display:grid;gap:1.25rem;grid-template-columns:repeat(auto-fit,minmax(18rem,1fr))}}
-\t\t.theme{{border:1px solid #2c2a27;border-radius:14px;padding:1.5rem;background:#1a1917;display:flex;flex-direction:column;gap:1rem;transition:border-color 160ms ease,transform 160ms ease}}
-\t\t.theme:hover{{border-color:#57534e;transform:translateY(-1px)}}
-\t\t.theme h2{{margin:0;font-size:1.25rem;font-weight:600}}
-\t\t.theme p{{margin:0;color:#a8a29e;font-size:.95rem}}
-\t\t.cta{{display:inline-flex;align-items:center;gap:.5rem;background:#fafaf9;color:#0f0f10;padding:.55rem .95rem;border-radius:9999px;text-decoration:none;font-weight:600;font-size:.9rem;align-self:flex-start;transition:background 160ms ease}}
-\t\t.cta:hover{{background:#fff}}
-\t\t.queue-link{{display:inline-flex;align-items:center;gap:.4rem;margin-top:1rem;color:#fafaf9;text-decoration:none;font-weight:600;font-size:.95rem;border-bottom:1px solid #44403c;padding-bottom:.15rem}}
-\t\t.queue-link:hover{{border-bottom-color:#fafaf9}}
-\t\tfooter{{margin-top:3rem;padding-top:2rem;border-top:1px solid #2c2a27;color:#78716c;font-size:.85rem}}
-\t\tfooter a{{color:#d6d3d1}}
-\t\t@media (prefers-color-scheme:light){{
-\t\t\thtml,body{{background:#fafaf9;color:#1c1917}}
-\t\t\theader p,.theme p{{color:#57534e}}
-\t\t\t.theme{{background:#fff;border-color:#e7e5e4}}
-\t\t\t.theme:hover{{border-color:#a8a29e}}
-\t\t\t.cta{{background:#1c1917;color:#fafaf9}}
-\t\t\t.cta:hover{{background:#0c0a09}}
-\t\t\t.queue-link{{color:#1c1917;border-bottom-color:#d6d3d1}}
-\t\t\t.queue-link:hover{{border-bottom-color:#1c1917}}
-\t\t\tfooter{{border-color:#e7e5e4;color:#78716c}}
-\t\t\tfooter a{{color:#44403c}}
-\t\t}}
-\t</style>
+\t<link rel="preconnect" href="https://fonts.googleapis.com">
+\t<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+\t<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Serif+Text:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
+\t<link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
+\t<header class="masthead">
+\t\t<span class="left">{issue_html}</span>
+\t\t<span class="center">A quarterly of WordPress block themes</span>
+\t\t<span class="right"><a href="https://github.com/{org}/{repo}">{repo_short}</a></span>
+\t</header>
 \t<main>
-\t\t<header>
-\t\t\t<h1>Fifty</h1>
-\t\t\t<p>A monorepo of WordPress block themes built around a shared <a href="https://github.com/{org}/{repo}/blob/{branch}/obel/">Obel</a> base. Click any theme below to boot a live demo storefront in WordPress Playground — no install, runs entirely in your browser.</p>
-\t\t\t<p><a class="queue-link" href="concepts/">Browse the concept queue ({unbuilt_count} unbuilt) →</a></p>
-\t\t</header>
-\t\t<section class="themes">
+\t\t<section class="cover">
+\t\t\t<h1>fifty<span style="color:var(--accent)">.</span></h1>
+\t\t\t<hr class="rule">
+\t\t\t<p class="deck">{shipped_words} WordPress block themes,<br>{unbuilt_words} unbuilt concepts on the bench,<br>and every viewport, shot.</p>
+\t\t\t<div class="lede">
+\t\t\t\t<p>A monorepo of opinionated WooCommerce block themes built around a shared <a href="https://github.com/{org}/{repo}/blob/{branch}/obel/">Obel</a> base. Each theme boots in WordPress Playground &mdash; no install required, the entire stack runs in your browser.</p>
+\t\t\t\t<p>First boot takes 20 to 60 seconds while WordPress, WooCommerce, and the demo content download. Subsequent boots are nearly instant. Every screenshot in the gallery was captured by automated visual regression.</p>
+\t\t\t</div>
+\t\t\t<div class="cta-row">
+\t\t\t\t<a class="cta" href="concepts/">Browse {unbuilt_count} unbuilt concepts <span class="arrow">→</span></a>
+\t\t\t\t<a class="cta" href="snaps/">Open the snap gallery <span class="arrow">→</span></a>
+\t\t\t</div>
+\t\t</section>
+\t\t<section class="theme-rows" aria-label="Live themes">
 """
 
 INDEX_FOOT = """\t\t</section>
-\t\t<footer>
-\t\t\t<p>Source: <a href="https://github.com/{org}/{repo}">github.com/{org}/{repo}</a> · The first boot of any theme takes 20–60 seconds while it downloads WordPress, WooCommerce, and the demo content.</p>
-\t\t</footer>
 \t</main>
+\t<footer class="colophon">
+\t\t<span class="left"><a href="https://github.com/{org}/{repo}">github.com/{org}/{repo}</a></span>
+\t\t<span class="center">MIT license · CC0 imagery · Built in public</span>
+\t\t<span class="right">Printed for the web, {issue_label_html}</span>
+\t</footer>
 </body>
 </html>
 """
 
 
-def render_index(themes_html: list[str], unbuilt_count: int) -> str:
+def _issue_strings() -> tuple[str, str]:
+    """Return ('VOL. 01 · ISSUE NN · MMM YYYY', 'mmm yyyy') for the
+    masthead and footer. The issue number tracks shipped theme count so it
+    bumps automatically as the repo grows; the date pulls from the build
+    machine's clock (close enough for a magazine that exists only on the
+    web)."""
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    issue_num = sum(1 for _ in iter_themes())
+    issue = f"Vol. 01 · Issue {issue_num:02d} · {now.strftime('%b %Y')}"
+    footer_label = now.strftime('%b %Y')
+    return issue, footer_label
+
+
+_NUM_WORDS = {
+    1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six", 7: "Seven",
+    8: "Eight", 9: "Nine", 10: "Ten", 11: "Eleven", 12: "Twelve", 13: "Thirteen",
+    14: "Fourteen", 15: "Fifteen", 16: "Sixteen", 17: "Seventeen", 18: "Eighteen",
+    19: "Nineteen", 20: "Twenty",
+}
+
+
+def _spell_number(n: int) -> str:
+    """Spell small integers (1-30) for the magazine deck. Anything above 30
+    or below 0 falls back to the digit form — the deck is editorial copy,
+    not a leaderboard, so we only really need the low-counts case."""
+    if 1 <= n <= 20:
+        return _NUM_WORDS[n]
+    if 21 <= n <= 29:
+        return f"Twenty-{_NUM_WORDS[n - 20].lower()}"
+    if n == 30:
+        return "Thirty"
+    return str(n)
+
+
+def render_index(themes_html: list[str], unbuilt_count: int, shipped_count: int) -> str:
+    issue, issue_label = _issue_strings()
     head = INDEX_HEAD.format(
         base_url=html_escape(GH_PAGES_BASE_URL),
         org=html_escape(GITHUB_ORG),
         repo=html_escape(GITHUB_REPO),
+        repo_short=html_escape(f"github.com/{GITHUB_ORG}/{GITHUB_REPO}"),
         branch=html_escape(GITHUB_BRANCH),
         unbuilt_count=unbuilt_count,
+        shipped_count=shipped_count,
+        unbuilt_words=html_escape(_spell_number(unbuilt_count)),
+        shipped_words=html_escape(_spell_number(shipped_count)),
+        issue_html=html_escape(issue),
     )
     foot = INDEX_FOOT.format(
         org=html_escape(GITHUB_ORG),
         repo=html_escape(GITHUB_REPO),
+        issue_label_html=html_escape(issue_label),
     )
     return head + "".join(themes_html) + foot
 
@@ -317,21 +362,32 @@ def theme_description(theme_dir: Path, theme_name: str) -> str:
     )
 
 
-def render_theme_card(theme_dir: Path, theme_name: str, theme_slug: str) -> str:
-    # Per-page chips were intentionally removed from the homepage: they
-    # used theme-relative paths (`shop/`, `product/…/`) that resolve
-    # against the *site root* on demo.regionallyfamous.com (not against
-    # the theme card's URL), so they 404'd. The per-page redirectors
-    # under docs/<theme>/<slug>/ are still generated and remain useful
-    # for sharing a deep link to a specific entry point — they're just
-    # not surfaced on the landing page anymore.
+def render_theme_card(theme_dir: Path, theme_name: str, theme_slug: str, *, index: int, total: int) -> str:
+    """Render one full-width "magazine row" for the landing page.
+
+    Each row is a single anchor that surfaces:
+      - its position in the masthead (THEME 0X / 0Y) in mono caps,
+      - the theme name set giant in DM Serif Display lowercase,
+      - a one-sentence italic blurb (pulled from style.css's Description),
+      - a lone cobalt arrow + "Open Playground" mono caps label on the right.
+
+    Per-page chips were intentionally removed from the homepage: they used
+    theme-relative paths (`shop/`, `product/…/`) that resolve against the
+    *site root* on demo.regionallyfamous.com (not against the row's URL),
+    so they 404'd. The per-page redirectors under docs/<theme>/<slug>/ are
+    still generated and remain useful for sharing a deep link to a specific
+    entry point — they're just not surfaced on the landing page anymore.
+    """
     description = theme_description(theme_dir, theme_name)
+    index_label = f"Theme {index:02d} / {total:02d}"
+    name_lower = theme_name.lower()
     return (
-        f'\t\t\t<article class="theme">\n'
-        f'\t\t\t\t<h2>{html_escape(theme_name)}</h2>\n'
-        f'\t\t\t\t<p>{html_escape(description)}</p>\n'
-        f'\t\t\t\t<a class="cta" href="{html_escape(theme_slug + "/")}">Open in Playground →</a>\n'
-        f'\t\t\t</article>\n'
+        f'\t\t\t<a class="theme-row" href="{html_escape(theme_slug + "/")}">\n'
+        f'\t\t\t\t<span class="index">{html_escape(index_label)}</span>\n'
+        f'\t\t\t\t<h2 class="name">{html_escape(name_lower)}</h2>\n'
+        f'\t\t\t\t<p class="blurb">{html_escape(description)}</p>\n'
+        f'\t\t\t\t<span class="open"><span class="arrow" aria-hidden="true">→</span><span class="label">Open Playground</span></span>\n'
+        f'\t\t\t</a>\n'
     )
 
 
@@ -389,67 +445,32 @@ CONCEPTS_HEAD = """<!doctype html>
 \t<meta property="og:title" content="Concept queue — Fifty">
 \t<meta property="og:description" content="WordPress block-theme concepts on the bench, waiting to be built. Click any to claim it.">
 \t<meta property="og:url" content="{base_url}concepts/">
-\t<style>
-\t\t:root{{color-scheme:dark light}}
-\t\thtml,body{{margin:0;background:#0f0f10;color:#f5f5f4;font:16px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}}
-\t\tmain{{max-width:78rem;margin:0 auto;padding:clamp(2rem,5vw,4rem) clamp(1.25rem,4vw,2rem)}}
-\t\theader{{margin-bottom:3rem}}
-\t\theader h1{{font-size:clamp(1.75rem,3.5vw,2.5rem);margin:0 0 .5rem;font-weight:700;letter-spacing:-.01em}}
-\t\theader p{{margin:0;color:#a8a29e;max-width:48rem}}
-\t\theader p a{{color:#fafaf9}}
-\t\t.back{{display:inline-block;margin-bottom:1.5rem;color:#a8a29e;text-decoration:none;font-size:.9rem}}
-\t\t.back:hover{{color:#fafaf9}}
-\t\t.stats{{display:flex;gap:1.5rem;margin:1.5rem 0 0;color:#a8a29e;font-size:.9rem}}
-\t\t.stats strong{{color:#fafaf9;font-weight:600}}
-\t\tsection h2{{font-size:1.1rem;font-weight:600;margin:2.5rem 0 1.25rem;color:#a8a29e;letter-spacing:.02em;text-transform:uppercase;font-size:.8rem}}
-\t\t.concepts{{display:grid;gap:1.25rem;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))}}
-\t\t.concept{{border:1px solid #2c2a27;border-radius:14px;background:#1a1917;display:flex;flex-direction:column;overflow:hidden;transition:border-color 160ms ease,transform 160ms ease;text-decoration:none;color:inherit}}
-\t\t.concept:hover{{border-color:#57534e;transform:translateY(-2px)}}
-\t\t.concept.shipped{{opacity:.55}}
-\t\t.concept.shipped:hover{{border-color:#2c2a27;transform:none;opacity:.75}}
-\t\t.concept .thumb{{aspect-ratio:4/3;background:#0c0a09 center/cover no-repeat;border-bottom:1px solid #2c2a27}}
-\t\t.concept .body{{padding:1rem 1.25rem;display:flex;flex-direction:column;gap:.4rem}}
-\t\t.concept h3{{margin:0;font-size:1.05rem;font-weight:600}}
-\t\t.concept .meta{{margin:0;color:#a8a29e;font-size:.85rem;display:flex;gap:.5rem;align-items:center}}
-\t\t.concept .pick{{margin:.6rem 0 0;color:#fafaf9;font-size:.9rem;font-weight:600}}
-\t\t.concept.shipped .pick{{color:#a8a29e}}
-\t\t.badge{{display:inline-block;padding:.1rem .5rem;border-radius:9999px;background:#292524;color:#d6d3d1;font-size:.7rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase}}
-\t\t.badge.shipped{{background:#14532d;color:#bbf7d0}}
-\t\tfooter{{margin-top:4rem;padding-top:2rem;border-top:1px solid #2c2a27;color:#78716c;font-size:.85rem}}
-\t\tfooter a{{color:#d6d3d1}}
-\t\t@media (prefers-color-scheme:light){{
-\t\t\thtml,body{{background:#fafaf9;color:#1c1917}}
-\t\t\theader p,.concept .meta,.stats,section h2{{color:#57534e}}
-\t\t\t.back{{color:#57534e}}
-\t\t\t.back:hover{{color:#1c1917}}
-\t\t\t.concept{{background:#fff;border-color:#e7e5e4}}
-\t\t\t.concept:hover{{border-color:#a8a29e}}
-\t\t\t.concept .thumb{{background-color:#f5f5f4;border-color:#e7e5e4}}
-\t\t\t.concept .pick{{color:#1c1917}}
-\t\t\t.concept.shipped .pick{{color:#57534e}}
-\t\t\t.badge{{background:#e7e5e4;color:#44403c}}
-\t\t\t.badge.shipped{{background:#dcfce7;color:#166534}}
-\t\t\tfooter{{border-color:#e7e5e4;color:#78716c}}
-\t\t\tfooter a{{color:#44403c}}
-\t\t\tsection h2{{color:#78716c}}
-\t\t\t.stats strong{{color:#1c1917}}
-\t\t}}
-\t</style>
+\t<link rel="preconnect" href="https://fonts.googleapis.com">
+\t<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+\t<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Serif+Text:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
+\t<link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
+\t<header class="masthead">
+\t\t<span class="left"><a href="/">← Fifty</a></span>
+\t\t<span class="center">A quarterly of WordPress block themes</span>
+\t\t<span class="right">Concept queue</span>
+\t</header>
 \t<main>
-\t\t<a class="back" href="../">← Back to live themes</a>
-\t\t<header>
-\t\t\t<h1>Concept queue</h1>
-\t\t\t<p>Every concept here is a hand-drawn / AI-rendered mockup waiting for a theme to be built around it. Pick whichever one you want to ship next — clicking a card opens a prefilled GitHub issue that the build agent watches.</p>
-\t\t\t<p class="stats"><span><strong>{unbuilt_count}</strong> in the queue</span><span><strong>{built_count}</strong> shipped</span></p>
-\t\t</header>
+\t\t<section class="subhero">
+\t\t\t<p class="eyebrow">Section II · The bench</p>
+\t\t\t<h1>concept queue<span style="color:var(--accent)">.</span></h1>
+\t\t\t<p class="deck">Every entry below is a hand-drawn or AI-rendered mockup waiting for a theme to be built around it. Pick whichever one you want to ship next &mdash; clicking opens a prefilled GitHub issue the build agent watches.</p>
+\t\t\t<p class="stats"><span><strong>{unbuilt_count}</strong> in the queue</span><span><strong>{built_count}</strong> shipped with mockup</span></p>
+\t\t</section>
 """
 
-CONCEPTS_FOOT = """\t\t<footer>
-\t\t\t<p>Source: <a href="https://github.com/{org}/{repo}">github.com/{org}/{repo}</a> · Drop a new mockup at <code>mockups/mockup-&lt;slug&gt;.png</code> in the repo and re-run <code>bin/build-redirects.py</code> to add it to this queue.</p>
-\t\t</footer>
-\t</main>
+CONCEPTS_FOOT = """\t</main>
+\t<footer class="colophon">
+\t\t<span class="left"><a href="https://github.com/{org}/{repo}">github.com/{org}/{repo}</a></span>
+\t\t<span class="center">Drop a new mockup at <code>mockups/mockup-&lt;slug&gt;.png</code> &amp; re-run <code>bin/build-redirects.py</code></span>
+\t\t<span class="right"><a href="/">← All themes</a></span>
+\t</footer>
 </body>
 </html>
 """
@@ -474,27 +495,32 @@ def _new_issue_url(slug: str, name: str) -> str:
 
 
 def render_concept_card(concept: dict, *, shipped: bool) -> str:
+    """Magazine-cover concept cell. Each cell is a borderless grid panel
+    (the parent .concept-grid draws the hairline rules between them) with
+    a 4:3 thumbnail, a serif-display name, mono metadata, and an italic
+    CTA. Shipped concepts dim and link to the live demo; unbuilt ones
+    open a prefilled GitHub issue."""
     slug = concept["slug"]
     name = concept["name"]
     mockup_src = f"../mockups/{slug}.png"
     if shipped:
         href = f"../{slug}/"
-        cta = "Live demo →"
+        cta = 'Live demo <span class="arrow">→</span>'
         badge = '<span class="badge shipped">Shipped</span>'
         cls = "concept shipped"
+        ext_attrs = ''
     else:
         href = _new_issue_url(slug, name)
-        cta = "Pick this one →"
+        cta = 'Pick this one <span class="arrow">→</span>'
         badge = '<span class="badge">In queue</span>'
         cls = "concept"
+        ext_attrs = ' target="_blank" rel="noopener"'
     return (
-        f'\t\t\t<a class="{cls}" href="{html_escape(href)}"'
-        + ('' if shipped else ' target="_blank" rel="noopener"')
-        + '>\n'
+        f'\t\t\t<a class="{cls}" href="{html_escape(href)}"{ext_attrs}>\n'
         f'\t\t\t\t<div class="thumb" role="img" aria-label="{html_escape(name)} mockup" '
         f'style="background-image:url({html_escape(mockup_src)})"></div>\n'
         f'\t\t\t\t<div class="body">\n'
-        f'\t\t\t\t\t<h3>{html_escape(name)}</h3>\n'
+        f'\t\t\t\t\t<h3>{html_escape(name.lower())}</h3>\n'
         f'\t\t\t\t\t<p class="meta">{badge}<span>mockup-{html_escape(slug)}.png</span></p>\n'
         f'\t\t\t\t\t<p class="pick">{cta}</p>\n'
         f'\t\t\t\t</div>\n'
@@ -514,26 +540,35 @@ def render_concepts_page(unbuilt: list[dict], built: list[dict]) -> str:
     )
     parts: list[str] = [head]
     if unbuilt:
-        parts.append('\t\t<section>\n\t\t\t<h2>In queue</h2>\n\t\t\t<div class="concepts">\n')
+        parts.append(
+            '\t\t<header class="section-head">\n'
+            '\t\t\t<h2>On the bench</h2>\n'
+            f'\t\t\t<span class="count"><strong>{len(unbuilt):02d}</strong> waiting</span>\n'
+            '\t\t</header>\n'
+            '\t\t<section class="concept-grid" aria-label="Unbuilt concepts">\n'
+        )
         for c in unbuilt:
             parts.append(render_concept_card(c, shipped=False))
-        parts.append("\t\t\t</div>\n\t\t</section>\n")
+        parts.append("\t\t</section>\n")
     else:
         parts.append(
-            '\t\t<section><p style="color:#a8a29e">'
-            'No unbuilt mockups — every concept in <code>mockups/</code> '
-            'has a sibling theme directory. Drop a new <code>mockup-&lt;slug&gt;.png</code> '
-            'into <code>mockups/</code> and re-run <code>bin/build-redirects.py</code>.'
-            '</p></section>\n'
+            '\t\t<header class="section-head"><h2>On the bench</h2></header>\n'
+            '\t\t<p class="empty-note">No unbuilt mockups &mdash; every concept in '
+            '<code>mockups/</code> has a sibling theme directory. Drop a new '
+            '<code>mockup-&lt;slug&gt;.png</code> into <code>mockups/</code> and '
+            're-run <code>bin/build-redirects.py</code>.</p>\n'
         )
     if built:
         parts.append(
-            '\t\t<section>\n\t\t\t<h2>Already shipped</h2>\n'
-            '\t\t\t<div class="concepts">\n'
+            '\t\t<header class="section-head">\n'
+            '\t\t\t<h2>Already shipped</h2>\n'
+            f'\t\t\t<span class="count"><strong>{len(built):02d}</strong> live</span>\n'
+            '\t\t</header>\n'
+            '\t\t<section class="concept-grid" aria-label="Shipped concepts">\n'
         )
         for c in built:
             parts.append(render_concept_card(c, shipped=True))
-        parts.append("\t\t\t</div>\n\t\t</section>\n")
+        parts.append("\t\t</section>\n")
     parts.append(foot)
     return "".join(parts)
 
@@ -568,11 +603,34 @@ def build(*, dry_run: bool = False) -> int:
 
     # Wipe and recreate docs/ so deleting a theme actually removes its short
     # URL on the next deploy. The CNAME file (if any) is preserved across
-    # rebuilds so a custom domain doesn't drop on every regeneration.
+    # rebuilds so a custom domain doesn't drop on every regeneration. The
+    # shared stylesheet (assets/style.css) is preserved the same way: it's
+    # the canonical edit point for the visual system, owned by humans, not
+    # by this script. The snap gallery's own assets/ folder lives at
+    # docs/snaps/assets/ so it's wiped + re-emitted by bin/build-snap-
+    # gallery.py and is unaffected here.
     cname = DOCS_DIR / "CNAME"
     cname_contents: str | None = None
     if cname.exists():
         cname_contents = cname.read_text()
+
+    style_css = DOCS_DIR / "assets" / "style.css"
+    style_contents: str | None = None
+    if style_css.exists():
+        style_contents = style_css.read_text()
+
+    # Same logic for the snap gallery: if a previous run already produced
+    # docs/snaps/, preserve it across this rebuild so we don't make the
+    # gallery vanish until bin/build-snap-gallery.py is re-run. The snap
+    # gallery is generated independently and shouldn't be coupled to this
+    # script's lifecycle.
+    snaps_dir = DOCS_DIR / "snaps"
+    preserved_snaps_tmp: Path | None = None
+    if not dry_run and snaps_dir.is_dir():
+        preserved_snaps_tmp = MONOREPO_ROOT / ".tmp-snaps-preserve"
+        if preserved_snaps_tmp.exists():
+            shutil.rmtree(preserved_snaps_tmp)
+        shutil.move(str(snaps_dir), str(preserved_snaps_tmp))
 
     if not dry_run and DOCS_DIR.exists():
         shutil.rmtree(DOCS_DIR)
@@ -581,21 +639,34 @@ def build(*, dry_run: bool = False) -> int:
     write_file(DOCS_DIR / ".nojekyll", "", dry_run=dry_run, written=written)
     if cname_contents is not None:
         write_file(DOCS_DIR / "CNAME", cname_contents, dry_run=dry_run, written=written)
+    if style_contents is not None:
+        write_file(DOCS_DIR / "assets" / "style.css", style_contents, dry_run=dry_run, written=written)
+    else:
+        print(
+            "warn: docs/assets/style.css missing — landing page, concepts, "
+            "and redirectors will be unstyled until you restore it.",
+            file=sys.stderr,
+        )
+    if preserved_snaps_tmp is not None and not dry_run:
+        shutil.move(str(preserved_snaps_tmp), str(snaps_dir))
+
+    # Two-pass over themes: count blueprints first so render_theme_card
+    # can stamp the correct "Theme 0X / 0Y" index without having to know
+    # the total ahead of time. Skips the same way the original loop did
+    # if a theme is missing its blueprint.
+    valid_themes = [t for t in themes if (t / "playground" / "blueprint.json").is_file()]
+    total_shipped = len(valid_themes)
+    for missing in [t for t in themes if not (t / "playground" / "blueprint.json").is_file()]:
+        print(
+            f"warn: {missing.name} has no playground/blueprint.json — "
+            "skipping (run bin/sync-playground.py first).",
+            file=sys.stderr,
+        )
 
     cards: list[str] = []
-    for theme_dir in themes:
+    for index, theme_dir in enumerate(valid_themes, start=1):
         theme_slug = theme_dir.name
         theme_name = theme_display_name(theme_dir)
-        # Surface a clear error if a theme somehow shipped without a
-        # blueprint, but keep going so the rest of docs/ still builds.
-        if not (theme_dir / "playground" / "blueprint.json").is_file():
-            print(
-                f"warn: {theme_slug} has no playground/blueprint.json — "
-                "skipping (run bin/sync-playground.py first).",
-                file=sys.stderr,
-            )
-            continue
-
         for page in PAGES:
             page_slug = page["slug"]
             short_url = gh_pages_short_url(theme_slug, page_slug)
@@ -609,7 +680,7 @@ def build(*, dry_run: bool = False) -> int:
             sub = (DOCS_DIR / theme_slug / page_slug) if page_slug else (DOCS_DIR / theme_slug)
             write_file(sub / "index.html", html, dry_run=dry_run, written=written)
 
-        cards.append(render_theme_card(theme_dir, theme_name, theme_slug))
+        cards.append(render_theme_card(theme_dir, theme_name, theme_slug, index=index, total=total_shipped))
         # Sanity check: confirm the blueprint URL we're encoding actually
         # matches what bin/sync-playground.py points at. Mismatches mean
         # the docs/ links would 404 in Playground.
@@ -635,7 +706,7 @@ def build(*, dry_run: bool = False) -> int:
 
     write_file(
         DOCS_DIR / "index.html",
-        render_index(cards, unbuilt_count=len(unbuilt)),
+        render_index(cards, unbuilt_count=len(unbuilt), shipped_count=total_shipped),
         dry_run=dry_run, written=written,
     )
 

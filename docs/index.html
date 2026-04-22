@@ -4,82 +4,73 @@
 	<meta charset="utf-8">
 	<title>Fifty — WordPress Block Theme Variants</title>
 	<meta name="viewport" content="width=device-width,initial-scale=1">
-	<meta name="description" content="Open one of the Fifty WordPress block theme variants live in WordPress Playground. No install, runs entirely in your browser.">
+	<meta name="description" content="A monorepo of opinionated WordPress block themes. Each one boots in WordPress Playground — no install, runs entirely in your browser.">
 	<meta property="og:type" content="website">
 	<meta property="og:title" content="Fifty — WordPress Block Theme Variants">
-	<meta property="og:description" content="Open one of the Fifty WordPress block theme variants live in WordPress Playground. No install, runs entirely in your browser.">
+	<meta property="og:description" content="A monorepo of opinionated WordPress block themes. Each one boots in WordPress Playground — no install, runs entirely in your browser.">
 	<meta property="og:url" content="https://demo.regionallyfamous.com/">
-	<style>
-		:root{color-scheme:dark light}
-		html,body{margin:0;background:#0f0f10;color:#f5f5f4;font:16px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-		main{max-width:64rem;margin:0 auto;padding:clamp(2rem,5vw,4rem) clamp(1.25rem,4vw,2rem)}
-		header{margin-bottom:3rem}
-		header h1{font-size:clamp(1.75rem,3.5vw,2.5rem);margin:0 0 .5rem;font-weight:700;letter-spacing:-.01em}
-		header p{margin:0;color:#a8a29e;max-width:42rem}
-		header p a{color:#fafaf9}
-		.themes{display:grid;gap:1.25rem;grid-template-columns:repeat(auto-fit,minmax(18rem,1fr))}
-		.theme{border:1px solid #2c2a27;border-radius:14px;padding:1.5rem;background:#1a1917;display:flex;flex-direction:column;gap:1rem;transition:border-color 160ms ease,transform 160ms ease}
-		.theme:hover{border-color:#57534e;transform:translateY(-1px)}
-		.theme h2{margin:0;font-size:1.25rem;font-weight:600}
-		.theme p{margin:0;color:#a8a29e;font-size:.95rem}
-		.cta{display:inline-flex;align-items:center;gap:.5rem;background:#fafaf9;color:#0f0f10;padding:.55rem .95rem;border-radius:9999px;text-decoration:none;font-weight:600;font-size:.9rem;align-self:flex-start;transition:background 160ms ease}
-		.cta:hover{background:#fff}
-		.queue-link{display:inline-flex;align-items:center;gap:.4rem;margin-top:1rem;color:#fafaf9;text-decoration:none;font-weight:600;font-size:.95rem;border-bottom:1px solid #44403c;padding-bottom:.15rem}
-		.queue-link:hover{border-bottom-color:#fafaf9}
-		footer{margin-top:3rem;padding-top:2rem;border-top:1px solid #2c2a27;color:#78716c;font-size:.85rem}
-		footer a{color:#d6d3d1}
-		@media (prefers-color-scheme:light){
-			html,body{background:#fafaf9;color:#1c1917}
-			header p,.theme p{color:#57534e}
-			.theme{background:#fff;border-color:#e7e5e4}
-			.theme:hover{border-color:#a8a29e}
-			.cta{background:#1c1917;color:#fafaf9}
-			.cta:hover{background:#0c0a09}
-			.queue-link{color:#1c1917;border-bottom-color:#d6d3d1}
-			.queue-link:hover{border-bottom-color:#1c1917}
-			footer{border-color:#e7e5e4;color:#78716c}
-			footer a{color:#44403c}
-		}
-	</style>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Serif+Text:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
+	<link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
+	<header class="masthead">
+		<span class="left">Vol. 01 · Issue 05 · Apr 2026</span>
+		<span class="center">A quarterly of WordPress block themes</span>
+		<span class="right"><a href="https://github.com/RegionallyFamous/fifty">github.com/RegionallyFamous/fifty</a></span>
+	</header>
 	<main>
-		<header>
-			<h1>Fifty</h1>
-			<p>A monorepo of WordPress block themes built around a shared <a href="https://github.com/RegionallyFamous/fifty/blob/main/obel/">Obel</a> base. Click any theme below to boot a live demo storefront in WordPress Playground — no install, runs entirely in your browser.</p>
-			<p><a class="queue-link" href="concepts/">Browse the concept queue (24 unbuilt) →</a></p>
-			<p><a class="queue-link" href="snaps/">Browse the snap gallery (every theme · every viewport) →</a></p>
-		</header>
-		<section class="themes">
-			<article class="theme">
-				<h2>Aero</h2>
-				<p>A Y2K iridescent WooCommerce block theme: holographic pastels, glassy chrome buttons, sparkle product cards, and bubbly wordmark. For storefronts that want to look like a soft-future daydream.</p>
-				<a class="cta" href="aero/">Open in Playground →</a>
-			</article>
-			<article class="theme">
-				<h2>Chonk</h2>
-				<p>A neo-brutalist WooCommerce block theme: cream backgrounds, pure black 4px borders, hard offset shadows, big chunky display type, and zero rounded corners.</p>
-				<a class="cta" href="chonk/">Open in Playground →</a>
-			</article>
-			<article class="theme">
-				<h2>Lysholm</h2>
-				<p>A Nordic home-goods WooCommerce block theme: pale cream surfaces, soft tan accents, and unhurried serif typography for slow, considered storefronts.</p>
-				<a class="cta" href="lysholm/">Open in Playground →</a>
-			</article>
-			<article class="theme">
-				<h2>Obel</h2>
-				<p>An editorial WooCommerce block theme: hairline borders, generous whitespace, and a warm cream palette for quiet, measured storefronts.</p>
-				<a class="cta" href="obel/">Open in Playground →</a>
-			</article>
-			<article class="theme">
-				<h2>Selvedge</h2>
-				<p>A workwear-heritage WooCommerce block theme: warm dark palette, italic display serif, and a small-batch maker's voice for goods built to outlast you.</p>
-				<a class="cta" href="selvedge/">Open in Playground →</a>
-			</article>
+		<section class="cover">
+			<h1>fifty<span style="color:var(--accent)">.</span></h1>
+			<hr class="rule">
+			<p class="deck">Five WordPress block themes,<br>Twenty-four unbuilt concepts on the bench,<br>and every viewport, shot.</p>
+			<div class="lede">
+				<p>A monorepo of opinionated WooCommerce block themes built around a shared <a href="https://github.com/RegionallyFamous/fifty/blob/main/obel/">Obel</a> base. Each theme boots in WordPress Playground &mdash; no install required, the entire stack runs in your browser.</p>
+				<p>First boot takes 20 to 60 seconds while WordPress, WooCommerce, and the demo content download. Subsequent boots are nearly instant. Every screenshot in the gallery was captured by automated visual regression.</p>
+			</div>
+			<div class="cta-row">
+				<a class="cta" href="concepts/">Browse 24 unbuilt concepts <span class="arrow">→</span></a>
+				<a class="cta" href="snaps/">Open the snap gallery <span class="arrow">→</span></a>
+			</div>
 		</section>
-		<footer>
-			<p>Source: <a href="https://github.com/RegionallyFamous/fifty">github.com/RegionallyFamous/fifty</a> · The first boot of any theme takes 20–60 seconds while it downloads WordPress, WooCommerce, and the demo content.</p>
-		</footer>
+		<section class="theme-rows" aria-label="Live themes">
+			<a class="theme-row" href="aero/">
+				<span class="index">Theme 01 / 05</span>
+				<h2 class="name">aero</h2>
+				<p class="blurb">A Y2K iridescent WooCommerce block theme: holographic pastels, glassy chrome buttons, sparkle product cards, and bubbly wordmark. For storefronts that want to look like a soft-future daydream.</p>
+				<span class="open"><span class="arrow" aria-hidden="true">→</span><span class="label">Open Playground</span></span>
+			</a>
+			<a class="theme-row" href="chonk/">
+				<span class="index">Theme 02 / 05</span>
+				<h2 class="name">chonk</h2>
+				<p class="blurb">A neo-brutalist WooCommerce block theme: cream backgrounds, pure black 4px borders, hard offset shadows, big chunky display type, and zero rounded corners.</p>
+				<span class="open"><span class="arrow" aria-hidden="true">→</span><span class="label">Open Playground</span></span>
+			</a>
+			<a class="theme-row" href="lysholm/">
+				<span class="index">Theme 03 / 05</span>
+				<h2 class="name">lysholm</h2>
+				<p class="blurb">A Nordic home-goods WooCommerce block theme: pale cream surfaces, soft tan accents, and unhurried serif typography for slow, considered storefronts.</p>
+				<span class="open"><span class="arrow" aria-hidden="true">→</span><span class="label">Open Playground</span></span>
+			</a>
+			<a class="theme-row" href="obel/">
+				<span class="index">Theme 04 / 05</span>
+				<h2 class="name">obel</h2>
+				<p class="blurb">An editorial WooCommerce block theme: hairline borders, generous whitespace, and a warm cream palette for quiet, measured storefronts.</p>
+				<span class="open"><span class="arrow" aria-hidden="true">→</span><span class="label">Open Playground</span></span>
+			</a>
+			<a class="theme-row" href="selvedge/">
+				<span class="index">Theme 05 / 05</span>
+				<h2 class="name">selvedge</h2>
+				<p class="blurb">A workwear-heritage WooCommerce block theme: warm dark palette, italic display serif, and a small-batch maker's voice for goods built to outlast you.</p>
+				<span class="open"><span class="arrow" aria-hidden="true">→</span><span class="label">Open Playground</span></span>
+			</a>
+		</section>
 	</main>
+	<footer class="colophon">
+		<span class="left"><a href="https://github.com/RegionallyFamous/fifty">github.com/RegionallyFamous/fifty</a></span>
+		<span class="center">MIT license · CC0 imagery · Built in public</span>
+		<span class="right">Printed for the web, Apr 2026</span>
+	</footer>
 </body>
 </html>
