@@ -599,12 +599,39 @@ def boot_server(theme: str, port: int | None = None,
     if cache_state:
         cache_dir = _state_cache_dir(theme)
         cache_dir.mkdir(parents=True, exist_ok=True)
-        # `--mount-before-install` lands the persisted dir at /wordpress
-        # *before* the WP-install step inspects it; the
-        # `install-from-existing-files-if-needed` mode then skips the
-        # download + install if the cache is populated.
-        cmd.append(f"--mount-before-install={cache_dir}:/wordpress")
-        cmd.append("--wordpress-install-mode=install-from-existing-files-if-needed")
+        # SPIKE STATUS (phase3-state-cache):
+        # ---------------------------------
+        # @wp-playground/cli 3.1.20 supports `--mount-before-install` +
+        # `--wordpress-install-mode=install-from-existing-files-if-needed`,
+        # but the combination is intolerant of an *empty* mount: the
+        # CLI sees the directory, decides "site present, skip install",
+        # then aborts with `Error: Error connecting to the SQLite
+        # database` because the SQLite DB hasn't been initialised yet.
+        # We can't safely cache-mount an empty directory.
+        #
+        # Workable contract: only attach the cache if it already
+        # contains a `wp-config.php` (i.e. a prior successful boot
+        # completed and left the install on disk). First boot of a
+        # fresh theme runs the full blueprint (~127s) without the
+        # cache mount; the user (or a future `bin/snap.py prime-cache`
+        # subcommand) is responsible for populating the cache from
+        # that boot's runtime dir before subsequent boots can benefit.
+        #
+        # See WordPress/wordpress-playground discussions for the
+        # canonical "wp-content mount" recipe and `start` mode's
+        # automatic persistence model; both are tracked as candidate
+        # follow-ups but deliberately out of scope for the spike.
+        cache_marker = cache_dir / "wp-config.php"
+        if cache_marker.exists():
+            cmd.append(f"--mount-before-install={cache_dir}:/wordpress")
+            cmd.append("--wordpress-install-mode=install-from-existing-files-if-needed")
+            print(f"  cache-state: reusing populated cache at {cache_dir}")
+        else:
+            print(
+                f"  cache-state: cache at {cache_dir} is empty; running full "
+                f"blueprint to prime it (subsequent boots can reuse). "
+                f"See bin/snap.py source for the spike write-up."
+            )
     if login:
         cmd.append("--login")
     print(
