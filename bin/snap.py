@@ -388,7 +388,7 @@ BLUEPRINT_DONE_MARKER = "Ready! WordPress is running on"
 # 1-16s later almost always succeeds. Phase 3 (`phase3-boot-retry`)
 # of the closed-loop plan: detect this in the log, kill the dead
 # server, exponential-backoff, retry.
-import re as _re  # local-name to avoid touching the alphabetized imports
+import re as _re  # noqa: E402 -- intentional late import: this module's import block is alphabetized and adding `re` at the top would conflict with that ordering. The local-name alias keeps the module-level constant readable.
 
 PLAYGROUND_RACE_RE = _re.compile(
     r"(PHP instance already acquired|Error: PHP instance already acquired)",
@@ -400,14 +400,14 @@ class PlaygroundRaceError(RuntimeError):
     """Raised when @wp-playground/cli emits the PHP-instance race marker."""
 
 
-def _log_text(server: "Server") -> str:
+def _log_text(server: Server) -> str:
     try:
         return server.log_path.read_text(errors="replace")
     except OSError:
         return ""
 
 
-def _log_has_race(server: "Server") -> bool:
+def _log_has_race(server: Server) -> bool:
     return bool(PLAYGROUND_RACE_RE.search(_log_text(server)))
 
 
@@ -1848,8 +1848,8 @@ def _start_shoot_on_demand_endpoint(theme: str, server_state: dict, http_port: i
     same warm server would race for the same wasm runtime that gives
     us "PHP instance already acquired" anyway.
     """
-    from http.server import BaseHTTPRequestHandler, HTTPServer
     import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
 
     out_root = SNAPS_DIR / theme
     lock = threading.Lock()
@@ -1868,7 +1868,7 @@ def _start_shoot_on_demand_endpoint(theme: str, server_state: dict, http_port: i
             self.end_headers()
             self.wfile.write(data)
 
-        def do_GET(self):  # noqa: N802 -- BaseHTTPRequestHandler API
+        def do_GET(self):
             if self.path == "/health":
                 self._json(
                     200,
@@ -1883,7 +1883,7 @@ def _start_shoot_on_demand_endpoint(theme: str, server_state: dict, http_port: i
             else:
                 self._json(404, {"error": "GET /health only"})
 
-        def do_POST(self):  # noqa: N802 -- BaseHTTPRequestHandler API
+        def do_POST(self):
             if self.path == "/shutdown":
                 self._json(200, {"ok": True})
                 shutdown_event.set()

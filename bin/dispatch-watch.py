@@ -65,7 +65,7 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib import MONOREPO_ROOT, iter_themes  # noqa: E402
+from _lib import MONOREPO_ROOT, iter_themes
 
 TMP_DIR = MONOREPO_ROOT / "tmp"
 STATE_PATH = TMP_DIR / "dispatch-state.json"
@@ -411,7 +411,7 @@ def main(argv: list[str]) -> int:
     pending_themes: set[str] = set()
     pending_dispatcher = False
 
-    def graceful_exit(_signum, _frame):  # noqa: ANN001
+    def graceful_exit(_signum, _frame):
         print("dispatch-watch: shutting down.", flush=True)
         sys.exit(0)
 

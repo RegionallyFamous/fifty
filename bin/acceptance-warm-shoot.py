@@ -54,7 +54,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import statistics
 import subprocess
 import sys
@@ -154,7 +153,7 @@ def main(argv: list[str]) -> int:
     if args.cache_state:
         cmd.append("--cache-state")
     print(f"$ {' '.join(cmd)}\n  log: {sup_log}", flush=True)
-    sup_log_handle = open(sup_log, "wb")
+    sup_log_handle = open(sup_log, "wb")  # noqa: SIM115 -- the file handle has to outlive this function so the spawned `bin/snap.py serve` subprocess can keep streaming into it; closing it via `with` would close the FD before Popen finishes writing.
     proc = subprocess.Popen(cmd, stdout=sup_log_handle, stderr=subprocess.STDOUT,
                             cwd=str(REPO_ROOT))
 

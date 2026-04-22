@@ -75,7 +75,7 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib import MONOREPO_ROOT  # noqa: E402
+from _lib import MONOREPO_ROOT
 
 TMP_DIR = MONOREPO_ROOT / "tmp"
 SNAPS_DIR = TMP_DIR / "snaps"

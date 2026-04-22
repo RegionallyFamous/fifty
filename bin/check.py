@@ -5567,10 +5567,7 @@ def check_wc_specificity_winnable() -> Result:
     )
 
     def _wc_selector_is_runtime(sel: str) -> bool:
-        for tok in _NONRUNTIME_TOKENS:
-            if tok in sel:
-                return False
-        return True
+        return all(tok not in sel for tok in _NONRUNTIME_TOKENS)
 
     wc_by_compound: dict[tuple, tuple[tuple[int, int, int], str]] = {}
     for sel, spec_tuple in wc_selectors.items():
