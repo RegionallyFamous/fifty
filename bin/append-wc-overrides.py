@@ -103,7 +103,7 @@ table.variations select:focus{{outline:none;border-color:var(--wp--preset--color
 .wc-block-components-quantity-selector__input::-webkit-inner-spin-button,.wc-block-components-quantity-selector__input::-webkit-outer-spin-button{{-webkit-appearance:none;margin:0;}}
 .wc-block-components-quantity-selector__button{{background:transparent;border:0;color:var(--wp--preset--color--contrast);width:32px;cursor:pointer;font-size:var(--wp--preset--font-size--base);transition:color 160ms ease;}}
 .wc-block-components-quantity-selector__button:hover{{background:var(--wp--preset--color--accent-soft,var(--wp--preset--color--subtle,transparent));color:var(--wp--preset--color--contrast);}}
-.wc-block-cart__sidebar{{padding:var(--wp--preset--spacing--lg);background:var(--wp--preset--color--subtle);border-radius:var(--wp--custom--radius--md);display:flex;flex-direction:column;gap:var(--wp--preset--spacing--md);}}
+.wc-block-cart__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--subtle);border-radius:var(--wp--custom--radius--md);display:flex;flex-direction:column;gap:var(--wp--preset--spacing--lg);}}
 .wc-block-components-totals-item{{display:flex;justify-content:space-between;align-items:baseline;padding:var(--wp--preset--spacing--xs) 0;font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--sm);color:var(--wp--preset--color--contrast);}}
 .wc-block-components-totals-item__label{{font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;color:var(--wp--preset--color--secondary);}}
 .wc-block-components-totals-footer-item{{border-top:1px solid var(--wp--preset--color--border);padding-top:var(--wp--preset--spacing--md);margin-top:var(--wp--preset--spacing--xs);}}
@@ -164,7 +164,7 @@ table.variations select:focus{{outline:none;border-color:var(--wp--preset--color
 .woocommerce-orders-table th,.woocommerce-orders-table td,.woocommerce-table--order-details th,.woocommerce-table--order-details td{{padding:var(--wp--preset--spacing--sm) var(--wp--preset--spacing--md);border-bottom:1px solid var(--wp--preset--color--border);text-align:left;}}
 .woocommerce-orders-table thead th,.woocommerce-table--order-details thead th{{background:var(--wp--preset--color--subtle);font-weight:var(--wp--custom--font-weight--semibold);text-transform:uppercase;letter-spacing:var(--wp--custom--letter-spacing--wider);font-size:var(--wp--preset--font-size--xs);color:var(--wp--preset--color--secondary);}}
 .woocommerce-orders-table .button,.woocommerce-MyAccount-content .button{{display:inline-flex;align-items:center;justify-content:center;font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);font-weight:var(--wp--custom--font-weight--medium);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;background:var(--wp--preset--color--contrast);color:var(--wp--preset--color--base);border:1px solid var(--wp--preset--color--contrast);border-radius:var(--wp--custom--radius--pill);padding:var(--wp--preset--spacing--xs) var(--wp--preset--spacing--md);text-decoration:none;transition:background 160ms ease;}}
-.woocommerce-MyAccount-content form .button:hover,.woocommerce-orders-table .button:hover{{background:var(--wp--preset--color--accent);border-color:var(--wp--preset--color--accent);}}
+.woocommerce-MyAccount-content form .button:hover,.woocommerce-orders-table .button:hover{{background:var(--wp--preset--color--accent);border-color:var(--wp--preset--color--accent);color:var(--wp--preset--color--contrast);}}
 .woocommerce-EditAccountForm,.woocommerce-address-fields__field-wrapper{{display:grid;gap:var(--wp--preset--spacing--md);}}
 .woocommerce-EditAccountForm label,.woocommerce-address-fields__field-wrapper label{{display:block;font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;color:var(--wp--preset--color--secondary);margin-bottom:var(--wp--preset--spacing--2-xs);}}
 .woocommerce-EditAccountForm input,.woocommerce-address-fields__field-wrapper input,.woocommerce-EditAccountForm select,.woocommerce-address-fields__field-wrapper select{{width:100%;background:var(--wp--preset--color--surface);border:1px solid var(--wp--preset--color--border);border-radius:var(--wp--custom--radius--md);padding:var(--wp--preset--spacing--sm) var(--wp--preset--spacing--md);font:inherit;color:var(--wp--preset--color--contrast);}}
@@ -531,7 +531,7 @@ CSS_PHASE_D = f"""{SENTINEL_OPEN_PHASE_D}
 .wo-empty__ctas{{display:inline-flex;flex-wrap:wrap;gap:var(--wp--preset--spacing--sm);justify-content:center;margin:var(--wp--preset--spacing--md) 0 0;}}
 .wo-empty__cta{{display:inline-flex;align-items:center;justify-content:center;height:48px;padding:0 var(--wp--preset--spacing--lg);font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--sm);letter-spacing:var(--wp--custom--letter-spacing--wide);text-transform:uppercase;text-decoration:none;border-radius:var(--wp--custom--radius--sm,4px);transition:background 160ms ease,color 160ms ease,border-color 160ms ease;}}
 .wo-empty__cta--primary{{background:var(--wp--preset--color--contrast);color:var(--wp--preset--color--base);border:1px solid var(--wp--preset--color--contrast);}}
-.wo-empty__cta--primary:hover{{background:var(--wp--preset--color--accent);border-color:var(--wp--preset--color--accent);color:var(--wp--preset--color--base);}}
+.wo-empty__cta--primary:hover{{background:var(--wp--preset--color--accent);border-color:var(--wp--preset--color--accent);color:var(--wp--preset--color--contrast);}}
 .wo-empty__cta--secondary{{background:transparent;color:var(--wp--preset--color--contrast);border:1px solid var(--wp--preset--color--border);}}
 .wo-empty__cta--secondary:hover{{border-color:var(--wp--preset--color--contrast);}}
 .wo-archive-hero{{position:relative;padding:var(--wp--preset--spacing--3-xl) var(--wp--preset--spacing--lg);text-align:center;background:var(--wp--preset--color--subtle);background-size:cover;background-position:center;margin-bottom:var(--wp--preset--spacing--2-xl);}}
@@ -558,13 +558,13 @@ SENTINEL_OPEN_PHASE_D_FOOTER = "/* wc-tells-phase-d-footer */"
 SENTINEL_CLOSE_PHASE_D_FOOTER = "/* /wc-tells-phase-d-footer */"
 CSS_PHASE_D_FOOTER = f"""{SENTINEL_OPEN_PHASE_D_FOOTER}
 .chonk-footer__wordmark .wp-block-site-title a{{color:var(--wp--preset--color--contrast);text-decoration:none;display:block;}}
-.chonk-footer__wordmark .wp-block-site-title a:hover{{color:var(--wp--preset--color--accent);}}
+.chonk-footer__wordmark .wp-block-site-title a:hover{{text-decoration:underline;text-decoration-color:var(--wp--preset--color--accent);text-decoration-thickness:2px;text-underline-offset:0.2em;}}
 .selvedge-footer__newsletter-form{{display:grid;grid-template-columns:1fr auto;gap:0;align-items:stretch;max-width:480px;margin:var(--wp--preset--spacing--md) auto 0;border:1px solid var(--wp--preset--color--border);border-radius:var(--wp--custom--radius--sm,4px);overflow:hidden;background:var(--wp--preset--color--base);}}
 .selvedge-footer__newsletter-label{{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}}
 .selvedge-footer__newsletter-input{{border:0;background:transparent;padding:var(--wp--preset--spacing--sm) var(--wp--preset--spacing--md);font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--sm);color:var(--wp--preset--color--contrast);min-width:0;}}
 .selvedge-footer__newsletter-input:focus{{outline:none;}}
 .selvedge-footer__newsletter-submit{{border:0;border-left:1px solid var(--wp--preset--color--border);background:var(--wp--preset--color--contrast);color:var(--wp--preset--color--base);font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;padding:0 var(--wp--preset--spacing--lg);cursor:pointer;transition:background 160ms ease;}}
-.selvedge-footer__newsletter-submit:hover{{background:var(--wp--preset--color--accent);}}
+.selvedge-footer__newsletter-submit:hover{{background:var(--wp--preset--color--accent);color:var(--wp--preset--color--contrast);}}
 {SENTINEL_CLOSE_PHASE_D_FOOTER}"""
 
 
@@ -687,11 +687,10 @@ body.theme-lysholm .wo-payment-icons__icon{{border:0;border-radius:var(--wp--cus
 SENTINEL_OPEN_PHASE_G = "/* wc-tells-phase-g-card-voices */"
 SENTINEL_CLOSE_PHASE_G = "/* /wc-tells-phase-g-card-voices */"
 CSS_PHASE_G = f"""{SENTINEL_OPEN_PHASE_G}
-body.theme-lysholm .wc-block-cart__sidebar{{background:var(--wp--preset--color--surface);border:1px solid var(--wp--preset--color--accent-soft,var(--wp--preset--color--border));border-radius:var(--wp--custom--radius--lg,16px);box-shadow:0 2px 12px rgba(0,0,0,0.04);}}
-body.theme-chonk .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--base);border:4px solid var(--wp--preset--color--contrast);border-radius:0;box-shadow:8px 8px 0 var(--wp--preset--color--contrast);display:flex;flex-direction:column;gap:var(--wp--preset--spacing--lg);}}
-body.theme-obel .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--subtle);border-radius:var(--wp--custom--radius--md);display:flex;flex-direction:column;gap:var(--wp--preset--spacing--lg);}}
-body.theme-selvedge .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--surface);border:1px solid var(--wp--preset--color--border);border-radius:0;display:flex;flex-direction:column;gap:var(--wp--preset--spacing--lg);}}
-body.theme-lysholm .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--surface);border:1px solid var(--wp--preset--color--accent-soft,var(--wp--preset--color--border));border-radius:var(--wp--custom--radius--lg,16px);box-shadow:0 2px 12px rgba(0,0,0,0.04);display:flex;flex-direction:column;gap:var(--wp--preset--spacing--lg);}}
+body.theme-chonk .wc-block-cart__sidebar,body.theme-chonk .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--base);border:4px solid var(--wp--preset--color--contrast);border-radius:0;box-shadow:8px 8px 0 var(--wp--preset--color--contrast);display:flex;flex-direction:column;gap:var(--wp--preset--spacing--lg);}}
+body.theme-obel .wc-block-cart__sidebar,body.theme-obel .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--subtle);border-radius:var(--wp--custom--radius--md);display:flex;flex-direction:column;gap:var(--wp--preset--spacing--lg);}}
+body.theme-selvedge .wc-block-cart__sidebar,body.theme-selvedge .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--surface);border:1px solid var(--wp--preset--color--border);border-radius:0;display:flex;flex-direction:column;gap:var(--wp--preset--spacing--lg);}}
+body.theme-lysholm .wc-block-cart__sidebar,body.theme-lysholm .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--surface);border:1px solid var(--wp--preset--color--accent-soft,var(--wp--preset--color--border));border-radius:var(--wp--custom--radius--lg,16px);box-shadow:0 2px 12px rgba(0,0,0,0.04);display:flex;flex-direction:column;gap:var(--wp--preset--spacing--lg);}}
 {SENTINEL_CLOSE_PHASE_G}"""
 
 
@@ -1161,18 +1160,31 @@ def _splice_after(text: str, anchor: str, payload: str) -> tuple[str, str]:
     return text[:idx] + payload + text[idx:], "ok"
 
 
-def append_for(theme: str) -> str:
-    """Walk every chunk in CHUNKS for one theme. Skips chunks whose
-    open-sentinel is already present so re-runs are no-ops."""
+def append_for(theme: str, *, update: bool = False) -> str:
+    """Walk every chunk in CHUNKS for one theme. Default behavior:
+    skip chunks whose open-sentinel is already present so re-runs are
+    no-ops. If `update=True`, replace the body between the existing
+    sentinels with the current source so edits to CSS chunks
+    propagate to every theme.json."""
     path = ROOT / theme / "theme.json"
     text = path.read_text(encoding="utf-8")
     notes: list[str] = []
-    for sentinel_open, _close, css, anchor in CHUNKS:
-        if sentinel_open in text:
-            notes.append(f"skip {sentinel_open}")
-            continue
+    for sentinel_open, sentinel_close, css, anchor in CHUNKS:
         flat = _flatten(css)
         escaped = _json_escape(flat)
+        if sentinel_open in text:
+            if not update:
+                notes.append(f"skip {sentinel_open}")
+                continue
+            open_idx = text.find(sentinel_open)
+            close_idx = text.find(sentinel_close, open_idx)
+            if close_idx == -1:
+                notes.append(f"FAIL {sentinel_open}: close sentinel missing")
+                continue
+            close_end = close_idx + len(sentinel_close)
+            text = text[:open_idx] + escaped + text[close_end:]
+            notes.append(f"~{len(flat)} {sentinel_open}")
+            continue
         text, status = _splice_after(text, anchor, escaped)
         if status != "ok":
             notes.append(f"FAIL {sentinel_open}: {status}")
@@ -1204,6 +1216,16 @@ def main(argv: list[str]) -> int:
             "output, so --snap is the recommended follow-up."
         ),
     )
+    parser.add_argument(
+        "--update",
+        action="store_true",
+        help=(
+            "Replace the body between existing sentinels with the "
+            "current source CSS. Use this when you've edited a chunk "
+            "in this script and want the changes to land in every "
+            "theme.json without manually deleting the old block."
+        ),
+    )
     args = parser.parse_args(argv[1:])
 
     targets = args.themes or THEMES
@@ -1212,11 +1234,11 @@ def main(argv: list[str]) -> int:
         if t not in THEMES:
             print(f"unknown theme: {t}", file=sys.stderr)
             return 2
-        result = append_for(t)
+        result = append_for(t, update=args.update)
         print(result)
         # If anything other than 'skip' notes appeared, we mutated the
         # theme.json -- worth running snap.
-        if "+" in result or "FAIL" in result:
+        if "+" in result or "~" in result or "FAIL" in result:
             appended_any = True
 
     if appended_any:
