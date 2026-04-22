@@ -52,3 +52,10 @@ if ! FIFTY_SKIP_UNPUSHED_CHECK=1 python3 bin/check.py --all --offline; then
 fi
 
 echo "✓ pre-commit: all themes pass."
+
+# Soft warning (rule #20): if we're committing from the shared root
+# while agent worktrees are active, surface a heads-up. Always exits
+# 0; it does NOT block the commit.
+if [ -x bin/agent-worktree.py ]; then
+  python3 bin/agent-worktree.py warn-if-racing || true
+fi

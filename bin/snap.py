@@ -522,8 +522,39 @@ def _pinned_playground_cli_spec() -> str:
     return f"@wp-playground/cli@{pinned}"
 
 
+PLAYGROUND_STATE_DIR = TMP_DIR / "playground-state"
+
+
+def _state_cache_dir(theme: str) -> Path:
+    """Return the per-theme persistent /wordpress dir used by --cache-state.
+
+    Phase 3 (`phase3-state-cache`) of the closed-loop plan. We mount
+    `tmp/playground-state/<theme>/wordpress` -> `/wordpress` so that
+    the seeded WordPress install (WXR import + WC product images +
+    wo-configure.php options) survives across boots. Combined with
+    `--wordpress-install-mode=install-from-existing-files-if-needed`,
+    the second boot of a given theme is supposed to skip the slow
+    blueprint setup steps entirely.
+
+    Per-theme isolation is critical: cross-theme state leakage would
+    silently bake the wrong theme's options into a shoot. The dir
+    lives under `tmp/` so `git clean` can wipe it; `bin/snap.py
+    serve --cache-state --reset-cache` also exposes a one-shot wipe.
+    """
+    return PLAYGROUND_STATE_DIR / theme / "wordpress"
+
+
+def reset_state_cache(theme: str) -> Path:
+    """Wipe the per-theme cache dir; return the path that was cleared."""
+    target = PLAYGROUND_STATE_DIR / theme
+    if target.exists():
+        shutil.rmtree(target)
+    return target
+
+
 def boot_server(theme: str, port: int | None = None,
-                verbosity: str = "normal", login: bool = False) -> Server:
+                verbosity: str = "normal", login: bool = False,
+                cache_state: bool = False) -> Server:
     """Spawn `npx @wp-playground/cli@<pinned> server` and return the handle.
 
     The caller is responsible for shutting it down via `kill_server()`
@@ -536,6 +567,14 @@ def boot_server(theme: str, port: int | None = None,
     every other element down so pixel diffs trip on every cell, and
     (b) hides the actual top of the theme template. `serve` and ad-hoc
     debugging pass `login=True` so the user can poke at /wp-admin/.
+
+    `cache_state=True` enables the Phase 3 state cache: a per-theme
+    `tmp/playground-state/<theme>/wordpress` directory is mounted as
+    `/wordpress` (via `--mount-before-install`) and
+    `--wordpress-install-mode=install-from-existing-files-if-needed`
+    is passed so the slow blueprint steps (WP install + WXR + WC
+    seeder, ~100s of the 127s cold boot) skip on warm restart. First
+    boot still runs the full blueprint and primes the cache.
 
     The CLI version is pinned via package.json (see
     `_pinned_playground_cli_spec`).
@@ -557,6 +596,15 @@ def boot_server(theme: str, port: int | None = None,
         f"--mount={mount_arg}",
         f"--verbosity={verbosity}",
     ]
+    if cache_state:
+        cache_dir = _state_cache_dir(theme)
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        # `--mount-before-install` lands the persisted dir at /wordpress
+        # *before* the WP-install step inspects it; the
+        # `install-from-existing-files-if-needed` mode then skips the
+        # download + install if the cache is populated.
+        cmd.append(f"--mount-before-install={cache_dir}:/wordpress")
+        cmd.append("--wordpress-install-mode=install-from-existing-files-if-needed")
     if login:
         cmd.append("--login")
     print(
@@ -589,9 +637,13 @@ def kill_server(server: Server) -> None:
 
 @contextlib.contextmanager
 def running_server(theme: str, port: int | None = None,
-                   verbosity: str = "normal", login: bool = False):
+                   verbosity: str = "normal", login: bool = False,
+                   cache_state: bool = False):
     """Context manager that boots, waits, and tears down."""
-    server = boot_and_wait(theme, port=port, verbosity=verbosity, login=login)
+    server = boot_and_wait(
+        theme, port=port, verbosity=verbosity, login=login,
+        cache_state=cache_state,
+    )
     try:
         yield server
     finally:
@@ -608,6 +660,7 @@ def boot_and_wait(
     verbosity: str = "normal",
     login: bool = False,
     max_attempts: int = 3,
+    cache_state: bool = False,
 ) -> Server:
     """Boot Playground + wait for blueprint, retrying on the wasm race.
 
@@ -625,7 +678,10 @@ def boot_and_wait(
     """
     last_err: Exception | None = None
     for attempt in range(1, max_attempts + 1):
-        server = boot_server(theme, port=port, verbosity=verbosity, login=login)
+        server = boot_server(
+            theme, port=port, verbosity=verbosity, login=login,
+            cache_state=cache_state,
+        )
         try:
             wait_for_server(server)
             # Final guard: blueprint reported "Ready!" but the race
@@ -1729,15 +1785,23 @@ def diff_images(baseline_path: Path, current_path: Path, diff_out_path: Path,
 # ---------------------------------------------------------------------------
 # Subcommand implementations
 # ---------------------------------------------------------------------------
-def _start_shoot_on_demand_endpoint(theme: str, server_url: str, http_port: int):
+def _start_shoot_on_demand_endpoint(theme: str, server_state: dict, http_port: int):
     """Run a tiny single-threaded HTTP server inside `cmd_serve`.
 
     Phase 2 (closed-loop dispatcher) talks to this so the dispatch
     daemon doesn't pay the ~127s Playground cold-boot cost on every
     iteration; the warm server captures in ~3s of pure Playwright.
 
+    `server_state` is a *mutable* dict shared with the cmd_serve
+    supervisor loop so a Phase 3 ``--persistent`` restart can swap
+    in the new ``url`` (and bump ``boots``) without tearing down the
+    HTTP listener. Required keys: ``url`` (str) and ``alive`` (bool).
+    The supervisor sets ``alive=False`` while a restart is in flight
+    so /shoot returns 503 instead of trying to talk to a dead worker.
+
     Endpoints:
-        GET  /health                        -> {"ok":true,"theme":...,"url":...}
+        GET  /health                        -> {"ok":true,"theme":...,"url":...,
+                                                "alive":true,"boots":N}
         POST /shoot {route|routes,
                      viewport|viewports}    -> {"ok":true,"elapsed_s":..,
                                                 "manifest":{...},
@@ -1745,6 +1809,11 @@ def _start_shoot_on_demand_endpoint(theme: str, server_url: str, http_port: int)
         POST /shutdown                      -> {"ok":true}; lets the
                                                supervisor restart the
                                                server when it wedges.
+        POST /restart                       -> {"ok":true}; signals the
+                                               supervisor to kill +
+                                               re-boot Playground while
+                                               keeping the HTTP listener
+                                               warm.
 
     Single-threaded on purpose (HTTPServer, not ThreadingHTTPServer):
     Playwright shoots are CPU+IO heavy and Playground itself is a
@@ -1758,6 +1827,7 @@ def _start_shoot_on_demand_endpoint(theme: str, server_url: str, http_port: int)
     out_root = SNAPS_DIR / theme
     lock = threading.Lock()
     shutdown_event = threading.Event()
+    restart_event = threading.Event()
 
     class _Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
@@ -1773,7 +1843,16 @@ def _start_shoot_on_demand_endpoint(theme: str, server_url: str, http_port: int)
 
         def do_GET(self):  # noqa: N802 -- BaseHTTPRequestHandler API
             if self.path == "/health":
-                self._json(200, {"ok": True, "theme": theme, "url": server_url})
+                self._json(
+                    200,
+                    {
+                        "ok": bool(server_state.get("alive")),
+                        "theme": theme,
+                        "url": server_state.get("url"),
+                        "alive": bool(server_state.get("alive")),
+                        "boots": int(server_state.get("boots", 0)),
+                    },
+                )
             else:
                 self._json(404, {"error": "GET /health only"})
 
@@ -1782,8 +1861,18 @@ def _start_shoot_on_demand_endpoint(theme: str, server_url: str, http_port: int)
                 self._json(200, {"ok": True})
                 shutdown_event.set()
                 return
+            if self.path == "/restart":
+                self._json(200, {"ok": True})
+                restart_event.set()
+                return
             if self.path != "/shoot":
-                self._json(404, {"error": "POST /shoot or /shutdown only"})
+                self._json(404, {"error": "POST /shoot, /restart or /shutdown only"})
+                return
+            if not server_state.get("alive"):
+                self._json(
+                    503,
+                    {"error": "playground server is restarting; try again in a few seconds."},
+                )
                 return
             try:
                 length = int(self.headers.get("Content-Length") or 0)
@@ -1813,7 +1902,7 @@ def _start_shoot_on_demand_endpoint(theme: str, server_url: str, http_port: int)
             with lock:
                 t0 = time.time()
                 try:
-                    manifest = shoot_theme(theme, server_url, routes, viewports, out_root)
+                    manifest = shoot_theme(theme, server_state["url"], routes, viewports, out_root)
                 except SystemExit as e:
                     self._json(500, {"error": f"shoot exited: {e}"})
                     return
@@ -1859,7 +1948,35 @@ def _start_shoot_on_demand_endpoint(theme: str, server_url: str, http_port: int)
     threading.Thread(
         target=httpd.serve_forever, name="shoot-on-demand", daemon=True
     ).start()
-    return httpd, shutdown_event
+    return httpd, shutdown_event, restart_event
+
+
+def _snap_server_pidfile(theme: str) -> Path:
+    """Per-theme PID file used by `serve --persistent` so other tools
+    (`bin/dispatch-watch.py`, `bin/fix-loop.py`) can detect a warm
+    server before paying the ~127s cold-boot cost. Phase 3
+    (``phase3-warm-supervisor``)."""
+    return TMP_DIR / f"snap-server-{theme}.pid"
+
+
+def _write_snap_server_pidfile(theme: str, http_port: int | None) -> Path:
+    """Write {pid, theme, http_port, started_at} so peer tools can both
+    confirm liveness (kill -0) and discover the shoot-on-demand port."""
+    pf = _snap_server_pidfile(theme)
+    pf.parent.mkdir(parents=True, exist_ok=True)
+    pf.write_text(
+        json.dumps(
+            {
+                "pid": os.getpid(),
+                "theme": theme,
+                "http_port": http_port,
+                "started_at": int(time.time()),
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return pf
 
 
 def cmd_serve(args: argparse.Namespace) -> int:
@@ -1874,48 +1991,137 @@ def cmd_serve(args: argparse.Namespace) -> int:
     dispatch-watch daemon talks to so subsequent shoots reuse the same
     warm Playground -- ~3s instead of ~127s per shot.
 
+    With ``--persistent`` (Phase 3 ``phase3-warm-supervisor``) we wrap
+    the boot in a supervisor loop that auto-restarts the underlying
+    Playground when its wasm worker dies. The HTTP listener stays up
+    across restarts so the dispatch daemon doesn't reconnect on every
+    crash. A PID file at ``tmp/snap-server-<theme>.pid`` lets peer
+    tools detect the warm server before paying cold-boot cost.
+
     Boot uses ``boot_and_wait`` so the wasm PHP-instance race is
     retried transparently (Phase 3 ``phase3-boot-retry``).
     """
     theme = args.theme
     port = args.port
-    print(f"Booting {GREEN}{theme}{RESET} on port {port or '(auto)'}...")
-    # `serve` is the interactive subcommand; --login keeps the agent and
-    # the user logged-in for cursor-ide-browser MCP poking and /wp-admin
-    # access. `shoot` overrides this to capture logged-out visitor view.
-    server = boot_and_wait(theme, port=port, verbosity=args.verbosity, login=True)
+    cache_state = bool(getattr(args, "cache_state", False))
+    persistent = bool(getattr(args, "persistent", False))
+    if cache_state and getattr(args, "reset_cache", False):
+        cleared = reset_state_cache(theme)
+        print(f"  cleared state cache at {cleared}")
+    shoot_port = (
+        args.shoot_on_demand
+        if getattr(args, "shoot_on_demand", None) is not None
+        else None
+    )
+    if shoot_port is not None and shoot_port == 0:
+        shoot_port = 9501
+
+    pidfile = (
+        _write_snap_server_pidfile(theme, shoot_port) if persistent else None
+    )
+
+    print(
+        f"Booting {GREEN}{theme}{RESET} on port {port or '(auto)'}"
+        f"{' [cache-state]' if cache_state else ''}"
+        f"{' [persistent]' if persistent else ''}..."
+    )
+
+    # Mutable state shared with the HTTP listener so a restart can
+    # swap in the new url + bump boots without tearing down the
+    # listener thread. See `_start_shoot_on_demand_endpoint`.
+    server_state: dict = {"url": "", "alive": False, "boots": 0}
     httpd = None
     shutdown_event = None
+    restart_event = None
+
+    def _start_listener_if_needed() -> None:
+        nonlocal httpd, shutdown_event, restart_event
+        if shoot_port is None or httpd is not None:
+            return
+        httpd, shutdown_event, restart_event = _start_shoot_on_demand_endpoint(
+            theme, server_state, shoot_port
+        )
+        print(
+            f"  Shoot-on-demand: http://127.0.0.1:{shoot_port}/shoot"
+            f"   (POST {{\"route\":..,\"viewport\":..}})"
+        )
+        print(
+            f"                   http://127.0.0.1:{shoot_port}/health"
+            f"   (GET)"
+        )
+
+    server: Server | None = None
     try:
-        print(f"\n{GREEN}Ready{RESET}: {server.url}/")
-        print(f"  Login at: {server.url}/wp-admin/  (admin / password)")
-        print(f"  Logs streaming to: {server.log_path}")
+        while True:
+            # `serve` is the interactive subcommand; --login keeps the
+            # agent and the user logged-in for cursor-ide-browser MCP
+            # poking and /wp-admin access. `shoot` overrides this to
+            # capture logged-out visitor view.
+            try:
+                server = boot_and_wait(
+                    theme, port=port, verbosity=args.verbosity, login=True,
+                    cache_state=cache_state,
+                )
+            except SystemExit as e:
+                if not persistent:
+                    raise
+                # In persistent mode we don't want a single bad boot
+                # to take the whole supervisor down. Sleep and retry.
+                print(f"{RED}boot failed:{RESET} {e}\n  retrying in 30s...")
+                time.sleep(30.0)
+                continue
 
-        if getattr(args, "shoot_on_demand", None) is not None:
-            http_port = args.shoot_on_demand or 9501
-            httpd, shutdown_event = _start_shoot_on_demand_endpoint(
-                theme, server.url, http_port
-            )
-            print(
-                f"  Shoot-on-demand: http://127.0.0.1:{http_port}/shoot"
-                f"   (POST {{\"route\":..,\"viewport\":..}})"
-            )
-            print(
-                f"                   http://127.0.0.1:{http_port}/health"
-                f"   (GET)"
-            )
+            server_state["url"] = server.url
+            server_state["alive"] = True
+            server_state["boots"] += 1
 
-        print("  Press Ctrl-C to stop.\n")
-        try:
-            if shutdown_event is not None:
-                while server.proc.poll() is None and not shutdown_event.is_set():
-                    time.sleep(0.5)
-                if shutdown_event.is_set():
-                    print("Shutdown requested via HTTP /shutdown.")
+            print(
+                f"\n{GREEN}Ready{RESET}: {server.url}/"
+                f"   (boot #{server_state['boots']})"
+            )
+            print(f"  Login at: {server.url}/wp-admin/  (admin / password)")
+            print(f"  Logs streaming to: {server.log_path}")
+
+            _start_listener_if_needed()
+
+            if persistent:
+                print(
+                    "  Persistent supervisor active: server will auto-restart "
+                    "if Playground dies. Press Ctrl-C to stop."
+                )
+                if pidfile is not None:
+                    print(f"  PID file: {pidfile}")
             else:
-                server.proc.wait()
-        except KeyboardInterrupt:
-            print("\nStopping...")
+                print("  Press Ctrl-C to stop.\n")
+
+            try:
+                while server.proc.poll() is None:
+                    if shutdown_event is not None and shutdown_event.is_set():
+                        print("Shutdown requested via HTTP /shutdown.")
+                        return 0
+                    if restart_event is not None and restart_event.is_set():
+                        print("Restart requested via HTTP /restart.")
+                        restart_event.clear()
+                        break
+                    time.sleep(0.5)
+            except KeyboardInterrupt:
+                print("\nStopping...")
+                return 0
+
+            # Server died (either crash or /restart). Drop alive flag
+            # so /shoot returns 503 while we boot the replacement.
+            server_state["alive"] = False
+            kill_server(server)
+            server = None
+            if not persistent:
+                # One-shot serve: exit when the inner process dies.
+                return 0
+            print(
+                f"{YELLOW}playground server died (exit "
+                f"{'?' if not server else server.proc.returncode}); "
+                f"restarting in 5s...{RESET}"
+            )
+            time.sleep(5.0)
     finally:
         if httpd is not None:
             try:
@@ -1923,13 +2129,19 @@ def cmd_serve(args: argparse.Namespace) -> int:
                 httpd.server_close()
             except Exception:
                 pass
-        kill_server(server)
-    return 0
+        if server is not None:
+            kill_server(server)
+        if pidfile is not None and pidfile.exists():
+            try:
+                pidfile.unlink()
+            except OSError:
+                pass
 
 
 def _shoot_one_theme(theme: str, routes: list[Route],
                      viewports: list[Viewport], port: int | None,
-                     verbosity: str) -> tuple[str, str | None]:
+                     verbosity: str,
+                     cache_state: bool = False) -> tuple[str, str | None]:
     """Worker used by both the serial and concurrent shoot paths.
 
     Returns (theme, error) -- error is None on success, otherwise the
@@ -1938,7 +2150,9 @@ def _shoot_one_theme(theme: str, routes: list[Route],
     """
     out_root = SNAPS_DIR / theme
     try:
-        with running_server(theme, port=port, verbosity=verbosity) as server:
+        with running_server(
+            theme, port=port, verbosity=verbosity, cache_state=cache_state,
+        ) as server:
             shoot_theme(theme, server.url, routes, viewports, out_root)
     except SystemExit as e:
         return theme, f"failed: {e}"
@@ -1994,11 +2208,18 @@ def cmd_shoot(args: argparse.Namespace) -> int:
 
     failures: list[tuple[str, str]] = []
 
+    cache_state = bool(getattr(args, "cache_state", False))
+    if cache_state and getattr(args, "reset_cache", False):
+        for theme in themes:
+            cleared = reset_state_cache(theme)
+            print(f"  cleared state cache at {cleared}")
+
     if concurrency == 1 or len(themes) == 1:
         for theme in themes:
             print(f"=== {GREEN}{theme}{RESET} ===")
             t, err = _shoot_one_theme(
-                theme, routes, viewports, args.port, args.verbosity
+                theme, routes, viewports, args.port, args.verbosity,
+                cache_state=cache_state,
             )
             if err:
                 print(f"{RED}{t} {err}{RESET}")
@@ -2017,7 +2238,7 @@ def cmd_shoot(args: argparse.Namespace) -> int:
             # subprocess.Popen immediately after.
             futures = {
                 ex.submit(_shoot_one_theme, theme, routes, viewports,
-                          None, args.verbosity): theme
+                          None, args.verbosity, cache_state): theme
                 for theme in themes
             }
             for fut in concurrent.futures.as_completed(futures):
@@ -2891,6 +3112,32 @@ def build_parser() -> argparse.ArgumentParser:
     )
     s_serve.add_argument("--verbosity", default="normal",
                          choices=["quiet", "normal", "debug"])
+    s_serve.add_argument(
+        "--cache-state", action="store_true",
+        help=(
+            "Mount tmp/playground-state/<theme>/wordpress -> /wordpress "
+            "(via --mount-before-install) and pass "
+            "--wordpress-install-mode=install-from-existing-files-if-needed "
+            "so warm restarts skip the WP install + WXR + WC seeder. "
+            "First boot still runs the full blueprint and primes the cache. "
+            "Phase 3 (phase3-state-cache) of the closed-loop plan."
+        ),
+    )
+    s_serve.add_argument(
+        "--reset-cache", action="store_true",
+        help="Wipe tmp/playground-state/<theme>/ before booting (only "
+             "effective with --cache-state).",
+    )
+    s_serve.add_argument(
+        "--persistent", action="store_true",
+        help=(
+            "Wrap the boot in a supervisor loop that auto-restarts "
+            "Playground when its wasm worker dies. The HTTP listener "
+            "(--shoot-on-demand) survives across restarts. Writes "
+            "tmp/snap-server-<theme>.pid so peer tools can detect the "
+            "warm server. Phase 3 (phase3-warm-supervisor)."
+        ),
+    )
     s_serve.set_defaults(func=cmd_serve)
 
     s_shoot = sub.add_parser("shoot", help="Boot, capture, kill.")
@@ -2926,6 +3173,20 @@ def build_parser() -> argparse.ArgumentParser:
         "--changed-base", default=None,
         help="Git base ref for --changed (e.g. main, HEAD~1). "
         "Default: only consider uncommitted changes.",
+    )
+    s_shoot.add_argument(
+        "--cache-state", action="store_true",
+        help=(
+            "Reuse tmp/playground-state/<theme>/wordpress across boots so "
+            "warm restarts skip the WP install + WXR + WC seeder. See "
+            "`bin/snap.py serve --cache-state --help` for the underlying "
+            "Playground flags. Phase 3 (phase3-state-cache)."
+        ),
+    )
+    s_shoot.add_argument(
+        "--reset-cache", action="store_true",
+        help="Wipe tmp/playground-state/<theme>/ before each shoot (only "
+             "effective with --cache-state).",
     )
     s_shoot.set_defaults(func=cmd_shoot)
 
