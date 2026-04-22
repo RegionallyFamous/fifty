@@ -27,7 +27,7 @@
 	<div class="wp-block-woocommerce-product-collection">
 		<!-- wp:woocommerce/product-template -->
 			<!-- wp:woocommerce/product-image {"showSaleBadge":true,"imageSizing":"thumbnail","isDescendentOfQueryLoop":true} /-->
-			<!-- wp:post-title {"level":3,"isLink":true,"style":{"typography":{"fontSize":"var(--wp--preset--font-size--md)","fontWeight":"500","lineHeight":"var(--wp--custom--line-height--snug)"},"elements":{"link":{"color":{"text":"var(--wp--preset--color--contrast)"},":hover":{"color":{"text":"var(--wp--preset--color--accent)"}}}}}} /-->
+			<!-- wp:post-title {"level":2,"isLink":true,"style":{"typography":{"fontSize":"var(--wp--preset--font-size--md)","fontWeight":"500","lineHeight":"var(--wp--custom--line-height--snug)"},"elements":{"link":{"color":{"text":"var(--wp--preset--color--contrast)"},":hover":{"color":{"text":"var(--wp--preset--color--accent)"}}}}}} /-->
 			<!-- wp:woocommerce/product-price {"isDescendentOfSingleProductBlock":false} -->
 			<div class="is-loading"></div>
 			<!-- /wp:woocommerce/product-price -->

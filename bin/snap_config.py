@@ -412,12 +412,16 @@ INTERACTIONS: dict[str, list[Interaction]] = {
     "product-simple": [
         Interaction(
             name="qty-increment",
-            description="Increment quantity using the +1 button on the add-to-cart form.",
+            description="Increment quantity to 2 on the add-to-cart form (works "
+                        "with WC's modern <input type=number> markup, which "
+                        "ships no visible +/- buttons by default).",
             steps=[
-                {"action": "click",
-                 "selector": ".wp-block-add-to-cart-form button.plus, "
-                             ".quantity .plus, "
-                             "input.qty + button",
+                {"action": "fill",
+                 "selector": ".wp-block-add-to-cart-form input.qty, "
+                             ".wp-block-add-to-cart-form input[name='quantity'], "
+                             "input.qty[name='quantity'], "
+                             "input[name='quantity'][type='number']",
+                 "text": "2",
                  "timeout_ms": 3000},
                 {"action": "wait", "ms": 200},
             ],

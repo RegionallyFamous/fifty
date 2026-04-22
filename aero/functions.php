@@ -830,12 +830,17 @@ if ( ! function_exists( 'aero_swatches_render_group' ) ) {
 		}
 
 		$attr_label    = ucwords( str_replace( array( 'attribute_', 'pa_', '_', '-' ), array( '', '', ' ', ' ' ), $attribute_name ) );
-		$hidden_select = preg_replace(
-			'/<select\b/',
-			'<select class="wo-swatch-select" aria-hidden="true" tabindex="-1"',
-			$default_html,
-			1
-		);
+		// Wrap the native WC <select> in a fixed-size .screen-reader-text
+		// box so it stays in the DOM (form submit, a11y) but doesn't
+		// render visibly OR contribute to document width. We don't try to
+		// rewrite the <select>'s own attrs because WC re-emits class=""
+		// later in the tag, which can cause the second occurrence to
+		// silently drop our class/style on some HTML parsers and re-leak
+		// the 100% table-cell width back into layout.
+		// We inject tabindex="-1" on the inner <select> so it's not a tab
+		// stop (otherwise axe flags aria-hidden-focus on the wrapper span).
+		$select_no_tab = preg_replace( '/<select\\b/', '<select tabindex="-1"', $default_html, 1 );
+		$hidden_select = '<span class="screen-reader-text" aria-hidden="true">' . $select_no_tab . '</span>';
 
 		$colors  = aero_swatches_color_map();
 		$buttons = '';

@@ -1152,6 +1152,65 @@ body {_SK4}:after,body {_SKS4}:after{{background:linear-gradient(90deg,transpare
 {SENTINEL_CLOSE_PHASE_N}"""
 
 
+# ---------------------------------------------------------------------------
+# Follow-up chunk: Phase O — order-summary line-item description padding.
+# ---------------------------------------------------------------------------
+# WC blocks core ships
+#   .wc-block-components-order-summary
+#     .wc-block-components-order-summary-item__description{
+#       padding:4px 12px 12px 24px;
+#     }
+# That 24px left-padding + 12px right-padding eats ~36px of horizontal
+# space inside a 99px-wide grid track on the 360px desktop checkout
+# sidebar, leaving just ~63px for the product name. Long product names
+# such as "Pocket-Sized Thunder" then wrap mid-word as
+# "Pocket-/Sized/Thun-/der", which the snap.py `word-broken` heuristic
+# (longest unbroken token measured against the rendered element width)
+# correctly flags as accidental. Bringing the padding down to a 12px /
+# 8px pair restores enough room for any product name in the catalogue
+# while still keeping the image / text gutter visually distinct.
+#
+# Same fix applies on the cart page (which uses
+# `wc-block-cart-items` rather than the order-summary block) — we
+# tighten its corresponding `wc-block-cart-item__product` cell so the
+# cart line-items have the same forgiving wrap behaviour.
+SENTINEL_OPEN_PHASE_O = "/* wc-tells-phase-o-cart-name-padding */"
+SENTINEL_CLOSE_PHASE_O = "/* /wc-tells-phase-o-cart-name-padding */"
+# Selectors are intentionally double/triple-classed (`.foo.foo .bar.bar`)
+# so they outrank WC Blocks' own defaults. WC ships
+# `.wc-block-components-order-summary .wc-block-components-skeleton--cart-line-items-checkout .wc-block-components-order-summary-item__description`
+# at (0,3,0) and `.is-medium table.wc-block-cart-items .wc-block-cart-items__row .wc-block-cart-item__product`
+# at (0,4,1) -- a naive (0,2,0) override loses the cascade. The
+# doubled-class form keeps the rules cosmetically the same selector
+# (same compound, same rightmost match) while bumping specificity to
+# (0,4,0) and (0,5,0) respectively. check.py's
+# check_wc_specificity_winnable() enforces this on every commit.
+CSS_PHASE_O = f"""{SENTINEL_OPEN_PHASE_O}
+.wc-block-components-order-summary.wc-block-components-order-summary .wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description{{padding:4px 8px 12px 12px;}}
+.wc-block-cart-items.wc-block-cart-items.wc-block-cart-items .wc-block-cart-item__product.wc-block-cart-item__product{{padding-left:12px;padding-right:8px;}}
+{SENTINEL_CLOSE_PHASE_O}"""
+
+# wc-tells phase-p: tighten product-name typography in cramped sidebar
+# / cart cells so hyphenated tokens like `Pocket-Sized` (or their
+# theme-uppercased form `POCKET-SIZED`) fit the description box
+# without triggering snap.py's `word-broken` heuristic. We pair a
+# smaller font-size with disabled uppercase transform / wide
+# letter-spacing because chonk's eyebrow style otherwise inflates
+# token width by ~20%.
+SENTINEL_OPEN_PHASE_P = "/* wc-tells-phase-p-cart-name-typography */"
+SENTINEL_CLOSE_PHASE_P = "/* /wc-tells-phase-p-cart-name-typography */"
+# Same doubled/tripled-class trick as Phase O. The deepest WC Blocks
+# default for `.wc-block-components-product-name` lives at
+# `.wp-block-woocommerce-cart .wp-block-woocommerce-cart-cross-sells-block .cross-sells-product div .wc-block-components-product-name`
+# = (0,4,1). The doubled form lifts our selectors to (0,5,0)/(0,5,1),
+# both of which beat (0,4,1). For the trailing `h3`-rightmost cases,
+# the parent class is repeated 5x so `.foo.foo.foo.foo.foo h3` lands
+# at (0,5,1).
+CSS_PHASE_P = f"""{SENTINEL_OPEN_PHASE_P}
+.wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar .wc-block-components-product-name.wc-block-components-product-name,.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar .wc-block-components-product-name.wc-block-components-product-name,.wc-block-cart-items.wc-block-cart-items.wc-block-cart-items .wc-block-cart-item__product.wc-block-cart-item__product .wc-block-components-product-name.wc-block-components-product-name,.wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar h3.wc-block-components-product-name.wc-block-components-product-name,.wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar .wc-block-components-order-summary-item.wc-block-components-order-summary-item h3,.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar h3{{font-size:12px;text-transform:none;letter-spacing:0;line-height:1.35;}}
+{SENTINEL_CLOSE_PHASE_P}"""
+
+
 # Each entry: (sentinel_open, sentinel_close, raw_css, anchor_after).
 # `anchor_after` is the marker the chunk is spliced in after — for the
 # first chunk that's the canonical archive-page marker; for follow-ups
@@ -1277,6 +1336,18 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_PHASE_N,
         CSS_PHASE_N,
         SENTINEL_CLOSE_PHASE_M,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_O,
+        SENTINEL_CLOSE_PHASE_O,
+        CSS_PHASE_O,
+        SENTINEL_CLOSE_PHASE_N,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_P,
+        SENTINEL_CLOSE_PHASE_P,
+        CSS_PHASE_P,
+        SENTINEL_CLOSE_PHASE_O,
     ),
 ]
 
