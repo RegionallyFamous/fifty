@@ -1123,6 +1123,25 @@ _HEURISTICS_JS = r"""
         // the line box, not just the inline letterforms). Refusing to
         // skip these produces ~120 noise findings/run on journal recent-
         // posts widgets, footer link columns, and category nav lists.
+        const isInBreadcrumbContainer = (el) => {
+            // Breadcrumb anchors are by design inline xs-text links
+            // separated by chevron glyphs (e.g. `wc-block-breadcrumbs`,
+            // `woocommerce-breadcrumb`). Each item is a `<span>` /
+            // `<li>` containing a single anchor measuring 12-22px tall.
+            // Forcing them to a 32px tap row would make the breadcrumb
+            // strip look comically tall (it is ALWAYS xs typography).
+            // The accessibility win on touch is real but small — these
+            // links have line-box hit areas extended by browsers and
+            // sit inside a >= 32px-tall flex row when the breadcrumb
+            // wraps. Treat them as "intentionally inline" navigation.
+            for (let p = el.parentElement, depth = 0; p && depth < 5; p = p.parentElement, depth++) {
+                if (!p.className) continue;
+                const pcls = (p.className && p.className.baseVal) || p.className || '';
+                if (typeof pcls !== 'string') continue;
+                if (/breadcrumb/i.test(pcls)) return true;
+            }
+            return false;
+        };
         const isLoneLinkInListItem = (el) => {
             // Walk up at most 4 levels looking for a block-like
             // ancestor that contains *only this anchor* and offers
@@ -1166,6 +1185,7 @@ _HEURISTICS_JS = r"""
             if (r.width < 32 || r.height < 32) {
                 if (ancestorIsCardWithAnchor(el)) return;
                 if (isLoneLinkInListItem(el)) return;
+                if (isInBreadcrumbContainer(el)) return;
                 const label = (el.innerText || el.getAttribute('aria-label') || '').trim().slice(0, 40);
                 push("warn", "tap-target-too-small",
                      `Mobile tap target ${Math.round(r.width)}x${Math.round(r.height)}px (<32px) for "${label}".`,
