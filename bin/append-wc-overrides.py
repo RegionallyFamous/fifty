@@ -1483,9 +1483,10 @@ CSS_PHASE_W = f"""{SENTINEL_OPEN_PHASE_W}
 .wc-block-components-address-form__address_2-toggle.wc-block-components-address-form__address_2-toggle{{display:inline-flex;align-items:center;min-height:32px;padding:6px 4px;}}
 .wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button{{display:inline-flex;align-items:center;min-height:32px;padding:6px 0;}}
 button.show-password-input.show-password-input{{min-width:32px;min-height:32px;padding:6px;}}
-@media (max-width:781px){{header .wp-block-navigation.wp-block-navigation .wp-block-navigation-item__content,header .wp-block-navigation.wp-block-navigation a.wp-block-navigation-item__content{{display:inline-flex;align-items:center;min-height:32px;padding-block:6px;}}}}
+@media (max-width:781px){{header .wp-block-navigation.wp-block-navigation .wp-block-navigation-item__content,header .wp-block-navigation.wp-block-navigation a.wp-block-navigation-item__content,header.wp-block-template-part a,header.wp-block-template-part .wp-block-navigation a,div.wp-block-template-part header a,header[role="banner"] a{{display:inline-flex;align-items:center;min-height:32px;padding-block:6px;}}}}
 .wc-block-components-order-summary.wc-block-components-order-summary .wc-block-components-order-summary-item.wc-block-components-order-summary-item{{display:grid;grid-template-columns:auto minmax(0,1fr);min-width:0;}}
 .wc-block-components-order-summary.wc-block-components-order-summary .wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description{{min-width:0;max-width:100%;}}
+.wc-block-checkout__form.wc-block-checkout__form,.wc-block-checkout__main.wc-block-checkout__main{{min-width:0;max-width:100%;overflow-x:clip;}}
 {SENTINEL_CLOSE_PHASE_W}"""
 
 
