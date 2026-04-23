@@ -548,7 +548,14 @@ add_action( 'wp_head', 'fifty_view_transitions_speculation_rules', 1 );
 // above the product grid. The render_block filter rewrites the
 // already-correctly-positioned <p> in place. See the "23 ITEMS off in
 // the middle of nowhere" post-mortem in git history for the long form.
-add_filter( 'woocommerce_show_page_title', '__return_true' );
+//
+// Page title visibility: the archive header is rendered by the
+// `wo-archive-hero` PHP injection (woocommerce_before_main_content)
+// further down in this file. WC's auto page-title would render a
+// SECOND italic "Shop" / category name above it, so we explicitly
+// disable it here. Pairs with the assertion in bin/check.py that
+// flags both renderers being active simultaneously.
+add_filter( 'woocommerce_show_page_title', '__return_false' );
 
 add_filter(
 	'woocommerce_pagination_args',

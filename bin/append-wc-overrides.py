@@ -1476,6 +1476,57 @@ CSS_PHASE_U = f"""{SENTINEL_OPEN_PHASE_U}
 #      surgical version of the universal-`*` rule that backfired
 #      in batch 9.
 #
+# Phase X — selvedge-pass cleanup (issued 2026-04-22)
+#
+# Bugs the user reported on selvedge that boil down to four shared
+# WC-blocks structural defaults the earlier phases never neutralised:
+#
+#   1. PLACE ORDER button stretches full-form-column-width on checkout.
+#      The bare `.wc-block-components-checkout-place-order-button` rule
+#      from phase C sets `width:100%`, which is correct INSIDE the cart
+#      `.wc-block-cart__submit-container` (the only CTA on that page) but
+#      wrong on the checkout actions row, where the button shares space
+#      with "Return to Cart". Constrain checkout-page button to auto width
+#      with comfortable horizontal padding, and lay the actions row out
+#      as a flex row so Return-to-Cart sits left and Place-Order sits
+#      right without wrapping.
+#
+#   2. "Return to Cart" link wraps to two short stacked words next to the
+#      oversized PLACE ORDER. Force `white-space:nowrap` and
+#      `flex-shrink:0` so the link keeps its natural inline width.
+#
+#   3. Order-summary heading underline (the soft border-bottom WC paints
+#      under `.wc-block-components-totals-wrapper` headings) extends past
+#      the sidebar's left/right padding because the sidebar sets padding
+#      on itself but the heading row spans the full content box. Pull the
+#      underline inside the padded box by clamping the heading's box and
+#      its border to the padded-content width.
+#
+#   4. Notices in the cart/checkout/account empty states still feel
+#      "WooCommercy" — the phase-L baseline added a coloured left rail
+#      and surface tint, but for selvedge we want a flatter, contrast-on-
+#      base notice that matches the rest of the workshop card system
+#      (no left rail, hairline border in the brand border colour, eyebrow
+#      micro-typography, no coloured surface tint).
+#
+SENTINEL_OPEN_PHASE_X = "/* wc-tells-phase-x-selvedge-pass */"
+SENTINEL_CLOSE_PHASE_X = "/* /wc-tells-phase-x-selvedge-pass */"
+CSS_PHASE_X = f"""{SENTINEL_OPEN_PHASE_X}
+.wc-block-checkout__actions_row.wc-block-checkout__actions_row{{display:flex;align-items:center;justify-content:space-between;gap:var(--wp--preset--spacing--md);flex-wrap:nowrap;padding-left:var(--wp--preset--spacing--xs);padding-right:var(--wp--preset--spacing--xs);}}
+.wc-block-checkout__actions_row.wc-block-checkout__actions_row .wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button{{flex:0 0 auto;white-space:nowrap;min-height:32px;padding:6px var(--wp--preset--spacing--xs);overflow:visible;}}
+.wc-block-checkout__actions_row.wc-block-checkout__actions_row.wc-block-checkout__actions_row .wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button > svg.wc-block-components-checkout-return-to-cart-button__svg{{flex:0 0 auto;margin-right:var(--wp--preset--spacing--2-xs);}}
+.wc-block-checkout__actions_row.wc-block-checkout__actions_row.wc-block-checkout__actions_row .wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button > svg{{flex:0 0 auto;margin-right:var(--wp--preset--spacing--2-xs);}}
+.wc-block-checkout__actions_row.wc-block-checkout__actions_row .wc-block-components-checkout-place-order-button.wc-block-components-checkout-place-order-button{{width:auto;flex:0 1 auto;min-width:200px;max-width:100%;padding:var(--wp--preset--spacing--sm) var(--wp--preset--spacing--xl);}}
+.wc-block-components-order-summary.wc-block-components-order-summary .wc-block-components-order-summary-item.wc-block-components-order-summary-item{{display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:start;gap:var(--wp--preset--spacing--sm);min-width:0;}}
+.wc-block-components-order-summary.wc-block-components-order-summary .wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description{{min-width:0;max-width:100%;}}
+.wc-block-components-order-summary.wc-block-components-order-summary .wc-block-components-order-summary-item__total-price.wc-block-components-order-summary-item__total-price{{grid-column:3;text-align:right;white-space:nowrap;}}
+.wc-block-checkout__sidebar.wc-block-checkout__sidebar > .wp-block-heading,.wc-block-cart__sidebar.wc-block-cart__sidebar > .wp-block-heading,.wc-block-components-totals-wrapper.wc-block-components-totals-wrapper > .wp-block-heading{{box-sizing:border-box;max-width:100%;border-bottom-color:var(--wp--preset--color--border);}}
+body.theme-selvedge .wc-block-components-notice-banner,body.theme-selvedge .woocommerce-message,body.theme-selvedge .woocommerce-error,body.theme-selvedge .woocommerce-info{{background:transparent;border:0;border-top:1px solid var(--wp--preset--color--border);border-bottom:1px solid var(--wp--preset--color--border);border-radius:0;padding:var(--wp--preset--spacing--md) 0;font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider,0.08em);text-transform:uppercase;color:var(--wp--preset--color--contrast);}}
+body.theme-selvedge .wc-block-components-notice-banner.is-success,body.theme-selvedge .wc-block-components-notice-banner.is-info,body.theme-selvedge .wc-block-components-notice-banner.is-warning,body.theme-selvedge .wc-block-components-notice-banner.is-error,body.theme-selvedge .woocommerce-message,body.theme-selvedge .woocommerce-info,body.theme-selvedge .woocommerce-error{{background:transparent;border-left-width:0;}}
+body.theme-selvedge .wc-block-components-notice-banner.wc-block-components-notice-banner.wc-block-components-notice-banner.wc-block-components-notice-banner.wc-block-components-notice-banner > svg,body.theme-selvedge .wc-block-components-notice-banner.wc-block-components-notice-banner.wc-block-components-notice-banner.wc-block-components-notice-banner__content.wc-block-components-notice-banner__content + svg{{color:var(--wp--preset--color--tertiary);}}
+{SENTINEL_CLOSE_PHASE_X}"""
+
+
 SENTINEL_OPEN_PHASE_W = "/* wc-tells-phase-w-real-bug-cleanup-7 */"
 SENTINEL_CLOSE_PHASE_W = "/* /wc-tells-phase-w-real-bug-cleanup-7 */"
 CSS_PHASE_W = f"""{SENTINEL_OPEN_PHASE_W}
@@ -1680,6 +1731,12 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_PHASE_W,
         CSS_PHASE_W,
         SENTINEL_CLOSE_PHASE_V,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_X,
+        SENTINEL_CLOSE_PHASE_X,
+        CSS_PHASE_X,
+        SENTINEL_CLOSE_PHASE_W,
     ),
 ]
 
