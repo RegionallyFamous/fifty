@@ -1350,7 +1350,6 @@ CSS_PHASE_S = f"""{SENTINEL_OPEN_PHASE_S}
 .wo-account-intro__title.wo-account-intro__title.wo-account-intro__title{{line-height:1.3;padding-block:0.05em;}}
 h1.wp-block-heading.wp-block-heading.wp-block-heading.wp-block-heading{{line-height:1.25;padding-bottom:0.05em;}}
 .wp-block-woocommerce-product-template .wc-block-components-product-button.wc-block-components-product-button .wp-block-button__link,.wp-block-woocommerce-product-collection .wc-block-components-product-button.wc-block-components-product-button .wp-block-button__link{{padding-left:8px;padding-right:8px;min-width:0;max-width:100%;white-space:normal;overflow-wrap:break-word;}}
-.wc-block-mini-cart.wc-block-mini-cart>button.wc-block-mini-cart__button.wc-block-mini-cart__button.wc-block-mini-cart__button.wc-block-mini-cart__button.wc-block-mini-cart__button.wc-block-mini-cart__button{{min-width:72px;padding-left:10px;padding-right:18px;}}
 {SENTINEL_CLOSE_PHASE_S}"""
 
 
