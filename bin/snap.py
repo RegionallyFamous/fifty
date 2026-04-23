@@ -4527,9 +4527,12 @@ def _collect_current_error_findings(
     finding that has no DOM address; it lets the gate stay clean while
     keeping NEW kinds of vision findings detectable.
 
-    Findings already tagged `allowlisted` are reapplied at read time
-    by `_load_allowlist`, so this scan sees them as `info` and skips
-    them -- meaning a `regenerate` call is idempotent.
+    Findings already tagged `allowlisted` are treated as errors here
+    (they were originally errors, demoted at shoot time by the current
+    allowlist). This makes `regenerate` idempotent AND preserves
+    existing cells across re-scans, so a stale shoot on top of an
+    existing allowlist doesn't silently drop entries that would
+    otherwise still be needed.
     """
     out: dict[str, dict[str, list[str]]] = {}
     for theme in themes:
@@ -4544,7 +4547,14 @@ def _collect_current_error_findings(
             viewport = str(data.get("viewport", ""))
             route = str(data.get("route", fp_path.stem.removesuffix(".findings")))
             for f in data.get("findings", []) or []:
-                if f.get("severity") != "error":
+                # Treat both live errors and allowlist-demoted findings
+                # as errors for the purposes of snapshotting: demoted
+                # findings would pop back to "error" the moment the
+                # matching allowlist entry was removed, so they MUST
+                # persist in the regenerated file.
+                is_error = f.get("severity") == "error"
+                is_demoted = bool(f.get("allowlisted"))
+                if not (is_error or is_demoted):
                     continue
                 kind = str(f.get("kind") or "")
                 if not kind:
