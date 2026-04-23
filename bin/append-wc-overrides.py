@@ -35,7 +35,38 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-THEMES = ["obel", "chonk", "selvedge", "lysholm", "aero"]
+
+
+def discover_themes() -> list[str]:
+    """Return every real theme slug on disk, in a stable order.
+
+    A "real theme" is any top-level folder under the repo root that has
+    BOTH `theme.json` and `playground/blueprint.json`. This is the same
+    definition `bin/snap.py::discover_themes()` uses — we duplicate it
+    here (instead of importing) so this script keeps its minimal
+    top-of-file imports and stays runnable without pulling in the snap
+    dependency graph.
+
+    Why auto-discovery matters: the previous hardcoded list silently
+    excluded Foundry (added after the list was written), which meant
+    every cart/checkout/my-account WC chrome polish phase skipped
+    Foundry and shipped a visibly broken theme to demo.regionallyfamous.
+    Auto-discovery means "every theme ships every phase" is the default.
+    """
+    have = sorted(
+        p.parent.name
+        for p in ROOT.glob("*/theme.json")
+        if (p.parent / "playground" / "blueprint.json").exists()
+    )
+    # Historical order for the five original themes, for diff stability
+    # (any new theme folder lands alphabetically after these).
+    preferred = ["obel", "chonk", "selvedge", "lysholm", "aero"]
+    ordered = [t for t in preferred if t in have]
+    extras = [t for t in have if t not in preferred]
+    return ordered + extras
+
+
+THEMES = discover_themes()
 
 SENTINEL_OPEN = "/* wc-tells: notices, meta, rating, variations, lightbox, mini-cart, cart, checkout, order-confirm, my-account */"
 SENTINEL_CLOSE = "/* /wc-tells */"
@@ -1542,6 +1573,39 @@ button.show-password-input.show-password-input{{min-width:32px;min-height:32px;p
 {SENTINEL_CLOSE_PHASE_W}"""
 
 
+# wc-tells phase-y: restore the 2-column login grid at desktop.
+#
+# FAIL MODE WE'RE FIXING
+# ----------------------
+# Phase T added a blanket `.wo-account-login-grid{grid-template-columns:
+# minmax(0,1fr)}` at ALL viewports to stop an overflow bug in a narrow
+# context. It also destroyed the intended 2-column login layout on
+# desktop: every theme's `/my-account/` logged-out view renders the
+# "Welcome back" intro + the sign-in form stacked in a ~220-400px
+# centered column on a 1280px viewport, leaving massive whitespace on
+# both sides. The Foundry demo's account page pixel-measured at x=348
+# to x=576 (228px wide content) out of 1280px — clearly broken.
+#
+# FIX
+# ---
+# Keep the mobile single-column (which Phase T correctly established),
+# but at min-width:782px restore the designed two-column layout. Each
+# theme's `functions.php` opens the grid wrapper around the intro +
+# form at logged-out /my-account/, so this selector matches on every
+# theme without forking.
+#
+# Also widen cart/checkout content at very wide viewports (>=1600px)
+# so the demo's /cart/ and /checkout/ fill more of the screen instead
+# of centering a 1280px column inside a 1920px viewport (66% usage).
+# The cap at 1440px keeps line-length readable without sprawling.
+SENTINEL_OPEN_PHASE_Y = "/* wc-tells-phase-y-login-grid-desktop */"
+SENTINEL_CLOSE_PHASE_Y = "/* /wc-tells-phase-y-login-grid-desktop */"
+CSS_PHASE_Y = f"""{SENTINEL_OPEN_PHASE_Y}
+@media (min-width:782px){{.wo-account-login-grid.wo-account-login-grid.wo-account-login-grid{{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--wp--preset--spacing--2-xl);align-items:start;}}}}
+@media (min-width:1600px){{.wp-block-woocommerce-cart.alignwide,.wp-block-woocommerce-checkout.alignwide{{max-width:1440px;margin-left:auto;margin-right:auto;}}}}
+{SENTINEL_CLOSE_PHASE_Y}"""
+
+
 SENTINEL_OPEN_PHASE_V = "/* wc-tells-phase-v-real-bug-cleanup-6 */"
 SENTINEL_CLOSE_PHASE_V = "/* /wc-tells-phase-v-real-bug-cleanup-6 */"
 CSS_PHASE_V = f"""{SENTINEL_OPEN_PHASE_V}
@@ -1737,6 +1801,12 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_PHASE_X,
         CSS_PHASE_X,
         SENTINEL_CLOSE_PHASE_W,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_Y,
+        SENTINEL_CLOSE_PHASE_Y,
+        CSS_PHASE_Y,
+        SENTINEL_CLOSE_PHASE_X,
     ),
 ]
 

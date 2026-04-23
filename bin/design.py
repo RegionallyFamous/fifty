@@ -44,7 +44,7 @@ the long-form judgment work).
 
 Phase model
 -----------
-The pipeline has named phases A-M. Every phase is idempotent and can be
+The pipeline has named phases A-O. Every phase is idempotent and can be
 retried, every phase failure exits 1 by default (use `--no-strict` to
 get the legacy informational behaviour for the check phase).
 
@@ -64,6 +64,14 @@ get the legacy informational behaviour for the check phase).
   L. report        - bin/snap.py report <slug> -- writes tmp/snaps/<slug>/review.md
   M. redirects     - bin/build-redirects.py -- regenerates docs/ so the new theme
                      shows up at demo.regionallyfamous.com/<slug>/...
+  N. commit        - `git add <slug>/ docs/ tests/visual-baseline/<slug>/`
+                     + `git commit -m "design: ship <slug> theme"`. Pre-commit
+                     hooks run normally (no --no-verify). Skipped via
+                     --skip-commit.
+  O. publish       - `git push origin <current-branch>`. GH Pages picks up
+                     docs/ automatically, so the theme is live at
+                     demo.regionallyfamous.com/<slug>/ within minutes.
+                     Skipped via --skip-publish.
 
 Use `--from PHASE` to start mid-pipeline (e.g. you tweaked the spec and
 only want to re-run phases C onward without re-cloning), or `--only PHASE`
@@ -129,6 +137,18 @@ PHASES = (
     "check",
     "report",
     "redirects",
+    # N. commit — stages the theme directory + generated artifacts and
+    #             creates one "design: ship <slug>" commit on the
+    #             current branch. Runs only if every earlier phase was
+    #             green (PhaseError in any preceding handler aborts
+    #             before we reach here). Pre-commit hooks run normally;
+    #             --no-verify is never used.
+    "commit",
+    # O. publish — `git push` of the freshly-created commit. Existing
+    #              GitHub Pages workflow picks up docs/ automatically,
+    #              so the new theme (or its freshly-re-baselined chrome)
+    #              is live at demo.regionallyfamous.com within minutes.
+    "publish",
 )
 
 
@@ -246,6 +266,39 @@ def _build_parser() -> argparse.ArgumentParser:
             "Mostly useful for tests cloning from a fixture theme."
         ),
     )
+    p.add_argument(
+        "--skip-commit",
+        action="store_true",
+        help=(
+            "Skip phase N (commit) and phase O (publish). Use for local "
+            "iteration where you want to eyeball the theme and BRIEF.md "
+            "before anything lands in git. Default is commit + publish — "
+            "a design.py run that goes green SHOULD ship, because the "
+            "gates already prove every theme invariant holds."
+        ),
+    )
+    p.add_argument(
+        "--skip-publish",
+        action="store_true",
+        help=(
+            "Commit locally but don't push. Useful when you want to "
+            "review the commit before it reaches the remote."
+        ),
+    )
+    p.add_argument(
+        "--publish-remote",
+        default="origin",
+        help="Git remote to push to in phase O. Default: origin.",
+    )
+    p.add_argument(
+        "--publish-branch",
+        default=None,
+        help=(
+            "Branch to push in phase O. Default: whichever branch "
+            "HEAD currently points at (i.e. the branch you're working "
+            "on). Explicit override is there for CI scenarios."
+        ),
+    )
     return p
 
 
@@ -318,6 +371,13 @@ def main(argv: list[str] | None = None) -> int:
             if p not in {"snap", "vision-review", "baseline",
                          "screenshot", "report"}
         ]
+    if args.skip_commit and not args.only:
+        # --skip-commit also implies --skip-publish: you can't publish a
+        # commit that doesn't exist. Drop both.
+        phases_to_run = [p for p in phases_to_run
+                         if p not in {"commit", "publish"}]
+    elif args.skip_publish and not args.only:
+        phases_to_run = [p for p in phases_to_run if p != "publish"]
     print(f"design.py: running phases {' -> '.join(phases_to_run)} for `{spec.slug}`")
 
     dest = MONOREPO_ROOT / spec.slug
@@ -592,6 +652,187 @@ def _phase_redirects(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) 
               "run manually and commit the docs/ diff to publish to GH Pages.")
 
 
+def _phase_commit(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
+    """Stage the theme's files + generated artifacts and create one
+    "design: ship <slug>" commit on the current branch.
+
+    Why this phase exists
+    ---------------------
+    Before Phase N existed, a green `design.py` run ended with the
+    theme sitting in an unstaged working tree. Every real run required
+    a follow-up `git add -A` / `git commit` cycle by the operator.
+    That cycle was the source of the Foundry "theme merged but demo
+    site never listed it" bug — nobody remembered to commit
+    `docs/` after the build, so GitHub Pages never rebuilt and the
+    live demo showed four themes for two weeks. Phase N + Phase O
+    together make "design.py green" mean "the theme is on the remote
+    and on its way to production."
+
+    Safety rails
+    ------------
+      * Runs only if every earlier phase succeeded. Any `PhaseError`
+        raised upstream short-circuits `main()` before it reaches us.
+      * Honours pre-commit hooks (NEVER uses `--no-verify`). If the
+        hook edits files (autoformatter) and wants to re-stage, the
+        operator resolves that on their own next iteration; we never
+        amend or re-commit automatically, because that hides signals.
+      * If `git status --porcelain` is empty (nothing to commit — e.g.
+        someone already committed the theme between runs), we skip
+        with an info line instead of failing. Rerunnable by design.
+      * If the commit exits non-zero we raise `PhaseError("commit",
+        …)` so the operator sees a STATUS: FAIL with the phase name
+        and the git output.
+    """
+    slug = spec.slug
+    # `git -C <repo-root>` is explicit about WHERE the ops run, even
+    # though MONOREPO_ROOT is always the cwd for other phase
+    # subprocesses. The extra clarity is worth a few characters.
+    git = ["git", "-C", str(MONOREPO_ROOT)]
+
+    # Scope the stage to the directories we actually wrote. A blanket
+    # `git add -A` would sweep unrelated WIP in the operator's working
+    # tree into our commit — a hostile move in a monorepo where many
+    # branches share the checkout. Named paths only.
+    paths = [
+        f"{slug}/",
+        f"tests/visual-baseline/{slug}/",
+        "docs/",
+        # The two shared-tooling scripts that this phase touches via
+        # append-wc-overrides.py / sync-playground.py chains. Not
+        # strictly our outputs, but if they changed as a side effect
+        # of design.py they need to ride along or the next run sees
+        # a dirty tree.
+        "bin/append-wc-overrides.py",
+    ]
+    existing = [p for p in paths if (MONOREPO_ROOT / p).exists()]
+    if not existing:
+        print(f"  [commit] WARN: none of {paths!r} exist; nothing to commit.")
+        return
+
+    rc = subprocess.call(git + ["add", "--"] + existing)
+    if rc != 0:
+        raise PhaseError("commit", f"git add exited {rc}")
+
+    # Is there anything actually staged? A repeat run where the theme
+    # already matches HEAD will have `git add` succeed with 0 paths,
+    # and a commit with no diff will fail loudly — we'd rather print
+    # "nothing to commit" and move on.
+    proc = subprocess.run(
+        git + ["diff", "--cached", "--quiet"], capture_output=True
+    )
+    if proc.returncode == 0:
+        print(f"  [commit] skip: no staged diff for {slug} "
+              "(theme already matches HEAD).")
+        return
+
+    message = f"design: ship {slug} theme\n\nGenerated by bin/design.py"
+    cproc = subprocess.run(
+        git + ["commit", "-m", message],
+        capture_output=True, text=True,
+    )
+    if cproc.returncode != 0:
+        # Surface both stdout and stderr so a pre-commit-hook failure
+        # (which typically goes to stderr) AND a git message (which
+        # goes to stdout) are visible.
+        detail = (cproc.stdout + "\n" + cproc.stderr).strip()
+        raise PhaseError("commit", f"git commit exited {cproc.returncode}: {detail}")
+
+    # Log the SHA of the new commit so the operator can paste it into
+    # the PR / issue / Linear ticket without another `git log`.
+    sha_proc = subprocess.run(
+        git + ["rev-parse", "HEAD"], capture_output=True, text=True
+    )
+    sha = sha_proc.stdout.strip()[:12] if sha_proc.returncode == 0 else "(unknown)"
+    print(f"  [commit] {sha}  design: ship {slug} theme")
+
+
+def _phase_publish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
+    """Push the current branch to `--publish-remote` (default: origin).
+
+    Runs only if Phase N produced a commit (or the branch was already
+    ahead of the remote from an earlier run) and every earlier phase
+    was green. The existing GitHub Pages workflow picks up any diff
+    under `docs/` automatically, so the new theme's short URL
+    (`demo.regionallyfamous.com/<slug>/`) goes live within minutes.
+
+    Safety rails
+    ------------
+      * Never `--force`. A rejected push is a signal that the local
+        branch is behind the remote; the operator resolves that
+        manually so we never overwrite someone else's work.
+      * Pushes the branch HEAD is on, not a hardcoded `main`. In CI
+        this is main; in a day-to-day operator checkout it's the
+        feature branch the design lives on.
+      * If `git push` fails (wrong creds, behind remote, network),
+        raise `PhaseError("publish", …)` so STATUS: FAIL names the
+        phase and the git output. Never swallowed.
+    """
+    git = ["git", "-C", str(MONOREPO_ROOT)]
+    remote = args.publish_remote
+
+    branch = args.publish_branch
+    if not branch:
+        # Detect the branch the operator is working on. `symbolic-ref`
+        # over `rev-parse --abbrev-ref HEAD` because the former fails
+        # cleanly on a detached HEAD (which is what we want — refuse
+        # to publish from a detached state), whereas `rev-parse` would
+        # return `HEAD` verbatim.
+        proc = subprocess.run(
+            git + ["symbolic-ref", "--short", "HEAD"],
+            capture_output=True, text=True,
+        )
+        if proc.returncode != 0:
+            raise PhaseError(
+                "publish",
+                "HEAD is detached; pass --publish-branch <name> or "
+                "check out a branch before running phase O.",
+            )
+        branch = proc.stdout.strip()
+        if not branch:
+            raise PhaseError(
+                "publish",
+                "could not determine current branch; pass --publish-branch.",
+            )
+
+    # Is the local branch actually ahead of the remote tracking? If
+    # not, there's nothing to push and the phase is a no-op. This
+    # handles two cases cleanly: (a) Phase N skipped because theme
+    # was already committed, AND (b) the operator already pushed
+    # this branch in an earlier run.
+    ahead_proc = subprocess.run(
+        git + ["status", "--porcelain=2", "--branch"],
+        capture_output=True, text=True,
+    )
+    ahead_line = next(
+        (ln for ln in ahead_proc.stdout.splitlines()
+         if ln.startswith("# branch.ab ")),
+        "",
+    )
+    if ahead_line:
+        # Line shape: "# branch.ab +<ahead> -<behind>"
+        try:
+            ahead = int(ahead_line.split()[2].lstrip("+") or "0")
+        except (IndexError, ValueError):
+            ahead = -1
+        if ahead == 0:
+            print(f"  [publish] skip: {branch} is not ahead of "
+                  f"{remote}/{branch} (nothing to push).")
+            return
+
+    print(f"  [publish] git push {remote} {branch}")
+    rc = subprocess.call(git + ["push", remote, branch])
+    if rc != 0:
+        raise PhaseError(
+            "publish",
+            f"git push {remote} {branch} exited {rc}. Resolve "
+            "the conflict (likely 'behind remote'), then re-run "
+            "`python3 bin/design.py --spec <spec> --only publish`.",
+        )
+    demo_url = f"https://demo.regionallyfamous.com/{spec.slug}/"
+    print(f"  [publish] {spec.slug} pushed to {remote}/{branch}")
+    print(f"  [publish] demo: {demo_url} (live within ~2 min of GH Pages rebuild)")
+
+
 def _resolve_prompt_to_spec(prompt: str) -> Path:
     """Invoke `bin/spec-from-prompt.py` to turn `prompt` into a spec.json,
     write it to `tmp/specs/<slug>.json`, and return the path. Raises
@@ -637,6 +878,8 @@ _PHASE_HANDLERS = {
     "check": _phase_check,
     "report": _phase_report,
     "redirects": _phase_redirects,
+    "commit": _phase_commit,
+    "publish": _phase_publish,
 }
 
 

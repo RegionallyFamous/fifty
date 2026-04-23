@@ -2114,6 +2114,27 @@ _HEURISTICS_JS = r"""
                          `\`${sel}\` rendered ${inst.width}px wide on a ${vw}px viewport (expected >= 300px sidebar).`,
                          {selector: sel, element_width: inst.width, viewport_width: vw});
                 }
+                // Surface wc main-content blocks that rendered crammed
+                // into a narrow column despite being on a desktop-or-
+                // wider viewport. Catches the Foundry-style "account
+                // login crammed into 228px inside a 1280px viewport"
+                // class of regression that neither the source-level
+                // `check_cart_checkout_pages_are_wide` (which only
+                // inspects block markup) nor vision review (without
+                // the v1.1 functional kinds) could see.
+                //
+                // Threshold at 900px because the designed 2-column WC
+                // layouts allocate ~880px to the main content column
+                // (1280px wideSize minus ~360px sidebar minus gap).
+                // Anything narrower than 900 at >=1280 viewport means
+                // the wide layout did not engage.
+                const looksLikeWcMain = /wc-block-cart\b|wc-block-checkout\b|woocommerce-MyAccount-content\b|wo-account-login-grid\b/i.test(sel)
+                    && !/sidebar|summary/i.test(sel);
+                if (looksLikeWcMain && inst.visible && inst.width > 0 && inst.width < 900 && vw >= 1280) {
+                    push("error", "narrow-wc-block",
+                         `\`${sel}\` rendered ${inst.width}px wide on a ${vw}px viewport (expected >= 900px at desktop+; the wide-layout CSS did not engage).`,
+                         {selector: sel, element_width: inst.width, viewport_width: vw});
+                }
             }
         }
         out.selectors.push(entry);

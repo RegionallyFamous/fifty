@@ -187,6 +187,26 @@ Per-cell artifacts (all under `tmp/snaps/<theme>/<viewport>/<route>.*`):
 | `*.a11y.json` | Raw axe-core report (violations only) for that cell. |
 | `<route>.<flow>.png` etc. | Interactive cells produced by `INTERACTIONS` (e.g. `home.menu-open.png`, `cart-filled.line-remove.png`). |
 
+### Desktop-first bug reproduction
+
+When a user reports a visual bug ("the account page is broken", "checkout is too narrow", "the button is missing"), **reproduce it at a desktop or wider viewport first** (≥1280px). The embedded Cursor / in-app browser practically caps at ~800px, which is BELOW the `(min-width:782px)` media-query breakpoint that activates every WooCommerce two-column grid in the monorepo (cart items + sidebar, checkout form + order summary, account nav + content). A capture at 800px always shows the mobile-collapsed layout, so a desktop-only regression (layout collapse, narrow content column, missing button) is invisible to it — which is exactly how the 2026-04-22 Foundry `/my-account/` `.wo-account-login-grid` 228px-content-inside-1280px-viewport bug shipped to the live demo with a clean vision review and no automated gate complaints.
+
+The canonical desktop-first reproduction loop:
+
+```bash
+# Re-snap just the route under suspicion at desktop + wide, fast.
+python3 bin/snap.py shoot <theme> \
+    --routes my-account,cart-filled,checkout-filled \
+    --viewports desktop,wide
+# -> tmp/snaps/<theme>/desktop/<route>.png  (Read directly)
+# -> tmp/snaps/<theme>/wide/<route>.png     (Read directly)
+```
+
+Rules:
+* NEVER accept a screenshot captured in the embedded browser as evidence that a desktop bug is or isn't present. Re-shoot via `bin/snap.py`.
+* The committed `tests/visual-baseline/<theme>/desktop/` and `wide/` PNGs are captured at 2560×… and 3840×… (2× DPR). Read them directly via `Read` to diagnose layouts without a re-shoot.
+* `bin/_vision_lib.py` `build_system_prompt(include_functional_breakage=True)` explicitly reminds the vision reviewer of this policy for WC chrome routes at desktop/wide (see `should_flag_functional_breakage`). Keep these in sync — if you add a new WC chrome route that must be checked for functional breakage at desktop, add it to `FUNCTIONAL_BREAKAGE_ROUTE_PREFIXES` so the vision pass and this rule agree.
+
 ### The tiered gate
 
 Every cell's findings are classified into one of three buckets:

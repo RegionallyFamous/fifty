@@ -134,7 +134,7 @@ DEFAULT_LEDGER_PATH = Path("tmp/vision-spend.jsonl")
 # becomes part of the per-PNG cache fingerprint so a prompt iteration
 # invalidates all cached findings (it must — the model would have produced
 # different findings).
-PROMPT_VERSION = "v1.0.0"
+PROMPT_VERSION = "v1.1.0"
 
 # Retry policy
 MAX_RETRY_ATTEMPTS = 3
@@ -151,6 +151,7 @@ DEFAULT_MAX_OUTPUT_TOKENS = 2000
 # `bin/finding_remedies.json`.
 ALLOWED_FINDING_KINDS = frozenset(
     {
+        # Aesthetic / design-judgment findings (v1.0 kinds).
         "vision:typography-overpowered",
         "vision:hierarchy-flat",
         "vision:content-orphan",
@@ -161,8 +162,52 @@ ALLOWED_FINDING_KINDS = frozenset(
         "vision:color-clash",
         "vision:brand-violation",
         "vision:mockup-divergent",
+        # Functional-breakage findings (v1.1 kinds). Added after the
+        # Foundry /my-account/ broken-login-grid shipped to demo with
+        # zero vision complaints: the old rubric explicitly disclaimed
+        # "broken HTML / rendering bugs," so the reviewer graded a
+        # 228px-wide content column inside a 1280px viewport as
+        # "aesthetic fine." These kinds fire only on desktop + wide
+        # viewports of WooCommerce chrome routes (my-account, cart-*,
+        # checkout-*) where collapsed/rebroken-layout regressions
+        # actually matter and are visually unambiguous.
+        "vision:layout-collapsed-at-desktop",
+        "vision:menu-without-content-panel",
+        "vision:primary-button-missing-or-unclickable",
+        "vision:container-narrower-than-viewport-wide",
+        "vision:empty-state-instead-of-content",
     }
 )
+
+# Route prefixes where the functional-breakage kinds above are
+# meaningful. On non-WC routes (home, shop, journal, PDP) the review
+# should stick to the aesthetic kinds so we don't chase shadows on
+# routes that don't have a well-defined "content panel" concept.
+FUNCTIONAL_BREAKAGE_ROUTE_PREFIXES = (
+    "my-account",
+    "cart-",
+    "checkout-",
+    "order-received",
+)
+# Viewports where the functional-breakage kinds above are meaningful.
+# Mobile (375px) legitimately collapses the WC 2-column grids to a
+# single column via media queries; flagging that would produce ~100%
+# false-positive rate. Tablet (782px+) is the first viewport where
+# the sidebar layout is expected.
+FUNCTIONAL_BREAKAGE_VIEWPORTS = ("desktop", "wide")
+
+
+def should_flag_functional_breakage(route: str, viewport: str) -> bool:
+    """Return True if the given (route, viewport) is in scope for the
+    functional-breakage kinds.
+
+    Kept as a module function (rather than inlined) so the same
+    predicate is used by both the prompt builder and any downstream
+    severity-filter logic.
+    """
+    if viewport not in FUNCTIONAL_BREAKAGE_VIEWPORTS:
+        return False
+    return any(route.startswith(p) for p in FUNCTIONAL_BREAKAGE_ROUTE_PREFIXES)
 
 ALLOWED_SEVERITIES = ("error", "warn", "info")
 
@@ -288,26 +333,75 @@ def fingerprint_inputs(
     return h.hexdigest()
 
 
-def build_system_prompt() -> str:
+def build_system_prompt(
+    *,
+    include_functional_breakage: bool = False,
+) -> str:
     """The fixed instruction text that frames every vision review.
 
     Kept in code (not in a markdown file) so changes to it bump
     PROMPT_VERSION explicitly — the prompt is a versioned interface with
     the model, not config.
+
+    ``include_functional_breakage`` expands the rubric to also flag
+    broken layouts and missing controls on WC chrome routes at desktop+
+    viewports. Defaults to False so non-WC-chrome routes keep the
+    narrower aesthetic rubric (fewer false positives on routes where
+    "content panel" isn't a well-defined concept).
     """
-    return (
+    base = (
         "You are a senior product designer reviewing a screenshot of a "
         "WordPress block theme. You will receive (1) a generic visual "
         "rubric, (2) the theme's specific design-intent.md rubric, "
         "(3) the route's purpose, and (4) the screenshot itself.\n\n"
         "Your job is to identify VISUAL design problems — things a "
         "designer would flag in a 30-second review. You are NOT looking "
-        "for accessibility issues, broken HTML, or browser-specific "
-        "rendering bugs (those are caught by other tooling). You are "
-        "looking for: typography overpowering the page, collapsed visual "
-        "hierarchy, buried calls-to-action, color clashes, alignment "
-        "drift, whitespace imbalance, brand-voice violations against "
-        "the theme's design-intent.md, and mockup divergence.\n\n"
+        "for accessibility issues or browser-specific rendering bugs "
+        "(those are caught by other tooling). You are looking for: "
+        "typography overpowering the page, collapsed visual hierarchy, "
+        "buried calls-to-action, color clashes, alignment drift, "
+        "whitespace imbalance, brand-voice violations against the "
+        "theme's design-intent.md, and mockup divergence.\n\n"
+    )
+    functional = ""
+    if include_functional_breakage:
+        functional = (
+            "## Functional-breakage pass (this route is in scope)\n\n"
+            "This screenshot is of a WooCommerce chrome route "
+            "(my-account, cart-*, checkout-*, order-received) captured "
+            "at a desktop or wider viewport, where the theme promises "
+            "a two-column grid and visibly populated content. On these "
+            "screenshots you MUST also flag the following structural "
+            "failures (they count as user-facing regressions, not "
+            "polish opportunities):\n"
+            "  * `vision:layout-collapsed-at-desktop` — a multi-column "
+            "grid (account nav + content, cart items + sidebar, "
+            "checkout form + order summary) has collapsed to a single "
+            "narrow column despite the viewport being >= 1280px. Tell "
+            "is: wide whitespace gutters on either side of a ~400px-"
+            "or-narrower content strip.\n"
+            "  * `vision:menu-without-content-panel` — a populated "
+            "account/checkout navigation is visible but the expected "
+            "content panel beside it is empty cream, a giant vertical "
+            "gap, or wrapping vertically beneath the nav.\n"
+            "  * `vision:primary-button-missing-or-unclickable` — the "
+            "screenshot's primary CTA for the route (Proceed to "
+            "checkout, Place order, Return to cart, Sign in) has no "
+            "visible hit target — missing, near-zero-height, or "
+            "overlapping another element so the label is unreadable.\n"
+            "  * `vision:container-narrower-than-viewport-wide` — the "
+            "cart/checkout/my-account content container is clearly "
+            "narrower than ~900px at a 1280px+ viewport, producing "
+            "per-letter text wraps or a single squeezed column in a "
+            "wide viewport.\n"
+            "  * `vision:empty-state-instead-of-content` — the page "
+            "displays an empty-state illustration or message when the "
+            "test data for this route should have produced populated "
+            "content (filled cart, logged-in dashboard, etc.).\n"
+            "Severity for these is `error` by default — they are "
+            "user-facing regressions, not polish.\n\n"
+        )
+    tail = (
         "Return ONLY valid JSON in the schema described in the user "
         "message. No prose before or after the JSON. No markdown code "
         "fences. Each finding MUST use one of the allowed `kind` values "
@@ -319,6 +413,7 @@ def build_system_prompt() -> str:
         "  - `warn`: a designer would flag this in review but might ship\n"
         "  - `info`: a polish opportunity, not a bug"
     )
+    return base + functional + tail
 
 
 def build_user_prompt(
@@ -649,7 +744,10 @@ def review_image(
     touch the ledger. Useful for prompt iteration and CI smoke tests.
     """
     png_bytes = Path(png_path).read_bytes()
-    system_prompt = build_system_prompt()
+    include_functional = should_flag_functional_breakage(route, viewport)
+    system_prompt = build_system_prompt(
+        include_functional_breakage=include_functional,
+    )
     user_prompt = build_user_prompt(
         theme=theme,
         route=route,

@@ -476,6 +476,32 @@ INTERACTIONS: dict[str, list[Interaction]] = {
                 {"action": "wait", "ms": 200},
             ],
         ),
+        Interaction(
+            name="return-to-cart-visible",
+            description=(
+                "Scroll to the Checkout actions row and focus the "
+                "Return-to-cart button so its rendered state (position, "
+                "hit target, SVG + label) lands in the baseline. Covers "
+                "the 2026-04-22 Foundry regression where the "
+                "return-to-cart control lost its styling entirely but "
+                "no baseline explicitly exercised it — a pixel-truth "
+                "cell dedicated to this one control means a future "
+                "breakage shows up as a diff."
+            ),
+            viewports=("desktop", "wide"),
+            steps=[
+                # Focus scrolls the element into view in Playwright,
+                # which also captures its :focus state — that's the
+                # state most likely to collapse to zero dimensions if
+                # the control regresses, so it's a better smoke test
+                # than a bare scroll+click.
+                {"action": "focus",
+                 "selector": ".wc-block-components-checkout-return-to-cart-button, "
+                             "a[class*='checkout-return-to-cart-button']",
+                 "timeout_ms": 4000},
+                {"action": "wait", "ms": 250},
+            ],
+        ),
     ],
 }
 
@@ -540,6 +566,17 @@ INSPECT_SELECTORS: dict[str, list[str]] = {
         # `wo-account-intro` panel + `wo-account-help` link.
         ".wo-account-intro",
         ".wo-account-help",
+        # DOM-width heuristic inputs (snap.py's inspector flags these
+        # as `narrow-wc-block` when < 900px at viewport >= 1280px).
+        # `.wo-account-login-grid` is the logged-out wrapper opened by
+        # each theme's `woocommerce_before_customer_login_form` hook;
+        # `.woocommerce-MyAccount-content` is the logged-in dashboard
+        # right-hand column. Both regressed to ~228-400px in the
+        # Foundry demo before Phase Y landed — the heuristic is the
+        # pixel-truth gate so a repeat slips past neither source-level
+        # `align:wide` checks nor the aesthetic vision rubric.
+        ".wo-account-login-grid",
+        ".woocommerce-MyAccount-content",
     ],
     "journal": [
         ".wp-block-query",

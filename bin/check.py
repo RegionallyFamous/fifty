@@ -3771,6 +3771,84 @@ def check_cart_checkout_pages_are_wide() -> Result:
     return r
 
 
+def check_wc_chrome_sentinel_present() -> Result:
+    """Every theme must carry the WC-chrome sentinel block in its
+    `theme.json` `styles.css`.
+
+    Context / why this check exists
+    -------------------------------
+    `bin/append-wc-overrides.py` emits the sentinel-bracketed CSS that
+    polishes WooCommerce blocks (account-page grid, cart sidebar,
+    checkout actions row, return-to-cart button, notice banners, etc.)
+    across every theme in the monorepo. For a long time the script
+    hardcoded `THEMES = ["obel", "chonk", ...]`, so a new theme added
+    AFTER that list was last edited (Foundry, in PR #29) silently
+    skipped every phase and shipped with default WC chrome — visibly
+    broken at the account, cart, and checkout routes.
+
+    We've since switched the script to auto-discover themes from disk,
+    but that defense is only as strong as "someone remembered to run
+    the script before shipping." This check is the second wall: every
+    discovered theme must have the top-level sentinel AND the most
+    recent phase sentinel in `theme.json`'s `styles.css`. A theme that
+    fails this check will not pass `bin/check.py` and therefore cannot
+    be committed (pre-commit hook) or merged (CI), which means no
+    broken-chrome theme can reach `demo.regionallyfamous.com`.
+
+    What's checked
+    --------------
+      1. The top-level `/* wc-tells: ... */` ... `/* /wc-tells */`
+         region exists in `styles.css`.
+      2. The most recently added sentinel (Phase Y) also exists —
+         so a theme that was left behind at an older revision of the
+         script surfaces as a FAIL rather than a silent PASS.
+
+    Manual fix when this fails: run `python3 bin/append-wc-overrides.py`
+    with no arguments. The script auto-discovers every theme now and
+    is idempotent, so it's always safe to re-run.
+    """
+    r = Result("WC chrome sentinel block present in theme.json")
+    tj_path = ROOT / "theme.json"
+    if not tj_path.exists():
+        r.skip("no theme.json at theme root")
+        return r
+    try:
+        data = json.loads(tj_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        r.fail(f"theme.json: invalid JSON ({exc}).")
+        return r
+    css = (data.get("styles", {}) or {}).get("css", "") or ""
+    if not isinstance(css, str):
+        r.fail("styles.css: expected string value")
+        return r
+
+    required_markers = [
+        (
+            "/* wc-tells: notices, meta, rating, variations, lightbox, "
+            "mini-cart, cart, checkout, order-confirm, my-account */",
+            "/* /wc-tells */",
+            "top-level WC chrome sentinel",
+        ),
+        (
+            "/* wc-tells-phase-y-login-grid-desktop */",
+            "/* /wc-tells-phase-y-login-grid-desktop */",
+            "Phase Y (desktop 2-column login grid + wide cart/checkout)",
+        ),
+    ]
+    missing: list[str] = []
+    for open_marker, close_marker, label in required_markers:
+        if open_marker not in css or close_marker not in css:
+            missing.append(label)
+    if missing:
+        details = ", ".join(missing)
+        r.fail(
+            f"theme.json styles.css missing: {details}. "
+            "Fix: run `python3 bin/append-wc-overrides.py` (idempotent; "
+            "auto-discovers every theme; safe to re-run)."
+        )
+    return r
+
+
 def check_no_squeezed_wc_sidebars() -> Result:
     """Guard against the WC cart/checkout sidebar-squeeze regression.
 
@@ -6758,6 +6836,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_hover_state_legibility(),
         check_distinctive_chrome(),
         check_cart_checkout_pages_are_wide(),
+        check_wc_chrome_sentinel_present(),
         check_blueprint_landing_page(),
         check_front_page_unique_layout(),
         check_pdp_has_image(),
