@@ -5625,6 +5625,111 @@ def check_theme_screenshots_distinct() -> Result:
     return r
 
 
+# ---------------------------------------------------------------------------
+# Heuristic-finding allowlist (READ-side mirror of `bin/snap.py`).
+# ---------------------------------------------------------------------------
+# The allowlist file at `tests/visual-baseline/heuristics-allowlist.json`
+# is the single source of truth for "yes we know about this finding,
+# don't fail the gate on it". `bin/snap.py` consults it at WRITE time
+# (`_apply_allowlist_to_findings`) so the findings.json files it
+# emits already have demotions baked in. But:
+#
+#   * On a fresh checkout the developer hasn't re-shot yet -- the
+#     findings.json on disk was written before the allowlist landed.
+#   * After `bin/snap.py allowlist regenerate` adds new entries, every
+#     stale findings.json under tmp/ is now wrong by allowlist standards
+#     until re-shot (~127s per theme).
+#
+# Either case has the static check failing on findings the allowlist
+# already covers -- gate noise that pushes contributors back to
+# `--no-verify`. Mirror the apply-at-read logic here so the source of
+# truth wins regardless of when the findings.json was written. Kept
+# small and self-contained on purpose -- the snap.py canonical version
+# does the same thing with a cache + per-cell in-place mutation, but
+# this read-only helper just needs (kind, fingerprint) -> bool.
+#
+# When updating: keep `_AXE_ALLOWLIST_PATH`, the key shape
+# `theme:viewport:route`, and `_axe_finding_fingerprint`'s
+# `fingerprint`-then-`selector` precedence in sync with
+# `bin/snap.py:ALLOWLIST_PATH`, `_allowlist_key`, and
+# `_finding_fingerprint`. There's a self-test in
+# `tests/check_py/test_axe_allowlist.py` that asserts both
+# implementations agree on a synthetic finding.
+_AXE_ALLOWLIST_PATH = (
+    MONOREPO_ROOT / "tests" / "visual-baseline" / "heuristics-allowlist.json"
+)
+
+
+def _load_axe_allowlist() -> dict[str, dict[str, set[str]]]:
+    """Return `{theme:viewport:route -> {kind -> {fingerprint, ...}}}`.
+
+    Missing/malformed file becomes `{}` (no suppressions). Sets
+    instead of lists for O(1) membership tests in the hot loop below.
+    """
+    if not _AXE_ALLOWLIST_PATH.is_file():
+        return {}
+    try:
+        data = json.loads(_AXE_ALLOWLIST_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    out: dict[str, dict[str, set[str]]] = {}
+    for key, kinds in data.items():
+        if not isinstance(kinds, dict):
+            continue
+        cell: dict[str, set[str]] = {}
+        for kind, fps in kinds.items():
+            if not isinstance(fps, list):
+                continue
+            cell[str(kind)] = {str(fp) for fp in fps if isinstance(fp, str)}
+        if cell:
+            out[str(key)] = cell
+    return out
+
+
+def _axe_finding_fingerprint(f: dict) -> str | None:
+    """Mirror of `bin/snap.py:_finding_fingerprint`. Prefer the
+    explicit `fingerprint` field, fall back to `selector`. Returns
+    None when neither is available -- matches snap.py's policy that
+    such findings can't be allowlisted (they're an unconditional
+    failure)."""
+    fp = f.get("fingerprint")
+    if isinstance(fp, str) and fp:
+        return fp
+    sel = f.get("selector")
+    if isinstance(sel, str) and sel:
+        return sel
+    return None
+
+
+def _axe_finding_is_allowlisted(
+    allowlist: dict[str, dict[str, set[str]]],
+    theme: str,
+    viewport: str,
+    route: str,
+    finding: dict,
+) -> bool:
+    """True iff this finding's (kind, fingerprint) is registered for
+    this (theme, viewport, route) cell. Findings already marked
+    `allowlisted` (e.g. because snap.py demoted them at write time
+    and a tool kept the marker) also count, so a stale findings.json
+    that was generated against an older allowlist still respects
+    today's policy."""
+    if finding.get("allowlisted"):
+        return True
+    cell = allowlist.get(f"{theme}:{viewport}:{route}")
+    if not cell:
+        return False
+    kind = str(finding.get("kind") or "")
+    if kind not in cell:
+        return False
+    fp = _axe_finding_fingerprint(finding)
+    if fp is None:
+        return False
+    return fp in cell[kind]
+
+
 def check_no_serious_axe_in_recent_snaps() -> Result:
     """Fail if any `tmp/snaps/<theme>/<viewport>/*.findings.json` for the
     current theme records a `severity: "error"` finding (axe-core
@@ -5679,9 +5784,11 @@ def check_no_serious_axe_in_recent_snaps() -> Result:
         r.skip(f"tmp/snaps/{ROOT.name}/ exists but has no *.findings.json files")
         return r
 
+    allowlist = _load_axe_allowlist()
     failures: list[str] = []
     files_checked = 0
     error_total = 0
+    allowlisted_total = 0
     for fp in findings_files:
         try:
             payload = json.loads(fp.read_text(encoding="utf-8"))
@@ -5691,13 +5798,33 @@ def check_no_serious_axe_in_recent_snaps() -> Result:
         if not isinstance(findings, list):
             continue
         files_checked += 1
+        # Derive (viewport, route) from the file path so we can ask the
+        # allowlist whether each finding has already been triaged. Layout
+        # is `tmp/snaps/<theme>/<viewport>/<route>.findings.json` (route
+        # may itself contain dots, e.g. `checkout-filled.field-focus`).
+        try:
+            rel_to_snaps = fp.relative_to(snaps_dir)
+            viewport = rel_to_snaps.parts[0]
+            route = fp.stem
+            if route.endswith(".findings"):
+                route = route[: -len(".findings")]
+        except (ValueError, IndexError):
+            viewport, route = "", ""
+
         # Collapse same-kind errors so the message stays compact:
-        # one entry per axe rule per route/viewport.
+        # one entry per axe rule per route/viewport. Allowlisted
+        # findings counted separately for the summary line so the
+        # backlog stays visible without failing the gate.
         by_kind: dict[str, dict] = {}
         for f in findings:
             if not isinstance(f, dict):
                 continue
             if f.get("severity") != "error":
+                continue
+            if _axe_finding_is_allowlisted(
+                allowlist, ROOT.name, viewport, route, f
+            ):
+                allowlisted_total += 1
                 continue
             kind = f.get("kind", "unknown")
             entry = by_kind.setdefault(kind, {"count": 0, "first": None, "axe_url": None})
@@ -5718,19 +5845,34 @@ def check_no_serious_axe_in_recent_snaps() -> Result:
                 failures.append(msg)
 
     if failures:
-        r.fail(
-            f"{error_total} severity:error finding(s) across snap "
-            f"artifacts for {ROOT.name}. Re-shoot with the fix in "
-            f"place (`python3 bin/snap.py shoot {ROOT.name}`) to "
-            f"clear, or `rm -rf tmp/snaps/{ROOT.name}` if you intend "
-            f"to drop the evidence:\n" + "\n".join(failures)
+        hint = (
+            f"{error_total} NEW severity:error finding(s) across snap "
+            f"artifacts for {ROOT.name} (not in "
+            f"tests/visual-baseline/heuristics-allowlist.json). Re-shoot "
+            f"with the fix in place (`python3 bin/snap.py shoot "
+            f"{ROOT.name}`) to clear, or `rm -rf tmp/snaps/{ROOT.name}` "
+            f"if you intend to drop the evidence. If this is intentional "
+            f"backlog, run `python3 bin/snap.py allowlist regenerate "
+            f"--theme {ROOT.name}` to add the entries"
         )
+        if allowlisted_total:
+            hint += (
+                f"; {allowlisted_total} pre-existing allowlisted "
+                f"finding(s) suppressed"
+            )
+        r.fail(hint + ":\n" + "\n".join(failures))
         return r
 
-    r.details.append(
+    detail = (
         f"scanned {files_checked} findings file(s) under "
-        f"tmp/snaps/{ROOT.name}/; no severity:error entries"
+        f"tmp/snaps/{ROOT.name}/; no NEW severity:error entries"
     )
+    if allowlisted_total:
+        detail += (
+            f" ({allowlisted_total} suppressed via "
+            f"tests/visual-baseline/heuristics-allowlist.json)"
+        )
+    r.details.append(detail)
     return r
 
 
