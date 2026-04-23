@@ -1664,13 +1664,39 @@ CSS_PHASE_Y = f"""{SENTINEL_OPEN_PHASE_Y}
 # foundry, obel, chonk, lysholm, selvedge, and aero.
 SENTINEL_OPEN_PHASE_Z = "/* wc-tells-phase-z-desktop-wc-chrome-polish */"
 SENTINEL_CLOSE_PHASE_Z = "/* /wc-tells-phase-z-desktop-wc-chrome-polish */"
+# Phase Z widens the cart/checkout blocks BEYOND wideSize.
+#
+# Why the extra specificity acrobatics: WP's `is-layout-constrained`
+# parent caps every child at `var(--wp--style--global--wide-size)`
+# (1280px in every theme here) via
+#   .is-layout-constrained > .alignwide { max-width: wideSize; }
+# which has specificity (0,2,0). To override we set max-width on the
+# WC-block class itself with (0,3,0) specificity (the selector stacks
+# `.wc-block-checkout` three times). We also target `.wc-block-cart`
+# and `.wc-block-checkout` directly (rather than the wp-block-*
+# wrappers) because those are the classes WC actually sprays onto the
+# outer <div> at render time. The margin auto centres the widened
+# block inside its constrained-layout parent.
+#
+# The sidebar min-width bump (minmax(300px,360px) -> minmax(340px,
+# 420px) at >=1280px, minmax(380px,480px) at >=1600px) is what
+# actually fixes the order-summary character-stacking: at the stock
+# 300-360px sidebar the description grid cell collapses to ~50-90px
+# after subtracting padding + image + total-price columns, which
+# forces `overflow-wrap:break-word` to mid-word-break "Bottled"
+# into "Bott / led". A wider sidebar gives the description cell
+# 160-200px, enough for ~18ch of product name per line, so the
+# break-word rule only fires on genuinely long single tokens.
 CSS_PHASE_Z = f"""{SENTINEL_OPEN_PHASE_Z}
-@media (min-width:1280px){{.wp-block-woocommerce-cart.wp-block-woocommerce-cart,.wp-block-woocommerce-checkout.wp-block-woocommerce-checkout{{max-width:1200px;margin-left:auto;margin-right:auto;}}}}
-@media (min-width:1600px){{.wp-block-woocommerce-cart.wp-block-woocommerce-cart,.wp-block-woocommerce-checkout.wp-block-woocommerce-checkout{{max-width:1440px;}}}}
+@media (min-width:1280px){{.wc-block-cart.wc-block-cart.wc-block-cart,.wc-block-checkout.wc-block-checkout.wc-block-checkout{{max-width:1360px;margin-left:auto;margin-right:auto;}}}}
+@media (min-width:1600px){{.wc-block-cart.wc-block-cart.wc-block-cart,.wc-block-checkout.wc-block-checkout.wc-block-checkout{{max-width:1520px;}}}}
+@media (min-width:1280px){{.wc-block-checkout.wc-block-checkout{{grid-template-columns:minmax(0,1fr) minmax(340px,420px);}} .wc-block-cart.wc-block-cart{{grid-template-columns:minmax(0,1fr) minmax(340px,420px);}}}}
+@media (min-width:1600px){{.wc-block-checkout.wc-block-checkout{{grid-template-columns:minmax(0,1fr) minmax(380px,480px);}} .wc-block-cart.wc-block-cart{{grid-template-columns:minmax(0,1fr) minmax(380px,480px);}}}}
 .wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description,.wc-block-components-order-summary-item__title.wc-block-components-order-summary-item__title.wc-block-components-order-summary-item__title.wc-block-components-order-summary-item__title.wc-block-components-order-summary-item__title,.wc-block-components-product-name.wc-block-components-product-name.wc-block-components-product-name.wc-block-components-product-name.wc-block-components-product-name.wc-block-components-product-name{{overflow-wrap:break-word;word-break:normal;hyphens:none;}}
+.wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar,.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar{{overflow-wrap:break-word;word-break:normal;hyphens:none;}}
 .wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button,.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button:visited{{color:var(--wp--preset--color--contrast);text-decoration:none;border:0;background:transparent;font-weight:var(--wp--custom--font-weight--medium,500);}}
 .wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button:hover,.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button:focus-visible{{color:var(--wp--preset--color--accent,var(--wp--preset--color--contrast));text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;}}
-.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button>svg{{fill:currentColor;stroke:currentColor;}}
+.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button>svg{{fill:currentColor;stroke:currentColor;flex:0 0 auto;}}
 {SENTINEL_CLOSE_PHASE_Z}"""
 
 

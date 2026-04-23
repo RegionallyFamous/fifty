@@ -1134,7 +1134,7 @@ add_action(
 		?>
 <div class="wo-empty wo-empty--cart">
 	<p class="wo-empty__eyebrow"><?php esc_html_e( 'Bag', 'selvedge' ); ?></p>
-	<h1 class="wo-empty__title"><?php esc_html_e( 'Nothing in the bag yet.', 'selvedge' ); ?></h1>
+	<h2 class="wo-empty__title"><?php esc_html_e( 'Nothing in the bag yet.', 'selvedge' ); ?></h2>
 	<p class="wo-empty__lede"><?php esc_html_e( 'Wander the floor or pick up where you left off in the journal.', 'selvedge' ); ?></p>
 	<p class="wo-empty__ctas">
 		<a class="wo-empty__cta wo-empty__cta--primary" href="<?php echo esc_url( '/shop/' ); ?>"><?php esc_html_e( 'Back to the shop floor', 'selvedge' ); ?></a>
