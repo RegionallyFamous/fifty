@@ -500,12 +500,77 @@ CONCEPTS_HEAD = """<!doctype html>
 \t\t</section>
 """
 
-CONCEPTS_FOOT = """\t</main>
+# Footer is split into a `.format(org=…, repo=…)`-able prefix (HTML
+# only, no curly braces other than the substitutions) and a literal
+# script suffix appended verbatim. Python's `str.format` would otherwise
+# choke on every `{` in the JS body — the `function () {` and
+# `if (…) { … }` blocks each look like an unfinished format spec to
+# Python and raise `ValueError: expected ':' after conversion specifier`.
+# Splitting keeps the script readable (no `{{`/`}}` doubling) and keeps
+# the formatting locus tight (only the org/repo strings need it).
+CONCEPTS_FOOT = """\t\t<dialog class="lightbox" aria-label="Concept mockup preview">
+\t\t\t<button class="close" type="button" aria-label="Close preview">&times;</button>
+\t\t\t<img alt="">
+\t\t</dialog>
+\t</main>
 \t<footer class="colophon">
 \t\t<span class="left"><a href="https://github.com/{org}/{repo}">github.com/{org}/{repo}</a></span>
 \t\t<span class="center">Drop a new mockup at <code>mockups/mockup-&lt;slug&gt;.png</code> &amp; re-run <code>bin/build-redirects.py</code></span>
 \t\t<span class="right"><a href="/">← All themes</a></span>
 \t</footer>
+"""
+
+CONCEPTS_LIGHTBOX_SCRIPT = """\t<script>
+\t/* Concept-thumbnail lightbox.
+\t *
+\t * Each .concept .thumb is rendered as `<a href="…/mockup.png">` so it
+\t * works without JS — clicking simply navigates to the raw mockup
+\t * PNG. With JS, we hijack the click and present the same image in a
+\t * native <dialog> instead, which gives focus trap, Esc-to-close, and
+\t * a backdrop dim for free. If the browser doesn't support
+\t * `dialog.showModal` (very old) we leave the link alone and the
+\t * user gets the navigation fallback.
+\t */
+\t(function () {
+\t\tvar dialog = document.querySelector('.lightbox');
+\t\tif (!dialog || typeof dialog.showModal !== 'function') return;
+\t\tvar img = dialog.querySelector('img');
+\t\tvar closeBtn = dialog.querySelector('.close');
+\t\tvar opener = null;
+\t\tdocument.querySelectorAll('.concept .thumb').forEach(function (link) {
+\t\t\tlink.addEventListener('click', function (e) {
+\t\t\t\te.preventDefault();
+\t\t\t\timg.src = link.getAttribute('href');
+\t\t\t\timg.alt = link.getAttribute('aria-label') || 'Concept mockup preview';
+\t\t\t\topener = link;
+\t\t\t\tdialog.showModal();
+\t\t\t});
+\t\t});
+\t\tcloseBtn.addEventListener('click', function () { dialog.close(); });
+\t\t/* Backdrop click → close. <dialog> receives the click on its own
+\t\t * box (since the ::backdrop pseudo isn't a separate event target),
+\t\t * so we check whether the click landed inside the <img> rect; if
+\t\t * not, the user clicked the dimmed area around it. */
+\t\tdialog.addEventListener('click', function (e) {
+\t\t\tif (e.target === closeBtn || e.target === img) return;
+\t\t\tvar r = img.getBoundingClientRect();
+\t\t\tif (
+\t\t\t\te.clientX < r.left || e.clientX > r.right ||
+\t\t\t\te.clientY < r.top  || e.clientY > r.bottom
+\t\t\t) {
+\t\t\t\tdialog.close();
+\t\t\t}
+\t\t});
+\t\t/* Restore focus to the thumbnail that opened the lightbox. <dialog>
+\t\t * already moves focus into the modal on open, but doesn't restore
+\t\t * it on close — that's our job for keyboard users. */
+\t\tdialog.addEventListener('close', function () {
+\t\t\tif (opener && typeof opener.focus === 'function') opener.focus();
+\t\t\timg.removeAttribute('src');
+\t\t\topener = null;
+\t\t});
+\t})();
+\t</script>
 </body>
 </html>
 """
@@ -530,11 +595,31 @@ def _new_issue_url(slug: str, name: str) -> str:
 
 
 def render_concept_card(concept: dict, *, shipped: bool) -> str:
-    """Magazine-cover concept cell. Each cell is a borderless grid panel
-    (the parent .concept-grid draws the hairline rules between them) with
-    a 4:3 thumbnail, a serif-display name, mono metadata, and an italic
-    CTA. Shipped concepts dim and link to the live demo; unbuilt ones
-    open a prefilled GitHub issue."""
+    """Punk-zine concept cell. Each cell is a borderless grid panel (the
+    parent .concept-grid draws the hairline rules between them).
+
+    Two independent click targets per card so the image can be previewed
+    without committing to the action:
+
+      * `.thumb`  — an `<a href="…/mockup.png">` that the lightbox JS
+                    upgrades into a `dialog.showModal()` trigger. Without
+                    JS it gracefully degrades to opening the raw mockup
+                    PNG in the browser, which gives roughly the same UX
+                    (full-resolution image) just without the modal
+                    chrome.
+      * `.body`   — an `<a href="…">` that keeps the existing card-level
+                    behaviour: prefilled GitHub issue for unbuilt
+                    concepts, live demo URL for shipped ones.
+
+    Splitting the wrapper means the two siblings can carry distinct
+    actions without nesting links (which the HTML spec forbids and
+    which screen readers handle inconsistently). The lime hover
+    highlight that used to fire on the whole `<a class="concept">` is
+    re-applied via `.concept:has(.body:hover)` in style.css so the unit
+    still feels cohesive when you mouse over the body — the thumb gets
+    its own zoom-in cursor + accent outline to telegraph the
+    "preview-only" action.
+    """
     slug = concept["slug"]
     name = concept["name"]
     mockup_src = f"../mockups/{slug}.png"
@@ -550,16 +635,18 @@ def render_concept_card(concept: dict, *, shipped: bool) -> str:
         badge = '<span class="badge">In queue</span>'
         cls = "concept"
         ext_attrs = ' target="_blank" rel="noopener"'
+    thumb_label = f"Preview {name} mockup at full size"
     return (
-        f'\t\t\t<a class="{cls}" href="{html_escape(href)}"{ext_attrs}>\n'
-        f'\t\t\t\t<div class="thumb" role="img" aria-label="{html_escape(name)} mockup" '
-        f'style="background-image:url({html_escape(mockup_src)})"></div>\n'
-        f'\t\t\t\t<div class="body">\n'
+        f'\t\t\t<div class="{cls}">\n'
+        f'\t\t\t\t<a class="thumb" href="{html_escape(mockup_src)}" '
+        f'aria-label="{html_escape(thumb_label)}" '
+        f'style="background-image:url({html_escape(mockup_src)})"></a>\n'
+        f'\t\t\t\t<a class="body" href="{html_escape(href)}"{ext_attrs}>\n'
         f'\t\t\t\t\t<h3>{html_escape(name.lower())}</h3>\n'
         f'\t\t\t\t\t<p class="meta">{badge}<span>mockup-{html_escape(slug)}.png</span></p>\n'
         f'\t\t\t\t\t<p class="pick">{cta}</p>\n'
-        f'\t\t\t\t</div>\n'
-        f'\t\t\t</a>\n'
+        f'\t\t\t\t</a>\n'
+        f'\t\t\t</div>\n'
     )
 
 
@@ -604,6 +691,7 @@ def render_concepts_page(unbuilt: list[dict], built: list[dict]) -> str:
             parts.append(render_concept_card(c, shipped=True))
         parts.append("\t\t</section>\n")
     parts.append(foot)
+    parts.append(CONCEPTS_LIGHTBOX_SCRIPT)
     return "".join(parts)
 
 

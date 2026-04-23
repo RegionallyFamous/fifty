@@ -618,10 +618,14 @@ main,
   border-top: var(--hairline) solid var(--rule);
   border-left: var(--hairline) solid var(--rule);
 }
+/* `.concept` is a wrapper <div> containing two independent <a>s:
+   `.thumb` (opens the lightbox) and `.body` (opens the prefilled
+   issue / live demo). The wrapper itself is no longer interactive —
+   visual cohesion comes from the shared border + the `.concept:has(.body:hover)`
+   highlight below. */
 .concept {
   display: flex;
   flex-direction: column;
-  text-decoration: none;
   color: inherit;
   border-right: var(--hairline) solid var(--rule);
   border-bottom: var(--hairline) solid var(--rule);
@@ -630,6 +634,7 @@ main,
   transition: background-color .12s ease;
 }
 .concept .thumb {
+  display: block;
   aspect-ratio: 4 / 3;
   /* `contain` (not cover) so the entire mockup is visible — concept
      mockups are full-page renders in unpredictable aspect ratios, and
@@ -638,13 +643,25 @@ main,
      fill the cell. */
   background: #ece6d3 center / contain no-repeat;
   border-bottom: var(--hairline) solid var(--rule);
+  /* The thumb is a link upgraded to a lightbox trigger by JS. The
+     zoom-in cursor + accent-on-hover outline telegraph that clicking
+     here only opens a preview — not the action that the body link
+     fires. */
+  cursor: zoom-in;
+  outline: 2px solid transparent;
+  outline-offset: -4px;
+  transition: outline-color .12s ease;
 }
+.concept .thumb:hover,
+.concept .thumb:focus-visible { outline-color: var(--accent); }
 .concept .body {
   padding: .9rem 1rem 1rem;
   display: flex;
   flex-direction: column;
   gap: .5rem;
   flex: 1;
+  text-decoration: none;
+  color: inherit;
 }
 .concept h3 {
   margin: 0;
@@ -677,9 +694,18 @@ main,
   letter-spacing: .12em;
 }
 .concept .pick .arrow { color: var(--accent); }
-.concept:hover { background: var(--highlight); }
-.concept:hover .pick { color: var(--ink); }
-.concept:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* Lime card-wide hover only fires when the BODY link is hovered, not
+   the thumb — keeps the visual unit cohesive when you mouse over the
+   action area, while the thumb's preview-only intent is signalled by
+   its own zoom-in cursor + accent outline (see `.concept .thumb` above).
+   `:has()` is widely supported in 2026; older browsers degrade to the
+   per-element hover effects, which is acceptable. */
+.concept:has(.body:hover) { background: var(--highlight); }
+.concept:has(.body:hover) .pick { color: var(--ink); }
+/* Single keyboard-focus outline on the whole card whenever any focusable
+   child (.thumb or .body) is keyboard-focused. Avoids stacking two
+   outlines when the thumb itself has its own focus-visible rule. */
+.concept:has(:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* Concept queue badge — scoped under `.concept` on purpose. The snap
    gallery (bin/build-snap-gallery.py) defines its own bare `.cell .badge`
@@ -709,6 +735,64 @@ main,
 
 .concept.shipped { opacity: .55; }
 .concept.shipped:hover { opacity: 1; }
+
+/* Concept-thumbnail lightbox.
+
+   Native <dialog> in modal mode (showModal) provides the backdrop,
+   focus trap, and Esc-to-close behaviour out of the box; we just
+   style it. The dialog box itself is transparent so the image and
+   the close button float visually over the dimmed page — clicking
+   anywhere outside the image (the dimmed padding) also closes it,
+   handled in the page-level script.
+
+   The mockup sits inside the dialog at full natural size up to a
+   90vw / 88vh ceiling; the cream paper background letterboxes any
+   leftover dialog area so it looks intentional rather than a glitch
+   when the image is much narrower than the cap. */
+.lightbox {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  margin: auto;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: visible;
+}
+.lightbox::backdrop { background: rgba(10, 10, 10, .88); }
+.lightbox img {
+  display: block;
+  max-width: 90vw;
+  max-height: 88vh;
+  width: auto;
+  height: auto;
+  background: var(--paper);
+  border: var(--hairline) solid var(--ink);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .35);
+}
+/* Hot-pink close chip in the top-right of the viewport — the only
+   place in the design system the spot colour earns its keep, and
+   high-contrast against both the dimmed backdrop and any mockup. */
+.lightbox .close {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hot);
+  color: var(--ink);
+  border: var(--hairline) solid var(--ink);
+  border-radius: 999px;
+  font-family: var(--display);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform .12s ease;
+}
+.lightbox .close:hover,
+.lightbox .close:focus-visible { transform: scale(1.06); outline: none; }
 
 .empty-note {
   font-family: var(--body);
