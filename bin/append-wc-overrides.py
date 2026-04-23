@@ -1445,6 +1445,50 @@ CSS_PHASE_U = f"""{SENTINEL_OPEN_PHASE_U}
 #      overflow-wrap:anywhere on the cart-items block + its descendants
 #      so the title wraps at the box edge instead of pushing.
 #
+# wc-tells phase-w: tap-target + order-summary fixes for the long-tail
+# clusters that survived Phase V:
+#
+#   1. Pagination "Next Page" / "Previous Page" anchors render as
+#      glyph-only links 25-30px tall on mobile, below the 32px touch
+#      target floor. Pad to 32x32 with a generous hit-box.
+#
+#   2. Checkout `+ Add apartment, suite, etc.` toggle is a 14px-tall
+#      `<span>` masquerading as a button — give it visible button
+#      proportions on mobile so the user can actually tap it.
+#
+#   3. Checkout "Return to Cart" link similarly tiny on mobile;
+#      same treatment.
+#
+#   4. WC `<button class="show-password-input">` (eye-icon button
+#      next to the password field) renders 18x18 by default — bump
+#      to 32x32 minimum.
+#
+#   5. Theme header navigation anchors at mobile (aero/obel) measure
+#      ~16-22px tall as inline text; pad them so each link is a
+#      proper 32px tap row.
+#
+#   6. Order-summary cart-items block in checkout: the layout grid
+#      uses a fixed image column + flexible text column where the
+#      text column's min-content (long product name) pushes the
+#      whole block 14px past the parent. Force the text column to
+#      `min-width: 0` so it shrinks gracefully; long names then wrap
+#      via the Phase V product-name overflow-wrap rule. This is the
+#      surgical version of the universal-`*` rule that backfired
+#      in batch 9.
+#
+SENTINEL_OPEN_PHASE_W = "/* wc-tells-phase-w-real-bug-cleanup-7 */"
+SENTINEL_CLOSE_PHASE_W = "/* /wc-tells-phase-w-real-bug-cleanup-7 */"
+CSS_PHASE_W = f"""{SENTINEL_OPEN_PHASE_W}
+.wp-block-query-pagination-next.wp-block-query-pagination-next,.wp-block-query-pagination-previous.wp-block-query-pagination-previous,a.wp-block-query-pagination-next.wp-block-query-pagination-next,a.wp-block-query-pagination-previous.wp-block-query-pagination-previous{{display:inline-flex;align-items:center;min-height:32px;padding:6px 12px;}}
+.wc-block-components-address-form__address_2-toggle.wc-block-components-address-form__address_2-toggle{{display:inline-flex;align-items:center;min-height:32px;padding:6px 4px;}}
+.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button{{display:inline-flex;align-items:center;min-height:32px;padding:6px 0;}}
+button.show-password-input.show-password-input{{min-width:32px;min-height:32px;padding:6px;}}
+@media (max-width:781px){{header .wp-block-navigation.wp-block-navigation .wp-block-navigation-item__content,header .wp-block-navigation.wp-block-navigation a.wp-block-navigation-item__content{{display:inline-flex;align-items:center;min-height:32px;padding-block:6px;}}}}
+.wc-block-components-order-summary.wc-block-components-order-summary .wc-block-components-order-summary-item.wc-block-components-order-summary-item{{display:grid;grid-template-columns:auto minmax(0,1fr);min-width:0;}}
+.wc-block-components-order-summary.wc-block-components-order-summary .wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description{{min-width:0;max-width:100%;}}
+{SENTINEL_CLOSE_PHASE_W}"""
+
+
 SENTINEL_OPEN_PHASE_V = "/* wc-tells-phase-v-real-bug-cleanup-6 */"
 SENTINEL_CLOSE_PHASE_V = "/* /wc-tells-phase-v-real-bug-cleanup-6 */"
 CSS_PHASE_V = f"""{SENTINEL_OPEN_PHASE_V}
@@ -1628,6 +1672,12 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_PHASE_V,
         CSS_PHASE_V,
         SENTINEL_CLOSE_PHASE_U,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_W,
+        SENTINEL_CLOSE_PHASE_W,
+        CSS_PHASE_W,
+        SENTINEL_CLOSE_PHASE_V,
     ),
 ]
 

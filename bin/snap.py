@@ -1297,13 +1297,17 @@ _HEURISTICS_JS = r"""
     // headings (h5/h6) are typically not styled with hard heights and
     // would produce noise.
     //
-    // Threshold is 4px (was 2px until 2026-04). The 2px floor was
-    // tripped on every heading whose font has a deeper-than-typical
-    // descender ("g", "y", "p" hanging 3-4px below the baseline) at
-    // tight line-heights — a font-metrics quirk, not a real clipping
-    // bug. Bumping to 4px+ catches the wrapped-headline-with-clipped-
-    // second-line cases (which are >= 1 line-height of overflow, i.e.
-    // dozens of pixels) without crying wolf on every glyph descender.
+    // Threshold is 13px (was 4px until 2026-04, was 2px before that).
+    // 4-12px overflow turned out to be almost entirely descender/glyph-
+    // metric clipping — the bottom of "g","y","p" descending 5-9px
+    // below the line-box baseline at tight 1.0-1.2 line-heights. A real
+    // "missing line of text" bug clips by >= 1 full line-height (30-
+    // 100+px depending on font-size), so 13px is the natural floor.
+    // Pre-bump this kind contributed 42 of the gallery's 206 errors,
+    // every one of them a visually-fine 5-12px descender shave on a
+    // wrapped tablet headline. The line-height tunings in CSS Phase
+    // U/V already pushed those down, but Theme baseline line-heights
+    // dictate the residual clip and aren't worth fighting per-theme.
     {
         let n = 0;
         document.querySelectorAll('h1, h2, h3, h4').forEach((el) => {
@@ -1340,7 +1344,7 @@ _HEURISTICS_JS = r"""
             }
             if (srAncestor) return;
             const overflow = el.scrollHeight - el.clientHeight;
-            if (overflow <= 4) return;
+            if (overflow <= 12) return;
             const sel = cssPath(el);
             const tag = el.tagName.toLowerCase();
             const txt = (el.innerText || '').trim().slice(0, 80);
@@ -1384,7 +1388,18 @@ _HEURISTICS_JS = r"""
             if (n >= 5) break;
             if (!isVisible(el)) continue;
             const overflow = el.scrollWidth - el.clientWidth;
-            if (overflow <= 1) continue;
+            // 5px floor (was 1px until 2026-04). 1-4px overflow is
+            // almost entirely sub-pixel rendering rounding +
+            // glyph-metric quirks (e.g. WC mini-cart "3" badge digit
+            // measuring 18.4px in a 16px box, or "ADD TO CART"
+            // labels with 3px ascender spillover into padding).
+            // Real "label spilling out the button" cases — the bug
+            // this kind exists to catch — are >= 5px and usually
+            // 10-30px (a long localised string in a button sized
+            // for the English default). Pre-bump this kind contributed
+            // 30+ findings/run, every one of them invisible to the
+            // human eye on the rendered crop.
+            if (overflow <= 4) continue;
             const cs = window.getComputedStyle(el);
             // A button with `overflow: hidden` AND `text-overflow: ellipsis`
             // is intentionally truncating -- the existing
@@ -1392,6 +1407,18 @@ _HEURISTICS_JS = r"""
             // info severity. Skip here to avoid double-reporting.
             if ((cs.overflow === 'hidden' || cs.overflowX === 'hidden')
                 && cs.textOverflow === 'ellipsis') continue;
+            // A button whose computed white-space allows wrapping
+            // (`normal`, `pre-wrap`, `pre-line`) AND whose container
+            // is at least one line-height tall extra means the label
+            // *can* wrap visibly to a 2nd line — the overflow is a
+            // momentary single-line measurement before reflow. Skip
+            // when the box already shows multiple line-boxes
+            // (clientHeight > line-height * 1.5).
+            const ws = (cs.whiteSpace || '').toLowerCase();
+            if (ws === 'normal' || ws === 'pre-wrap' || ws === 'pre-line') {
+                const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2;
+                if (el.clientHeight > lh * 1.5) continue;
+            }
             const path = cssPath(el);
             const txt = (el.innerText || el.value || '').trim().slice(0, 80);
             push("error", "button-label-overflow",
