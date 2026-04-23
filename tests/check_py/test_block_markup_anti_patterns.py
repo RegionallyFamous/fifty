@@ -317,3 +317,139 @@ def test_passes_with_completely_empty_theme(minimal_theme, bind_check_root):
     # The minimal_theme fixture already writes a plain index.html + header +
     # footer that don't trip any of the five invariants.
     assert check.check_block_markup_anti_patterns().passed
+
+
+# ---------------------------------------------------------------------------
+# Invariant 8: wide/full wp:query + constrained inner layout (no contentSize
+# override) + grid post-template == post grid silently squeezed to the
+# theme's default contentSize. Past incident: obel/templates/front-page.html
+# "From the journal" rendered three ~225px cards in the left half of the
+# section because the wp:query layout fell through to 720px contentSize even
+# though `align:"wide"` was set on the query block.
+# ---------------------------------------------------------------------------
+def test_wide_query_with_default_layout_and_grid_post_template_passes(
+    minimal_theme, bind_check_root
+):
+    """The canonical fix: `layout:{"type":"default"}` lets the grid
+    post-template fill the alignwide width."""
+    check = bind_check_root(minimal_theme)
+    _write(
+        minimal_theme / "templates" / "home.html",
+        """\
+        <!-- wp:query {"queryId":0,"query":{"perPage":3,"postType":"post"},"align":"wide","layout":{"type":"default"}} -->
+        <div class="wp-block-query alignwide">
+            <!-- wp:post-template {"layout":{"type":"grid","columnCount":3,"minimumColumnWidth":null}} -->
+                <!-- wp:post-title /-->
+            <!-- /wp:post-template -->
+        </div>
+        <!-- /wp:query -->
+        """,
+    )
+    assert check.check_block_markup_anti_patterns().passed
+
+
+def test_wide_query_with_explicit_contentsize_override_passes(
+    minimal_theme, bind_check_root
+):
+    """An explicit `contentSize` on the constrained layout is also a valid
+    fix: the author chose the width deliberately, so don't flag it."""
+    check = bind_check_root(minimal_theme)
+    _write(
+        minimal_theme / "templates" / "home.html",
+        """\
+        <!-- wp:query {"queryId":0,"query":{"perPage":3,"postType":"post"},"align":"wide","layout":{"type":"constrained","contentSize":"var(--wp--style--global--wide-size)"}} -->
+        <div class="wp-block-query alignwide">
+            <!-- wp:post-template {"layout":{"type":"grid","columnCount":3,"minimumColumnWidth":null}} -->
+                <!-- wp:post-title /-->
+            <!-- /wp:post-template -->
+        </div>
+        <!-- /wp:query -->
+        """,
+    )
+    assert check.check_block_markup_anti_patterns().passed
+
+
+def test_wide_query_with_constrained_default_and_grid_post_template_fails(
+    minimal_theme, bind_check_root
+):
+    """The exact obel front-page bug: align=wide + constrained layout (no
+    contentSize) + grid post-template -> grid squeezed to 720px contentSize."""
+    check = bind_check_root(minimal_theme)
+    _write(
+        minimal_theme / "templates" / "home.html",
+        """\
+        <!-- wp:query {"queryId":0,"query":{"perPage":3,"postType":"post"},"align":"wide","layout":{"type":"constrained"}} -->
+        <div class="wp-block-query alignwide">
+            <!-- wp:post-template {"layout":{"type":"grid","columnCount":3,"minimumColumnWidth":null}} -->
+                <!-- wp:post-title /-->
+            <!-- /wp:post-template -->
+        </div>
+        <!-- /wp:query -->
+        """,
+    )
+    result = check.check_block_markup_anti_patterns()
+    assert not result.passed
+    assert any(
+        "wp:query" in d and "constrained" in d and "post-template" in d
+        for d in result.details
+    )
+
+
+def test_full_query_with_constrained_default_and_grid_post_template_fails(
+    minimal_theme, bind_check_root
+):
+    """`align:"full"` has the same problem -- the constrained layout still
+    constrains children to contentSize regardless of the query's outer width."""
+    check = bind_check_root(minimal_theme)
+    _write(
+        minimal_theme / "templates" / "home.html",
+        """\
+        <!-- wp:query {"queryId":0,"query":{"perPage":3,"postType":"post"},"align":"full","layout":{"type":"constrained"}} -->
+        <div class="wp-block-query alignfull">
+            <!-- wp:post-template {"layout":{"type":"grid","columnCount":3,"minimumColumnWidth":null}} -->
+                <!-- wp:post-title /-->
+            <!-- /wp:post-template -->
+        </div>
+        <!-- /wp:query -->
+        """,
+    )
+    assert not check.check_block_markup_anti_patterns().passed
+
+
+def test_unaligned_query_with_constrained_layout_passes(minimal_theme, bind_check_root):
+    """Without align:wide|full, contentSize squeeze is the EXPECTED behaviour
+    -- the author wants their post grid in the content column."""
+    check = bind_check_root(minimal_theme)
+    _write(
+        minimal_theme / "templates" / "home.html",
+        """\
+        <!-- wp:query {"queryId":0,"query":{"perPage":3,"postType":"post"},"layout":{"type":"constrained"}} -->
+        <div class="wp-block-query">
+            <!-- wp:post-template {"layout":{"type":"grid","columnCount":3,"minimumColumnWidth":null}} -->
+                <!-- wp:post-title /-->
+            <!-- /wp:post-template -->
+        </div>
+        <!-- /wp:query -->
+        """,
+    )
+    assert check.check_block_markup_anti_patterns().passed
+
+
+def test_wide_query_with_non_grid_post_template_passes(minimal_theme, bind_check_root):
+    """A single-column (default-layout) post-template inside a constrained
+    wide query is a different visual: a vertical list at content-size width.
+    That's a legitimate design choice; don't flag it."""
+    check = bind_check_root(minimal_theme)
+    _write(
+        minimal_theme / "templates" / "home.html",
+        """\
+        <!-- wp:query {"queryId":0,"query":{"perPage":3,"postType":"post"},"align":"wide","layout":{"type":"constrained"}} -->
+        <div class="wp-block-query alignwide">
+            <!-- wp:post-template -->
+                <!-- wp:post-title /-->
+            <!-- /wp:post-template -->
+        </div>
+        <!-- /wp:query -->
+        """,
+    )
+    assert check.check_block_markup_anti_patterns().passed
