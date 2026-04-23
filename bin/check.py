@@ -5767,7 +5767,14 @@ def _axe_finding_is_allowlisted(
     `allowlisted` (e.g. because snap.py demoted them at write time
     and a tool kept the marker) also count, so a stale findings.json
     that was generated against an older allowlist still respects
-    today's policy."""
+    today's policy.
+
+    Wildcard support (mirror of `bin/snap.py:_apply_allowlist_to_findings`):
+    a cell entry whose selector set contains `"*"` -- or that is empty
+    -- matches every finding of that `kind` on that route, regardless
+    of fingerprint. Used by `vision:*` findings (no DOM address) and
+    by globally-allowlisted heuristic kinds.
+    """
     if finding.get("allowlisted"):
         return True
     cell = allowlist.get(f"{theme}:{viewport}:{route}")
@@ -5776,10 +5783,13 @@ def _axe_finding_is_allowlisted(
     kind = str(finding.get("kind") or "")
     if kind not in cell:
         return False
+    selectors = cell[kind]
+    if (not selectors) or ("*" in selectors):
+        return True
     fp = _axe_finding_fingerprint(finding)
     if fp is None:
         return False
-    return fp in cell[kind]
+    return fp in selectors
 
 
 def check_no_serious_axe_in_recent_snaps() -> Result:

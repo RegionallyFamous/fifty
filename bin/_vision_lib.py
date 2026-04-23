@@ -103,7 +103,7 @@ ANTHROPIC_API_VERSION = "2023-06-01"
 # pinned at a Sonnet snapshot known to be reliable for image+JSON; bumping
 # the default model invalidates every cached fingerprint by design (the
 # fingerprint includes the model id), so you'll re-burn budget once.
-DEFAULT_MODEL = os.environ.get("FIFTY_VISION_MODEL", "claude-sonnet-4-5-20251022")
+DEFAULT_MODEL = os.environ.get("FIFTY_VISION_MODEL", "claude-sonnet-4-5-20250929")
 
 # Pricing in USD per million tokens. Updated 2026-Q2 from Anthropic public
 # pricing. Override via FIFTY_VISION_PRICE_INPUT / FIFTY_VISION_PRICE_OUTPUT.
@@ -114,6 +114,18 @@ DEFAULT_PRICE_OUTPUT_PER_MTOK = float(os.environ.get("FIFTY_VISION_PRICE_OUTPUT"
 
 # Daily spend cap. Hard fail (raise BudgetExceededError) above this.
 DEFAULT_DAILY_BUDGET_USD = float(os.environ.get("FIFTY_VISION_DAILY_BUDGET", "20.00"))
+
+# Anthropic vision API limits (as of 2026-Q2):
+#   * 5 MB per image after base64 encoding (raw bytes must therefore stay
+#     under ~3.93 MB; we keep a safety margin and target 3.7 MB).
+#   * Neither dimension may exceed 8000 pixels.
+# Full-page screenshots produced by `bin/snap.py` regularly trip both
+# limits (mobile heights of 12000-15000 px, desktop PNGs of 6-11 MB on
+# image-heavy themes). `_prepare_image_for_api` resizes / recompresses
+# transparently so callers can hand `review_image` raw `tmp/snaps/` PNGs
+# without thinking about it.
+MAX_IMAGE_DIMENSION_PX = 7500
+MAX_IMAGE_BYTES = 3_700_000
 
 # Cost ledger location. Per-call append-only JSONL.
 DEFAULT_LEDGER_PATH = Path("tmp/vision-spend.jsonl")
@@ -463,6 +475,105 @@ def assert_under_budget(
 
 
 # ---------------------------------------------------------------------------
+# Image preparation (Anthropic 5 MB / 8000 px limits)
+# ---------------------------------------------------------------------------
+
+
+def _prepare_image_for_api(png_bytes: bytes) -> tuple[bytes, str]:
+    """Return (image_bytes, media_type) sized to fit Anthropic's vision
+    limits. Lossless PNG is preferred; only switches to JPEG when
+    downscaling alone can't hit the byte budget (the API doesn't care
+    about format, but JPEG is ~4-8x smaller for photographic content
+    while preserving enough detail for layout critique).
+
+    Strategy:
+      1. If the raw PNG is already within MAX_IMAGE_BYTES and both
+         dimensions are <= MAX_IMAGE_DIMENSION_PX, return it untouched.
+      2. Otherwise, resize so the longest edge is at most
+         MAX_IMAGE_DIMENSION_PX (LANCZOS, preserves aspect ratio).
+      3. Re-encode as PNG. If still too big, fall back to JPEG starting
+         at quality 90 and stepping down.
+      4. As a last resort (image is dominated by photographs), iteratively
+         halve dimensions until the JPEG fits.
+
+    Pillow is imported lazily to keep the module loadable in
+    Pillow-less environments (the rest of the lib is pure stdlib so
+    `--help` / dry-run don't need it).
+    """
+    from io import BytesIO
+
+    from PIL import Image
+
+    # Pillow 9.1+ moved the enum-style resampling filters to
+    # `Image.Resampling.LANCZOS`; older releases keep them on
+    # `Image.LANCZOS`. Use `getattr` on the module so mypy (which
+    # knows only the new-location stub on fresh Pillow) doesn't
+    # complain, and falls back gracefully on Pillow < 9.1.
+    _resampling = getattr(Image, 'Resampling', Image)
+    lanczos = _resampling.LANCZOS
+
+    if (
+        len(png_bytes) <= MAX_IMAGE_BYTES
+        and _png_dimensions_within_limit(png_bytes)
+    ):
+        return png_bytes, "image/png"
+
+    with Image.open(BytesIO(png_bytes)) as img:
+        img.load()
+        w, h = img.size
+        if max(w, h) > MAX_IMAGE_DIMENSION_PX:
+            scale = MAX_IMAGE_DIMENSION_PX / float(max(w, h))
+            img = img.resize(
+                (max(1, int(w * scale)), max(1, int(h * scale))),
+                lanczos,
+            )
+
+        buf = BytesIO()
+        img.save(buf, format="PNG", optimize=True)
+        png_out = buf.getvalue()
+        if len(png_out) <= MAX_IMAGE_BYTES:
+            return png_out, "image/png"
+
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+        for quality in (92, 85, 78, 70, 60):
+            buf = BytesIO()
+            img.save(buf, format="JPEG", quality=quality, optimize=True)
+            jpeg_out = buf.getvalue()
+            if len(jpeg_out) <= MAX_IMAGE_BYTES:
+                return jpeg_out, "image/jpeg"
+
+        scale = 0.75
+        while img.width > 800 or img.height > 800:
+            new_w = max(800, int(img.width * scale))
+            new_h = max(800, int(img.height * scale))
+            small = img.resize((new_w, new_h), lanczos)
+            buf = BytesIO()
+            small.save(buf, format="JPEG", quality=70, optimize=True)
+            out = buf.getvalue()
+            if len(out) <= MAX_IMAGE_BYTES:
+                return out, "image/jpeg"
+            img = small
+
+        buf = BytesIO()
+        img.save(buf, format="JPEG", quality=60, optimize=True)
+        return buf.getvalue(), "image/jpeg"
+
+
+def _png_dimensions_within_limit(png_bytes: bytes) -> bool:
+    """Cheap dimension check that doesn't decode the pixels. PNG IHDR
+    starts at byte 16 (8-byte sig + 4-byte length + 4-byte type 'IHDR')
+    and encodes width + height as two 4-byte big-endian integers."""
+    if len(png_bytes) < 24 or png_bytes[:8] != b"\x89PNG\r\n\x1a\n":
+        # Not a recognisable PNG -- defer to the slow path so PIL can
+        # decide what to do (could be a stripped/odd image).
+        return False
+    width = int.from_bytes(png_bytes[16:20], "big")
+    height = int.from_bytes(png_bytes[20:24], "big")
+    return max(width, height) <= MAX_IMAGE_DIMENSION_PX
+
+
+# ---------------------------------------------------------------------------
 # HTTP wrapper
 # ---------------------------------------------------------------------------
 
@@ -570,6 +681,10 @@ def review_image(
     estimated = estimate_cost_usd(2300, max_output_tokens // 2)
     assert_under_budget(estimated, cap_usd=daily_budget_usd, ledger_path=ledger_path)
 
+    # Resize / recompress to fit Anthropic's 5 MB + 8000 px image limits
+    # before base64-encoding. Full-page snap PNGs routinely blow both.
+    image_bytes, media_type = _prepare_image_for_api(png_bytes)
+
     payload = {
         "model": model,
         "max_tokens": max_output_tokens,
@@ -582,8 +697,8 @@ def review_image(
                         "type": "image",
                         "source": {
                             "type": "base64",
-                            "media_type": "image/png",
-                            "data": base64.b64encode(png_bytes).decode("ascii"),
+                            "media_type": media_type,
+                            "data": base64.b64encode(image_bytes).decode("ascii"),
                         },
                     },
                     {"type": "text", "text": user_prompt},

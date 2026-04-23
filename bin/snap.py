@@ -3826,6 +3826,13 @@ def _apply_allowlist_to_findings(
     matched finding in-place: `severity` becomes `info` and
     `allowlisted` is set to True. Returns the number demoted.
 
+    Wildcard support: a cell entry whose selector list contains the
+    sentinel string `"*"` (or that is empty) demotes ALL findings of
+    that kind on that route, regardless of selector/fingerprint. This
+    is how `vision:*` findings (which have no DOM address) get
+    allowlisted: they're whole-page critiques tied to a (theme,
+    viewport, route, kind) tuple, not to a node.
+
     Findings already marked `allowlisted` are left alone (idempotent
     for cmd_report re-runs against a cached findings.json)."""
     allowlist = _load_allowlist()
@@ -3841,10 +3848,10 @@ def _apply_allowlist_to_findings(
         kind = str(f.get("kind") or "")
         if kind not in cell:
             continue
+        cell_selectors = cell[kind]
+        is_wildcard = (not cell_selectors) or ("*" in cell_selectors)
         fp = _finding_fingerprint(f)
-        if fp is None:
-            continue
-        if fp in cell[kind]:
+        if is_wildcard or (fp is not None and fp in cell_selectors):
             f["severity"] = "info"
             f["allowlisted"] = True
             demoted += 1
@@ -4406,10 +4413,16 @@ def _collect_current_error_findings(
     themes: list[str],
 ) -> dict[str, dict[str, list[str]]]:
     """Walk `tmp/snaps/<theme>/<viewport>/<slug>.findings.json` for each
-    theme and gather every ERROR-tier finding that has a fingerprint
-    (or a selector to fall back on). The result is shaped like the
-    on-disk allowlist file: `<theme>:<viewport>:<route>` -> kind ->
-    sorted list of fingerprints.
+    theme and gather every ERROR-tier finding. The result is shaped
+    like the on-disk allowlist file: `<theme>:<viewport>:<route>` ->
+    kind -> sorted list of fingerprints.
+
+    Findings without a fingerprint (notably `vision:*` whole-page
+    critiques) are recorded with the wildcard sentinel `"*"`, which
+    `_apply_allowlist_to_findings` interprets as "all findings of this
+    kind on this route." This is the only sane way to baseline a
+    finding that has no DOM address; it lets the gate stay clean while
+    keeping NEW kinds of vision findings detectable.
 
     Findings already tagged `allowlisted` are reapplied at read time
     by `_load_allowlist`, so this scan sees them as `info` and skips
@@ -4433,15 +4446,15 @@ def _collect_current_error_findings(
                 kind = str(f.get("kind") or "")
                 if not kind:
                     continue
-                fp = _finding_fingerprint(f)
-                if not fp:
-                    continue
+                fp = _finding_fingerprint(f) or "*"
                 key = _allowlist_key(theme, viewport, route)
                 cell = out.setdefault(key, {})
                 bucket = cell.setdefault(kind, [])
                 if fp not in bucket:
                     bucket.append(fp)
-    # Sort fingerprints inside each kind for stable diffs.
+    # Sort fingerprints inside each kind for stable diffs. Wildcard
+    # entries naturally float to the top alphabetically (`*` < digits
+    # < letters).
     for cell in out.values():
         for kind in cell:
             cell[kind].sort()

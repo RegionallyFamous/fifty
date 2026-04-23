@@ -61,3 +61,23 @@ DARK theme. Background is near-black, foreground is warm tan/cream.
 ## Mockup
 
 None.
+
+## Allowed exceptions (calibrated 2026-04-23)
+
+These document deliberate decisions in the shipped selvedge theme that
+override the generic rules above. The vision reviewer should treat them
+as intent, not regressions.
+
+- **Hero `display` heading on `home` may consume up to 50% of viewport
+  height** at desktop and mobile breakpoints. The "40% viewport" rule
+  applies elsewhere; the hero is the brand-statement surface.
+- **Brush-script display font in the hero** ("The Season's Finest" or
+  similar) is the selvedge signature and always allowed at hero scale,
+  including in warm rust/copper. The "no brush on body" rule still
+  applies to running text.
+- **Shop / category section heading at ~1.6× base size** is acceptable;
+  these pages don't get a "hero" so the section-opener carries weight.
+- **Product card imagery may render on white / near-white backgrounds**
+  when the source asset is a packshot; selvedge's *theme surfaces* are
+  dark, but product photography is not chrome and is allowed to ship as
+  the merchant uploads it.

@@ -61,3 +61,25 @@ Pastel base. Cool-warm — mostly cool lavender with warm pink accents.
 ## Mockup
 
 None.
+
+## Allowed exceptions (calibrated 2026-04-23)
+
+These are deliberate decisions in the shipped theme that override the
+generic rules above. The vision reviewer should treat them as intent,
+not regressions.
+
+- **Hero headings on `home` / `shop` may consume up to 55% of viewport
+  height** at the desktop and mobile breakpoints. The "40% viewport" rule
+  applies elsewhere; the hero is the brand-statement surface and gets
+  more room.
+- **Hero display type may use medium-bold weight** (not just light/medium).
+  The "no heavy/black weights" rule still applies to non-hero copy.
+- **Top utility banner uses deep purple (`tertiary`) on the lavender
+  base.** Contrast is intentional; the banner is a chrome surface, not
+  body copy, so the standard contrast preset doesn't apply.
+- **Pure black is acceptable as a single-pixel border / focus outline**
+  where the deep purple would read as a hover-state ambiguity.
+  Everywhere else, deep purple is the contrast color.
+- **Sale badges and accent buttons may use the saturated purple accent
+  with white type** even when this differs from the surrounding pastel
+  palette -- the accent is supposed to pop.

@@ -60,3 +60,17 @@ Neutral, paper-toned. Every value is a near-neutral; saturated color appears onl
 ## Mockup
 
 None. Obel is the canonical reference itself.
+
+## Allowed exceptions (calibrated 2026-04-23)
+
+These document deliberate decisions in the shipped obel theme that
+override the generic rules above. The vision reviewer should treat them
+as intent, not regressions.
+
+- **Hero `display` heading on `home` may consume up to 50% of viewport
+  height** at the desktop and mobile breakpoints. The "40% viewport"
+  rule applies to all *non-hero* headings; the hero is the one place
+  obel allows the display preset to dominate.
+- **Hero may use the display font in a heavier weight than body sans**;
+  the "display preset is light" expectation applies to journal/section
+  openers, not the brand-statement hero.

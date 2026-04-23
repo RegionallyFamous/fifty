@@ -69,6 +69,74 @@ def test_fingerprint_is_stable_for_identical_inputs():
     assert a == b
 
 
+# ---------------------------------------------------------------------------
+# _prepare_image_for_api: Anthropic 5MB / 8000px limits
+# ---------------------------------------------------------------------------
+
+
+def _make_png(width: int, height: int, fill=(128, 128, 128)) -> bytes:
+    """Build a synthetic PNG of the requested dimensions for limit tests.
+    Lazy-imports PIL so the test file remains importable in environments
+    where Pillow is missing (the test will then skip)."""
+    pytest.importorskip("PIL")
+    from io import BytesIO
+
+    from PIL import Image
+
+    img = Image.new("RGB", (width, height), fill)
+    buf = BytesIO()
+    img.save(buf, format="PNG", optimize=False)
+    return buf.getvalue()
+
+
+def test_prepare_image_passes_through_small_png():
+    pytest.importorskip("PIL")
+    import _vision_lib as vl
+
+    png = _make_png(800, 600)
+    out_bytes, media_type = vl._prepare_image_for_api(png)
+    assert media_type == "image/png"
+    assert out_bytes == png  # unchanged
+
+
+def test_prepare_image_resizes_oversized_dimensions():
+    """An image taller than 8000px must be downscaled so neither
+    dimension exceeds the 7500px safety margin."""
+    pytest.importorskip("PIL")
+    from io import BytesIO
+
+    import _vision_lib as vl
+    from PIL import Image
+
+    png = _make_png(1080, 9000)
+    out_bytes, _media_type = vl._prepare_image_for_api(png)
+    with Image.open(BytesIO(out_bytes)) as img:
+        assert max(img.size) <= vl.MAX_IMAGE_DIMENSION_PX
+
+
+def test_prepare_image_falls_back_to_jpeg_when_too_large():
+    """A photographic-style PNG that exceeds the byte budget even after
+    resizing must come back as JPEG, not PNG."""
+    pytest.importorskip("PIL")
+    from io import BytesIO
+    from random import Random
+
+    import _vision_lib as vl
+    from PIL import Image
+
+    rng = Random(0xC0FFEE)
+    pixels = bytes(rng.randint(0, 255) for _ in range(2200 * 2200 * 3))
+    img = Image.frombytes("RGB", (2200, 2200), pixels)
+    buf = BytesIO()
+    img.save(buf, format="PNG", optimize=False)
+    big_png = buf.getvalue()
+    assert len(big_png) > vl.MAX_IMAGE_BYTES, "fixture too small to exercise the JPEG fallback"
+
+    out_bytes, media_type = vl._prepare_image_for_api(big_png)
+    assert media_type == "image/jpeg"
+    assert len(out_bytes) <= vl.MAX_IMAGE_BYTES
+
+
 def test_fingerprint_changes_when_any_input_changes():
     import _vision_lib as vl
 

@@ -161,3 +161,83 @@ def test_allowlist_key_format_matches_snap():
     snap = _import_snap()
     expected = snap._allowlist_key("selvedge", "wide", "checkout-filled")
     assert expected == "selvedge:wide:checkout-filled"
+
+
+# ---------------------------------------------------------------------------
+# Wildcard allowlist (vision:* findings have no DOM address).
+#
+# A cell entry whose selector list contains the sentinel "*" -- or that
+# is empty -- matches every finding of that `kind` on that route, even
+# when the finding has no fingerprint at all. This is how vision-source
+# findings get baselined (they're whole-page critiques, not node-level
+# DOM findings) without inventing a separate allowlist file.
+# ---------------------------------------------------------------------------
+def test_wildcard_selector_matches_finding_without_fingerprint():
+    check = _import_check()
+    allow = {"selvedge:mobile:home": {"vision:typography-overpowered": {"*"}}}
+    f = {"kind": "vision:typography-overpowered", "source": "vision"}
+    assert check._axe_finding_is_allowlisted(allow, "selvedge", "mobile", "home", f)
+
+
+def test_wildcard_selector_matches_finding_even_with_fingerprint():
+    """Wildcard subsumes specific selectors -- a `*` entry means
+    "every instance of this kind on this route"."""
+    check = _import_check()
+    allow = {"chonk:desktop:shop": {"button-label-overflow": {"*"}}}
+    f = {"kind": "button-label-overflow", "fingerprint": "any-selector"}
+    assert check._axe_finding_is_allowlisted(allow, "chonk", "desktop", "shop", f)
+
+
+def test_empty_selector_set_treated_as_wildcard():
+    """An empty list / set in the JSON file is interpreted the same
+    as `["*"]`. This keeps malformed-but-intentional cells (`{"kind": []}`)
+    from being silently meaningless."""
+    check = _import_check()
+    allow = {"obel:wide:home": {"vision:hierarchy-flat": set()}}
+    f = {"kind": "vision:hierarchy-flat"}
+    assert check._axe_finding_is_allowlisted(allow, "obel", "wide", "home", f)
+
+
+def test_wildcard_in_one_kind_does_not_leak_to_other_kinds():
+    check = _import_check()
+    allow = {"aero:mobile:shop": {"vision:brand-violation": {"*"}}}
+    f_other_kind = {"kind": "vision:color-clash"}
+    assert not check._axe_finding_is_allowlisted(allow, "aero", "mobile", "shop", f_other_kind)
+
+
+def test_specific_selector_still_required_when_no_wildcard_present():
+    """Without a wildcard sentinel, the existing fingerprint-matching
+    behaviour is preserved -- this guards against a refactor that
+    accidentally allowlists everything."""
+    check = _import_check()
+    allow = {"chonk:desktop:home": {"element-overflow-x": {"div.specific"}}}
+    f_no_fp = {"kind": "element-overflow-x", "message": "no selector"}
+    assert not check._axe_finding_is_allowlisted(allow, "chonk", "desktop", "home", f_no_fp)
+    f_diff_fp = {"kind": "element-overflow-x", "selector": "div.different"}
+    assert not check._axe_finding_is_allowlisted(allow, "chonk", "desktop", "home", f_diff_fp)
+
+
+def test_snap_apply_wildcard_demotes_findings_without_fingerprint(monkeypatch):
+    """snap.py:_apply_allowlist_to_findings is the WRITE-side mirror.
+    A wildcard cell must demote a vision finding (no fingerprint) the
+    same way check.py:_axe_finding_is_allowlisted reads it."""
+    snap = _import_snap()
+    fake_allowlist = {"selvedge:mobile:home": {"vision:typography-overpowered": ["*"]}}
+    monkeypatch.setattr(snap, "_load_allowlist", lambda: fake_allowlist)
+    findings = [
+        {
+            "kind": "vision:typography-overpowered",
+            "severity": "error",
+            "source": "vision",
+        },
+        {
+            "kind": "vision:other-kind",
+            "severity": "error",
+            "source": "vision",
+        },
+    ]
+    n = snap._apply_allowlist_to_findings("selvedge", "mobile", "home", findings)
+    assert n == 1
+    assert findings[0]["severity"] == "info"
+    assert findings[0]["allowlisted"] is True
+    assert findings[1]["severity"] == "error"  # untouched

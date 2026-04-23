@@ -64,3 +64,20 @@ Warm cream + warm tan + restrained warm-brown ink. Lower contrast than obel; the
 ## Mockup
 
 None.
+
+## Allowed exceptions (calibrated 2026-04-23)
+
+These document deliberate decisions in the shipped lysholm theme that
+override the generic rules above. The vision reviewer should treat them
+as intent, not regressions.
+
+- **Hero serif headings on `home` may consume up to 50% of viewport
+  height** at desktop and mobile breakpoints. The "35% viewport" rule
+  applies to *non-hero* section openers (shop heading, product detail
+  heading, journal-post heading). The hero is the brand-statement
+  surface and is allowed to breathe.
+- **All-caps serif headings** are allowed in the hero ("OLDEST LIQUEUR
+  IN THE WORLD" or similar) when they read as label/eyebrow rather than
+  body. The "no all-caps body copy" rule still applies to running text.
+- **Shop / category section heading at ~1.5× base size** is acceptable;
+  these pages don't get a "hero" so the section-opener carries weight.

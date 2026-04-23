@@ -58,3 +58,27 @@ Warm cream with HARD black borders. Black is structural here, not decorative.
 ## Mockup
 
 None.
+
+## Allowed exceptions (calibrated 2026-04-23)
+
+These document deliberate decisions in the shipped chonk theme that
+override the generic rules above. The vision reviewer should treat them
+as intent, not regressions.
+
+- **WooCommerce default product cards (no hard border)** are acceptable
+  on `shop`, `category`, and "featured products" blocks. The hard-black
+  border rule applies to chonk's *own* card and zone treatments
+  (featured-product banners, callout sections), not to every WC block.
+- **Coloured zone backgrounds (warm yellow `#F2D44A`, pink `#FFB7C5`,
+  warm cream `#F5F1E8`) may appear simultaneously on a single viewport**
+  when each is structurally separate (hero strip + featured-product
+  card + footer). The "one accent color region per viewport" rule
+  applies to overlapping or adjacent same-colour blocks, not to vertical
+  page sections.
+- **`SHOP` page heading at ~1.6× base size is acceptable** when it is a
+  utility section header rather than a hero. The "loud or broken" hero
+  rule applies to home and product detail heroes, not category index
+  page titles.
+- **Sale badges may use the warm yellow accent on white surfaces
+  without a hard black border** because the saturated yellow on white
+  already creates sufficient edge contrast.
