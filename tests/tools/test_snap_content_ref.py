@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
-import os
 import sys
 from pathlib import Path
 
@@ -66,19 +65,19 @@ def retarget():
 
 def test_noop_when_env_unset(retarget, monkeypatch):
     monkeypatch.delenv("FIFTY_CONTENT_REF", raising=False)
-    payload = 'https://raw.githubusercontent.com/RegionallyFamous/fifty/main/x.csv'
+    payload = "https://raw.githubusercontent.com/RegionallyFamous/fifty/main/x.csv"
     assert retarget(payload) == payload
 
 
 def test_noop_when_env_is_main(retarget, monkeypatch):
     monkeypatch.setenv("FIFTY_CONTENT_REF", "main")
-    payload = 'https://raw.githubusercontent.com/RegionallyFamous/fifty/main/x.csv'
+    payload = "https://raw.githubusercontent.com/RegionallyFamous/fifty/main/x.csv"
     assert retarget(payload) == payload
 
 
 def test_rewrites_to_sha(retarget, monkeypatch):
     monkeypatch.setenv("FIFTY_CONTENT_REF", "deadbee")
-    payload = 'https://raw.githubusercontent.com/RegionallyFamous/fifty/main/foundry/playground/content/products.csv'
+    payload = "https://raw.githubusercontent.com/RegionallyFamous/fifty/main/foundry/playground/content/products.csv"
     out = retarget(payload)
     assert "/main/" not in out
     assert "deadbee" in out
@@ -107,7 +106,7 @@ def test_leaves_unrelated_urls_alone(retarget, monkeypatch):
     a different repo) is untouched."""
     monkeypatch.setenv("FIFTY_CONTENT_REF", "abc123")
     payload = (
-        'https://raw.githubusercontent.com/SomeoneElse/other/main/file.txt '
-        'https://demo.regionallyfamous.com/foundry/'
+        "https://raw.githubusercontent.com/SomeoneElse/other/main/file.txt "
+        "https://demo.regionallyfamous.com/foundry/"
     )
     assert retarget(payload) == payload

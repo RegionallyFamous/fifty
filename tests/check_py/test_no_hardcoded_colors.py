@@ -50,8 +50,8 @@ def test_html_numeric_entity_is_not_a_hex_color(minimal_theme, bind_check_root):
     """
     check = bind_check_root(minimal_theme)
     (minimal_theme / "templates" / "page.html").write_text(
-        '<!-- wp:paragraph -->\n<p>&#10086; decorative flourish &#x2766;</p>\n'
-        '<!-- /wp:paragraph -->\n',
+        "<!-- wp:paragraph -->\n<p>&#10086; decorative flourish &#x2766;</p>\n"
+        "<!-- /wp:paragraph -->\n",
         encoding="utf-8",
     )
     result = check.check_no_hardcoded_colors()
@@ -65,7 +65,7 @@ def test_hex_next_to_entity_still_fails(minimal_theme, bind_check_root):
     check = bind_check_root(minimal_theme)
     (minimal_theme / "templates" / "page.html").write_text(
         '<!-- wp:paragraph -->\n<p>&#10086; <span style="color:#ff0000">x</span></p>\n'
-        '<!-- /wp:paragraph -->\n',
+        "<!-- /wp:paragraph -->\n",
         encoding="utf-8",
     )
     assert not check.check_no_hardcoded_colors().passed
