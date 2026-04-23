@@ -6,6 +6,7 @@ cares about and exits non-zero if any of them fail.
 
 Checks performed:
   1. JSON validity for theme.json and styles/*.json
+  1a. design-intent.md present next to theme.json (consumed by snap-vision-review.py)
   2. PHP syntax for every .php file
   3. Block-name validity in theme.json (via validate-theme-json.py)
   4. No `!important` in code (only in AGENTS.md and other rule docs, which is allowed)
@@ -102,6 +103,57 @@ def check_json_validity() -> Result:
             r.fail(f"{path.relative_to(ROOT)}: {exc}")
     if r.passed and not r.skipped:
         r.details.append(f"{len(targets)} files checked")
+    return r
+
+
+def check_design_intent_present() -> Result:
+    """Every theme must ship a `design-intent.md` next to its `theme.json`.
+
+    The file is the canonical design rubric for the theme — voice, palette,
+    typography, required and forbidden patterns. It is consumed by
+    `bin/snap-vision-review.py`, which concatenates it into the prompt that
+    asks the vision model to critique each rendered route. Without it, the
+    vision reviewer falls back to a generic rubric and surfaces noise instead
+    of brand-grounded findings.
+
+    The file is also a forcing function for design discipline: a theme that
+    does not have an articulated brand voice is a theme that cannot be
+    coherently extended. Adding `theme.json` without `design-intent.md` is
+    treated as a structural omission, on par with a missing block template.
+    """
+    r = Result("design-intent.md present (paired with theme.json)")
+    theme_json = ROOT / "theme.json"
+    intent = ROOT / "design-intent.md"
+    if not theme_json.exists():
+        r.skip("no theme.json -- nothing to pair against")
+        return r
+    if not intent.exists():
+        r.fail(
+            "design-intent.md missing. Add a sibling file next to theme.json "
+            "that documents Voice, Palette, Typography, Required patterns, "
+            "and Forbidden patterns. See `obel/design-intent.md` for the "
+            "canonical shape; the file is read by bin/snap-vision-review.py "
+            "to ground vision findings in this theme's brand."
+        )
+        return r
+    body = intent.read_text(encoding="utf-8", errors="replace")
+    required_sections = ("## Voice", "## Palette", "## Typography")
+    missing = [s for s in required_sections if s not in body]
+    if missing:
+        r.fail(
+            f"design-intent.md exists but is missing sections: {', '.join(missing)}. "
+            "These sections are concatenated into the vision-review prompt; "
+            "without them the reviewer cannot critique against this theme's brand."
+        )
+        return r
+    if len(body.strip()) < 200:
+        r.fail(
+            f"design-intent.md is too short ({len(body.strip())} chars). "
+            "A useful rubric is at least a few hundred characters of "
+            "concrete language about voice, palette, and typography."
+        )
+        return r
+    r.details.append(f"{len(body.splitlines())} lines, {len(body)} chars")
     return r
 
 
@@ -6471,6 +6523,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
 
     results = [
         check_json_validity(),
+        check_design_intent_present(),
         check_php_syntax(),
         check_block_names(offline=offline),
         check_index_in_sync(),

@@ -1,0 +1,127 @@
+{
+  "_meta": {
+    "purpose": "Labelled fixture set for bin/snap-vision-review.py. Each PNG declares which vision:* findings the reviewer must return (expected_findings) and which it must NOT return (forbidden_findings). Used by --validate mode to compute precision/recall.",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "generator": "tests/fixtures/visual-regressions/_generator.py",
+    "regen_command": "python3 tests/fixtures/visual-regressions/_generator.py",
+    "acceptance": {
+      "regressions_caught_min": 4,
+      "regressions_total": 5,
+      "well_designed_false_positives_max": 1,
+      "well_designed_total": 5,
+      "precision_min": 0.8,
+      "recall_min": 0.7
+    }
+  },
+  "fixtures": [
+    {
+      "file": "regression-typography-overpowered.png",
+      "kind": "regression",
+      "expected_findings": [
+        "vision:typography-overpowered"
+      ],
+      "forbidden_findings": [],
+      "severity_floor": "error",
+      "notes": "Single 320pt headline consuming the whole viewport, no body, no CTA."
+    },
+    {
+      "file": "regression-hierarchy-flat.png",
+      "kind": "regression",
+      "expected_findings": [
+        "vision:hierarchy-flat"
+      ],
+      "forbidden_findings": [],
+      "severity_floor": "error",
+      "notes": "All text at the same 24pt size, no weight or spacing rhythm."
+    },
+    {
+      "file": "regression-cta-buried.png",
+      "kind": "regression",
+      "expected_findings": [
+        "vision:cta-buried"
+      ],
+      "forbidden_findings": [],
+      "severity_floor": "error",
+      "notes": "Eight blocks of body copy, only CTA is 12pt gray text in the bottom-right corner."
+    },
+    {
+      "file": "regression-color-clash.png",
+      "kind": "regression",
+      "expected_findings": [
+        "vision:color-clash",
+        "vision:brand-violation"
+      ],
+      "forbidden_findings": [],
+      "severity_floor": "warn",
+      "notes": "Warm-cream selvedge-style palette with three saturated cyan/magenta/green blocks. Either color-clash OR brand-violation is acceptable."
+    },
+    {
+      "file": "regression-whitespace-imbalance.png",
+      "kind": "regression",
+      "expected_findings": [
+        "vision:whitespace-imbalance"
+      ],
+      "forbidden_findings": [],
+      "severity_floor": "error",
+      "notes": "Tiny content block in upper-left, ~85% of viewport empty white space."
+    },
+    {
+      "file": "welldesigned-deliberate-whitespace.png",
+      "kind": "well-designed",
+      "expected_findings": [],
+      "forbidden_findings": [
+        "vision:whitespace-imbalance",
+        "vision:cta-buried"
+      ],
+      "severity_floor": null,
+      "notes": "Editorial pacing with intentional whitespace and a small but visible CTA."
+    },
+    {
+      "file": "welldesigned-large-display-hero.png",
+      "kind": "well-designed",
+      "expected_findings": [],
+      "forbidden_findings": [
+        "vision:typography-overpowered",
+        "vision:hierarchy-flat"
+      ],
+      "severity_floor": null,
+      "notes": "Large display type used deliberately with navigation, hierarchy, and a CTA below."
+    },
+    {
+      "file": "welldesigned-monochrome-restraint.png",
+      "kind": "well-designed",
+      "expected_findings": [],
+      "forbidden_findings": [
+        "vision:color-clash",
+        "vision:brand-violation"
+      ],
+      "severity_floor": null,
+      "notes": "Intentional monochrome warm-gray palette with clear hierarchy."
+    },
+    {
+      "file": "welldesigned-asymmetric-layout.png",
+      "kind": "well-designed",
+      "expected_findings": [],
+      "forbidden_findings": [
+        "vision:alignment-off",
+        "vision:whitespace-imbalance"
+      ],
+      "severity_floor": null,
+      "notes": "Off-center hero with deliberate empty space; confident editorial layout."
+    },
+    {
+      "file": "welldesigned-editorial-magazine.png",
+      "kind": "well-designed",
+      "expected_findings": [],
+      "forbidden_findings": [
+        "vision:hierarchy-flat",
+        "vision:typography-overpowered"
+      ],
+      "severity_floor": null,
+      "notes": "Magazine layout with photo, pull quote, and multiple typographic levels in rhythm."
+    }
+  ]
+}

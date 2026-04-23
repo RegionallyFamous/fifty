@@ -92,6 +92,96 @@
       "selector_pattern": "",
       "file": "<theme>/playground/blueprint.json or <theme>/styles/",
       "strategy": "An asset 404'd during the snap. Check `<route>.findings.json` -> `network_failures[]` for the URL. If it's a theme asset, verify it exists in the repo and is referenced with a `wp-content/themes/<slug>/...` path. If it's a Playground-seeded image, add it to `<theme>/playground/content/` and reference it from `blueprint.json`."
+    },
+    {
+      "id": "vision-typography-overpowered",
+      "axe_rule": "vision:typography-overpowered",
+      "selector_pattern": "",
+      "file": "<theme>/styles/ or <theme>/templates/<route>.html",
+      "strategy": "A heading or display element is consuming too much of the viewport (>40% height for headings, or display font is being used on body copy). Open `<slug>.png` AND `<slug>.review.png` first; the bbox in the annotated image points at the offender. Then either (a) reduce `fontSize` / `lineHeight` on the offending block via `theme.json` typography presets, or (b) move the over-large display to a smaller heading level. Cross-reference `<theme>/design-intent.md` typography section to confirm what 'overpowering' means for this brand.",
+      "example_diff": "- <!-- wp:heading {\"level\":1,\"fontSize\":\"6xl\"} -->\n+ <!-- wp:heading {\"level\":1,\"fontSize\":\"4xl\"} -->",
+      "verify": "python3 bin/snap.py shoot <theme> && python3 bin/snap-vision-review.py <theme> --routes <route>   # finding must clear or downgrade"
+    },
+    {
+      "id": "vision-hierarchy-flat",
+      "axe_rule": "vision:hierarchy-flat",
+      "selector_pattern": "",
+      "file": "<theme>/templates/<route>.html or <theme>/parts/<part>.html",
+      "strategy": "Visual hierarchy is collapsed: H1, H2, body text, and metadata all read at similar weight/scale, so the eye has nowhere to land. Open `<slug>.review.png` to see which region the reviewer flagged. Re-establish hierarchy by (a) bumping primary heading size, (b) reducing secondary heading size or changing weight, (c) adding spacing presets between zones. Cross-reference `design-intent.md` 'Required patterns' section.",
+      "example_diff": "- <!-- wp:heading {\"level\":2,\"fontSize\":\"lg\"} -->\n+ <!-- wp:heading {\"level\":2,\"fontSize\":\"3xl\",\"style\":{\"spacing\":{\"margin\":{\"bottom\":\"var:preset|spacing|sm\"}}}} -->",
+      "verify": "python3 bin/snap-vision-review.py <theme> --routes <route>"
+    },
+    {
+      "id": "vision-content-orphan",
+      "axe_rule": "vision:content-orphan",
+      "selector_pattern": "",
+      "file": "<theme>/templates/<route>.html",
+      "strategy": "A piece of content (single product card, lone heading, dangling form field) sits visually disconnected from anything else on the page. Almost always means a grid is rendering with too few items per row or a section break is misplaced. Inspect `<slug>.review.png` to identify the orphan. Fix by (a) adjusting grid `columnCount` or `minimumColumnWidth` so the orphan joins a row, (b) hiding the section if there's not enough content, or (c) seeding more demo content in `<theme>/playground/content/`.",
+      "example_diff": "- <!-- wp:post-template {\"layout\":{\"type\":\"grid\",\"columnCount\":3}} -->\n+ <!-- wp:post-template {\"layout\":{\"type\":\"grid\",\"columnCount\":2}} -->",
+      "verify": "python3 bin/snap.py shoot <theme> && python3 bin/snap-vision-review.py <theme> --routes <route>"
+    },
+    {
+      "id": "vision-cta-buried",
+      "axe_rule": "vision:cta-buried",
+      "selector_pattern": "",
+      "file": "<theme>/templates/<route>.html or <theme>/styles/",
+      "strategy": "The primary call-to-action is below the fold, visually similar to surrounding content, or styled as a plain link. The reviewer's bbox in `<slug>.review.png` indicates where the CTA actually is vs. where it should land. Fix by (a) moving the CTA block higher in the template, (b) adopting the accent color for the button (`design-intent.md` defines which color is reserved for CTAs), or (c) ensuring it renders as a button block (`core/buttons`), not a hyperlink in body text.",
+      "example_diff": "- <!-- wp:paragraph --><p><a href=\"/shop\">shop</a></p><!-- /wp:paragraph -->\n+ <!-- wp:buttons -->\n+ <div class=\"wp-block-buttons\"><!-- wp:button {\"backgroundColor\":\"accent\",\"textColor\":\"base\"} -->\n+ <div class=\"wp-block-button\"><a class=\"wp-block-button__link has-base-color has-accent-background-color\" href=\"/shop\">Shop the collection</a></div>\n+ <!-- /wp:button --></div>\n+ <!-- /wp:buttons -->",
+      "verify": "python3 bin/snap-vision-review.py <theme> --routes <route>"
+    },
+    {
+      "id": "vision-alignment-off",
+      "axe_rule": "vision:alignment-off",
+      "selector_pattern": "",
+      "file": "<theme>/templates/<route>.html or <theme>/styles/",
+      "strategy": "Elements that should share a baseline / left-edge / center-axis don't. Common culprits: a column has different padding than its siblings, an icon is vertically off-center next to text, a card image+title pair is misaligned across the row. Inspect `<slug>.review.png` for the bbox. Fix by aligning the offending block via `style.spacing.padding` / `style.spacing.margin` matched to siblings, or by adjusting flex/grid alignment in `<theme>/styles/`.",
+      "example_diff": "- <!-- wp:column {\"width\":\"33%\",\"style\":{\"spacing\":{\"padding\":{\"top\":\"2rem\"}}}} -->\n+ <!-- wp:column {\"width\":\"33%\"} -->",
+      "verify": "python3 bin/snap-vision-review.py <theme> --routes <route>"
+    },
+    {
+      "id": "vision-whitespace-imbalance",
+      "axe_rule": "vision:whitespace-imbalance",
+      "selector_pattern": "",
+      "file": "<theme>/templates/<route>.html or <theme>/parts/<part>.html",
+      "strategy": "A region has either too much empty space (>25-30% viewport void with no media or content distinction) or too little (sections crammed together with no breathing room). Open `<slug>.review.png` to see which zone the reviewer flagged. The fix depends on direction: (a) too-empty -> add a hero image, additional copy, or background treatment via `<theme>/styles/`; (b) too-cramped -> increase `blockGap` / `padding` spacing presets between sections. Note: lysholm and obel intentionally use generous whitespace, so cross-reference `design-intent.md` for what 'imbalance' means for this theme.",
+      "example_diff": "- <!-- wp:group {\"style\":{\"spacing\":{\"padding\":{\"top\":\"1rem\",\"bottom\":\"1rem\"}}}} -->\n+ <!-- wp:group {\"style\":{\"spacing\":{\"padding\":{\"top\":\"var:preset|spacing|2xl\",\"bottom\":\"var:preset|spacing|2xl\"}}}} -->",
+      "verify": "python3 bin/snap-vision-review.py <theme> --routes <route>"
+    },
+    {
+      "id": "vision-photography-mismatch",
+      "axe_rule": "vision:photography-mismatch",
+      "selector_pattern": "",
+      "file": "<theme>/playground/content/ or <theme>/playground/blueprint.json",
+      "strategy": "Imagery on the page doesn't match the brand voice declared in `design-intent.md` — wrong color family, placeholder gray, broken-image icon, or photography that clashes with the theme palette (e.g. orange product shot in aero's lilac palette). Open `<slug>.png` and `<slug>.review.png` to see which images. Fix by replacing the seeded imagery: drop new files into `<theme>/playground/content/` and update `blueprint.json` references; consider regenerating with `bin/playground-imagery.py` if available.",
+      "example_diff": "- # blueprint.json\n- {\"step\":\"setSiteOptions\",\"options\":{\"posts_for_seed\":[{\"image\":\"placeholder.jpg\"}]}}\n+ {\"step\":\"setSiteOptions\",\"options\":{\"posts_for_seed\":[{\"image\":\"product-on-cream.jpg\"}]}}",
+      "verify": "python3 bin/snap.py shoot <theme> && python3 bin/snap-vision-review.py <theme> --routes <route>"
+    },
+    {
+      "id": "vision-color-clash",
+      "axe_rule": "vision:color-clash",
+      "selector_pattern": "",
+      "file": "<theme>/theme.json or <theme>/styles/",
+      "strategy": "Two adjacent regions use colors that fight each other — common cases: pure-black text on a warm palette (use the contrast preset), saturated accent used decoratively when it should be reserved for CTAs, or off-palette colors leaking in from a Woo block default. Inspect `<slug>.review.png` for the bbox. Fix by reassigning to palette tokens declared in `theme.json` settings.color.palette and cross-reference `design-intent.md` 'Forbidden uses' for what's specifically banned for this brand.",
+      "example_diff": "- <!-- wp:paragraph {\"style\":{\"color\":{\"text\":\"#000000\"}}} -->\n+ <!-- wp:paragraph {\"textColor\":\"contrast\"} -->",
+      "verify": "python3 bin/check.py <theme> --offline && python3 bin/snap-vision-review.py <theme> --routes <route>"
+    },
+    {
+      "id": "vision-brand-violation",
+      "axe_rule": "vision:brand-violation",
+      "selector_pattern": "",
+      "file": "<theme>/styles/ or <theme>/templates/<route>.html",
+      "strategy": "Catch-all for 'this looks correct generically but violates THIS theme's design-intent.md'. Examples: chonk hero rendered with light-weight type (defeats the chonk voice), lysholm with sans-serif heading (lysholm's voice IS serif), aero with hard 2px black border (chonk's signature, wrong for aero), pure white card on selvedge's dark base (kills the dark mood). Open BOTH the screenshot and the design-intent.md, identify which rule was violated, and fix at the level the rule operates: theme.json tokens, template block attrs, or styles/ CSS.",
+      "example_diff": "- /* lysholm/styles/section-heading.css */\n- .section-heading { font-family: var(--wp--preset--font-family--sans); }\n+ .section-heading { font-family: var(--wp--preset--font-family--serif); }",
+      "verify": "python3 bin/snap-vision-review.py <theme> --routes <route>"
+    },
+    {
+      "id": "vision-mockup-divergent",
+      "axe_rule": "vision:mockup-divergent",
+      "selector_pattern": "",
+      "file": "<theme>/templates/<route>.html or <theme>/styles/",
+      "strategy": "The rendered route diverges materially from the mockup referenced in `design-intent.md` (Mockup section). The reviewer's annotation should call out which region differs. This is the highest-effort vision finding: it usually means a structural rebuild of the section (different block composition, different layout). Open the mockup AND `<slug>.png` AND `<slug>.review.png` side by side. Identify the gap, then translate the mockup region into block markup. Follow `.claude/skills/build-block-theme-variant/SKILL.md` for the mockup-to-blocks translation pattern.",
+      "example_diff": "# Restructure the section to match the mockup, e.g.:\n- <!-- wp:cover -->...<!-- /wp:cover -->\n+ <!-- wp:columns -->\n+   <!-- wp:column {\"width\":\"60%\"} -->...<!-- /wp:column -->\n+   <!-- wp:column {\"width\":\"40%\"} -->...<!-- /wp:column -->\n+ <!-- /wp:columns -->",
+      "verify": "python3 bin/snap.py shoot <theme> && python3 bin/snap-vision-review.py <theme> --routes <route>"
     }
   ]
 }
