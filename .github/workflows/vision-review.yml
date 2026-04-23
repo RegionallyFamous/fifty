@@ -1,0 +1,289 @@
+name: vision-review
+
+# PR-only, label-gated, non-blocking design critique.
+#
+# Trigger:
+#   * Apply the `design` label to a PR -> this workflow runs.
+#   * Push more commits to that PR -> this workflow re-runs (sticky
+#     comment is updated, not duplicated).
+#   * Remove the label -> nothing happens; the previous comment stays.
+#
+# What it does:
+#   1. Resolve which themes changed in the PR (re-using the same
+#      logic `visual.yml` uses via `bin/visual-matrix.py`).
+#   2. Boot Playground + shoot only those themes (one runner per theme,
+#      same as visual.yml's matrix shape).
+#   3. Run `bin/snap-vision-review.py <theme>` against the fresh PNGs.
+#      The reviewer enforces its own daily $ cap
+#      (FIFTY_VISION_DAILY_BUDGET) and per-PNG cache, so re-runs on the
+#      same screenshots are free after the first.
+#   4. Format every `vision:*` finding from the merged
+#      `*.findings.json` files into a Markdown table grouped by
+#      theme/route/viewport, and post (or update) a sticky PR comment.
+#
+# Why non-blocking:
+#   The vision reviewer is a *suggestion* layer for human reviewers
+#   and the AI agent. Pixel-level critique is inherently subjective
+#   (the rubric files in `<theme>/design-intent.md` are the source of
+#   truth, not the API call), so we surface findings as a comment
+#   instead of failing the merge. The static gates in `check.yml` and
+#   the visual diff in `visual.yml` remain the merge requirements.
+#
+# Why label-gated:
+#   Each run costs money (Anthropic API + Anthropic-billed cache) and
+#   wall time (~12 min). Most PRs (refactors, tooling, docs) don't
+#   need a design critique. The label is an explicit "yes, please
+#   spend that budget on this PR" gesture from the human opening it.
+
+on:
+  pull_request:
+    types: [labeled, synchronize, reopened]
+
+# One run per PR ref. A new push while a previous run is mid-flight
+# cancels the previous one (the comment will be re-posted with fresh
+# pixels anyway, no value in keeping the older run running).
+concurrency:
+  group: vision-review-${{ github.ref }}
+  cancel-in-progress: true
+
+# We need to write a comment back to the PR.
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  # ------------------------------------------------------------------
+  # GATE — bail unless the PR carries the `design` label
+  # ------------------------------------------------------------------
+  # The `pull_request` event fires on every label add/sync/reopen, but
+  # we only care about runs where `design` is currently on the PR.
+  # Doing the check in a tiny first job means the matrix job's runner
+  # minutes (Playwright install, Playground boot) never start unless
+  # the gate passed.
+  gate:
+    name: design label gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - id: check
+        env:
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          # Defensive: `LABELS` is a JSON array string like
+          # `["design","needs-review"]`. We grep it as a string instead
+          # of parsing JSON so this stays dependency-free.
+          if echo "$LABELS" | grep -q '"design"'; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "Design label present; vision-review will run."
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "No 'design' label; skipping vision-review."
+          fi
+
+  # ------------------------------------------------------------------
+  # SETUP — figure out which themes changed in the PR
+  # ------------------------------------------------------------------
+  # Re-uses bin/visual-matrix.py so the "what counts as a theme change"
+  # rule stays in exactly one place. If the PR didn't touch any theme
+  # (pure tooling change) the matrix is empty and the shoot job skips.
+  setup:
+    name: resolve changed themes
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      themes: ${{ steps.scope.outputs.themes }}
+      has_themes: ${{ steps.scope.outputs.has_themes }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_MODE: check-changed
+          BASE_REF: origin/main
+        run: python3 bin/visual-matrix.py
+
+  # ------------------------------------------------------------------
+  # REVIEW — shoot + critique each changed theme
+  # ------------------------------------------------------------------
+  # One runner per theme (same shape as visual.yml's `shoot` matrix)
+  # so per-theme failures don't poison the others' findings. We
+  # deliberately shoot here instead of trying to download the
+  # `visual.yml` artifacts -- those workflows can race and we want the
+  # critique to be self-contained / re-runnable in isolation.
+  review:
+    name: review (${{ matrix.theme }})
+    needs: [gate, setup]
+    if: needs.setup.outputs.has_themes == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        theme: ${{ fromJSON(needs.setup.outputs.themes) }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install Python dependencies
+        # Pillow is a hard dep of bin/snap-vision-review.py (prefilter
+        # + annotated review.png); Playwright is needed for the snap
+        # step that produces the PNGs the reviewer reads.
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements-dev.txt playwright==1.58.0 Pillow
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-1.58.0
+
+      - name: Install Playwright Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: python3 -m playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: python3 -m playwright install-deps chromium
+
+      - name: Confirm rubric exists
+        # `bin/check.py` enforces this on every PR via check.yml, but
+        # we re-check here so a missing intent.md gives a clear local
+        # message instead of a confusing reviewer-side error.
+        run: |
+          if [ ! -f "${{ matrix.theme }}/design-intent.md" ]; then
+            echo "::error::${{ matrix.theme }}/design-intent.md missing."
+            echo "         The vision reviewer needs a per-theme rubric"
+            echo "         to grade against. Add the file (see"
+            echo "         obel/design-intent.md for the canonical shape)"
+            echo "         and re-run."
+            exit 1
+          fi
+
+      - name: Shoot ${{ matrix.theme }}
+        run: python3 bin/snap.py shoot ${{ matrix.theme }}
+
+      - name: Vision review ${{ matrix.theme }}
+        # The reviewer fails closed (non-zero exit) if ANTHROPIC_API_KEY
+        # is missing or the daily budget is breached. We treat both as
+        # PR-comment-worthy events (the "what happened?" comment is
+        # often more useful than a green check), so this step is
+        # `continue-on-error` and the comment job reads exit status
+        # via the artifact below.
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Per-PR budget cap. The lib's daily ledger is workspace-
+          # scoped (tmp/vision-spend.jsonl), so on a fresh runner this
+          # is effectively a per-run cap. Tune downward if PR volume
+          # spikes; the lib refuses to spend past this.
+          FIFTY_VISION_DAILY_BUDGET: '5.00'
+        run: |
+          # Capture exit status separately so the upload step always
+          # runs and the comment renderer can show "review crashed"
+          # instead of producing a silently-empty comment.
+          set +e
+          python3 bin/snap-vision-review.py "${{ matrix.theme }}" \
+            2>&1 | tee "tmp/snaps/${{ matrix.theme }}/vision-review.log"
+          echo "$?" > "tmp/snaps/${{ matrix.theme }}/vision-review.exit"
+
+      - name: Upload ${{ matrix.theme }} review artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: vision-${{ matrix.theme }}
+          # The whole snap dir: PNGs, *.findings.json (now with
+          # vision:* entries merged in), *.review.png (annotated),
+          # *.vision-fingerprint (cache stamps), the log + exit file.
+          path: tmp/snaps/${{ matrix.theme }}/**/*
+          if-no-files-found: warn
+          retention-days: 14
+
+  # ------------------------------------------------------------------
+  # COMMENT — collect every theme's findings + post a sticky PR comment
+  # ------------------------------------------------------------------
+  # `if: always()` so the comment posts even when a per-theme review
+  # crashed -- the comment will note the crash. Comments are
+  # explicitly *not* blocking; merge can proceed regardless of what
+  # the reviewer found. Humans (and the AI agent following the
+  # `vision-findings` Cursor rule) decide what to act on.
+  comment:
+    name: post sticky PR comment
+    needs: [gate, review]
+    if: always() && needs.gate.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Download all review artifacts
+        uses: actions/download-artifact@v6
+        with:
+          pattern: vision-*
+          path: tmp/snaps
+          merge-multiple: false
+
+      - name: Render comment body
+        id: render
+        # Walks every downloaded findings.json, picks `vision:*`
+        # entries, and renders a single Markdown body grouped by
+        # theme/route/viewport. The script writes the body to
+        # `vision-comment.md` so the next step can read it without
+        # quoting headaches in YAML.
+        run: python3 bin/render-vision-pr-comment.py \
+               --root tmp/snaps \
+               --out vision-comment.md \
+               --pr "${{ github.event.pull_request.number }}"
+
+      - name: Upsert sticky comment
+        # Sticky-comment pattern via marker line: the renderer prepends
+        # `<!-- vision-review:sticky -->` to the body. This step looks
+        # for a comment with that marker on the PR and edits it in
+        # place if found, posts a new one otherwise. Using `gh` avoids
+        # adding a third-party action just for this.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          BODY="$(cat vision-comment.md)"
+          MARKER='<!-- vision-review:sticky -->'
+
+          # Find existing sticky comment id (if any).
+          EXISTING_ID="$(
+            gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+              --paginate \
+              --jq ".[] | select(.body | contains(\"${MARKER}\")) | .id" \
+              | head -n1
+          )"
+
+          if [ -n "$EXISTING_ID" ]; then
+            echo "Updating sticky comment $EXISTING_ID"
+            gh api --method PATCH \
+              "repos/${REPO}/issues/comments/${EXISTING_ID}" \
+              -f body="$BODY"
+          else
+            echo "Posting new sticky comment"
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY"
+          fi
