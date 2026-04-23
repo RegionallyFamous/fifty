@@ -24,6 +24,51 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
+# ---------------------------------------------------------------------------
+# Skip-on-delete fast-path
+# ---------------------------------------------------------------------------
+# Git's pre-push hook protocol passes one line per ref being pushed on stdin:
+#
+#     <local-ref> <local-sha> <remote-ref> <remote-sha>
+#
+# For a deletion (`git push origin --delete <branch>` or
+# `git push origin :<branch>`), <local-ref> is empty and <local-sha> is 40
+# zeros; the remote pair is the branch being torn down. There is nothing on
+# the local side to validate, so running `bin/check.py --all --offline`
+# (~10s) and the snap visual gate (~127s/theme) is dead weight that also
+# makes routine cleanup ("delete the merged branches GitHub didn't auto-
+# prune") block on whatever WIP happens to be sitting in the working tree.
+#
+# We slurp stdin into an array (so the rest of the hook can still operate
+# without it), inspect every line, and exit 0 only when EVERY ref on the
+# push is a delete. A mixed push (some creates/updates + some deletes) keeps
+# running the full gate — that's the safe default, since the create/update
+# half does need to be validated and the cost of the gate is amortised
+# across both halves anyway.
+#
+# Intentionally NOT skipped on delete: branch-protection / hosting-side
+# enforcement (server runs its own gates regardless) and the local hooks for
+# COMMITS (pre-commit catches anything before the SHA exists locally).
+ZERO_SHA="0000000000000000000000000000000000000000"
+delete_only=1
+saw_any=0
+hook_stdin=()
+while IFS= read -r line; do
+  hook_stdin+=("$line")
+  saw_any=1
+  # shellcheck disable=SC2206  # word-split is what we want here
+  parts=( $line )
+  local_sha="${parts[1]:-}"
+  if [ "$local_sha" != "$ZERO_SHA" ]; then
+    delete_only=0
+  fi
+done
+
+if [ "$saw_any" = "1" ] && [ "$delete_only" = "1" ]; then
+  echo "▸ pre-push: delete-only push (${#hook_stdin[@]} ref(s)) — skipping gate."
+  exit 0
+fi
+
 echo "▸ pre-push: bin/check.py --all --offline"
 # FIFTY_SKIP_UNPUSHED_CHECK=1 tells `bin/check.py` to skip its
 # `check_no_unpushed_commits` check ONLY in this hook context. That
