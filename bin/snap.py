@@ -988,6 +988,23 @@ _HEURISTICS_JS = r"""
             const r = el.getBoundingClientRect();
             const text = (el.innerText || '').trim();
             if (!text || r.width < 1) return;
+            // Element is squashed to near-zero width — that's a layout
+            // collapse (parent grid track collapsed, or the container
+            // is `display:none` waiting on a media query). Wrap-mid-
+            // word is meaningless when the element has no width to
+            // render text into; the real bug is the collapse, which
+            // is caught by `region-void` / `element-overflow-x`. ~24
+            // false positives/run on `<aside>` 7px-wide collapsed
+            // sidebars.
+            if (r.width < 32) return;
+            // Author opted into mid-word breaking via overflow-wrap.
+            // When the rendered token would not fit the box width
+            // (e.g. very large hero font in a narrow sidebar),
+            // overflow-wrap:anywhere/break-word is the *correct*
+            // remedy — flagging it as a wrap-mid-word bug is noise.
+            const cs = getComputedStyle(el);
+            const ow = (cs.overflowWrap || cs.wordWrap || '').toLowerCase();
+            if (ow === 'anywhere' || ow === 'break-word') return;
             // Approximate the intrinsic word width: the longest word's
             // pixel width if rendered on a single line.
             const longestWord = text.split(/\s+/).reduce((a,b) => a.length >= b.length ? a : b, '');
@@ -1032,6 +1049,110 @@ _HEURISTICS_JS = r"""
             + 'input[type="submit"], input[type="button"], '
             + 'input[type="reset"], summary'
         );
+        // Detect the canonical screen-reader-only pattern (1x1 clipped
+        // box, often a skip-link or a sr-only label). These elements
+        // are intentionally tiny so sighted users don't see them; they
+        // grow on `:focus` (e.g. the WP "Skip to content" pattern). The
+        // resting size isn't a real tap target -- focusing the link
+        // expands it -- so flagging the 1x1px footprint is pure noise.
+        const isScreenReaderOnly = (el, r, cs) => {
+            // 1x1 box plus a clipping rule is the dead-giveaway
+            // sr-only pattern. We accept either modern `clip-path`
+            // (e.g. `inset(50%)`, `polygon(0 0, 0 0, 0 0, 0 0)`) or
+            // the legacy `clip: rect(...)` form.
+            const tinyBox = r.width <= 2 && r.height <= 2;
+            const clipped = (cs.clipPath && cs.clipPath !== 'none')
+                || (cs.clip && cs.clip !== 'auto');
+            if (tinyBox && (clipped || cs.overflow === 'hidden')) return true;
+            // Also catch the common `.screen-reader-text` /
+            // `.visually-hidden` / `.sr-only` class names — even when
+            // a theme implements them slightly differently, the intent
+            // is unambiguous from the class name and we should not
+            // flag the resting state.
+            const cls = (el.className && el.className.baseVal) || el.className || '';
+            if (typeof cls === 'string' && /\b(sr-only|screen-reader-text|visually-hidden|wp-block-skip-link|skip-link)\b/.test(cls)) return true;
+            return false;
+        };
+        // A link is "inside a card hit area" when one of its
+        // closest()-walk ancestors is itself either a clickable
+        // element or a typical card/post wrapper that exposes its own
+        // anchor. Tapping anywhere in that ancestor lands on the
+        // product/post page; the inner text link is a secondary
+        // affordance, not the real tap target.
+        //
+        // This catches the post-card / product-card pattern that fires
+        // ~240 false findings/run: a 100x20 product-title <a>" Portable
+        // Hole "</a> inside a `<li class="wp-block-post"><a class="wp-
+        // block-post-title__link">` (or wp-block-product wrapper +
+        // image link). The card itself is the real >=300x400 tap
+        // target; complaining that the inner title link is "too
+        // small" trains people to ignore the rule.
+        const CARD_HIT_AREA = (
+            'li.wp-block-post, '
+            + '.wp-block-post, '
+            + 'li.product, '
+            + '.wp-block-product, '
+            + '.wc-block-product, '
+            + 'article'
+        );
+        const ancestorIsCardWithAnchor = (el) => {
+            let p = el.parentElement;
+            for (let depth = 0; p && depth < 5; depth += 1, p = p.parentElement) {
+                if (!p.matches) continue;
+                if (!p.matches(CARD_HIT_AREA)) continue;
+                // Card must expose at least one OTHER anchor that
+                // covers it (the image link or the title link sibling
+                // of `el`). Without that, tapping the card body wouldn't
+                // navigate anywhere.
+                const anchors = p.querySelectorAll('a[href]');
+                for (const a of anchors) {
+                    if (a === el) continue;
+                    const ar = a.getBoundingClientRect();
+                    // Sibling anchor must be visible AND reasonably
+                    // sized -- a 1x1 sr-only sibling doesn't make the
+                    // card a real tap target.
+                    if (ar.width >= 32 && ar.height >= 32) return true;
+                }
+            }
+            return false;
+        };
+        // Stacked text-link list pattern. A `<li>` whose only anchor is
+        // `el` AND whose effective height (offsetHeight + margin) is
+        // >= 28px is a vertical list-of-links. The whole list-item line
+        // is clickable on mobile (browsers extend the hit-test box to
+        // the line box, not just the inline letterforms). Refusing to
+        // skip these produces ~120 noise findings/run on journal recent-
+        // posts widgets, footer link columns, and category nav lists.
+        const isLoneLinkInListItem = (el) => {
+            // Walk up at most 4 levels looking for a block-like
+            // ancestor that contains *only this anchor* and offers
+            // a tap surface >= 28px tall. This catches:
+            //   - bare links in li/dt/dd/p/h1-h6/td/th (vertical
+            //     widget lists, footer columns, breadcrumb rows,
+            //     WC cart + checkout summary product names)
+            //   - product-title links inside <article>/<figure>/
+            //     section card wrappers (cross-sells, related
+            //     products, post grids, journal cards) where the
+            //     entire card surrounding the title is the tap
+            //     target the user actually engages with.
+            let p = el.parentElement;
+            for (let depth = 0; depth < 4 && p; depth++) {
+                if (p.matches && (
+                    p.matches('li, dt, dd, p, h1, h2, h3, h4, h5, h6, td, th')
+                    || p.matches('article, figure, figcaption, section')
+                    || (p.matches('[class*="card" i], [class*="product" i], [class*="post" i]')
+                        && p.matches('div, span'))
+                )) {
+                    const anchors = p.querySelectorAll('a[href]');
+                    if (anchors.length === 1) {
+                        const ph = p.offsetHeight || p.getBoundingClientRect().height;
+                        if (ph >= 28) return true;
+                    }
+                }
+                p = p.parentElement;
+            }
+            return false;
+        };
         tapEls.forEach((el) => {
             if (!isVisible(el)) return;
             const r = el.getBoundingClientRect();
@@ -1041,11 +1162,14 @@ _HEURISTICS_JS = r"""
             // measured box (i.e. wrapped inline content).
             const cs = window.getComputedStyle(el);
             if (cs.display === 'inline' && r.width >= 32) return;
+            if (isScreenReaderOnly(el, r, cs)) return;
             if (r.width < 32 || r.height < 32) {
+                if (ancestorIsCardWithAnchor(el)) return;
+                if (isLoneLinkInListItem(el)) return;
                 const label = (el.innerText || el.getAttribute('aria-label') || '').trim().slice(0, 40);
                 push("warn", "tap-target-too-small",
                      `Mobile tap target ${Math.round(r.width)}x${Math.round(r.height)}px (<32px) for "${label}".`,
-                     {width: Math.round(r.width), height: Math.round(r.height), label});
+                     {selector: cssPath(el), width: Math.round(r.width), height: Math.round(r.height), label});
             }
         });
     }
@@ -1115,10 +1239,44 @@ _HEURISTICS_JS = r"""
             const r = el.getBoundingClientRect();
             if (r.width < 50) continue;
             const overflow = el.scrollWidth - el.clientWidth;
-            if (overflow <= 2) continue;
+            // Threshold is 5px (was 2px until 2026-04). 1-3px values
+            // turn out to be almost entirely scrollbar-gutter and
+            // sub-pixel-rounding artifacts from `position: fixed`
+            // overlays that wrap a scrolling child (notably the
+            // wc-block mini-cart drawer overlay, which fired ~250
+            // identical 3px findings every snap run). Real layout
+            // bugs spill by at least 5px and usually by tens-to-
+            // hundreds of pixels (a textarea, a header search field,
+            // an announcement bar).
+            if (overflow <= 4) continue;
             // Skip the document root + body (already covered by
             // `horizontal-overflow`).
             if (el === document.body || el === document.documentElement) continue;
+            // Decorative-overhang opt-out: when the only descendants
+            // whose own right edge exceeds the parent's box are
+            // `position:absolute|fixed`, the overflow is from a
+            // deliberate badge/sticker placed past the edge (e.g.
+            // chonk-hero__sticker with `right:-16px`). Treat as
+            // intentional, not a layout bug.
+            try {
+                const elRect = el.getBoundingClientRect();
+                const elRight = elRect.right;
+                let foundFlowChild = false;
+                let absOverhang = false;
+                for (const child of el.querySelectorAll('*')) {
+                    const cr = child.getBoundingClientRect();
+                    if (cr.width === 0 || cr.height === 0) continue;
+                    if (cr.right <= elRight + 1) continue;
+                    const ccs = getComputedStyle(child);
+                    if (ccs.position === 'absolute' || ccs.position === 'fixed') {
+                        absOverhang = true;
+                    } else {
+                        foundFlowChild = true;
+                        break;
+                    }
+                }
+                if (absOverhang && !foundFlowChild) continue;
+            } catch (e) { /* fall through */ }
             const sel = cssPath(el);
             const tag = el.tagName.toLowerCase();
             const txt = (el.innerText || '').trim().slice(0, 80);
@@ -1138,21 +1296,62 @@ _HEURISTICS_JS = r"""
     // wrapped headline). We only check h1-h4 because longer prose
     // headings (h5/h6) are typically not styled with hard heights and
     // would produce noise.
+    //
+    // Threshold is 4px (was 2px until 2026-04). The 2px floor was
+    // tripped on every heading whose font has a deeper-than-typical
+    // descender ("g", "y", "p" hanging 3-4px below the baseline) at
+    // tight line-heights — a font-metrics quirk, not a real clipping
+    // bug. Bumping to 4px+ catches the wrapped-headline-with-clipped-
+    // second-line cases (which are >= 1 line-height of overflow, i.e.
+    // dozens of pixels) without crying wolf on every glyph descender.
     {
         let n = 0;
         document.querySelectorAll('h1, h2, h3, h4').forEach((el) => {
             if (n >= 5) return;
             if (!isVisible(el)) return;
             const cs = window.getComputedStyle(el);
-            if (cs.overflow === 'hidden' || cs.overflowY === 'hidden') {
-                // Heading itself has overflow hidden -- its scrollHeight
-                // will still be the full content height even when clipped.
+            // Skip the canonical screen-reader-only pattern. An h1
+            // with `class="screen-reader-text"` (e.g. WP's hidden
+            // checkout/cart page title) has clientHeight ~1px while
+            // scrollHeight reflects the full text — guaranteed false
+            // positive.
+            const cls = (el.className && el.className.baseVal) || el.className || '';
+            if (typeof cls === 'string' && /\b(sr-only|screen-reader-text|visually-hidden)\b/.test(cls)) return;
+            // Same goes for any heading that is itself clipped via
+            // clip / clip-path (the modern sr-only).
+            if ((cs.clipPath && cs.clipPath !== 'none')
+                || (cs.clip && cs.clip !== 'auto')) return;
+            // Same goes for any heading nested under an SR-only
+            // ancestor — the WC cart-line-items table renders a
+            // `<caption class="screen-reader-text"><h2>Products in
+            // cart</h2></caption>` per cart, and the visually-hidden
+            // caption fires the detector on every cart route at
+            // every viewport (~46 noise findings/run). The heading
+            // is invisible to sighted users; clipping doesn't matter.
+            let srAncestor = false;
+            for (let p = el.parentElement; p; p = p.parentElement) {
+                if (!p.className) continue;
+                const pcls = (p.className && p.className.baseVal) || p.className || '';
+                if (typeof pcls !== 'string') continue;
+                if (/\b(sr-only|screen-reader-text|visually-hidden)\b/.test(pcls)) {
+                    srAncestor = true;
+                    break;
+                }
             }
+            if (srAncestor) return;
             const overflow = el.scrollHeight - el.clientHeight;
-            if (overflow <= 2) return;
+            if (overflow <= 4) return;
             const sel = cssPath(el);
             const tag = el.tagName.toLowerCase();
             const txt = (el.innerText || '').trim().slice(0, 80);
+            // Empty headings can't really be "clipped" — they have no
+            // visible glyphs. The reported scrollHeight > clientHeight
+            // is a font-metrics ghost (the line-box still reserves
+            // ascender + descender even with no text). Most often this
+            // fires on the legacy WC reviews title `h2.woocommerce-
+            // Reviews-title` which is left empty when there are zero
+            // reviews — ~24 noise findings/run, all the same h2.
+            if (txt.length === 0) return;
             push("error", "heading-clipped-vertical",
                  `<${tag}> "${txt}" is taller than its box by ${overflow}px (scrollHeight ${el.scrollHeight} > clientHeight ${el.clientHeight}). Likely a max-height + overflow:hidden parent eating part of the headline.`,
                  {selector: sel, fingerprint: sel,
@@ -1204,62 +1403,126 @@ _HEURISTICS_JS = r"""
         }
     }
 
-    // 4. duplicate-nav-link: the same link rendered in two DIFFERENT
-    // visible navigation containers at the same time. Catches the
-    // "Shop" twice bug where both the desktop nav and the mobile
-    // drawer are visible, or two `<nav>`s both rendering the same
-    // primary menu (a footer that accidentally re-uses the header
-    // template, etc.). Within a single nav container, duplicates are
-    // intentional (mega-menu mirrors the top items, etc.), so we
-    // group by nav-container identity AND link signature.
+    // 4. duplicate-nav-block: two visible navigation containers whose
+    // link sets are nearly identical (Jaccard >= 0.8). Catches the
+    // real bugs:
+    //   * primary menu accidentally rendered twice (footer pulling the
+    //     header pattern, two wp-navigation blocks pointing at the same
+    //     wp_navigation post, etc.)
+    //   * mobile drawer + desktop primary nav both visible at the same
+    //     viewport (responsive CSS forgot to hide one)
+    //   * "Footer legal" row literally listing the same links as the
+    //     "Help" footer column right above it
+    //
+    // Deliberately does NOT flag the case where one nav is a small
+    // SUBSET of another (e.g. a "Company" footer column linking to
+    // /about/, /journal/, /contact/ — which are all in the primary
+    // nav too). That cross-link pattern is intentional footer design,
+    // not a bug; flagging it produces hundreds of false positives
+    // and trains people to ignore the rule.
+    //
+    // Container identity uses the OUTERMOST nav-shaped ancestor of
+    // each candidate. Without that, `<header>` and the `<nav>` inside
+    // it are treated as two separate containers, and every primary-nav
+    // link is reported as a duplicate of itself.
     {
-        const navContainers = document.querySelectorAll(
-            'header, nav, [role="navigation"], '
-            + '.wp-block-navigation, '
-            + '.wp-block-navigation__container, '
-            + '.wp-block-navigation__responsive-container-content'
+        const NAV_OUTER_SEL = 'header, nav, [role="navigation"]';
+        const candidates = document.querySelectorAll(
+            NAV_OUTER_SEL
+            + ', .wp-block-navigation'
+            + ', .wp-block-navigation__container'
+            + ', .wp-block-navigation__responsive-container-content'
         );
-        // Map of "text|href" -> Set of distinct top-level nav containers
-        // that contain a visible link with that signature.
-        const sigToContainers = new Map();
-        // Also map signature -> sample selector (for the finding payload).
-        const sigToSample = new Map();
-        navContainers.forEach((nav) => {
-            if (!isVisible(nav)) return;
-            // Find the OUTERMOST nav-shaped ancestor of this container so
-            // a `.wp-block-navigation__container` nested inside its own
-            // `<nav>` only counts as one container.
-            const outer = nav.closest(
-                'header, nav, [role="navigation"]'
-            ) || nav;
-            nav.querySelectorAll('a[href]').forEach((a) => {
+        // Walk up from `el` to find the outermost nav-shaped ancestor.
+        // (`closest()` returns the innermost match, which is the wrong
+        // answer here; we want a `<header>` to subsume the `<nav>` it
+        // wraps, not be considered a separate container.)
+        function outermostNavAncestor(el) {
+            let outer = el.matches(NAV_OUTER_SEL) ? el : null;
+            for (let p = el.parentElement; p; p = p.parentElement) {
+                if (p.matches && p.matches(NAV_OUTER_SEL)) outer = p;
+            }
+            return outer || el;
+        }
+        // For each outermost container, collect the SET of link sigs it
+        // exposes. Use a Map keyed by the DOM element so duplicate
+        // candidates (a `<nav>` and its `.wp-block-navigation` selector
+        // hit) collapse to a single bucket.
+        const containerSigs = new Map();      // outerEl -> Set<sig>
+        const containerSamples = new Map();   // outerEl -> {text,href,sel} per sig
+        const containerLabel = new Map();     // outerEl -> friendly label
+        candidates.forEach((c) => {
+            if (!isVisible(c)) return;
+            const outer = outermostNavAncestor(c);
+            if (!containerSigs.has(outer)) {
+                containerSigs.set(outer, new Set());
+                containerSamples.set(outer, new Map());
+                const aria = outer.getAttribute && outer.getAttribute('aria-label');
+                containerLabel.set(outer, aria || outer.tagName.toLowerCase());
+            }
+            const sigs = containerSigs.get(outer);
+            const samples = containerSamples.get(outer);
+            outer.querySelectorAll('a[href]').forEach((a) => {
                 if (!isVisible(a)) return;
                 const text = (a.innerText || a.textContent || '').trim();
                 if (!text) return;
                 const href = a.getAttribute('href') || '';
-                const sig = text.toLowerCase() + '|' + href;
-                const set = sigToContainers.get(sig) || new Set();
-                set.add(outer);
-                sigToContainers.set(sig, set);
-                if (!sigToSample.has(sig)) {
-                    sigToSample.set(sig, {
-                        text, href, selector: cssPath(a),
-                    });
+                // Sig is href-only: two navs that link to the same page
+                // with different label text ("Shop" vs "All products"
+                // both pointing at /shop/) ARE menu duplicates as far
+                // as this rule cares.
+                const sig = href;
+                sigs.add(sig);
+                if (!samples.has(sig)) {
+                    samples.set(sig, {text, href, selector: cssPath(a)});
                 }
             });
         });
+        // Drop trivially small navs (<2 links): a "back to top" or
+        // "view cart" lone-link container can't meaningfully be a
+        // menu mirror.
+        const containers = [];
+        for (const [outer, sigs] of containerSigs.entries()) {
+            if (sigs.size >= 2) {
+                containers.push({outer, sigs,
+                                 samples: containerSamples.get(outer),
+                                 label: containerLabel.get(outer)});
+            }
+        }
+        // Pairwise Jaccard. Threshold 0.8 catches identical sets and
+        // near-identical (one extra link in either direction) without
+        // flagging "footer column is a subset of primary nav".
         let n = 0;
-        for (const [sig, containers] of sigToContainers.entries()) {
-            if (n >= 5) break;
-            if (containers.size < 2) continue;
-            const sample = sigToSample.get(sig);
-            push("error", "duplicate-nav-link",
-                 `Link "${sample.text}" -> "${sample.href}" appears in ${containers.size} different visible navigation containers. (A primary menu rendered in two navs at the same time is almost always a template bug -- usually a mobile drawer that should be display:none at this viewport, or a footer accidentally re-using the header pattern.)`,
-                 {selector: sample.selector,
-                  fingerprint: sample.text + '|' + sample.href,
-                  text: sample.text, href: sample.href,
-                  container_count: containers.size});
-            n += 1;
+        const seenPairs = new Set();
+        for (let i = 0; i < containers.length && n < 5; i += 1) {
+            for (let j = i + 1; j < containers.length && n < 5; j += 1) {
+                const a = containers[i], b = containers[j];
+                const intersection = new Set(
+                    [...a.sigs].filter((s) => b.sigs.has(s))
+                );
+                if (intersection.size < 2) continue;
+                const union = new Set([...a.sigs, ...b.sigs]);
+                const jaccard = intersection.size / union.size;
+                if (jaccard < 0.8) continue;
+                const pairKey = a.label + '||' + b.label;
+                if (seenPairs.has(pairKey)) continue;
+                seenPairs.add(pairKey);
+                const sharedHrefs = [...intersection].sort();
+                const firstSig = sharedHrefs[0];
+                const sample = a.samples.get(firstSig)
+                    || b.samples.get(firstSig)
+                    || {text: '?', href: firstSig, selector: ''};
+                push("error", "duplicate-nav-block",
+                     `Two visible navigation containers ("${a.label}" and "${b.label}") have nearly identical link sets (${intersection.size} of ${union.size} hrefs match, Jaccard ${jaccard.toFixed(2)}). Shared: ${sharedHrefs.slice(0, 6).join(', ')}${sharedHrefs.length > 6 ? ', …' : ''}. One is almost certainly a duplicate -- e.g. a footer "legal" row repeating the same links as a footer help column right above it, two wp-navigation blocks rendering the same wp_navigation post, or a mobile drawer that should be display:none at this viewport.`,
+                     {selector: sample.selector,
+                      fingerprint: 'pair:' + a.label + '|' + b.label,
+                      label_a: a.label, label_b: b.label,
+                      shared_count: intersection.size,
+                      union_count: union.size,
+                      jaccard: jaccard,
+                      shared_hrefs: sharedHrefs});
+                n += 1;
+            }
         }
     }
 
@@ -1352,9 +1615,55 @@ _HEURISTICS_JS = r"""
         );
         let n = 0;
         const reported = new Set();
+        // The element BEING checked counts as media if it IS one of
+        // these tags (querySelector below only checks descendants, so
+        // an `<img>` itself trivially has no img descendant and would
+        // otherwise be reported as a "void of page background"). The
+        // earlier set was just descendants-only, which made every PDP
+        // hero image fire region-void on every snap.
+        const SELF_IS_MEDIA = new Set([
+            'IMG', 'SVG', 'VIDEO', 'PICTURE', 'IFRAME', 'CANVAS', 'OBJECT', 'EMBED'
+        ]);
+        // Live-region overlays — the WC blocks toast/snackbar list
+        // is rendered EMPTY-but-present at all times so screen readers
+        // can announce notices added later. The empty container is
+        // intentionally a "void" by design (full-viewport invisible
+        // overlay). Same goes for any other ARIA live region or any
+        // overlay positioned to occupy the viewport while transparent.
+        const isOverlayPlaceholder = (el, cs) => {
+            if (el.matches && el.matches(
+                '[aria-live], [role="status"], [role="alert"], '
+                + '.wc-block-components-notice-snackbar-list, '
+                + '.wc-block-components-notices__snackbar, '
+                + '.wp-block-woocommerce-store-notices, '
+                // WC product-image inner containers are placeholders
+                // that wrap an `<img>` whose `src` is set lazily by the
+                // collection block. On first paint the inner container
+                // is visible at full image dimensions but the `<img>`
+                // hasn't materialised yet — we'd report it as a void
+                // even though the next frame paints the image.
+                + '.wc-block-components-product-image, '
+                + '.wc-block-components-product-image__inner-container, '
+                + '.wc-block-grid__product-image'
+            )) return true;
+            if ((cs.position === 'fixed' || cs.position === 'absolute')
+                && cs.pointerEvents === 'none') return true;
+            return false;
+        };
         for (const el of allEls) {
             if (n >= 5) break;
             if (!isVisible(el)) continue;
+            if (SELF_IS_MEDIA.has(el.tagName)) continue;
+            // Inside a closed <details>, child content is hidden by
+            // the browser but `getBoundingClientRect()` may still
+            // report a non-zero rect at the collapsed location. The
+            // content is genuinely not visible to the user — flagging
+            // it as a "void of page background" is a guaranteed false
+            // positive. (Bit our 80x-per-shoot wp-block-woocommerce-
+            // product-reviews finding nested inside the PDP's
+            // collapsed "Reviews" <details> on every snap.)
+            const closedDetails = el.closest && el.closest('details');
+            if (closedDetails && !closedDetails.open) continue;
             const r = el.getBoundingClientRect();
             const area = r.width * r.height;
             if (area < viewportArea * 0.15) continue;
@@ -1366,6 +1675,7 @@ _HEURISTICS_JS = r"""
             // Has its own background image?
             const cs = window.getComputedStyle(el);
             if (cs.backgroundImage && cs.backgroundImage !== 'none') continue;
+            if (isOverlayPlaceholder(el, cs)) continue;
             // Background-color matches body's -> renders as page void.
             // (transparent or rgba(0,0,0,0) also count as void since they
             // pass through to the body background.)
@@ -1410,9 +1720,24 @@ _HEURISTICS_JS = r"""
             'main > *, [role="main"] > *, '
             + 'main section, main > div > section'
         );
+        // Editorial hero strips (wo-archive-hero, single-product
+        // headline rows) are intentionally airy — a one-line eyebrow
+        // + huge title + optional descriptor sit on top of large
+        // padding to anchor the section, not to fill it. The detector
+        // measures text *characters* and the hero serif headline is
+        // 11-20 characters at huge type, scoring 0.04-0.05 by design.
+        // Skip elements that opt-in to "this is a brand hero" via a
+        // stable theme class name.
+        const HERO_OPT_OUT = (
+            '.wo-archive-hero, '
+            + '.wo-account-intro, '
+            + '.aero-hero, .chonk-hero, .lysholm-hero, '
+            + '.obel-hero, .selvedge-hero'
+        );
         for (const el of allEls) {
             if (n >= 5) break;
             if (!isVisible(el)) continue;
+            if (el.matches && el.matches(HERO_OPT_OUT)) continue;
             const r = el.getBoundingClientRect();
             if (r.height < vh * 0.4) continue;
             // Skip ancestors already reported.
@@ -1427,13 +1752,23 @@ _HEURISTICS_JS = r"""
             const mediaCount = el.querySelectorAll(
                 'img, svg, video, picture, iframe, canvas'
             ).length;
+            // CSS background-image counts as visual media — themes
+            // routinely paint hero / banner imagery via
+            // `background-image` rather than `<img>` (the wo-archive-
+            // hero "cover" variant uses the term thumbnail as a bg).
+            // Without this check, every cover-style hero fires
+            // region-low-density (one word + bg-image = "no media").
+            const cs = window.getComputedStyle(el);
+            const hasOwnBg = cs.backgroundImage && cs.backgroundImage !== 'none';
             // Density score: text characters + 50 per media element,
             // normalized to area in kilo-pixels. Threshold of 0.05
             // tuned to flag "one word in a 600px section" while
             // letting normal hero patterns (a paragraph + image)
-            // through.
+            // through. Background-image carries the same content
+            // weight as a media element.
             const areaKpx = (r.width * r.height) / 1000;
-            const score = (txt.length + 50 * mediaCount) / Math.max(1, areaKpx);
+            const effectiveMedia = mediaCount + (hasOwnBg ? 1 : 0);
+            const score = (txt.length + 50 * effectiveMedia) / Math.max(1, areaKpx);
             if (score >= 0.05) continue;
             // Skip "void" cases -- already covered by region-void above.
             if (txt.length === 0 && mediaCount === 0) continue;
@@ -1533,21 +1868,38 @@ _HEURISTICS_JS = r"""
     // (the listing pages get tested first; the long-tail PDP grids
     // do not).
     {
-        const cardSelector = (
+        // ONLY consider links that live inside a recognised listing
+        // context. Without this guard the rule fires on any product
+        // link anywhere (cart line-item thumbnails, mini-cart drawer,
+        // body-copy cross-sells), all of which use generic
+        // `.wp-block-post-content` page wrappers as their `closest()`
+        // ancestor, producing "1 of 1 card missing" findings on cart,
+        // checkout, and my-account routes that have no real listings
+        // at all.
+        const LISTING_CONTEXT = (
+            '.wp-block-post-template'
+            + ', .wp-block-product-template'
+            + ', .wc-block-product-template'
+            + ', .wc-block-product-collection'
+            + ', ul.products'
+        );
+        const CARD_LINK = (
             'a[href*="/product/"]'
             + ', a.woocommerce-LoopProduct-link'
-            + ', .wp-block-post-template a[href]'
             + ', .wp-block-post a[href]'
-            + ', li.product a.woocommerce-LoopProduct-link'
         );
-        const cardLinks = Array.from(document.querySelectorAll(cardSelector));
+        const cardLinks = Array.from(document.querySelectorAll(CARD_LINK))
+            .filter((a) => a.closest(LISTING_CONTEXT) !== null);
         // Distinct cards only — the same product link often appears
         // multiple times (image link + title link). Group by closest
-        // card-shaped ancestor so we count one card once.
+        // card-shaped ancestor so we count one card once. Drop the
+        // overbroad `article` from the ancestor list — a singular post
+        // template's `<article>` wrapper is NOT a card and was the
+        // source of half the false positives.
         const cards = new Set();
         for (const a of cardLinks) {
             const card = a.closest(
-                'li.product, .wp-block-product, .wp-block-post, article'
+                'li.product, .wp-block-product, .wp-block-post'
             ) || a;
             cards.add(card);
         }
@@ -2101,6 +2453,32 @@ def _run_interaction(page, flow: Interaction) -> str | None:
                             timeout=int(step.get("timeout_ms", 2000)))
                 el.fill(step.get("text", ""),
                         timeout=int(step.get("timeout_ms", 2000)))
+            elif action == "select_option":
+                # Pick a value in a native <select>. Required because
+                # `<option>` elements are not click-targetable in Chromium
+                # (they're popup-rendered and have no DOM bounds in the
+                # page). For WooCommerce variation dropdowns ("size",
+                # "color"), use this instead of `click` on the option --
+                # the swatch-pick flow learned this the hard way after
+                # 20 false interaction-failed findings/run.
+                #
+                # `value` selects by `<option value=...>`; `index`
+                # selects by position; `label` selects by visible text.
+                # If the caller passes only `selector`, default to
+                # index=1 (the first non-default option, since index 0
+                # is typically the placeholder "Choose an option").
+                el = page.locator(step["selector"]).first
+                el.wait_for(state="attached",
+                            timeout=int(step.get("timeout_ms", 3000)))
+                opts: dict = {}
+                if "value" in step:
+                    opts["value"] = step["value"]
+                elif "label" in step:
+                    opts["label"] = step["label"]
+                else:
+                    opts["index"] = int(step.get("index", 1))
+                el.select_option(timeout=int(step.get("timeout_ms", 3000)),
+                                 **opts)
             else:
                 return f"step {i}: unknown action {action!r}"
         except Exception as e:
@@ -3291,9 +3669,10 @@ _SEVERITY_RANK = {"error": 0, "warn": 1, "info": 2}
 #   }
 #
 # A finding's fingerprint is whatever stable identifier the heuristic
-# produced -- usually the `selector`, but `duplicate-nav-link` uses the
-# `text|href` tuple because the link could be reordered without that
-# being a regression.
+# produced -- usually the `selector`, but `duplicate-nav-block` uses
+# `pair:<label_a>|<label_b>` (the two duplicate nav containers'
+# aria-labels) because the offending pair is what's actionable, not
+# any individual selector.
 
 _ALLOWLIST_CACHE: dict[str, dict[str, list[str]]] | None = None
 

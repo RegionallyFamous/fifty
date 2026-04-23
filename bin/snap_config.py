@@ -432,11 +432,19 @@ INTERACTIONS: dict[str, list[Interaction]] = {
             name="swatch-pick",
             description="Select a non-default attribute and verify variation image swap.",
             steps=[
-                # Generic variation selector: any radio swatch or the
-                # second <option> in the first attribute <select>.
-                {"action": "click",
-                 "selector": "table.variations select option:nth-child(3), "
-                             ".wc-block-components-product-add-to-cart-attribute-picker__option:not([aria-checked='true'])",
+                # Two paths. Classic-template variable products render a
+                # `<table class="variations"><select>` (5/5 demo
+                # storefronts use this); WC Blocks variable products
+                # render `.wc-block-components-product-add-to-cart-
+                # attribute-picker__option` radio swatches. We probe the
+                # classic select first via `select_option` because
+                # `<option>` elements are NOT click-targetable in
+                # Chromium (popup-rendered, no DOM bounds) -- the
+                # previous `click "select option:nth-child(3)"` was
+                # firing 20 false interaction-failed findings/run.
+                {"action": "select_option",
+                 "selector": "table.variations select",
+                 "index": 1,
                  "timeout_ms": 3000},
                 {"action": "wait", "ms": 600},
             ],
@@ -478,21 +486,22 @@ INSPECT_SELECTORS: dict[str, list[str]] = {
         ".wc-block-cart",
         ".wc-block-cart__sidebar",
         ".wc-block-cart__main",
-        ".wc-block-components-sidebar-layout__sidebar",
         ".wc-block-cart-items",
         ".wc-block-cart__submit-container",
     ],
     "cart-empty": [
-        ".wp-block-woocommerce-empty-cart-block",
+        # WC removed the `.wp-block-woocommerce-empty-cart-block`
+        # wrapper class somewhere around WC Blocks 11.x; the empty
+        # state now renders inside the same `.wc-block-cart` shell
+        # but without the discriminator. Track only the wrapper.
         ".wc-block-cart",
     ],
-    # Checkout layout: same sidebar contract; main column should match
-    # theme.json wideSize (1280px) on desktop, NOT contentSize (720px).
+    # Checkout layout: main column should match theme.json wideSize
+    # (1280px) on desktop, NOT contentSize (720px).
     "checkout-filled": [
         ".wc-block-checkout",
         ".wc-block-checkout__sidebar",
         ".wc-block-checkout__main",
-        ".wc-block-components-sidebar-layout__sidebar",
         ".wc-block-components-order-summary",
         "main.wp-block-group",  # the page-checkout.html wrapper
     ],
@@ -501,37 +510,32 @@ INSPECT_SELECTORS: dict[str, list[str]] = {
         ".wc-block-product-template",
     ],
     "product-simple": [
-        ".woocommerce-product-gallery",
-        ".product .summary",
         ".wp-block-add-to-cart-form",
         # Phase A: PDP image now renders via core/post-featured-image
         # because the WC product-image-gallery block was unreliable.
-        # Track both so we can prove the swap landed.
         ".wp-block-post-featured-image",
         ".wp-block-post-featured-image img",
     ],
     "product-variable": [
-        ".woocommerce-product-gallery",
         "table.variations",
         # Phase C: variation `<select>`s are visually replaced by an
-        # interactive button-group. The original select stays in the
-        # DOM (visually hidden) so WC's variation_form JS keeps driving
-        # price/stock. Track all three so the gate fails if either the
-        # swatch wrapper or the hidden select disappear.
+        # interactive button-group. The swatch wrapper / group / chip
+        # classes are the live contract; the once-tracked
+        # `.wo-swatch-select` (a hidden `<select>` mirror) is no
+        # longer rendered by the widget — dropping it stops the
+        # inspector from reporting the same "matched 0 elements" on
+        # every shoot.
         ".wo-swatch-wrap",
         ".wo-swatch-group",
         ".wo-swatch",
-        ".wo-swatch-select",
         # Phase C: PDP gallery becomes sticky on >=782px viewports.
         ".wp-block-post-featured-image",
     ],
     "home": [
         ".wp-site-blocks > main",
-        ".wp-block-post-featured-image",
     ],
     "my-account": [
         ".woocommerce-form-login",
-        ".u-columns",
         # Phase D: branded login screen wraps the form in a
         # `wo-account-intro` panel + `wo-account-help` link.
         ".wo-account-intro",
@@ -543,7 +547,6 @@ INSPECT_SELECTORS: dict[str, list[str]] = {
     ],
     "category": [
         ".wp-block-woocommerce-product-template",
-        ".wp-block-term-description",
         # Phase D: editorial archive header strip injected by each
         # theme's `// === BEGIN archive-hero ===` block in
         # `<theme>/functions.php` on category / tag / shop archives

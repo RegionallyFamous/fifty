@@ -206,13 +206,13 @@ On top of the broad page-level checks (`horizontal-overflow`, `placeholder-image
 | `element-overflow-x` | A visible element whose `scrollWidth > clientWidth + 2` while computed `overflow-x: visible` (i.e. the overflow paints past the box). Skips `inline` display + opt-in scroll containers. |
 | `heading-clipped-vertical` | A visible `h1`-`h4` whose `scrollHeight > clientHeight + 2` — typically a wrapping headline inside a parent with `max-height` + `overflow: hidden` eating the second line. |
 | `button-label-overflow` | A `<button>`, `.wp-block-button__link`, `[role=button]`, or `input[type=submit/button]` whose label is wider than the button. Special-cased because button overflow is uniquely jarring (visible borders + backgrounds make the spill impossible to miss). |
-| `duplicate-nav-link` | The same `(text, href)` link rendered in two _different_ visible nav containers at the same time — the "Shop appears in both desktop nav and mobile drawer" bug. Within one container, dupes are intentional (mega-menu mirrors). |
+| `duplicate-nav-block` | Two visible navigation containers whose link sets are nearly identical (Jaccard ≥ 0.8). Catches the real menu-mirror bugs: footer accidentally pulling the primary nav block, two `wp-navigation` blocks rendering the same `wp_navigation` post, mobile drawer + desktop nav both visible at the same viewport, or a footer "legal" row that literally repeats the same links as the help column above it. Ignores benign cross-references like a "Company" footer column linking to `/about/`, `/journal/`, `/contact/` (those are subsets of primary, not duplicates). |
 | `duplicate-h1` | More than one visible `<h1>`, or two `<h1>`s with identical text. Catches templates rendering both site title and post title as `<h1>`, or hero patterns that hard-code an `<h1>` on a route that already has one. |
 | `background-image-broken` | A computed `background-image: url(...)` whose URL `404`'d (or any `>=400`). Wired by intersecting the JS-collected `(selector, url)` pairs with the response listener's `network_failures` — no async JS needed. |
 | `region-void` | A visible element occupying `>=15%` of the viewport area with NO text, NO `img/svg/video/picture/iframe/canvas` descendants, NO `background-image`, AND a `background-color` that matches the body's. The lysholm "transparent cover" regression generalised. |
 | `region-low-density` (warn) | A region taller than 40% of viewport height whose `(text_chars + 50 * media_count) / area_kpx < 0.05`. Information-only — too easy to false-positive on legitimate hero compositions to ship as `error`. |
 
-Each detector caps reports at 5 instances per page so a single structural bug doesn't drown the findings list. Every emitted finding carries a stable `selector` (and, for `duplicate-nav-link`, a `text|href` `fingerprint`) so the allowlist can address it precisely.
+Each detector caps reports at 5 instances per page so a single structural bug doesn't drown the findings list. Every emitted finding carries a stable `selector` (and, for `duplicate-nav-block`, a `pair:<label_a>|<label_b>` `fingerprint` built from the two duplicate nav containers' aria-labels) so the allowlist can address it precisely.
 
 ### Cropped evidence per finding
 
@@ -230,7 +230,7 @@ File shape:
 {
   "obel:desktop:home": {
     "element-overflow-x": ["nav.primary > ul > li:nth-of-type(3) > a"],
-    "duplicate-nav-link": ["shop|/shop/"]
+    "duplicate-nav-block": ["pair:Help|Footer legal"]
   },
   "chonk:mobile:cart-filled": {
     "button-label-overflow": ["button.wp-block-button__link"]
@@ -238,7 +238,7 @@ File shape:
 }
 ```
 
-Key shape: `<theme>:<viewport>:<route>` → `<kind>` → list of fingerprints (selectors for layout bugs; `text|href` tuples for `duplicate-nav-link`; whatever the heuristic emitted as `fingerprint`). When a finding matches an allowlist entry it is **demoted to `info`** and tagged `allowlisted: true` — the original finding is still in the JSON artifact and still appears in `review.md` (with an `_(allowlisted; demoted to info)_` suffix), but it no longer counts toward the gate.
+Key shape: `<theme>:<viewport>:<route>` → `<kind>` → list of fingerprints (selectors for layout bugs; `pair:<label_a>|<label_b>` tuples for `duplicate-nav-block`; whatever the heuristic emitted as `fingerprint`). When a finding matches an allowlist entry it is **demoted to `info`** and tagged `allowlisted: true` — the original finding is still in the JSON artifact and still appears in `review.md` (with an `_(allowlisted; demoted to info)_` suffix), but it no longer counts toward the gate.
 
 The matching pass runs in two places (defence-in-depth):
 1. **`_capture_cell`** at shoot time, so each cell's recorded `error_count` and the gallery badges built from it reflect the post-allowlist gate.

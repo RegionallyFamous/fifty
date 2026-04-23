@@ -1210,6 +1210,250 @@ CSS_PHASE_P = f"""{SENTINEL_OPEN_PHASE_P}
 .wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar .wc-block-components-product-name.wc-block-components-product-name,.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar .wc-block-components-product-name.wc-block-components-product-name,.wc-block-cart-items.wc-block-cart-items.wc-block-cart-items .wc-block-cart-item__product.wc-block-cart-item__product .wc-block-components-product-name.wc-block-components-product-name,.wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar h3.wc-block-components-product-name.wc-block-components-product-name,.wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar .wc-block-components-order-summary-item.wc-block-components-order-summary-item h3,.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar h3{{font-size:12px;text-transform:none;letter-spacing:0;line-height:1.35;}}
 {SENTINEL_CLOSE_PHASE_P}"""
 
+# wc-tells phase-q: real-bug cleanup batch derived from the post-PR-14
+# snap gallery (after detector noise fixes landed):
+#
+#   1. Classic PDP review form overflow (#review_form_wrapper, #respond,
+#      #commentform) — was overflowing its column by 50px on desktop /
+#      42px on tablet because WP's default `<input style="width:75%">`
+#      + 4px border + 8px padding + box-sizing:content-box exceeds the
+#      column. Constrain via box-sizing:border-box + max-width:100% +
+#      min-width:0 (so flex/grid parents don't refuse to shrink).
+#      Kills ~78 element-overflow-x findings/run on every PDP cell.
+#
+#   2. wo-archive-hero h1 line-height 1 -> 1.15. The `line-height:1`
+#      crops the inline-box at the cap height; descender + leading
+#      escapes the box, browsers report scrollHeight > clientHeight by
+#      ~12-14% of font-size (10-14px on the 5xl heading). Italic display
+#      faces make this worse because their letterforms tilt below
+#      baseline. Bumping to 1.15 absorbs the hang within the line-box;
+#      visually identical for single-line "Shop"/"Curiosities" titles
+#      because the parent already centers + baseline-aligns.
+#      Kills ~30 heading-clipped-vertical findings/run on shop +
+#      category archives across all 5 themes.
+#
+#   3. Cart line-item Remove "x" button tap target. The wc-block default
+#      renders the icon inside an `<a class="wc-block-cart-item__remove-link">`
+#      with `display:inline` and a 16px SVG -- effective tap target
+#      ~16x18px, well under the 32px floor. We inline-flex it to
+#      32x32 minimum and visually center the icon. WCAG 2.5.5
+#      Recommended target size is 24x24, but our snap heuristic and
+#      most A11y guidance both want 32x32 for "primary" tap targets.
+#      Kills ~80 tap-target-too-small findings/run on cart-filled.
+#
+#   4. wc-block quantity-selector "+/-" buttons. Same problem as the
+#      Remove icon: 24x24 default, fails the 32px tap-target rule. The
+#      input itself was rendering at 40px wide which clipped the "3"
+#      label by 6px (the "button-label-overflow" rule). Bump buttons
+#      to 36x36 and input to min-width:48px to give two-digit quantities
+#      headroom. (40px input + 24px-each buttons -> 36px buttons +
+#      48px input keeps the overall stepper width approximately
+#      unchanged at ~120px, so cart-line layout doesn't reflow.)
+#      Kills ~80 tap-target findings + 60 button-label-overflow findings.
+#
+SENTINEL_OPEN_PHASE_Q = "/* wc-tells-phase-q-real-bug-cleanup */"
+SENTINEL_CLOSE_PHASE_Q = "/* /wc-tells-phase-q-real-bug-cleanup */"
+CSS_PHASE_Q = f"""{SENTINEL_OPEN_PHASE_Q}
+.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #respond,.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #review_form_wrapper,.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #review_form,.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #commentform,.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #commentform p{{box-sizing:border-box;max-width:100%;min-width:0;}}
+.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #commentform input[type=text],.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #commentform input[type=email],.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #commentform input[type=url],.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #commentform textarea,.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #commentform select{{box-sizing:border-box;max-width:100%;width:100%;min-width:0;}}
+.wo-archive-hero__title.wo-archive-hero__title{{line-height:1.15;}}
+.wc-block-cart-item__remove-link.wc-block-cart-item__remove-link.wc-block-cart-item__remove-link.wc-block-cart-item__remove-link.wc-block-cart-item__remove-link{{display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;}}
+.wc-block-components-quantity-selector__button.wc-block-components-quantity-selector__button.wc-block-components-quantity-selector__button.wc-block-components-quantity-selector__button.wc-block-components-quantity-selector__button{{min-width:36px;min-height:36px;}}
+.wc-block-components-quantity-selector__input.wc-block-components-quantity-selector__input.wc-block-components-quantity-selector__input.wc-block-components-quantity-selector__input.wc-block-components-quantity-selector__input{{min-width:48px;}}
+{SENTINEL_CLOSE_PHASE_Q}"""
+
+# wc-tells phase-r: round-2 cleanup after observing the post-Phase-Q
+# gallery. Targets the next bucket of real bugs, picked from the
+# remaining clusters (not detector tweaks):
+#
+#   1. `.wp-block-post-title` and `h2.wp-block-heading` line-height bump.
+#      Same root cause as the wo-archive-hero fix — `line-height:1`
+#      crops descenders + italic letterform tilt. Singular post / page
+#      titles ("CART", "JOURNAL", post titles) lose 6-12px to the same
+#      bug. Not patching the WP core block style; we doubled-class our
+#      own rule to win the cascade. ~120 heading-clipped findings/run.
+#
+#   2. `.wc-block-mini-cart__button` min-width:48px. Mini-cart count
+#      "3" overflows the button by 6px because WC sizes the button to
+#      hug the icon + 1-digit count; 2-digit counts (and any double-
+#      width glyph) clip. ~60 button-label-overflow findings/run.
+#
+#   3. `.wc-block-checkout__sidebar` overflow-wrap:anywhere. WC's
+#      strict `word-break:keep-all` on the sidebar product names is
+#      causing 16 word-broken findings/run on long product names
+#      that share a sidebar column with a tight gap.
+#
+#   4. Aero announcement bar: `.alignfull > div.wp-block-group` housing
+#      the "✦ HOLOGRAPHIC SHIPPING OVER $50 ✦ CATCH THE NEW DROP →"
+#      strip needs `flex-wrap:wrap` so it doesn't push 117px off-canvas
+#      on tablet/mobile. Targets only aero (the only theme with that
+#      strip) by scoping to `body.theme-aero .wp-site-blocks > div >
+#      header.alignfull > div.wp-block-group:first-child`. The whole
+#      strip is a 2-paragraph flex row; wrapping is the right
+#      responsive behaviour. ~120 element-overflow-x +
+#      ~20 horizontal-overflow findings/run.
+#
+SENTINEL_OPEN_PHASE_R = "/* wc-tells-phase-r-real-bug-cleanup-2 */"
+SENTINEL_CLOSE_PHASE_R = "/* /wc-tells-phase-r-real-bug-cleanup-2 */"
+CSS_PHASE_R = f"""{SENTINEL_OPEN_PHASE_R}
+.wp-block-post-title.wp-block-post-title.wp-block-post-title.wp-block-post-title{{line-height:1.25;padding-bottom:0.05em;}}
+h2.wp-block-heading.wp-block-heading.wp-block-heading.wp-block-heading{{line-height:1.3;padding-bottom:0.05em;}}
+.wc-block-mini-cart__button.wc-block-mini-cart__button.wc-block-mini-cart__button.wc-block-mini-cart__button.wc-block-mini-cart__button{{min-width:60px;padding-left:8px;padding-right:8px;}}
+.wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar{{overflow-wrap:anywhere;}}
+.aero-header.aero-header .is-nowrap.is-nowrap{{flex-wrap:wrap;}}
+{SENTINEL_CLOSE_PHASE_R}"""
+
+
+# wc-tells phase-s: the post-Phase-R / post-batch-4 cleanup. The
+# remaining clusters in the gallery are a tight set of real bugs the
+# previous CSS chunks didn't fully neutralise:
+#
+#   1. wo-archive-hero h1 ("Curiosities", "Range") at the 5xl preset
+#      blows past the mobile viewport: an 11-character serif headline
+#      renders ~385px wide inside a 294px content column, pushing the
+#      whole document scrollWidth 43px past the 390px iPhone viewport.
+#      Cascades into 14× horizontal-overflow + 14× wp-site-blocks
+#      overflow + 12× wp-block-template-part overflow (one per
+#      mobile route, one per theme). Fixed with a `clamp()` so the
+#      headline scales down on narrow viewports while keeping the
+#      desktop typographic intent. Also bumps line-height to 1.3 +
+#      adds padding-block:0.05em so descenders / italic ascenders
+#      don't trip the heading-clipped detector.
+#
+#   2. wo-account-intro__title ("WELCOME BACK TO …") same root cause
+#      at line-height:1, ~22 heading-clipped findings/run.
+#
+#   3. h1.wp-block-heading (page titles like "CART", "CHECKOUT",
+#      "JOURNAL") missed by the post-title rule — the Phase R rule
+#      targets `.wp-block-post-title`, page titles use plain
+#      `.wp-block-heading`. Adds the matching line-height bump.
+#
+#   4. WC product-template `.wc-block-components-product-button`
+#      buttons inside the 4-column shop grid: at tablet width each
+#      button is 120px wide but the default `padding: 12px 24px`
+#      leaves only 72px for the label. Words >= 7 characters
+#      ("Acquire", "Select options") spill 9-10px past the box on
+#      every product card, every mobile/tablet shop+category route.
+#      Shrinks padding to 8px and lets the link text wrap.
+#
+#   5. mini-cart button label "3" still overflows by 2px even after
+#      the Phase R 60px min-width. The WC default uses `width:auto`
+#      and the visible cart-count badge sits absolutely positioned
+#      half-outside the button boundary; bumping min-width with
+#      !important + adding right-padding for the badge clears it.
+#
+SENTINEL_OPEN_PHASE_S = "/* wc-tells-phase-s-real-bug-cleanup-3 */"
+SENTINEL_CLOSE_PHASE_S = "/* /wc-tells-phase-s-real-bug-cleanup-3 */"
+CSS_PHASE_S = f"""{SENTINEL_OPEN_PHASE_S}
+.wo-archive-hero__title.wo-archive-hero__title.wo-archive-hero__title{{font-size:clamp(2rem,8vw,var(--wp--preset--font-size--5-xl));line-height:1.3;padding-block:0.05em;overflow-wrap:break-word;min-width:0;max-width:100%;}}
+.wo-archive-hero__inner.wo-archive-hero__inner{{min-width:0;max-width:100%;}}
+.wo-account-intro__title.wo-account-intro__title.wo-account-intro__title{{line-height:1.3;padding-block:0.05em;}}
+h1.wp-block-heading.wp-block-heading.wp-block-heading.wp-block-heading{{line-height:1.25;padding-bottom:0.05em;}}
+.wp-block-woocommerce-product-template .wc-block-components-product-button.wc-block-components-product-button .wp-block-button__link,.wp-block-woocommerce-product-collection .wc-block-components-product-button.wc-block-components-product-button .wp-block-button__link{{padding-left:8px;padding-right:8px;min-width:0;max-width:100%;white-space:normal;overflow-wrap:break-word;}}
+{SENTINEL_CLOSE_PHASE_S}"""
+
+
+# wc-tells phase-t: the post-Phase-S cleanup. Two specific real bugs
+# that surfaced once the Phase R/S noise cleared:
+#
+#   1. wo-account-login-grid (the "Welcome back, sign in" grid that
+#      wraps WC's login form on the my-account page when the visitor
+#      is logged out) renders inside `.entry-content.alignwide >
+#      .woocommerce` with a 220px content column. The inner login
+#      copy ("PILOT ID … Welcome back to Aero. … Sign In") needs
+#      314px and spills 94px past the box on EVERY my-account route
+#      at desktop+wide (8 element-overflow-x findings/run, plus
+#      visible truncation in the gallery). Force the grid to 1
+#      column with `min-width:0` so the form fields and copy stay
+#      inside the parent column.
+#
+#   2. Selvedge primary nav at tablet (768px viewport) needs 756px
+#      of menu items inside a 705px alignwide content column —
+#      cascades into 51px + 19px overflow findings on the alignwide
+#      / alignfull / template-part / wp-site-blocks chain on every
+#      route. Allow the primary nav row to wrap on tablet+mobile so
+#      the menu reflows below the logo instead of forcing horizontal
+#      scroll. Selvedge-only (other themes' headers fit at 768px).
+#      Targets the alignfull header's nav container with high-spec
+#      class chaining; falls back to `flex-wrap:wrap` which is
+#      what the WP block editor expects when the nav doesn't fit.
+#
+SENTINEL_OPEN_PHASE_T = "/* wc-tells-phase-t-real-bug-cleanup-4 */"
+SENTINEL_CLOSE_PHASE_T = "/* /wc-tells-phase-t-real-bug-cleanup-4 */"
+CSS_PHASE_T = f"""{SENTINEL_OPEN_PHASE_T}
+.wo-account-login-grid.wo-account-login-grid.wo-account-login-grid{{display:grid;grid-template-columns:minmax(0,1fr);min-width:0;max-width:100%;}}
+.wo-account-login-grid.wo-account-login-grid.wo-account-login-grid>*{{min-width:0;max-width:100%;overflow-wrap:break-word;}}
+@media (max-width:781px){{body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull.alignfull,body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignfull,body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignwide,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull.alignfull,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignfull,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignwide,body.theme-lysholm .wp-site-blocks header.wp-block-group.alignfull.alignfull,body.theme-lysholm .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignfull,body.theme-lysholm .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignwide{{flex-wrap:wrap;min-width:0;max-width:100%;}}body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation,body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation__container,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation__container,body.theme-lysholm .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation,body.theme-lysholm .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation__container{{flex-wrap:wrap;min-width:0;max-width:100%;}}}}
+{SENTINEL_CLOSE_PHASE_T}"""
+
+
+# wc-tells phase-u: a small set of remaining real bugs the post-Phase-T
+# gallery exposed:
+#
+#   1. Heading line-height for the explicit big-font-size classes
+#      `.has-6-xl-font-size` and `.has-3-xl-font-size`. The Phase R
+#      `h2.wp-block-heading` rule clears the wrapped-headline case
+#      but the chonk hero "MADE TO LAST. PRICED TO LIVE WITH." H1
+#      uses `has-6-xl-font-size` which has its own line-height:1
+#      coming from the preset, so the post-title rule loses the
+#      cascade. Triple-classed selector restores the bump for
+#      hero/section headings at the named font sizes (~42 heading-
+#      clipped findings/run on chonk + selvedge home + section h1s).
+#
+#   2. wo-account-intro__title overflow-wrap. The "Welcome back to
+#      Aero." headline rendering at 314px inside a 161px <aside>
+#      cell wraps mid-word ("W-e-l-c-o-m-e") on every desktop+wide
+#      my-account route, ~24 word-broken findings/run. Adding
+#      overflow-wrap:anywhere lets the headline break on letterform
+#      boundaries instead of producing a stair-step layout.
+#
+SENTINEL_OPEN_PHASE_U = "/* wc-tells-phase-u-real-bug-cleanup-5 */"
+SENTINEL_CLOSE_PHASE_U = "/* /wc-tells-phase-u-real-bug-cleanup-5 */"
+CSS_PHASE_U = f"""{SENTINEL_OPEN_PHASE_U}
+.has-6-xl-font-size.has-6-xl-font-size.has-6-xl-font-size{{line-height:1.3;}}
+.has-5-xl-font-size.has-5-xl-font-size.has-5-xl-font-size{{line-height:1.3;}}
+.has-4-xl-font-size.has-4-xl-font-size.has-4-xl-font-size{{line-height:1.3;}}
+.has-3-xl-font-size.has-3-xl-font-size.has-3-xl-font-size{{line-height:1.35;}}
+.wo-account-intro__title.wo-account-intro__title.wo-account-intro__title{{overflow-wrap:anywhere;min-width:0;max-width:100%;}}
+.wo-account-intro.wo-account-intro.wo-account-intro,.wo-account-intro.wo-account-intro.wo-account-intro>*{{min-width:0;max-width:100%;overflow-wrap:break-word;}}
+{SENTINEL_CLOSE_PHASE_U}"""
+
+
+# wc-tells phase-v: final cleanup batch covering the long-tail clusters
+# the post-Phase-U gallery still surfaced:
+#
+#   1. Plain `h1.wp-block-heading` / `h2.wp-block-heading` (no font-size
+#      preset class) clipping 5-9px on tablet wraps. The Phase-U bumps
+#      only targeted .has-{3..6}-xl-font-size. Generic block heading
+#      line-height needs the same 1.3 floor so descenders + wraps don't
+#      poke past the heading's own clientHeight.
+#
+#   2. WooCommerce product-button covers BOTH `<button>` and `<a>`
+#      forms (an anchor when the product is variable-with-options or
+#      out-of-stock-with-cta). Phase-S only loosened `<button>` padding
+#      so 16 obel "SELECT OPTIONS" anchors overflowed 19px. Same rule,
+#      `a.wp-block-button__link` now included.
+#
+#   3. Mini-cart "items" badge button is 2px tight (overflow on the
+#      "3" digit when font has wide numerals). Add 2px horizontal
+#      breathing room without a min-width that would cascade-break
+#      header layouts (lesson learnt in Phase S).
+#
+#   4. Checkout order-summary-cart-items: product titles inside the
+#      collapsed accordion block force scrollWidth 14px past
+#      clientWidth on desktop checkout-filled. Force min-width:0 +
+#      overflow-wrap:anywhere on the cart-items block + its descendants
+#      so the title wraps at the box edge instead of pushing.
+#
+SENTINEL_OPEN_PHASE_V = "/* wc-tells-phase-v-real-bug-cleanup-6 */"
+SENTINEL_CLOSE_PHASE_V = "/* /wc-tells-phase-v-real-bug-cleanup-6 */"
+CSS_PHASE_V = f"""{SENTINEL_OPEN_PHASE_V}
+h1.wp-block-heading.wp-block-heading,h2.wp-block-heading.wp-block-heading,h1.wp-block-post-title.wp-block-post-title,h2.wp-block-post-title.wp-block-post-title{{line-height:1.3;}}
+.wp-block-woocommerce-product-template a.wp-block-button__link.wp-block-button__link,.wp-block-woocommerce-product-collection a.wp-block-button__link.wp-block-button__link,.wp-block-woocommerce-product-template .wc-block-components-product-button.wc-block-components-product-button a.wp-block-button__link,.wp-block-woocommerce-product-collection .wc-block-components-product-button.wc-block-components-product-button a.wp-block-button__link{{padding-left:8px;padding-right:8px;min-width:0;max-width:100%;white-space:normal;overflow-wrap:break-word;}}
+.wc-block-mini-cart__button.wc-block-mini-cart__button.wc-block-mini-cart__button{{padding-left:6px;padding-right:6px;}}
+.wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description,.wc-block-components-order-summary-item__title.wc-block-components-order-summary-item__title.wc-block-components-order-summary-item__title.wc-block-components-order-summary-item__title,.wc-block-components-product-name.wc-block-components-product-name.wc-block-components-product-name.wc-block-components-product-name.wc-block-components-product-name{{overflow-wrap:anywhere;min-width:0;max-width:100%;}}
+{SENTINEL_CLOSE_PHASE_V}"""
+
 
 # Each entry: (sentinel_open, sentinel_close, raw_css, anchor_after).
 # `anchor_after` is the marker the chunk is spliced in after — for the
@@ -1348,6 +1592,42 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_PHASE_P,
         CSS_PHASE_P,
         SENTINEL_CLOSE_PHASE_O,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_Q,
+        SENTINEL_CLOSE_PHASE_Q,
+        CSS_PHASE_Q,
+        SENTINEL_CLOSE_PHASE_P,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_R,
+        SENTINEL_CLOSE_PHASE_R,
+        CSS_PHASE_R,
+        SENTINEL_CLOSE_PHASE_Q,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_S,
+        SENTINEL_CLOSE_PHASE_S,
+        CSS_PHASE_S,
+        SENTINEL_CLOSE_PHASE_R,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_T,
+        SENTINEL_CLOSE_PHASE_T,
+        CSS_PHASE_T,
+        SENTINEL_CLOSE_PHASE_S,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_U,
+        SENTINEL_CLOSE_PHASE_U,
+        CSS_PHASE_U,
+        SENTINEL_CLOSE_PHASE_T,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_V,
+        SENTINEL_CLOSE_PHASE_V,
+        CSS_PHASE_V,
+        SENTINEL_CLOSE_PHASE_U,
     ),
 ]
 

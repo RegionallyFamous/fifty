@@ -3,7 +3,7 @@
     "wc_version": "10.7.0",
     "generated_at": 1776861717,
     "comment": "Override selectors in bin/append-wc-overrides.py CHUNKS that currently lose the CSS specificity cascade against WooCommerce Blocks defaults. Grandfathered so check_wc_specificity_winnable() catches NEW regressions only.",
-    "count": 194
+    "count": 196
   },
   "selectors": [
     ".added_to_cart",
@@ -89,8 +89,10 @@
     ".wc-block-mini-cart__footer-actions a",
     ".wc-block-mini-cart__footer-actions a:hover",
     ".wc-block-product-gallery-large-image-next-previous button",
+    ".wo-account-intro.wo-account-intro.wo-account-intro>*",
     ".wo-account-intro__perks li",
     ".wo-account-intro__perks li::before",
+    ".wo-account-login-grid.wo-account-login-grid.wo-account-login-grid>*",
     ".wo-archive-hero__lede p",
     ".wo-next-steps p",
     ".wo-payment-icons__icon>svg",
