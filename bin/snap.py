@@ -957,7 +957,9 @@ _HEURISTICS_JS = r"""
         //              "you might also like" thumbnail slot).
         //              At 6x natural-to-slot on retina = 3x
         //              perceptual = ~9x byte waste, which IS the
-        //              real "blurry zoom" floor. The under-serve
+        //              real "blurry zoom" floor.
+        //
+        // The under-serve
         // floor was 0.75x until 2026-04, but 0.6x matches the actual
         // perceptual threshold: a 1376px hero rendered into a 1920px
         // slot is 71.7% native — slightly upscaled but visually
