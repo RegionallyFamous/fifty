@@ -1,0 +1,634 @@
+"""Pure-python wrapper around the Anthropic Messages API for the smart
+design agent's vision reviewer.
+
+Why this module exists
+----------------------
+[`bin/snap-vision-review.py`](snap-vision-review.py) needs to:
+
+  1. Send a screenshot + a prompt to Claude (a multimodal model)
+  2. Get back structured JSON describing visual design problems
+  3. Track every API call's cost and refuse to run if today's spend
+     exceeds a configurable budget
+  4. Be runnable without an API key for testing (`--dry-run`)
+
+We could pull in the official `anthropic` SDK as a pip dep. We deliberately
+do not: the rest of the repo's tooling (`bin/snap.py`, `bin/check.py`,
+`bin/build-redirects.py`) is Python-stdlib-only by convention. Adding a new
+runtime dep changes the deploy story for every CI job. The Anthropic
+Messages API is one POST endpoint that takes JSON and returns JSON, so
+`urllib.request` is sufficient.
+
+The split mirrors `bin/_design_lib.py`:
+  * `_vision_lib.py` (this file) — pure functions on dicts/strings + one
+    thin HTTP wrapper. Trivial to test in isolation.
+  * `snap-vision-review.py` — argparse + I/O orchestration. Calls into
+    this module.
+
+Cost discipline
+---------------
+Vision tokens are not free. A single 1280×800 PNG bills ~1500 input image
+tokens. Five themes × 11 routes × 4 viewports × ~$0.015 per call lands at
+~$3 for a full --all sweep with current Claude Sonnet pricing.
+
+The discipline this module enforces:
+  1. Every successful call appends a line to `tmp/vision-spend.jsonl`
+     with timestamp, model, input/output tokens, and estimated USD cost.
+  2. `today_spend_usd()` sums today's lines (UTC day boundary). Caller
+     can refuse to start a new call if spend >= `FIFTY_VISION_DAILY_BUDGET`
+     (default $20).
+  3. `--dry-run` mode in the caller bypasses the API entirely — useful
+     for prompt iteration, fixture validation, and CI smoke tests on
+     branches without secrets.
+
+Retry policy
+------------
+Anthropic's API returns 429 (rate limit) and 529 (overloaded) under load,
+plus standard 5xx. We retry up to 3 times with exponential backoff
+(1s, 2s, 4s) on those. 4xx other than 429 fails fast (bad request /
+authentication / model-not-found are not transient).
+
+Schema contract
+---------------
+The vision reviewer asks the model to return JSON with this shape:
+
+    {
+      "findings": [
+        {
+          "kind": "vision:typography-overpowered",
+          "severity": "error" | "warn" | "info",
+          "message": "<= 280 chars human-readable description",
+          "bbox": {"x": int, "y": int, "w": int, "h": int} | null,
+          "rationale": "<= 600 chars explaining the violation against
+                        either the generic rubric or the theme's
+                        design-intent.md",
+          "remedy_hint": "<= 200 chars actionable fix direction" | null
+        },
+        ...
+      ]
+    }
+
+`parse_findings_response()` validates that shape and returns a normalised
+list. Anything that doesn't fit the schema is dropped with a warning so a
+flaky model response can't poison `findings.json`.
+"""
+from __future__ import annotations
+
+import base64
+import datetime as dt
+import hashlib
+import json
+import os
+import time
+import urllib.error
+import urllib.request
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
+ANTHROPIC_API_VERSION = "2023-06-01"
+
+# Default model. Overridable via FIFTY_VISION_MODEL env var. The default is
+# pinned at a Sonnet snapshot known to be reliable for image+JSON; bumping
+# the default model invalidates every cached fingerprint by design (the
+# fingerprint includes the model id), so you'll re-burn budget once.
+DEFAULT_MODEL = os.environ.get("FIFTY_VISION_MODEL", "claude-sonnet-4-5-20251022")
+
+# Pricing in USD per million tokens. Updated 2026-Q2 from Anthropic public
+# pricing. Override via FIFTY_VISION_PRICE_INPUT / FIFTY_VISION_PRICE_OUTPUT.
+# Image tokens are billed as input tokens at the same rate; ~1500 tokens per
+# 1280x800 PNG is the empirical observation.
+DEFAULT_PRICE_INPUT_PER_MTOK = float(os.environ.get("FIFTY_VISION_PRICE_INPUT", "3.00"))
+DEFAULT_PRICE_OUTPUT_PER_MTOK = float(os.environ.get("FIFTY_VISION_PRICE_OUTPUT", "15.00"))
+
+# Daily spend cap. Hard fail (raise BudgetExceededError) above this.
+DEFAULT_DAILY_BUDGET_USD = float(os.environ.get("FIFTY_VISION_DAILY_BUDGET", "20.00"))
+
+# Cost ledger location. Per-call append-only JSONL.
+DEFAULT_LEDGER_PATH = Path("tmp/vision-spend.jsonl")
+
+# Prompt version. Bump when the system prompt or schema changes; this
+# becomes part of the per-PNG cache fingerprint so a prompt iteration
+# invalidates all cached findings (it must — the model would have produced
+# different findings).
+PROMPT_VERSION = "v1.0.0"
+
+# Retry policy
+MAX_RETRY_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = (1.0, 2.0, 4.0)
+RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504, 529})
+
+# Output token cap. The findings response is bounded — even a very busy
+# screenshot maps to at most ~10 findings of ~100 tokens each. Cap protects
+# against the model writing a novel.
+DEFAULT_MAX_OUTPUT_TOKENS = 2000
+
+# Allowed finding kinds. A response that names something outside this set is
+# dropped with a warning. Keep in sync with `vision:*` entries in
+# `bin/finding_remedies.json`.
+ALLOWED_FINDING_KINDS = frozenset(
+    {
+        "vision:typography-overpowered",
+        "vision:hierarchy-flat",
+        "vision:content-orphan",
+        "vision:cta-buried",
+        "vision:alignment-off",
+        "vision:whitespace-imbalance",
+        "vision:photography-mismatch",
+        "vision:color-clash",
+        "vision:brand-violation",
+        "vision:mockup-divergent",
+    }
+)
+
+ALLOWED_SEVERITIES = ("error", "warn", "info")
+
+
+# ---------------------------------------------------------------------------
+# Errors
+# ---------------------------------------------------------------------------
+
+
+class VisionError(Exception):
+    """Base class for any user-actionable failure in this module."""
+
+
+class BudgetExceededError(VisionError):
+    """Raised when a call would push today's spend over the daily cap."""
+
+
+class ApiKeyMissingError(VisionError):
+    """Raised when ANTHROPIC_API_KEY is unset and we're not in dry-run."""
+
+
+class ApiCallFailedError(VisionError):
+    """Raised after MAX_RETRY_ATTEMPTS exhausted on transient failures, or
+    immediately on a non-retryable 4xx."""
+
+
+# ---------------------------------------------------------------------------
+# Data
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class VisionResponse:
+    """One model call's worth of structured output."""
+
+    findings: list[dict]
+    raw_text: str
+    model: str
+    input_tokens: int
+    output_tokens: int
+    cost_usd: float
+    elapsed_s: float
+    dry_run: bool = False
+    cache_hit: bool = False
+
+
+@dataclass
+class LedgerEntry:
+    """One row in `tmp/vision-spend.jsonl`."""
+
+    timestamp_iso: str
+    model: str
+    input_tokens: int
+    output_tokens: int
+    cost_usd: float
+    png_path: str = ""
+    theme: str = ""
+    route: str = ""
+    viewport: str = ""
+
+    def as_dict(self) -> dict:
+        return {
+            "timestamp": self.timestamp_iso,
+            "model": self.model,
+            "input_tokens": self.input_tokens,
+            "output_tokens": self.output_tokens,
+            "cost_usd": round(self.cost_usd, 6),
+            "png_path": self.png_path,
+            "theme": self.theme,
+            "route": self.route,
+            "viewport": self.viewport,
+        }
+
+
+# ---------------------------------------------------------------------------
+# Pure helpers (no I/O)
+# ---------------------------------------------------------------------------
+
+
+def estimate_cost_usd(
+    input_tokens: int,
+    output_tokens: int,
+    *,
+    price_input_per_mtok: float = DEFAULT_PRICE_INPUT_PER_MTOK,
+    price_output_per_mtok: float = DEFAULT_PRICE_OUTPUT_PER_MTOK,
+) -> float:
+    """Estimate USD cost for a single call. Image tokens are billed as
+    input tokens; we don't separate them in the math because Anthropic
+    returns combined `input_tokens` in the usage block.
+    """
+    in_cost = (input_tokens / 1_000_000.0) * price_input_per_mtok
+    out_cost = (output_tokens / 1_000_000.0) * price_output_per_mtok
+    return in_cost + out_cost
+
+
+def fingerprint_inputs(
+    *,
+    png_bytes: bytes,
+    intent_md: str,
+    prompt_version: str = PROMPT_VERSION,
+    model: str = DEFAULT_MODEL,
+    extra: str = "",
+) -> str:
+    """Stable fingerprint covering every input that would change a finding.
+
+    Anything that goes into the model's reasoning belongs here; if any one
+    of these changes, the cached findings on disk must be discarded. SHA-256
+    is overkill for collision risk but keeps the value cheap to compute and
+    reasonable to display in logs.
+    """
+    h = hashlib.sha256()
+    h.update(b"png:")
+    h.update(hashlib.sha256(png_bytes).digest())
+    h.update(b"\nintent:")
+    h.update(hashlib.sha256(intent_md.encode("utf-8")).digest())
+    h.update(b"\nprompt:")
+    h.update(prompt_version.encode("utf-8"))
+    h.update(b"\nmodel:")
+    h.update(model.encode("utf-8"))
+    if extra:
+        h.update(b"\nextra:")
+        h.update(extra.encode("utf-8"))
+    return h.hexdigest()
+
+
+def build_system_prompt() -> str:
+    """The fixed instruction text that frames every vision review.
+
+    Kept in code (not in a markdown file) so changes to it bump
+    PROMPT_VERSION explicitly — the prompt is a versioned interface with
+    the model, not config.
+    """
+    return (
+        "You are a senior product designer reviewing a screenshot of a "
+        "WordPress block theme. You will receive (1) a generic visual "
+        "rubric, (2) the theme's specific design-intent.md rubric, "
+        "(3) the route's purpose, and (4) the screenshot itself.\n\n"
+        "Your job is to identify VISUAL design problems — things a "
+        "designer would flag in a 30-second review. You are NOT looking "
+        "for accessibility issues, broken HTML, or browser-specific "
+        "rendering bugs (those are caught by other tooling). You are "
+        "looking for: typography overpowering the page, collapsed visual "
+        "hierarchy, buried calls-to-action, color clashes, alignment "
+        "drift, whitespace imbalance, brand-voice violations against "
+        "the theme's design-intent.md, and mockup divergence.\n\n"
+        "Return ONLY valid JSON in the schema described in the user "
+        "message. No prose before or after the JSON. No markdown code "
+        "fences. Each finding MUST use one of the allowed `kind` values "
+        "exactly. If the screenshot looks fine, return "
+        "`{\"findings\": []}` — false positives are worse than misses.\n\n"
+        "Severity guide:\n"
+        "  - `error`: a designer would refuse to ship this; user-facing "
+        "regression\n"
+        "  - `warn`: a designer would flag this in review but might ship\n"
+        "  - `info`: a polish opportunity, not a bug"
+    )
+
+
+def build_user_prompt(
+    *,
+    theme: str,
+    route: str,
+    viewport: str,
+    intent_md: str,
+    route_purpose: str = "",
+) -> str:
+    """The per-call user message. Plain text; image is attached separately
+    by the caller."""
+    return (
+        f"## Theme\n`{theme}`\n\n"
+        f"## Route\n`{route}` at viewport `{viewport}`"
+        + (f"\n\n## Route purpose\n{route_purpose}" if route_purpose else "")
+        + f"\n\n## Theme design-intent.md\n\n{intent_md}\n\n"
+        "## Schema (return EXACTLY this shape, no extras)\n\n"
+        "```json\n"
+        "{\n"
+        '  "findings": [\n'
+        "    {\n"
+        '      "kind": "vision:<one-of-allowed-kinds>",\n'
+        '      "severity": "error" | "warn" | "info",\n'
+        '      "message": "<= 280 chars",\n'
+        '      "bbox": {"x": <int>, "y": <int>, "w": <int>, "h": <int>} or null,\n'
+        '      "rationale": "<= 600 chars explaining which rubric rule was violated",\n'
+        '      "remedy_hint": "<= 200 chars actionable suggestion" or null\n'
+        "    }\n"
+        "  ]\n"
+        "}\n"
+        "```\n\n"
+        "## Allowed `kind` values\n\n"
+        + "\n".join(f"- `{k}`" for k in sorted(ALLOWED_FINDING_KINDS))
+        + "\n\nReturn the JSON object now."
+    )
+
+
+def parse_findings_response(raw_text: str) -> list[dict]:
+    """Extract + normalise the findings list from the model's response.
+
+    Best-effort: if the model wraps JSON in a code fence, strip it. If
+    fields are missing, supply defaults. If a finding has an unknown
+    `kind` or invalid `severity`, drop it (don't crash).
+
+    Returns a list of normalised finding dicts ready to be appended to
+    `<route>.findings.json`.
+    """
+    text = raw_text.strip()
+    # Tolerate fenced output even though the prompt forbids it.
+    if text.startswith("```"):
+        first_nl = text.find("\n")
+        if first_nl != -1:
+            text = text[first_nl + 1 :]
+        if text.endswith("```"):
+            text = text[: -3]
+        text = text.strip()
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError:
+        return []
+    raw_findings = payload.get("findings") if isinstance(payload, dict) else None
+    if not isinstance(raw_findings, list):
+        return []
+    out: list[dict] = []
+    for f in raw_findings:
+        if not isinstance(f, dict):
+            continue
+        kind = f.get("kind")
+        severity = f.get("severity")
+        if kind not in ALLOWED_FINDING_KINDS:
+            continue
+        if severity not in ALLOWED_SEVERITIES:
+            severity = "warn"
+        bbox = f.get("bbox")
+        if isinstance(bbox, dict):
+            try:
+                bbox = {
+                    "x": int(bbox.get("x", 0)),
+                    "y": int(bbox.get("y", 0)),
+                    "w": int(bbox.get("w", 0)),
+                    "h": int(bbox.get("h", 0)),
+                }
+            except (TypeError, ValueError):
+                bbox = None
+        else:
+            bbox = None
+        out.append(
+            {
+                "kind": kind,
+                "severity": severity,
+                "message": str(f.get("message", ""))[:280],
+                "bbox": bbox,
+                "rationale": str(f.get("rationale", ""))[:600],
+                "remedy_hint": (str(f.get("remedy_hint"))[:200] if f.get("remedy_hint") else None),
+                "source": "vision",
+            }
+        )
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Ledger I/O (impure but tiny + isolated)
+# ---------------------------------------------------------------------------
+
+
+def append_ledger(entry: LedgerEntry, *, path: Path = DEFAULT_LEDGER_PATH) -> None:
+    """Append one JSON line to the spend ledger. Creates parent dir if
+    missing. Crash-safe via O_APPEND semantics."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(entry.as_dict(), ensure_ascii=False) + "\n")
+
+
+def today_spend_usd(*, path: Path = DEFAULT_LEDGER_PATH, now: dt.datetime | None = None) -> float:
+    """Sum today's ledger entries (UTC day boundary). Returns 0.0 if the
+    ledger doesn't exist yet."""
+    if not path.exists():
+        return 0.0
+    today = (now or dt.datetime.now(dt.timezone.utc)).date().isoformat()
+    total = 0.0
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            ts = row.get("timestamp", "")
+            if ts.startswith(today):
+                total += float(row.get("cost_usd", 0))
+    except OSError:
+        return 0.0
+    return total
+
+
+def assert_under_budget(
+    estimated_call_usd: float,
+    *,
+    cap_usd: float = DEFAULT_DAILY_BUDGET_USD,
+    ledger_path: Path = DEFAULT_LEDGER_PATH,
+) -> None:
+    """Raise BudgetExceededError if (today's spend + estimated_call_usd)
+    would exceed the daily cap. Estimated cost is approximate (we don't
+    know output tokens until after the call); we use input-only as a floor
+    and add a small fixed budget for output."""
+    spent = today_spend_usd(path=ledger_path)
+    if spent + estimated_call_usd > cap_usd:
+        raise BudgetExceededError(
+            f"Today's vision spend is ${spent:.2f}. This call would add "
+            f"~${estimated_call_usd:.2f}, exceeding the daily cap "
+            f"${cap_usd:.2f}. Wait until tomorrow (UTC) or raise "
+            f"FIFTY_VISION_DAILY_BUDGET."
+        )
+
+
+# ---------------------------------------------------------------------------
+# HTTP wrapper
+# ---------------------------------------------------------------------------
+
+
+def _post_with_retry(payload: dict, headers: dict, *, timeout_s: float = 90.0) -> dict:
+    """POST to Anthropic's Messages API with exponential backoff on
+    transient failures. Returns the parsed JSON response. Raises
+    ApiCallFailedError after exhausting retries or on a non-retryable
+    4xx.
+    """
+    body = json.dumps(payload).encode("utf-8")
+    last_exc: Exception | None = None
+    for attempt in range(MAX_RETRY_ATTEMPTS):
+        req = urllib.request.Request(
+            ANTHROPIC_API_URL,
+            data=body,
+            headers=headers,
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            status = exc.code
+            err_body = ""
+            try:
+                err_body = exc.read().decode("utf-8", errors="replace")
+            except Exception:
+                pass
+            if status not in RETRYABLE_STATUS:
+                raise ApiCallFailedError(
+                    f"HTTP {status} from Anthropic (non-retryable): {err_body[:400]}"
+                ) from exc
+            last_exc = exc
+        except urllib.error.URLError as exc:
+            last_exc = exc
+        if attempt < MAX_RETRY_ATTEMPTS - 1:
+            time.sleep(RETRY_BACKOFF_SECONDS[attempt])
+    raise ApiCallFailedError(
+        f"Anthropic call failed after {MAX_RETRY_ATTEMPTS} attempts: {last_exc!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Public API: review_image
+# ---------------------------------------------------------------------------
+
+
+def review_image(
+    *,
+    png_path: Path,
+    intent_md: str,
+    theme: str = "",
+    route: str = "",
+    viewport: str = "",
+    route_purpose: str = "",
+    model: str = DEFAULT_MODEL,
+    api_key: str | None = None,
+    dry_run: bool = False,
+    max_output_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
+    ledger_path: Path = DEFAULT_LEDGER_PATH,
+    daily_budget_usd: float = DEFAULT_DAILY_BUDGET_USD,
+) -> VisionResponse:
+    """Send one screenshot to the vision model and return parsed findings.
+
+    Raises:
+      ApiKeyMissingError if not dry_run and ANTHROPIC_API_KEY is unset.
+      BudgetExceededError if today's spend + this call > daily cap.
+      ApiCallFailedError on persistent HTTP failures.
+
+    In dry_run mode: returns a synthetic VisionResponse with empty
+    findings, prints the prompt to stdout, and does not call the API or
+    touch the ledger. Useful for prompt iteration and CI smoke tests.
+    """
+    png_bytes = Path(png_path).read_bytes()
+    system_prompt = build_system_prompt()
+    user_prompt = build_user_prompt(
+        theme=theme,
+        route=route,
+        viewport=viewport,
+        intent_md=intent_md,
+        route_purpose=route_purpose,
+    )
+
+    if dry_run:
+        return VisionResponse(
+            findings=[],
+            raw_text="(dry-run; no API call)",
+            model=model,
+            input_tokens=0,
+            output_tokens=0,
+            cost_usd=0.0,
+            elapsed_s=0.0,
+            dry_run=True,
+        )
+
+    key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+    if not key:
+        raise ApiKeyMissingError(
+            "ANTHROPIC_API_KEY not set and not running with dry_run=True. "
+            "Either export an API key or pass --dry-run."
+        )
+
+    # Approximate floor cost: 1500 image tokens + ~800 prompt tokens.
+    estimated = estimate_cost_usd(2300, max_output_tokens // 2)
+    assert_under_budget(estimated, cap_usd=daily_budget_usd, ledger_path=ledger_path)
+
+    payload = {
+        "model": model,
+        "max_tokens": max_output_tokens,
+        "system": system_prompt,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "image/png",
+                            "data": base64.b64encode(png_bytes).decode("ascii"),
+                        },
+                    },
+                    {"type": "text", "text": user_prompt},
+                ],
+            }
+        ],
+    }
+    headers = {
+        "x-api-key": key,
+        "anthropic-version": ANTHROPIC_API_VERSION,
+        "content-type": "application/json",
+    }
+
+    started = time.monotonic()
+    resp = _post_with_retry(payload, headers)
+    elapsed = time.monotonic() - started
+
+    # Anthropic response shape:
+    #   {"content": [{"type":"text","text": "..."}, ...], "usage": {...}}
+    raw_text = ""
+    for block in resp.get("content") or []:
+        if isinstance(block, dict) and block.get("type") == "text":
+            raw_text += block.get("text", "")
+    usage = resp.get("usage") or {}
+    in_tokens = int(usage.get("input_tokens", 0))
+    out_tokens = int(usage.get("output_tokens", 0))
+    cost = estimate_cost_usd(in_tokens, out_tokens)
+
+    findings = parse_findings_response(raw_text)
+
+    append_ledger(
+        LedgerEntry(
+            timestamp_iso=dt.datetime.now(dt.timezone.utc).isoformat(),
+            model=model,
+            input_tokens=in_tokens,
+            output_tokens=out_tokens,
+            cost_usd=cost,
+            png_path=str(png_path),
+            theme=theme,
+            route=route,
+            viewport=viewport,
+        ),
+        path=ledger_path,
+    )
+
+    return VisionResponse(
+        findings=findings,
+        raw_text=raw_text,
+        model=model,
+        input_tokens=in_tokens,
+        output_tokens=out_tokens,
+        cost_usd=cost,
+        elapsed_s=elapsed,
+        dry_run=False,
+    )
