@@ -773,10 +773,23 @@ def check_block_markup_anti_patterns() -> Result:
          headings in the aero/lysholm/selvedge footers; fast-path here
          so future generators can't recreate it without tripping the
          pre-commit hook in <0.1s.
+      7. core/post-template: when `layout.type == "grid"`, the JSON
+         MUST set EITHER `columnCount` (fixed N columns: produces
+         `repeat(N, minmax(0, 1fr))`) OR `minimumColumnWidth` (responsive:
+         produces `repeat(auto-fill, minmax(<width>, 1fr))`), NEVER
+         both. With both set, WordPress picks the `auto-fill` algorithm
+         and ignores `columnCount`, so a `{"columnCount":3,
+         "minimumColumnWidth":"18rem"}` on a 1280px wide-size container
+         renders as 4-5 column tracks with only 3 populated -- cards
+         compress to the minimum width and a void appears beside them.
+         This is the exact regression that shipped a "From the
+         Workbench" section with cards squished into 60% of the width
+         in selvedge/aero/lysholm/obel front-pages. Fast-path here so
+         future generators can't recreate it.
     """
     r = Result(
         "Block markup matches save() output "
-        "(group classes, button shadow, paragraph classes, accordion role, button type, heading typography)"
+        "(group classes, button shadow, paragraph classes, accordion role, button type, heading typography, post-template grid)"
     )
 
     skip_dirs = {"templates/", "parts/", "patterns/"}
@@ -853,6 +866,16 @@ def check_block_markup_anti_patterns() -> Result:
         ("letterSpacing", "letter-spacing"),
         ("lineHeight", "line-height"),
         ("textTransform", "text-transform"),
+    )
+
+    # --- Invariant 7: core/post-template grid layout must pick ONE
+    # column-sizing algorithm. We match `<!-- wp:post-template {...} -->`
+    # and inspect the JSON for the layout block + the two column-sizing
+    # keys; the failure logic lives in the per-file loop so the line
+    # number is right.
+    post_template_re = re.compile(
+        r"<!--\s*wp:post-template\s+(\{[^>]*?\})\s*-->",
+        re.MULTILINE,
     )
 
     def _slug_to_class_token(slug: str) -> str:
@@ -1026,6 +1049,38 @@ def check_block_markup_anti_patterns() -> Result:
                     + "only surfaces in production. Mirror the JSON into the "
                     + "rendered tag (add the class(es) and the inline style "
                     + "properties shown above)."
+                )
+
+        # Invariant 7: post-template grid layout must pick ONE sizing algo.
+        for m in post_template_re.finditer(text):
+            json_part = m.group(1)
+            # Only evaluate when layout.type is grid; flex / stack templates
+            # don't use these keys.
+            if not re.search(r'"layout"\s*:\s*\{[^{}]*?"type"\s*:\s*"grid"', json_part):
+                continue
+            has_column_count = bool(
+                re.search(r'(?<![\w])"columnCount"\s*:\s*\d+', json_part)
+            )
+            # `minimumColumnWidth` is "set" only when its value is a non-empty
+            # string. `null` and `""` mean "unset" -- the canonical pattern
+            # used by every working post-template in this repo.
+            min_col_width = re.search(
+                r'(?<![\w])"minimumColumnWidth"\s*:\s*"([^"]+)"', json_part
+            )
+            if has_column_count and min_col_width:
+                lineno = text.count("\n", 0, m.start()) + 1
+                r.fail(
+                    f"{rel}:{lineno}: core/post-template has BOTH `columnCount` "
+                    f"and `minimumColumnWidth: \"{min_col_width.group(1)}\"`. "
+                    f"WordPress's grid layout picks the `auto-fill` algorithm "
+                    f"when `minimumColumnWidth` is set and ignores `columnCount`, "
+                    f"so the rendered grid creates as many tracks as fit at the "
+                    f"minimum width -- only the first N populate, leaving an "
+                    f"empty void beside them at wide viewports. Pick one: set "
+                    f"`\"minimumColumnWidth\":null` for fixed N columns, or "
+                    f"drop `columnCount` for a responsive grid. The canonical "
+                    f"pattern across this repo is `\"columnCount\":N,"
+                    f"\"minimumColumnWidth\":null`."
                 )
 
     if r.passed:
