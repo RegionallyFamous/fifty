@@ -121,7 +121,8 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |   |-- wonders-post-the-art-of-artisanal-silence.png
 |   |   |-- wonders-post-welcome-to-wonders-and-oddities.png
 |   |   `-- wonders-post-year-one-abridged.png
-|   `-- blueprint.json
+|   |-- blueprint.json
+|   `-- generate-images.py
 |-- styles/
 |   |-- dark.json
 |   |-- editorial.json

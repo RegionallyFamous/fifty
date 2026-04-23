@@ -868,13 +868,19 @@ def check_block_markup_anti_patterns() -> Result:
         ("textTransform", "text-transform"),
     )
 
-    # --- Invariant 7: core/post-template grid layout must pick ONE
-    # column-sizing algorithm. We match `<!-- wp:post-template {...} -->`
-    # and inspect the JSON for the layout block + the two column-sizing
-    # keys; the failure logic lives in the per-file loop so the line
-    # number is right.
+    # --- Invariant 7: post/term-template grid layout must pick ONE
+    # column-sizing algorithm. Matches every block whose name ends in
+    # `-template` (`wp:post-template`, `wp:term-template`, both share
+    # WP's grid-layout engine) and inspects the JSON for the layout
+    # block + the two column-sizing keys. Failure logic lives in the
+    # per-file loop so the line number is right.
+    #
+    # The selvedge front-page incident hit BOTH variants on a single
+    # template: line 84 (`wp:term-template`, "Shop by Trade") and
+    # line 186 (`wp:post-template`, "From the Workbench"). The
+    # post-template-only regex would have caught only one.
     post_template_re = re.compile(
-        r"<!--\s*wp:post-template\s+(\{[^>]*?\})\s*-->",
+        r"<!--\s*wp:((?:[a-z0-9-]+/)?(?:post|term)-template)\s+(\{[^>]*?\})\s*-->",
         re.MULTILINE,
     )
 
@@ -1051,9 +1057,9 @@ def check_block_markup_anti_patterns() -> Result:
                     + "properties shown above)."
                 )
 
-        # Invariant 7: post-template grid layout must pick ONE sizing algo.
+        # Invariant 7: post/term-template grid layout must pick ONE sizing algo.
         for m in post_template_re.finditer(text):
-            json_part = m.group(1)
+            block_name, json_part = m.group(1), m.group(2)
             # Only evaluate when layout.type is grid; flex / stack templates
             # don't use these keys.
             if not re.search(r'"layout"\s*:\s*\{[^{}]*?"type"\s*:\s*"grid"', json_part):
@@ -1063,14 +1069,14 @@ def check_block_markup_anti_patterns() -> Result:
             )
             # `minimumColumnWidth` is "set" only when its value is a non-empty
             # string. `null` and `""` mean "unset" -- the canonical pattern
-            # used by every working post-template in this repo.
+            # used by every working post/term-template in this repo.
             min_col_width = re.search(
                 r'(?<![\w])"minimumColumnWidth"\s*:\s*"([^"]+)"', json_part
             )
             if has_column_count and min_col_width:
                 lineno = text.count("\n", 0, m.start()) + 1
                 r.fail(
-                    f"{rel}:{lineno}: core/post-template has BOTH `columnCount` "
+                    f"{rel}:{lineno}: wp:{block_name} has BOTH `columnCount` "
                     f"and `minimumColumnWidth: \"{min_col_width.group(1)}\"`. "
                     f"WordPress's grid layout picks the `auto-fill` algorithm "
                     f"when `minimumColumnWidth` is set and ignores `columnCount`, "
@@ -5378,6 +5384,107 @@ def check_product_images_unique_across_themes() -> Result:
     return r
 
 
+def check_hero_images_unique_across_themes() -> Result:
+    """Fail if any `wonders-page-*.png` or `wonders-post-*.png` is
+    byte-identical across two themes (or duplicated within one).
+
+    SISTER FAIL MODE TO `check_product_images_unique_across_themes`
+    ----------------------------------------------------------------
+    The product-photo check (above) deliberately exempted page +
+    post hero placeholders because, at the time, the seeder was
+    expected to handle hero uniqueness end-to-end. It does not.
+    The selvedge incident demonstrated the gap: every
+    `wonders-page-*.png` (8 files) and `wonders-post-*.png` (20
+    files) under `selvedge/playground/images/` was byte-identical
+    to obel's, so the live demo painted obel's bright coral
+    geometric placeholders inside selvedge's dark editorial
+    cinematic theme. Visually obvious to a human, completely
+    invisible to every other check we ship -- the file COUNT was
+    correct, the slugs all matched, the seeder wired the right
+    file into each post, and `check_product_images_unique_across_themes`
+    walked past hero PNGs by design.
+
+    The check sha256-hashes every theme's `playground/images/`
+    `wonders-page-*.png` and `wonders-post-*.png` files and fails
+    when any two of those files share the same digest -- whether
+    across themes (selvedge shape) or inside a single theme
+    (obel shape: 4 page/post heroes shipped as 3 hash groups, so
+    `wonders-page-home.png` rendered identically to two unrelated
+    journal posts in the live demo). Same remediation shape as
+    the product check: name everything involved, point at
+    `<theme>/playground/generate-images.py` (or the matching
+    bespoke pipeline) as the source of truth, and ask the human
+    to regenerate the duplicates.
+    """
+    import hashlib
+
+    r = Result(
+        "Hero placeholders are unique across themes "
+        "(no copy-paste leak in wonders-page-*.png / wonders-post-*.png)"
+    )
+
+    by_hash: dict[str, list[str]] = {}
+    total_heroes = 0
+    for theme in iter_themes():
+        images_dir = theme / "playground" / "images"
+        if not images_dir.is_dir():
+            continue
+        for pattern in ("wonders-page-*.png", "wonders-post-*.png"):
+            for path in sorted(images_dir.glob(pattern)):
+                try:
+                    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                except OSError:
+                    continue
+                total_heroes += 1
+                by_hash.setdefault(digest, []).append(f"{theme.name}/{path.name}")
+
+    if not total_heroes:
+        r.skip(
+            "no wonders-page-*.png / wonders-post-*.png placeholders "
+            "found in any theme"
+        )
+        return r
+
+    leaks = [(h, files) for h, files in by_hash.items() if len(files) > 1]
+    if leaks:
+        themes_involved: dict[frozenset[str], list[tuple[str, list[str]]]] = {}
+        for digest, files in leaks:
+            theme_set = frozenset(f.split("/", 1)[0] for f in files)
+            themes_involved.setdefault(theme_set, []).append((digest, files))
+
+        for theme_set, group in sorted(
+            themes_involved.items(), key=lambda kv: sorted(kv[0])
+        ):
+            theme_list = ", ".join(sorted(theme_set))
+            count = len(group)
+            sample = sorted(files for _, files in group)[:3]
+            sample_str = "; ".join(" == ".join(f) for f in sample)
+            more = f" (+{count - 3} more)" if count > 3 else ""
+            r.fail(
+                f"{count} hero placeholder(s) byte-identical across "
+                f"[{theme_list}]: {sample_str}{more}. At least one of "
+                f"these themes is shipping another theme's hero imagery "
+                f"under its own slugs -- the live demo will paint the "
+                f"wrong-theme aesthetic for every journal post and page "
+                f"that uses one of these files. Regenerate the duplicates "
+                f"in whichever theme is the copier (typically the newer "
+                f"one) using that theme's visual voice (see each theme's "
+                f"`style.css` Description and the brief in "
+                f"`.cursor/rules/playground-imagery.mdc`); the canonical "
+                f"path is `<theme>/playground/generate-images.py` (see "
+                f"chonk and selvedge for working examples). Drop the new "
+                f"files in `<theme>/playground/images/` and re-run this "
+                f"check to confirm uniqueness."
+            )
+        return r
+
+    r.details.append(
+        f"{total_heroes} hero placeholder(s) hashed across all themes; "
+        f"every page/post hero is byte-unique to its theme"
+    )
+    return r
+
+
 def check_theme_screenshots_distinct() -> Result:
     """Fail when any two themes ship the same ``screenshot.png`` bytes.
 
@@ -6188,6 +6295,7 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_playground_content_seeded(),
         check_no_placeholder_product_images(),
         check_product_images_unique_across_themes(),
+        check_hero_images_unique_across_themes(),
         check_theme_screenshots_distinct(),
         check_wc_specificity_winnable(),
         check_no_serious_axe_in_recent_snaps(),

@@ -131,9 +131,13 @@ def test_passes_when_only_one_theme_ships_product_photos(two_themes):
 def test_page_post_hero_placeholders_are_not_checked(two_themes):
     """Page/post hero refs (`wonders-page-*.png`, `wonders-post-*.png`)
     live on a separate generation track and don't have product
-    counterparts. They MUST NOT be hashed by this check; identical
-    page heroes across themes is a different issue (handled by
-    the seeder)."""
+    counterparts. They MUST NOT be hashed by THIS check -- the
+    sister check `check_hero_images_unique_across_themes` is the one
+    that owns hero uniqueness (see
+    `tests/check_py/test_hero_images_unique_across_themes.py`).
+    Splitting the two means a hero leak fails its own check with a
+    targeted remediation message instead of muddying the product
+    photo signal."""
     monorepo, check = two_themes
     # Identical page heroes across both themes -- should be ignored.
     same_bytes = b"PAGE_HERO_SHARED"
