@@ -1606,6 +1606,74 @@ CSS_PHASE_Y = f"""{SENTINEL_OPEN_PHASE_Y}
 {SENTINEL_CLOSE_PHASE_Y}"""
 
 
+# wc-tells phase-z: finish the WC-chrome fix that phase-y started.
+#
+# FAIL MODE WE'RE FIXING
+# ----------------------
+# After phase-y shipped (fix(foundry): 2-column account + wider cart/
+# checkout #31) three real user-visible bugs remained on
+# demo.regionallyfamous.com -- phase-y was too narrow in scope:
+#
+# 1. CART/CHECKOUT STILL NARROW AT NORMAL DESKTOP (1280-1599px).
+#    Phase-y's widening `@media (min-width:1600px)` and required
+#    `.alignwide` class never matched on typical laptop viewports,
+#    leaving /cart/ and /checkout/ centred in a ~700-900px column
+#    on a 1440px screen. Users on a 13-16" MacBook saw a cramped
+#    two-column layout with massive empty gutters.
+#
+# 2. ORDER-SUMMARY PRODUCT NAMES BROKEN CHARACTER-BY-CHARACTER.
+#    Phase-v applied `overflow-wrap:anywhere` to the product-name
+#    cells so long SKUs couldn't blow out the mobile layout. That
+#    rule does what it says: it breaks at ANY grapheme boundary,
+#    including mid-word. Inside the checkout sidebar (~140px for the
+#    description column after gutters + image + total), "Bottled
+#    Monday Morning" renders as a vertical stack of single-letter
+#    rows ("Bott / led / Mond / ay / Morn / ing"). This is the
+#    `element-overflow-x` heuristic finding we had allowlisted on
+#    checkout-filled across every theme -- a real bug, not a false
+#    positive. `break-word` does the right thing instead: it only
+#    splits at word boundaries unless a single token is truly wider
+#    than the line, preserving word integrity for normal copy.
+#
+# 3. RETURN-TO-CART BUTTON APPEARS STRIKETHROUGH / INVISIBLE.
+#    WC ships the button as an <a>/<button> with a left-pointing
+#    chevron SVG + the label "Return to Cart". Without an explicit
+#    colour/text-decoration rule, the theme's default link style
+#    (often a reset border-bottom or coloured underline) combined
+#    with the SVG stroke made it look like a crossed-out, inactive
+#    link. We give it an unambiguous colour, a subtle underline
+#    that isn't a strikethrough, and a hover tint so it reads as
+#    the "back to cart" escape hatch it is.
+#
+# FIX
+# ---
+# a. Widen .wp-block-woocommerce-cart / .wp-block-woocommerce-checkout
+#    at min-width:1280px regardless of .alignwide (max-width 1200px),
+#    bump to 1440px at min-width:1600px. This replaces phase-y's
+#    too-conservative trigger.
+# b. Downgrade overflow-wrap from `anywhere` to `break-word` on the
+#    order-summary title / description / product-name cells so
+#    product names wrap at word boundaries, not mid-glyph. Phase-v's
+#    rule stays in place for the rare truly-unbreakable token.
+# c. Explicitly style .wc-block-components-checkout-return-to-cart-
+#    button with colour + underline-on-hover so it never again
+#    renders as a strikethrough ghost.
+#
+# This block is theme-agnostic -- it targets WC-block selectors only,
+# no `body.theme-*` specificity -- so the fix lands identically on
+# foundry, obel, chonk, lysholm, selvedge, and aero.
+SENTINEL_OPEN_PHASE_Z = "/* wc-tells-phase-z-desktop-wc-chrome-polish */"
+SENTINEL_CLOSE_PHASE_Z = "/* /wc-tells-phase-z-desktop-wc-chrome-polish */"
+CSS_PHASE_Z = f"""{SENTINEL_OPEN_PHASE_Z}
+@media (min-width:1280px){{.wp-block-woocommerce-cart.wp-block-woocommerce-cart,.wp-block-woocommerce-checkout.wp-block-woocommerce-checkout{{max-width:1200px;margin-left:auto;margin-right:auto;}}}}
+@media (min-width:1600px){{.wp-block-woocommerce-cart.wp-block-woocommerce-cart,.wp-block-woocommerce-checkout.wp-block-woocommerce-checkout{{max-width:1440px;}}}}
+.wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description,.wc-block-components-order-summary-item__title.wc-block-components-order-summary-item__title.wc-block-components-order-summary-item__title.wc-block-components-order-summary-item__title.wc-block-components-order-summary-item__title,.wc-block-components-product-name.wc-block-components-product-name.wc-block-components-product-name.wc-block-components-product-name.wc-block-components-product-name.wc-block-components-product-name{{overflow-wrap:break-word;word-break:normal;hyphens:none;}}
+.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button,.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button:visited{{color:var(--wp--preset--color--contrast);text-decoration:none;border:0;background:transparent;font-weight:var(--wp--custom--font-weight--medium,500);}}
+.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button:hover,.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button:focus-visible{{color:var(--wp--preset--color--accent,var(--wp--preset--color--contrast));text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;}}
+.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button>svg{{fill:currentColor;stroke:currentColor;}}
+{SENTINEL_CLOSE_PHASE_Z}"""
+
+
 SENTINEL_OPEN_PHASE_V = "/* wc-tells-phase-v-real-bug-cleanup-6 */"
 SENTINEL_CLOSE_PHASE_V = "/* /wc-tells-phase-v-real-bug-cleanup-6 */"
 CSS_PHASE_V = f"""{SENTINEL_OPEN_PHASE_V}
@@ -1807,6 +1875,12 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_PHASE_Y,
         CSS_PHASE_Y,
         SENTINEL_CLOSE_PHASE_X,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_Z,
+        SENTINEL_CLOSE_PHASE_Z,
+        CSS_PHASE_Z,
+        SENTINEL_CLOSE_PHASE_Y,
     ),
 ]
 

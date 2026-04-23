@@ -3834,6 +3834,12 @@ def check_wc_chrome_sentinel_present() -> Result:
             "/* /wc-tells-phase-y-login-grid-desktop */",
             "Phase Y (desktop 2-column login grid + wide cart/checkout)",
         ),
+        (
+            "/* wc-tells-phase-z-desktop-wc-chrome-polish */",
+            "/* /wc-tells-phase-z-desktop-wc-chrome-polish */",
+            "Phase Z (1280px cart/checkout widening + word-wrap order "
+            "summary + return-to-cart button style)",
+        ),
     ]
     missing: list[str] = []
     for open_marker, close_marker, label in required_markers:
