@@ -681,7 +681,17 @@ main,
 .concept:hover .pick { color: var(--ink); }
 .concept:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
-.badge {
+/* Concept queue badge — scoped under `.concept` on purpose. The snap
+   gallery (bin/build-snap-gallery.py) defines its own bare `.cell .badge`
+   selectors with a different visual register (mono caps, outlined, no
+   background) and the two systems were colliding when this rule used
+   the bare `.badge` selector — `background: var(--ink)` and the pill
+   border-radius leaked into snap-gallery `.cell .badge` cells, which
+   only declare border + color, so `.badge.flow` (ink-on-ink) and
+   `.badge.warn` ended up rendering as illegible solid black blobs.
+   Keeping the new badge style scoped to `.concept` keeps each surface's
+   badges visually consistent within their own page without leaking. */
+.concept .badge {
   display: inline-block;
   background: var(--ink);
   color: var(--paper);
@@ -695,7 +705,7 @@ main,
   line-height: 1;
   border-radius: 999px;
 }
-.badge.shipped { background: var(--accent); color: var(--paper); }
+.concept .badge.shipped { background: var(--accent); color: var(--paper); }
 
 .concept.shipped { opacity: .55; }
 .concept.shipped:hover { opacity: 1; }
