@@ -2269,6 +2269,32 @@ def _run_interaction(page, flow: Interaction) -> str | None:
                             timeout=int(step.get("timeout_ms", 2000)))
                 el.fill(step.get("text", ""),
                         timeout=int(step.get("timeout_ms", 2000)))
+            elif action == "select_option":
+                # Pick a value in a native <select>. Required because
+                # `<option>` elements are not click-targetable in Chromium
+                # (they're popup-rendered and have no DOM bounds in the
+                # page). For WooCommerce variation dropdowns ("size",
+                # "color"), use this instead of `click` on the option --
+                # the swatch-pick flow learned this the hard way after
+                # 20 false interaction-failed findings/run.
+                #
+                # `value` selects by `<option value=...>`; `index`
+                # selects by position; `label` selects by visible text.
+                # If the caller passes only `selector`, default to
+                # index=1 (the first non-default option, since index 0
+                # is typically the placeholder "Choose an option").
+                el = page.locator(step["selector"]).first
+                el.wait_for(state="attached",
+                            timeout=int(step.get("timeout_ms", 3000)))
+                opts: dict = {}
+                if "value" in step:
+                    opts["value"] = step["value"]
+                elif "label" in step:
+                    opts["label"] = step["label"]
+                else:
+                    opts["index"] = int(step.get("index", 1))
+                el.select_option(timeout=int(step.get("timeout_ms", 3000)),
+                                 **opts)
             else:
                 return f"step {i}: unknown action {action!r}"
         except Exception as e:

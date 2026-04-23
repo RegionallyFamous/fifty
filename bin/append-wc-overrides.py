@@ -1210,6 +1210,58 @@ CSS_PHASE_P = f"""{SENTINEL_OPEN_PHASE_P}
 .wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar .wc-block-components-product-name.wc-block-components-product-name,.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar .wc-block-components-product-name.wc-block-components-product-name,.wc-block-cart-items.wc-block-cart-items.wc-block-cart-items .wc-block-cart-item__product.wc-block-cart-item__product .wc-block-components-product-name.wc-block-components-product-name,.wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar h3.wc-block-components-product-name.wc-block-components-product-name,.wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar .wc-block-components-order-summary-item.wc-block-components-order-summary-item h3,.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar h3{{font-size:12px;text-transform:none;letter-spacing:0;line-height:1.35;}}
 {SENTINEL_CLOSE_PHASE_P}"""
 
+# wc-tells phase-q: real-bug cleanup batch derived from the post-PR-14
+# snap gallery (after detector noise fixes landed):
+#
+#   1. Classic PDP review form overflow (#review_form_wrapper, #respond,
+#      #commentform) — was overflowing its column by 50px on desktop /
+#      42px on tablet because WP's default `<input style="width:75%">`
+#      + 4px border + 8px padding + box-sizing:content-box exceeds the
+#      column. Constrain via box-sizing:border-box + max-width:100% +
+#      min-width:0 (so flex/grid parents don't refuse to shrink).
+#      Kills ~78 element-overflow-x findings/run on every PDP cell.
+#
+#   2. wo-archive-hero h1 line-height 1 -> 1.15. The `line-height:1`
+#      crops the inline-box at the cap height; descender + leading
+#      escapes the box, browsers report scrollHeight > clientHeight by
+#      ~12-14% of font-size (10-14px on the 5xl heading). Italic display
+#      faces make this worse because their letterforms tilt below
+#      baseline. Bumping to 1.15 absorbs the hang within the line-box;
+#      visually identical for single-line "Shop"/"Curiosities" titles
+#      because the parent already centers + baseline-aligns.
+#      Kills ~30 heading-clipped-vertical findings/run on shop +
+#      category archives across all 5 themes.
+#
+#   3. Cart line-item Remove "x" button tap target. The wc-block default
+#      renders the icon inside an `<a class="wc-block-cart-item__remove-link">`
+#      with `display:inline` and a 16px SVG -- effective tap target
+#      ~16x18px, well under the 32px floor. We inline-flex it to
+#      32x32 minimum and visually center the icon. WCAG 2.5.5
+#      Recommended target size is 24x24, but our snap heuristic and
+#      most A11y guidance both want 32x32 for "primary" tap targets.
+#      Kills ~80 tap-target-too-small findings/run on cart-filled.
+#
+#   4. wc-block quantity-selector "+/-" buttons. Same problem as the
+#      Remove icon: 24x24 default, fails the 32px tap-target rule. The
+#      input itself was rendering at 40px wide which clipped the "3"
+#      label by 6px (the "button-label-overflow" rule). Bump buttons
+#      to 36x36 and input to min-width:48px to give two-digit quantities
+#      headroom. (40px input + 24px-each buttons -> 36px buttons +
+#      48px input keeps the overall stepper width approximately
+#      unchanged at ~120px, so cart-line layout doesn't reflow.)
+#      Kills ~80 tap-target findings + 60 button-label-overflow findings.
+#
+SENTINEL_OPEN_PHASE_Q = "/* wc-tells-phase-q-real-bug-cleanup */"
+SENTINEL_CLOSE_PHASE_Q = "/* /wc-tells-phase-q-real-bug-cleanup */"
+CSS_PHASE_Q = f"""{SENTINEL_OPEN_PHASE_Q}
+.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #respond,.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #review_form_wrapper,.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #review_form,.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #commentform,.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #commentform p{{box-sizing:border-box;max-width:100%;min-width:0;}}
+.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #commentform input[type=text],.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #commentform input[type=email],.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #commentform input[type=url],.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #commentform textarea,.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews.wp-block-woocommerce-product-reviews #commentform select{{box-sizing:border-box;max-width:100%;width:100%;min-width:0;}}
+.wo-archive-hero__title.wo-archive-hero__title{{line-height:1.15;}}
+.wc-block-cart-item__remove-link.wc-block-cart-item__remove-link.wc-block-cart-item__remove-link.wc-block-cart-item__remove-link.wc-block-cart-item__remove-link{{display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;}}
+.wc-block-components-quantity-selector__button.wc-block-components-quantity-selector__button.wc-block-components-quantity-selector__button.wc-block-components-quantity-selector__button.wc-block-components-quantity-selector__button{{min-width:36px;min-height:36px;}}
+.wc-block-components-quantity-selector__input.wc-block-components-quantity-selector__input.wc-block-components-quantity-selector__input.wc-block-components-quantity-selector__input.wc-block-components-quantity-selector__input{{min-width:48px;}}
+{SENTINEL_CLOSE_PHASE_Q}"""
+
 
 # Each entry: (sentinel_open, sentinel_close, raw_css, anchor_after).
 # `anchor_after` is the marker the chunk is spliced in after — for the
@@ -1348,6 +1400,12 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_PHASE_P,
         CSS_PHASE_P,
         SENTINEL_CLOSE_PHASE_O,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_Q,
+        SENTINEL_CLOSE_PHASE_Q,
+        CSS_PHASE_Q,
+        SENTINEL_CLOSE_PHASE_P,
     ),
 ]
 

@@ -432,11 +432,19 @@ INTERACTIONS: dict[str, list[Interaction]] = {
             name="swatch-pick",
             description="Select a non-default attribute and verify variation image swap.",
             steps=[
-                # Generic variation selector: any radio swatch or the
-                # second <option> in the first attribute <select>.
-                {"action": "click",
-                 "selector": "table.variations select option:nth-child(3), "
-                             ".wc-block-components-product-add-to-cart-attribute-picker__option:not([aria-checked='true'])",
+                # Two paths. Classic-template variable products render a
+                # `<table class="variations"><select>` (5/5 demo
+                # storefronts use this); WC Blocks variable products
+                # render `.wc-block-components-product-add-to-cart-
+                # attribute-picker__option` radio swatches. We probe the
+                # classic select first via `select_option` because
+                # `<option>` elements are NOT click-targetable in
+                # Chromium (popup-rendered, no DOM bounds) -- the
+                # previous `click "select option:nth-child(3)"` was
+                # firing 20 false interaction-failed findings/run.
+                {"action": "select_option",
+                 "selector": "table.variations select",
+                 "index": 1,
                  "timeout_ms": 3000},
                 {"action": "wait", "ms": 600},
             ],
