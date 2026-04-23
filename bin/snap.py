@@ -997,6 +997,14 @@ _HEURISTICS_JS = r"""
             // false positives/run on `<aside>` 7px-wide collapsed
             // sidebars.
             if (r.width < 32) return;
+            // Author opted into mid-word breaking via overflow-wrap.
+            // When the rendered token would not fit the box width
+            // (e.g. very large hero font in a narrow sidebar),
+            // overflow-wrap:anywhere/break-word is the *correct*
+            // remedy — flagging it as a wrap-mid-word bug is noise.
+            const cs = getComputedStyle(el);
+            const ow = (cs.overflowWrap || cs.wordWrap || '').toLowerCase();
+            if (ow === 'anywhere' || ow === 'break-word') return;
             // Approximate the intrinsic word width: the longest word's
             // pixel width if rendered on a single line.
             const longestWord = text.split(/\s+/).reduce((a,b) => a.length >= b.length ? a : b, '');
@@ -1116,28 +1124,34 @@ _HEURISTICS_JS = r"""
         // skip these produces ~120 noise findings/run on journal recent-
         // posts widgets, footer link columns, and category nav lists.
         const isLoneLinkInListItem = (el) => {
-            const p = el.parentElement;
-            if (!p) return false;
-            if (!p.matches) return false;
-            // Block-level containers that typically house bare-link
-            // text lists (aside widget posts, footer link columns,
-            // breadcrumb-style nav rows). Also `<td>` / `<th>` —
-            // WC cart + checkout summary render product names and
-            // remove links inside table cells whose row height is the
-            // tap surface (one cart-line-item row is ~64px tall but
-            // the inline product-title <a> measures only 18px). The
-            // cell, not the glyph rect, is what the user can tap.
-            if (!p.matches('li, dt, dd, p, h1, h2, h3, h4, h5, h6, td, th')) return false;
-            // Must be the only anchor in its container — if there are
-            // siblings (nav primary > submenu) the per-link tap area
-            // matters individually.
-            const anchors = p.querySelectorAll('a[href]');
-            if (anchors.length !== 1) return false;
-            // Effective tap surface = the parent line-box. Use offset
-            // height inclusive of padding (which is what the click
-            // hit-test honours in practice).
-            const ph = p.offsetHeight || p.getBoundingClientRect().height;
-            return ph >= 28;
+            // Walk up at most 4 levels looking for a block-like
+            // ancestor that contains *only this anchor* and offers
+            // a tap surface >= 28px tall. This catches:
+            //   - bare links in li/dt/dd/p/h1-h6/td/th (vertical
+            //     widget lists, footer columns, breadcrumb rows,
+            //     WC cart + checkout summary product names)
+            //   - product-title links inside <article>/<figure>/
+            //     section card wrappers (cross-sells, related
+            //     products, post grids, journal cards) where the
+            //     entire card surrounding the title is the tap
+            //     target the user actually engages with.
+            let p = el.parentElement;
+            for (let depth = 0; depth < 4 && p; depth++) {
+                if (p.matches && (
+                    p.matches('li, dt, dd, p, h1, h2, h3, h4, h5, h6, td, th')
+                    || p.matches('article, figure, figcaption, section')
+                    || (p.matches('[class*="card" i], [class*="product" i], [class*="post" i]')
+                        && p.matches('div, span'))
+                )) {
+                    const anchors = p.querySelectorAll('a[href]');
+                    if (anchors.length === 1) {
+                        const ph = p.offsetHeight || p.getBoundingClientRect().height;
+                        if (ph >= 28) return true;
+                    }
+                }
+                p = p.parentElement;
+            }
+            return false;
         };
         tapEls.forEach((el) => {
             if (!isVisible(el)) return;
@@ -1155,7 +1169,7 @@ _HEURISTICS_JS = r"""
                 const label = (el.innerText || el.getAttribute('aria-label') || '').trim().slice(0, 40);
                 push("warn", "tap-target-too-small",
                      `Mobile tap target ${Math.round(r.width)}x${Math.round(r.height)}px (<32px) for "${label}".`,
-                     {width: Math.round(r.width), height: Math.round(r.height), label});
+                     {selector: cssPath(el), width: Math.round(r.width), height: Math.round(r.height), label});
             }
         });
     }
@@ -1238,6 +1252,31 @@ _HEURISTICS_JS = r"""
             // Skip the document root + body (already covered by
             // `horizontal-overflow`).
             if (el === document.body || el === document.documentElement) continue;
+            // Decorative-overhang opt-out: when the only descendants
+            // whose own right edge exceeds the parent's box are
+            // `position:absolute|fixed`, the overflow is from a
+            // deliberate badge/sticker placed past the edge (e.g.
+            // chonk-hero__sticker with `right:-16px`). Treat as
+            // intentional, not a layout bug.
+            try {
+                const elRect = el.getBoundingClientRect();
+                const elRight = elRect.right;
+                let foundFlowChild = false;
+                let absOverhang = false;
+                for (const child of el.querySelectorAll('*')) {
+                    const cr = child.getBoundingClientRect();
+                    if (cr.width === 0 || cr.height === 0) continue;
+                    if (cr.right <= elRight + 1) continue;
+                    const ccs = getComputedStyle(child);
+                    if (ccs.position === 'absolute' || ccs.position === 'fixed') {
+                        absOverhang = true;
+                    } else {
+                        foundFlowChild = true;
+                        break;
+                    }
+                }
+                if (absOverhang && !foundFlowChild) continue;
+            } catch (e) { /* fall through */ }
             const sel = cssPath(el);
             const tag = el.tagName.toLowerCase();
             const txt = (el.innerText || '').trim().slice(0, 80);

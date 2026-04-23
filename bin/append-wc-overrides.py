@@ -1383,7 +1383,7 @@ SENTINEL_CLOSE_PHASE_T = "/* /wc-tells-phase-t-real-bug-cleanup-4 */"
 CSS_PHASE_T = f"""{SENTINEL_OPEN_PHASE_T}
 .wo-account-login-grid.wo-account-login-grid.wo-account-login-grid{{display:grid;grid-template-columns:minmax(0,1fr);min-width:0;max-width:100%;}}
 .wo-account-login-grid.wo-account-login-grid.wo-account-login-grid>*{{min-width:0;max-width:100%;overflow-wrap:break-word;}}
-@media (max-width:781px){{body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull.alignfull,body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignfull,body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignwide,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull.alignfull,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignfull,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignwide{{flex-wrap:wrap;min-width:0;max-width:100%;}}body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation,body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation__container,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation__container{{flex-wrap:wrap;min-width:0;max-width:100%;}}}}
+@media (max-width:781px){{body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull.alignfull,body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignfull,body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignwide,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull.alignfull,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignfull,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignwide,body.theme-lysholm .wp-site-blocks header.wp-block-group.alignfull.alignfull,body.theme-lysholm .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignfull,body.theme-lysholm .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignwide{{flex-wrap:wrap;min-width:0;max-width:100%;}}body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation,body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation__container,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation__container,body.theme-lysholm .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation,body.theme-lysholm .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation__container{{flex-wrap:wrap;min-width:0;max-width:100%;}}}}
 {SENTINEL_CLOSE_PHASE_T}"""
 
 
@@ -1410,10 +1410,10 @@ CSS_PHASE_T = f"""{SENTINEL_OPEN_PHASE_T}
 SENTINEL_OPEN_PHASE_U = "/* wc-tells-phase-u-real-bug-cleanup-5 */"
 SENTINEL_CLOSE_PHASE_U = "/* /wc-tells-phase-u-real-bug-cleanup-5 */"
 CSS_PHASE_U = f"""{SENTINEL_OPEN_PHASE_U}
-.has-6-xl-font-size.has-6-xl-font-size.has-6-xl-font-size{{line-height:1.2;padding-bottom:0.05em;}}
-.has-5-xl-font-size.has-5-xl-font-size.has-5-xl-font-size{{line-height:1.2;padding-bottom:0.05em;}}
-.has-4-xl-font-size.has-4-xl-font-size.has-4-xl-font-size{{line-height:1.25;padding-bottom:0.05em;}}
-.has-3-xl-font-size.has-3-xl-font-size.has-3-xl-font-size{{line-height:1.3;padding-bottom:0.05em;}}
+.has-6-xl-font-size.has-6-xl-font-size.has-6-xl-font-size{{line-height:1.3;}}
+.has-5-xl-font-size.has-5-xl-font-size.has-5-xl-font-size{{line-height:1.3;}}
+.has-4-xl-font-size.has-4-xl-font-size.has-4-xl-font-size{{line-height:1.3;}}
+.has-3-xl-font-size.has-3-xl-font-size.has-3-xl-font-size{{line-height:1.35;}}
 .wo-account-intro__title.wo-account-intro__title.wo-account-intro__title{{overflow-wrap:anywhere;min-width:0;max-width:100%;}}
 .wo-account-intro.wo-account-intro.wo-account-intro,.wo-account-intro.wo-account-intro.wo-account-intro>*{{min-width:0;max-width:100%;overflow-wrap:break-word;}}
 {SENTINEL_CLOSE_PHASE_U}"""
