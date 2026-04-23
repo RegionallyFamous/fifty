@@ -1,0 +1,18 @@
+{
+  "_comment": "Example manifest for bin/design-batch.py. Mix of free-form prompts and pre-authored spec files. Each entry MUST set exactly one of 'prompt' or 'spec'. Optional 'slug_hint' provides a placeholder slug for the worktree path before bin/design.py decides the real slug. Top-level 'concurrency' (1-4) and 'model' are optional; CLI flags override.",
+  "concurrency": 1,
+  "themes": [
+    {
+      "prompt": "midcentury department store with warm cream + burnt orange palette, Bricolage Grotesque + Inter, 'parcel' microcopy register",
+      "slug_hint": "midcentury"
+    },
+    {
+      "prompt": "japandi tea ceremony shop, monochrome cypress with single vermilion accent, Cormorant Garamond display + Noto Sans body",
+      "slug_hint": "japandi"
+    },
+    {
+      "prompt": "1990s zine print shop with risograph blue + fluorescent magenta, Space Grotesk display + IBM Plex Mono body, copy that reads like a flyer",
+      "slug_hint": "risozine"
+    }
+  ]
+}

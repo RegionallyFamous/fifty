@@ -754,3 +754,112 @@ def review_image(
         elapsed_s=elapsed,
         dry_run=False,
     )
+
+
+# ---------------------------------------------------------------------------
+# Text-only completions (used by bin/spec-from-prompt.py)
+# ---------------------------------------------------------------------------
+
+
+def text_completion(
+    *,
+    system_prompt: str,
+    user_prompt: str,
+    model: str = DEFAULT_MODEL,
+    api_key: str | None = None,
+    dry_run: bool = False,
+    dry_run_text: str = "",
+    max_output_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
+    ledger_path: Path = DEFAULT_LEDGER_PATH,
+    daily_budget_usd: float = DEFAULT_DAILY_BUDGET_USD,
+    label: str = "text",
+) -> VisionResponse:
+    """Send a text-only prompt to Anthropic, return the text response.
+
+    Re-uses every piece of `review_image`'s plumbing -- retry loop,
+    spend ledger, daily budget cap, model pin, pricing constants -- so
+    the project has exactly one place that knows how to talk to
+    Anthropic and one ledger that records spend.
+
+    Returns a `VisionResponse` (the field names map directly: `raw_text`
+    is the model's output, `findings` is always empty for text calls,
+    `cost_usd` is the per-call cost). Callers who need structured
+    output should JSON-parse `raw_text` themselves -- this helper
+    deliberately stays format-agnostic so it can serve spec generation
+    today and other text-only call sites tomorrow.
+
+    `label` is a freeform tag the caller supplies to keep different
+    call sites apart in the spend ledger (e.g. "spec-from-prompt").
+    """
+    if dry_run:
+        return VisionResponse(
+            findings=[],
+            raw_text=dry_run_text or "(dry-run; no API call)",
+            model=model,
+            input_tokens=0,
+            output_tokens=0,
+            cost_usd=0.0,
+            elapsed_s=0.0,
+            dry_run=True,
+        )
+
+    key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+    if not key:
+        raise ApiKeyMissingError(
+            "ANTHROPIC_API_KEY not set and not running with dry_run=True. "
+            "Either export an API key or pass --dry-run."
+        )
+
+    estimated = estimate_cost_usd(len(user_prompt) // 3 + 500, max_output_tokens // 2)
+    assert_under_budget(estimated, cap_usd=daily_budget_usd, ledger_path=ledger_path)
+
+    payload = {
+        "model": model,
+        "max_tokens": max_output_tokens,
+        "system": system_prompt,
+        "messages": [{"role": "user", "content": user_prompt}],
+    }
+    headers = {
+        "x-api-key": key,
+        "anthropic-version": ANTHROPIC_API_VERSION,
+        "content-type": "application/json",
+    }
+
+    started = time.monotonic()
+    resp = _post_with_retry(payload, headers)
+    elapsed = time.monotonic() - started
+
+    raw_text = ""
+    for block in resp.get("content") or []:
+        if isinstance(block, dict) and block.get("type") == "text":
+            raw_text += block.get("text", "")
+    usage = resp.get("usage") or {}
+    in_tokens = int(usage.get("input_tokens", 0))
+    out_tokens = int(usage.get("output_tokens", 0))
+    cost = estimate_cost_usd(in_tokens, out_tokens)
+
+    append_ledger(
+        LedgerEntry(
+            timestamp_iso=dt.datetime.now(UTC).isoformat(),
+            model=model,
+            input_tokens=in_tokens,
+            output_tokens=out_tokens,
+            cost_usd=cost,
+            png_path=f"text:{label}",
+            theme="",
+            route="",
+            viewport="",
+        ),
+        path=ledger_path,
+    )
+
+    return VisionResponse(
+        findings=[],
+        raw_text=raw_text,
+        model=model,
+        input_tokens=in_tokens,
+        output_tokens=out_tokens,
+        cost_usd=cost,
+        elapsed_s=elapsed,
+        dry_run=False,
+    )
