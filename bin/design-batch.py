@@ -92,13 +92,8 @@ Re-attempt failed themes only::
     python3 bin/design-batch.py --manifest specs/batch-example.json \\
         --run-id 2026-04-23-spring --retry-failed
 """
-# NOTE: deliberately NOT using `from __future__ import annotations` here.
-# Python 3.9's dataclass machinery calls `sys.modules.get(cls.__module__)`
-# while resolving forward-stringified annotations; when this script is
-# imported via `importlib.util.spec_from_file_location` (the smoke test
-# in tests/tools/test_bin_scripts_smoke.py), the module isn't in
-# sys.modules and the dataclass decorator crashes. Using runtime types
-# sidesteps that path entirely.
+
+from __future__ import annotations
 
 import argparse
 import datetime as dt
@@ -112,11 +107,14 @@ import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-UTC = dt.timezone.utc
+# `datetime.UTC` is the 3.11+ alias; fall back to `timezone.utc` for
+# Python 3.9/3.10 local envs. (Same pattern as bin/_vision_lib.py.)
+UTC = getattr(dt, "UTC", dt.timezone.utc)  # noqa: UP017
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "bin"))
 
@@ -124,12 +122,14 @@ sys.path.insert(0, str(ROOT / "bin"))
 # so `--help` doesn't fail when ANTHROPIC_API_KEY isn't set or the
 # vision lib is otherwise unhappy.
 def _vision_lib():
-    import _vision_lib as v  # type: ignore
+    import _vision_lib as v
+
     return v
 
 
 def _design_lib():
-    import _design_lib as d  # type: ignore
+    import _design_lib as d
+
     return d
 
 
@@ -154,11 +154,11 @@ class ThemeOutcome:
     status: str = "pending"  # pending|passed|failed|skipped|budget_capped
     elapsed_s: float = 0.0
     vision_cost_usd: float = 0.0
-    worktree: Optional[str] = None
-    branch: Optional[str] = None
-    pr_url: Optional[str] = None
-    error: Optional[str] = None
-    spec_path: Optional[str] = None
+    worktree: str | None = None
+    branch: str | None = None
+    pr_url: str | None = None
+    error: str | None = None
+    spec_path: str | None = None
 
 
 @dataclass
@@ -166,8 +166,8 @@ class RunReport:
     run_id: str
     started_at: str
     manifest: str
-    themes: List[ThemeOutcome] = field(default_factory=list)
-    totals: Dict[str, Any] = field(default_factory=dict)
+    themes: list[ThemeOutcome] = field(default_factory=list)
+    totals: dict[str, Any] = field(default_factory=dict)
 
     def write(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -177,7 +177,7 @@ class RunReport:
         )
 
     def recompute_totals(self) -> None:
-        totals: Dict[str, Any] = {
+        totals: dict[str, Any] = {
             "passed": 0, "failed": 0, "skipped": 0,
             "budget_capped": 0, "vision_cost_usd": 0.0, "elapsed_s": 0.0,
         }
@@ -197,9 +197,9 @@ class RunReport:
 @dataclass
 class ManifestEntry:
     """One theme to attempt. Either prompt or spec_path is set, not both."""
-    prompt: Optional[str]
-    spec_path: Optional[Path]
-    slug_hint: Optional[str]  # only used as a name for the worktree pre-design
+    prompt: str | None
+    spec_path: Path | None
+    slug_hint: str | None  # only used as a name for the worktree pre-design
 
     def source_label(self) -> str:
         if self.prompt:
@@ -207,7 +207,7 @@ class ManifestEntry:
         return f"spec: {self.spec_path}"
 
 
-def load_manifest(path: Path) -> Tuple[List[ManifestEntry], Dict[str, Any]]:
+def load_manifest(path: Path) -> tuple[list[ManifestEntry], dict[str, Any]]:
     """Return (entries, top-level options). The options dict carries
     `concurrency` and `model` if the manifest sets them; CLI flags
     override these."""
@@ -216,10 +216,10 @@ def load_manifest(path: Path) -> Tuple[List[ManifestEntry], Dict[str, Any]]:
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
-        raise SystemExit(f"error: manifest is not valid JSON: {e}")
+        raise SystemExit(f"error: manifest is not valid JSON: {e}") from e
     if not isinstance(raw, dict) or "themes" not in raw:
         raise SystemExit("error: manifest must be {\"themes\": [...]}")
-    entries: List[ManifestEntry] = []
+    entries: list[ManifestEntry] = []
     for i, row in enumerate(raw.get("themes") or []):
         if not isinstance(row, dict):
             raise SystemExit(f"error: themes[{i}] is not an object")
@@ -285,12 +285,12 @@ class RunnerOptions:
     base_branch: str  # e.g. "origin/main"
     open_prs: bool
     dry_run: bool
-    extra_design_args: List[str]
+    extra_design_args: list[str]
     port_base: int  # FIFTY_PLAYGROUND_PORT_BASE for this worker
     label_run_id: bool
 
 
-def _git(*args: str, cwd: Optional[Path] = None, check: bool = True) -> subprocess.CompletedProcess:
+def _git(*args: str, cwd: Path | None = None, check: bool = True) -> subprocess.CompletedProcess:
     proc = subprocess.run(
         ["git", *args],
         cwd=str(cwd or ROOT),
@@ -305,7 +305,7 @@ def _git(*args: str, cwd: Optional[Path] = None, check: bool = True) -> subproce
     return proc
 
 
-def _ensure_worktree(slug: str, opts: RunnerOptions) -> Tuple[Path, str]:
+def _ensure_worktree(slug: str, opts: RunnerOptions) -> tuple[Path, str]:
     """Create `<worktree_parent>/fifty-batch-<slug>` on a new branch
     `agent/batch-<run-id>-<slug>` rooted at `opts.base_branch`. If the
     worktree exists already, leave it alone so resumability works."""
@@ -328,7 +328,7 @@ def _run_design(
 ) -> subprocess.CompletedProcess:
     """Invoke `bin/design.py` inside the worktree. Returns the
     completed process (caller inspects rc + stdout/stderr)."""
-    cmd: List[str] = [sys.executable, "bin/design.py"]
+    cmd: list[str] = [sys.executable, "bin/design.py"]
     if entry.prompt:
         cmd.extend(["--prompt", entry.prompt])
     elif entry.spec_path:
@@ -390,7 +390,7 @@ def _commit_and_push(
     branch: str,
     slug: str,
     opts: RunnerOptions,
-) -> Optional[str]:
+) -> str | None:
     """Stage everything, commit, push, optionally open a PR. Returns
     the PR URL on success or None when --no-pr is set."""
     if opts.dry_run:
@@ -411,7 +411,7 @@ def _commit_and_push(
     if not opts.open_prs:
         return None
     _git("push", "-u", "origin", branch, cwd=worktree)
-    label_args: List[str] = ["--label", "design"]
+    label_args: list[str] = ["--label", "design"]
     if opts.label_run_id:
         label_args.extend(["--label", f"batch-{opts.run_id}"])
     pr = subprocess.run(
@@ -668,13 +668,13 @@ def _vision_default_budget() -> float:
         return 20.0
 
 
-def _resolve_run_id(cli_value: Optional[str]) -> str:
+def _resolve_run_id(cli_value: str | None) -> str:
     if cli_value:
         return cli_value
     return f"{dt.datetime.now(UTC).strftime('%Y%m%d')}-{uuid.uuid4().hex[:6]}"
 
 
-def _resolve_concurrency(cli: Optional[int], manifest: Dict[str, Any]) -> int:
+def _resolve_concurrency(cli: int | None, manifest: dict[str, Any]) -> int:
     raw = cli if cli is not None else int(manifest.get("concurrency", 1))
     if raw < 1:
         raise SystemExit("error: concurrency must be >= 1")
@@ -688,7 +688,7 @@ def _resolve_concurrency(cli: Optional[int], manifest: Dict[str, Any]) -> int:
     return raw
 
 
-def _load_existing_report(path: Path) -> Optional[RunReport]:
+def _load_existing_report(path: Path) -> RunReport | None:
     if not path.is_file():
         return None
     try:
@@ -705,7 +705,7 @@ def _load_existing_report(path: Path) -> Optional[RunReport]:
     )
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     entries, manifest_opts = load_manifest(args.manifest)
     if not entries:
@@ -759,7 +759,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     report_lock = threading.Lock()
 
-    def _one(idx_entry: Tuple[int, ManifestEntry]) -> ThemeOutcome:
+    def _one(idx_entry: tuple[int, ManifestEntry]) -> ThemeOutcome:
         idx, entry = idx_entry
         # Allocate a unique port per worker by mixing the entry index
         # with the base. Single-worker runs always use port_base.

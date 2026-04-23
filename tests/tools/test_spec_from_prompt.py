@@ -13,8 +13,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "bin" / "spec-from-prompt.py"
 
@@ -39,15 +37,17 @@ def test_help_exits_zero():
 
 def test_dry_run_writes_valid_spec(tmp_path: Path):
     out = tmp_path / "demo.json"
-    r = _run([
-        "--prompt",
-        "warm midcentury department store",
-        "--dry-run",
-        "--slug-hint",
-        "midcentury",
-        "--out",
-        str(out),
-    ])
+    r = _run(
+        [
+            "--prompt",
+            "warm midcentury department store",
+            "--dry-run",
+            "--slug-hint",
+            "midcentury",
+            "--out",
+            str(out),
+        ]
+    )
     assert r.returncode == 0, r.stderr
     assert r.stdout.strip() == str(out)
     assert out.is_file()
@@ -59,15 +59,17 @@ def test_dry_run_writes_valid_spec(tmp_path: Path):
 
 def test_dry_run_default_path_uses_slug_hint(tmp_path: Path):
     out_dir = tmp_path / "specs"
-    r = _run([
-        "--prompt",
-        "anything",
-        "--dry-run",
-        "--slug-hint",
-        "demo-spec",
-        "--out-dir",
-        str(out_dir),
-    ])
+    r = _run(
+        [
+            "--prompt",
+            "anything",
+            "--dry-run",
+            "--slug-hint",
+            "demo-spec",
+            "--out-dir",
+            str(out_dir),
+        ]
+    )
     assert r.returncode == 0, r.stderr
     expected = out_dir / "demo-spec.json"
     assert expected.is_file()
@@ -81,29 +83,33 @@ def test_rejects_empty_prompt():
 
 
 def test_rejects_invalid_slug_hint(tmp_path: Path):
-    r = _run([
-        "--prompt",
-        "x",
-        "--dry-run",
-        "--slug-hint",
-        "Not A Slug",
-        "--out",
-        str(tmp_path / "out.json"),
-    ])
+    r = _run(
+        [
+            "--prompt",
+            "x",
+            "--dry-run",
+            "--slug-hint",
+            "Not A Slug",
+            "--out",
+            str(tmp_path / "out.json"),
+        ]
+    )
     assert r.returncode == 2
     assert "not a valid theme slug" in r.stderr
 
 
 def test_out_and_out_dir_are_mutually_exclusive(tmp_path: Path):
-    r = _run([
-        "--prompt",
-        "x",
-        "--dry-run",
-        "--out",
-        str(tmp_path / "a.json"),
-        "--out-dir",
-        str(tmp_path / "d"),
-    ])
+    r = _run(
+        [
+            "--prompt",
+            "x",
+            "--dry-run",
+            "--out",
+            str(tmp_path / "a.json"),
+            "--out-dir",
+            str(tmp_path / "d"),
+        ]
+    )
     assert r.returncode != 0
     assert "mutually exclusive" in r.stderr
 
@@ -113,15 +119,17 @@ def test_dry_run_spec_passes_design_validate(tmp_path: Path):
     --dry-run` accepts. Catches drift between this script's example
     spec and `validate_spec`."""
     out = tmp_path / "demo.json"
-    r = _run([
-        "--prompt",
-        "x",
-        "--dry-run",
-        "--slug-hint",
-        "demo",
-        "--out",
-        str(out),
-    ])
+    r = _run(
+        [
+            "--prompt",
+            "x",
+            "--dry-run",
+            "--slug-hint",
+            "demo",
+            "--out",
+            str(out),
+        ]
+    )
     assert r.returncode == 0, r.stderr
     design_py = REPO_ROOT / "bin" / "design.py"
     r2 = subprocess.run(

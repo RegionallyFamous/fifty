@@ -67,6 +67,12 @@ def test_script_imports(script_name: str) -> None:
     spec = importlib.util.spec_from_file_location(module_name, BIN_DIR / script_name)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
+    # Register in sys.modules BEFORE executing. Python's documented
+    # pattern for importlib + dataclasses: @dataclass resolves stringified
+    # annotations (PEP 563 / `from __future__ import annotations`) via
+    # `sys.modules[cls.__module__]`. Without this line the lookup returns
+    # None and the decorator crashes with AttributeError.
+    sys.modules[module_name] = module
     try:
         spec.loader.exec_module(module)
     except SystemExit:

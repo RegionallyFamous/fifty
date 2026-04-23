@@ -66,10 +66,10 @@ from _design_lib import (  # noqa: E402
     validate_spec,
 )
 from _vision_lib import (  # noqa: E402
-    ApiKeyMissingError,
-    BudgetExceededError,
     DEFAULT_DAILY_BUDGET_USD,
     DEFAULT_MODEL,
+    ApiKeyMissingError,
+    BudgetExceededError,
     text_completion,
 )
 
@@ -330,7 +330,7 @@ def main(argv: list[str] | None = None) -> int:
             out_path.write_text(
                 json.dumps(cached, indent=2, ensure_ascii=False), encoding="utf-8"
             )
-            print(f"cache hit ($0)", file=sys.stderr)
+            print("cache hit ($0)", file=sys.stderr)
             print(str(out_path))
             return 0
         print(

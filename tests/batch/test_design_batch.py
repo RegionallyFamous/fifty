@@ -14,8 +14,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "bin" / "design-batch.py"
 EXAMPLE_MANIFEST = REPO_ROOT / "specs" / "batch-example.json"
@@ -45,13 +43,18 @@ def test_example_manifest_parses_and_dry_run_succeeds(tmp_path: Path):
     future change breaks the manifest schema, this catches it."""
     assert EXAMPLE_MANIFEST.is_file(), "specs/batch-example.json missing"
     out_dir = tmp_path / "wt"
-    r = _run([
-        "--manifest", str(EXAMPLE_MANIFEST),
-        "--dry-run",
-        "--no-pr",
-        "--run-id", "test-example",
-        "--worktree-parent", str(out_dir),
-    ])
+    r = _run(
+        [
+            "--manifest",
+            str(EXAMPLE_MANIFEST),
+            "--dry-run",
+            "--no-pr",
+            "--run-id",
+            "test-example",
+            "--worktree-parent",
+            str(out_dir),
+        ]
+    )
     assert r.returncode == 0, r.stderr + r.stdout
     report = REPO_ROOT / "tmp" / "batch-test-example.json"
     assert report.is_file(), "dry-run should still write a report"
@@ -67,21 +70,28 @@ def test_example_manifest_parses_and_dry_run_succeeds(tmp_path: Path):
 def test_dry_run_with_inline_manifest(tmp_path: Path):
     manifest = tmp_path / "m.json"
     manifest.write_text(
-        json.dumps({
-            "themes": [
-                {"prompt": "warm coastal california surf shop"},
-                {"prompt": "brutalist concrete furniture catalog", "slug_hint": "brutalist"},
-            ]
-        }),
+        json.dumps(
+            {
+                "themes": [
+                    {"prompt": "warm coastal california surf shop"},
+                    {"prompt": "brutalist concrete furniture catalog", "slug_hint": "brutalist"},
+                ]
+            }
+        ),
         encoding="utf-8",
     )
-    r = _run([
-        "--manifest", str(manifest),
-        "--dry-run",
-        "--no-pr",
-        "--run-id", "test-inline",
-        "--worktree-parent", str(tmp_path / "wt"),
-    ])
+    r = _run(
+        [
+            "--manifest",
+            str(manifest),
+            "--dry-run",
+            "--no-pr",
+            "--run-id",
+            "test-inline",
+            "--worktree-parent",
+            str(tmp_path / "wt"),
+        ]
+    )
     assert r.returncode == 0, r.stderr + r.stdout
     report = REPO_ROOT / "tmp" / "batch-test-inline.json"
     assert report.is_file()
@@ -100,11 +110,15 @@ def test_manifest_must_set_exactly_one_of_prompt_or_spec(tmp_path: Path):
         json.dumps({"themes": [{"prompt": "x", "spec": "y.json"}]}),
         encoding="utf-8",
     )
-    r = _run([
-        "--manifest", str(manifest),
-        "--dry-run",
-        "--run-id", "test-bad-1",
-    ])
+    r = _run(
+        [
+            "--manifest",
+            str(manifest),
+            "--dry-run",
+            "--run-id",
+            "test-bad-1",
+        ]
+    )
     assert r.returncode != 0
     assert "exactly one" in r.stderr
 
@@ -112,11 +126,15 @@ def test_manifest_must_set_exactly_one_of_prompt_or_spec(tmp_path: Path):
 def test_manifest_must_have_themes_key(tmp_path: Path):
     manifest = tmp_path / "bad.json"
     manifest.write_text(json.dumps({"hello": []}), encoding="utf-8")
-    r = _run([
-        "--manifest", str(manifest),
-        "--dry-run",
-        "--run-id", "test-bad-2",
-    ])
+    r = _run(
+        [
+            "--manifest",
+            str(manifest),
+            "--dry-run",
+            "--run-id",
+            "test-bad-2",
+        ]
+    )
     assert r.returncode != 0
     assert "themes" in r.stderr
 
@@ -127,13 +145,19 @@ def test_concurrency_clamped_to_hard_cap(tmp_path: Path):
         json.dumps({"themes": [{"prompt": "x"}]}),
         encoding="utf-8",
     )
-    r = _run([
-        "--manifest", str(manifest),
-        "--dry-run",
-        "--concurrency", "99",
-        "--run-id", "test-clamp",
-        "--worktree-parent", str(tmp_path / "wt"),
-    ])
+    r = _run(
+        [
+            "--manifest",
+            str(manifest),
+            "--dry-run",
+            "--concurrency",
+            "99",
+            "--run-id",
+            "test-clamp",
+            "--worktree-parent",
+            str(tmp_path / "wt"),
+        ]
+    )
     assert r.returncode == 0, r.stderr
     assert "clamping" in r.stderr.lower()
     (REPO_ROOT / "tmp" / "batch-test-clamp.json").unlink(missing_ok=True)
@@ -144,18 +168,25 @@ def test_resume_skips_already_passed(tmp_path: Path):
     re-attempt themes already marked passed."""
     manifest = tmp_path / "m.json"
     manifest.write_text(
-        json.dumps({"themes": [
-            {"prompt": "first theme", "slug_hint": "first"},
-            {"prompt": "second theme", "slug_hint": "second"},
-        ]}),
+        json.dumps(
+            {
+                "themes": [
+                    {"prompt": "first theme", "slug_hint": "first"},
+                    {"prompt": "second theme", "slug_hint": "second"},
+                ]
+            }
+        ),
         encoding="utf-8",
     )
     args = [
-        "--manifest", str(manifest),
+        "--manifest",
+        str(manifest),
         "--dry-run",
         "--no-pr",
-        "--run-id", "test-resume",
-        "--worktree-parent", str(tmp_path / "wt"),
+        "--run-id",
+        "test-resume",
+        "--worktree-parent",
+        str(tmp_path / "wt"),
     ]
     r1 = _run(args)
     assert r1.returncode == 0, r1.stderr
@@ -173,10 +204,14 @@ def test_resume_skips_already_passed(tmp_path: Path):
 
 
 def test_missing_manifest_errors_clearly():
-    r = _run([
-        "--manifest", "/does/not/exist.json",
-        "--dry-run",
-        "--run-id", "test-missing",
-    ])
+    r = _run(
+        [
+            "--manifest",
+            "/does/not/exist.json",
+            "--dry-run",
+            "--run-id",
+            "test-missing",
+        ]
+    )
     assert r.returncode != 0
     assert "manifest not found" in r.stderr
