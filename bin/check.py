@@ -2393,12 +2393,66 @@ def check_hover_state_legibility() -> Result:
                     return m.group(1)
         return None
 
+    # Build an index of body.theme-<slug> overrides so we can honour
+    # per-theme cascade winners when evaluating generic rules. Each entry
+    # maps a trailing selector (the part after `body.theme-<slug> `) to a
+    # list of rule bodies that override it in the current theme context.
+    # Overrides from other themes (`body.theme-<other>`) are indexed under
+    # their own slug so we can ignore them.
+    theme_slug = ROOT.name
+    # Match any body-class prefix scoped to the current theme, e.g.
+    # `body.theme-foundry ` or the doubled-specificity variant
+    # `body.theme-foundry.theme-foundry `.
+    current_prefix_re = re.compile(
+        rf"^body(?:\.theme-{re.escape(theme_slug)})+\s+"
+    )
+    other_prefix_re = re.compile(r"^body\.theme-([a-z0-9-]+)")
+    overrides_by_trailing: dict[str, list[str]] = {}
+    for o_match in re.finditer(r"([^{}]+)\{([^}]*)\}", top_css):
+        o_sels, o_body = o_match.group(1), o_match.group(2)
+        if not state_re.search(o_sels):
+            continue
+        for raw in o_sels.split(","):
+            norm = " ".join(raw.split())
+            m = current_prefix_re.match(norm)
+            if m:
+                trailing = norm[m.end() :]
+                overrides_by_trailing.setdefault(trailing, []).append(o_body)
+
+    def _apply_theme_override(trailing_sels: str, base_color_token: str | None,
+                              base_bg_token: str | None) -> tuple[str | None, str | None]:
+        """For a generic rule's selector list, check if `body.theme-<slug>`
+        redefines color/bg for any of those trailing selectors. If so, the
+        override wins per cascade (specificity +1 from the body class).
+        Returns (resolved_color_token, resolved_bg_token) — either inherited
+        from the base rule or overridden by the per-theme scoped rule."""
+        color_tok, bg_tok = base_color_token, base_bg_token
+        for raw in trailing_sels.split(","):
+            key = " ".join(raw.split())
+            for o_body in overrides_by_trailing.get(key, ()):
+                cm = color_re.search(o_body)
+                if cm:
+                    color_tok = cm.group(1)
+                bm = bg_re.search(o_body)
+                if bm:
+                    bg_tok = bm.group(1)
+        return color_tok, bg_tok
+
     failures: list[str] = []
     checked = 0
 
     for rule_match in re.finditer(r"([^{}]+)\{([^}]*)\}", top_css):
         sels, body = rule_match.group(1), rule_match.group(2)
         if not state_re.search(sels):
+            continue
+
+        # Rules scoped to a different theme via `body.theme-<other>` are
+        # inert in the current theme's runtime — skip them so we don't
+        # flag another theme's contrast choices against the current
+        # theme's palette.
+        first_sel = sels.strip().split(",")[0].strip()
+        other_theme_match = other_prefix_re.match(first_sel)
+        if other_theme_match and other_theme_match.group(1) != theme_slug:
             continue
 
         # Resolve text color: hover's own declaration wins; otherwise
@@ -2436,6 +2490,20 @@ def check_hover_state_legibility() -> Result:
                 continue
             bg_hex = DEFAULT_BG
 
+        # Honour per-theme `body.theme-<slug>` cascade overrides. If this
+        # is a generic rule that a theme-scoped rule redefines (higher
+        # specificity), swap in the override's color/bg before computing
+        # contrast — that's what paints at runtime for the current theme.
+        if not other_theme_match:
+            ov_color_tok, ov_bg_tok = _apply_theme_override(sels, text_token, bg_token)
+            if ov_color_tok != text_token and ov_color_tok in palette:
+                text_token = ov_color_tok
+                text_hex = palette[ov_color_tok]
+                text_source = f"overridden by body.theme-{theme_slug}"
+            if ov_bg_tok != bg_token and ov_bg_tok in palette:
+                bg_token = ov_bg_tok
+                bg_hex = palette[ov_bg_tok]
+
         ratio = _wcag_contrast(text_hex, bg_hex)
         checked += 1
         if ratio < 3.0:
@@ -2472,6 +2540,401 @@ def check_hover_state_legibility() -> Result:
         return r
 
     r.details.append(f"{checked} hover/focus state rule(s) verified at ≥3:1 contrast")
+    return r
+
+
+def check_background_clip_text_legibility() -> Result:
+    """Fail if any `background-clip: text` rule paints text using a
+    gradient whose stops are ALL too light to read against the body
+    background.
+
+    Why this exists:
+      The "chrome wordmark" pattern -- `background: linear-gradient(...);
+      -webkit-background-clip: text; color: transparent;` -- is a common
+      way to make a brand title look metallic/iridescent. But if every
+      gradient stop is a pale palette token (e.g. `--surface`, `--muted`,
+      `--tertiary-light`), the text becomes invisible against a pale
+      body background. In-production example: Aero's footer wordmark was
+      `linear-gradient(surface → muted → tertiary → muted → surface)`
+      clipped to text; on the #F5EEFF body, only the middle 20% (the
+      tertiary stop) was readable -- the wordmark looked like a faint
+      ghost and the site's brand disappeared.
+
+      The bug is particularly nasty because it passes
+      `check_hover_state_legibility` (which only looks at explicit
+      `color:` tokens, and these rules declare `color: transparent`)
+      and it passes axe-core (which can't evaluate gradient-clipped
+      text). We need a targeted check that knows about the pattern.
+
+    What this check enforces:
+      For every CSS rule in top-level `styles.css` whose body contains
+      `background-clip: text` (or the `-webkit-` prefix):
+
+      1. Pull every `var(--wp--preset--color--<slug>)` token out of the
+         rule's `background:` (or `background-image:`) declaration.
+      2. Resolve each token to its hex via the theme palette.
+      3. Require at least ONE stop to have ≥3:1 WCAG contrast against
+         `--base` (the body background). 3:1 is the WCAG AA-Large bar,
+         which is correct here: `background-clip: text` is almost always
+         applied to large display type (headings, wordmarks), never to
+         body copy.
+
+      If all stops fall below 3:1, the wordmark is effectively
+      invisible across at least half its height, and we fail with a
+      pointer to the actual palette stops that need replacing.
+
+    Rules whose gradient references non-palette values (raw hex,
+    `rgba(...)`, `currentColor`, etc.) are skipped -- we can't reason
+    about contrast for an arbitrary gradient -- but rules with a
+    mix of palette + raw-hex stops still fail if all their PALETTE
+    stops fail, because the raw-hex stops are not covered by palette
+    tokens this check is meant to gate.
+    """
+    r = Result("Text clipped to a gradient has at least one readable stop")
+
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.skip("theme.json missing")
+        return r
+    try:
+        data = json.loads(theme_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        r.fail(f"theme.json: invalid JSON ({exc}).")
+        return r
+
+    palette_list = ((data.get("settings") or {}).get("color") or {}).get("palette") or []
+    palette: dict[str, str] = {
+        p["slug"]: p["color"]
+        for p in palette_list
+        if isinstance(p, dict)
+        and isinstance(p.get("slug"), str)
+        and isinstance(p.get("color"), str)
+        and re.fullmatch(r"#[0-9A-Fa-f]{6}", p.get("color", ""))
+    }
+    if not palette or "base" not in palette:
+        r.skip("palette is missing required `base` slug")
+        return r
+
+    top_css = (data.get("styles", {}) or {}).get("css") or ""
+    if not top_css.strip():
+        r.skip("no top-level styles.css")
+        return r
+
+    base_hex = palette["base"]
+
+    # `background-clip: text` is the trigger. Match it case-insensitively
+    # and allow the -webkit- prefix. We deliberately require the whole
+    # declaration (`<prop>: text`) so we don't false-positive on e.g.
+    # `content-clip: text` hypothetical names.
+    clip_re = re.compile(
+        r"(?:-webkit-)?background-clip\s*:\s*text\b", re.IGNORECASE
+    )
+    bg_decl_re = re.compile(
+        r"\bbackground(?:-image)?\s*:\s*([^;}]+)", re.IGNORECASE
+    )
+    token_re = re.compile(r"var\(--wp--preset--color--([a-z0-9-]+)\)")
+
+    checked = 0
+    failures: list[str] = []
+
+    for rule_match in re.finditer(r"([^{}]+)\{([^}]*)\}", top_css):
+        sels, body = rule_match.group(1), rule_match.group(2)
+        if not clip_re.search(body):
+            continue
+
+        # Pull the first palette-tokenized gradient we see. Real themes
+        # only ever declare one `background:` per rule.
+        tokens: list[str] = []
+        for bg_match in bg_decl_re.finditer(body):
+            tokens.extend(token_re.findall(bg_match.group(1)))
+
+        if not tokens:
+            # Gradient references non-palette colors only (raw hex,
+            # rgba, currentColor, ...). We can't reason about contrast
+            # for arbitrary stops, so skip rather than false-positive.
+            continue
+
+        stops = [(t, palette[t]) for t in tokens if t in palette]
+        if not stops:
+            continue
+
+        checked += 1
+        best_ratio = 0.0
+        best_token = ""
+        for token, hex_val in stops:
+            ratio = _wcag_contrast(hex_val, base_hex)
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_token = token
+
+        if best_ratio < 3.0:
+            sel_pretty = " ".join(sels.split())
+            if len(sel_pretty) > 140:
+                sel_pretty = sel_pretty[:137] + "..."
+            stop_desc = ", ".join(
+                f"--{t} ({h}, {_wcag_contrast(h, base_hex):.2f}:1)"
+                for t, h in stops
+            )
+            failures.append(
+                f"{sel_pretty}: background-clip:text with gradient stops "
+                f"[{stop_desc}] against --base ({base_hex}). "
+                f"Best stop is `--{best_token}` at {best_ratio:.2f}:1, "
+                f"below the 3:1 large-text floor. The wordmark/heading "
+                f"will be effectively invisible against the body bg. "
+                f"Swap at least one stop to a dark palette token "
+                f"(typical: `--contrast`, `--primary`, `--secondary`, "
+                f"or `--accent` if it's saturated enough), and keep a "
+                f"`color:` fallback on the base rule so the text stays "
+                f"readable if `background-clip:text` is unsupported."
+            )
+
+    if failures:
+        for f in failures:
+            r.fail(f)
+        return r
+
+    if checked == 0:
+        r.skip("no background-clip:text rules in top-level styles.css")
+    else:
+        r.details.append(
+            f"{checked} background-clip:text rule(s) verified: at least "
+            f"one gradient stop ≥3:1 vs --base"
+        )
+    return r
+
+
+def check_nav_item_pill_scoped_to_horizontal() -> Result:
+    """Fail if `.wp-block-navigation-item__content` is given a horizontal
+    pill treatment (non-zero inline padding, rounded-pill radius, and/or
+    a hover background) without scoping the rule to horizontal-only
+    navigation.
+
+    Why this exists:
+      WordPress renders the same DOM (`.wp-block-navigation-item__content`)
+      for both header (horizontal) and footer/sidebar (vertical) nav.
+      A theme often wants header links to look like rounded pills with
+      an on-hover tinted capsule -- but the same rule blindly applied
+      to a vertical footer column makes every link an isolated pill
+      that inherits the header's horizontal inline padding, blowing
+      out the vertical rhythm and mis-aligning the links with their
+      column headings. In-production example (caught 2026-04-22 on
+      Aero): `body.theme-aero .wp-block-navigation
+      .wp-block-navigation-item__content { padding: xs md !important; }`
+      was intended for the header's horizontal bar, but because the
+      selector didn't discriminate orientation, Aero's footer rendered
+      each "All products / Lookbook / Cart / My account" link with
+      wasted horizontal space and a distracting pill-on-hover flash.
+
+    What this check enforces:
+      For every rule in top-level `styles.css` whose selector ends with
+      `.wp-block-navigation-item__content` (or its `:hover`/`:focus`
+      state):
+
+      1. If the selector already restricts orientation via
+         `:not(.is-vertical)`, `.is-horizontal`, or a header-scoped
+         ancestor (`header`, `.site-header`, `.aero-header__...`,
+         `.wp-block-template-part[data-slug*="header"]`, etc.), skip
+         the rule -- correctly scoped.
+      2. Otherwise, fail if the rule body declares ANY of:
+         - a `padding:` / `padding-inline:` / `padding-left|right:` with
+           a non-zero value (the horizontal pill breathing room);
+         - a `border-radius:` that resolves to a pill / "9999px" / 50%
+           (the capsule silhouette);
+         - a `:hover` or `:focus` state setting a non-transparent
+           `background:` / `background-color:` (the tinted-capsule
+           flash that reads wrong in a vertical column).
+
+      These are the three signatures of a "pill hover" treatment that
+      only belongs on a horizontal bar. Rules that just set `color:`,
+      `text-decoration:`, or `padding-block:` (vertical padding only)
+      are fine for both orientations and pass.
+    """
+    r = Result("Nav-item pill treatment is scoped to horizontal-only nav")
+
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.skip("theme.json missing")
+        return r
+    try:
+        data = json.loads(theme_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        r.fail(f"theme.json: invalid JSON ({exc}).")
+        return r
+
+    top_css = (data.get("styles", {}) or {}).get("css") or ""
+    if not top_css.strip():
+        r.skip("no top-level styles.css")
+        return r
+
+    # Selector must mention the nav-item content class. We match the
+    # class loosely so `.wp-block-navigation-item__content::after`
+    # and `.wp-block-navigation-item__content:hover` both count.
+    nav_item_re = re.compile(r"\.wp-block-navigation-item__content\b")
+
+    # Signals that a selector is already correctly scoped to a
+    # horizontal context. Any ONE of these is enough.
+    horizontal_scope_re = re.compile(
+        r":not\(\.is-vertical\)"
+        r"|\.is-horizontal\b"
+        r"|(?:^|[,\s>+~])header\b"
+        r"|\.site-header\b"
+        r"|\.wp-site-blocks\s*>\s*header\b"
+        r"|\[data-slug\*?=[\"']?header"
+        r"|[a-zA-Z0-9_-]*-header(?:__[a-zA-Z0-9_-]+)?",
+    )
+
+    # Signals inside the rule body that this IS pill treatment.
+    # 1. non-zero horizontal padding.
+    pad_all_re = re.compile(
+        r"(?:^|[;{\s])padding\s*:\s*([^;}]+)", re.IGNORECASE
+    )
+    pad_inline_re = re.compile(
+        r"(?:^|[;{\s])padding-(?:inline|left|right)\s*:\s*([^;}]+)",
+        re.IGNORECASE,
+    )
+    # 2. pill-ish radius.
+    radius_re = re.compile(
+        r"(?:^|[;{\s])border-radius\s*:\s*([^;}]+)", re.IGNORECASE
+    )
+    # 3. :hover/:focus bg.
+    state_re = re.compile(r":(?:hover|focus|focus-visible|active)\b")
+    bg_re = re.compile(
+        r"(?:^|[;{\s])background(?:-color)?\s*:\s*([^;}]+)", re.IGNORECASE
+    )
+
+    def _has_nonzero_horizontal_padding(body: str) -> bool:
+        # `padding: <top> <right> <bottom> <left>` shorthand: a non-zero
+        # 2nd or 4th value implies horizontal padding.
+        m = pad_all_re.search(body)
+        if m:
+            parts = m.group(1).strip().split()
+            # 1 value applies to all sides, 2 -> (v, h), 3 -> (t, h, b),
+            # 4 -> (t, r, b, l). For our purposes, any non-"0" value in
+            # a slot that covers horizontal is a hit.
+            horizontal_slots: list[str] = []
+            if len(parts) == 1:
+                horizontal_slots = parts
+            elif len(parts) == 2:
+                horizontal_slots = [parts[1]]
+            elif len(parts) == 3:
+                horizontal_slots = [parts[1]]
+            elif len(parts) >= 4:
+                horizontal_slots = [parts[1], parts[3]]
+            for slot in horizontal_slots:
+                # Anything that isn't literally "0", "0px", "0rem",
+                # "0em", or "initial"/"unset" counts as non-zero.
+                s = slot.strip().rstrip("!important").strip()
+                if s.lower() not in ("0", "0px", "0rem", "0em", "unset", "initial", "none"):
+                    return True
+        # Dedicated padding-inline / padding-left / padding-right
+        # with a non-zero value.
+        for m2 in pad_inline_re.finditer(body):
+            s = m2.group(1).strip().rstrip("!important").strip().split()[0]
+            if s.lower() not in ("0", "0px", "0rem", "0em", "unset", "initial", "none"):
+                return True
+        return False
+
+    def _has_pill_radius(body: str) -> bool:
+        m = radius_re.search(body)
+        if not m:
+            return False
+        val = m.group(1).lower()
+        return ("9999" in val) or ("50%" in val) or ("pill" in val) or ("--radius--pill" in val)
+
+    def _has_state_bg(selectors: str, body: str) -> bool:
+        if not state_re.search(selectors):
+            return False
+        m = bg_re.search(body)
+        if not m:
+            return False
+        val = m.group(1).lower().strip()
+        # `background: transparent|none|inherit|initial|unset` is a reset
+        # (unscoped resets are fine -- the vertical nav will look
+        # normal).
+        non_trigger_first_tokens = {
+            "transparent",
+            "none",
+            "inherit",
+            "initial",
+            "unset",
+        }
+        first_token = val.split()[0].rstrip(";").rstrip(",")
+        if first_token in non_trigger_first_tokens:
+            return False
+        return True
+
+    failures: list[str] = []
+    checked = 0
+
+    for rule_match in re.finditer(r"([^{}]+)\{([^}]*)\}", top_css):
+        sels, body = rule_match.group(1), rule_match.group(2)
+        if not nav_item_re.search(sels):
+            continue
+        # Evaluate each comma-separated selector independently. Even one
+        # unscoped selector in a selector list is enough to over-apply.
+        bad_selectors = []
+        for raw_sel in sels.split(","):
+            s = raw_sel.strip()
+            if not nav_item_re.search(s):
+                continue
+            if horizontal_scope_re.search(s):
+                continue
+            bad_selectors.append(s)
+
+        if not bad_selectors:
+            checked += 1
+            continue
+
+        signals: list[str] = []
+        if _has_nonzero_horizontal_padding(body):
+            signals.append("non-zero horizontal padding (pill breathing room)")
+        if _has_pill_radius(body):
+            signals.append("pill-shaped border-radius")
+        if _has_state_bg(sels, body):
+            signals.append(
+                ":hover/:focus background fill (capsule flash)"
+            )
+        # Require at least TWO signals to flag the rule. A single signal
+        # alone is too weak: base rules often set a tiny optical
+        # padding-inline (e.g. 2-xs ≈ 4px) on all nav items without
+        # breaking the vertical layout. The footgun is the COMBINATION
+        # (pill padding + pill radius, or hover-bg + pill padding),
+        # which unambiguously announces "this is meant to be a
+        # horizontal pill bar" and only-then is misapplied to the
+        # vertical footer nav.
+        if len(signals) < 2:
+            checked += 1
+            continue
+
+        checked += 1
+        sel_pretty = ", ".join(bad_selectors)
+        if len(sel_pretty) > 180:
+            sel_pretty = sel_pretty[:177] + "..."
+        failures.append(
+            f"{sel_pretty}: applies [{'; '.join(signals)}] to "
+            f"`.wp-block-navigation-item__content` without scoping to a "
+            f"horizontal-only context. The same rule hits the vertical "
+            f"footer nav, where the pill/padding blows out link rhythm "
+            f"and mis-aligns links with their column heading. Scope the "
+            f"selector with `:not(.is-vertical)` (simplest), "
+            f"`.is-horizontal`, or a header ancestor (`header`, "
+            f"`.site-header`, `.{{theme}}-header__nav`). If the "
+            f"vertical nav needs its own treatment, add a separate "
+            f"`.is-vertical` rule."
+        )
+
+    if failures:
+        for f in failures:
+            r.fail(f)
+        return r
+
+    if checked == 0:
+        r.skip("no .wp-block-navigation-item__content rules in top-level styles.css")
+    else:
+        r.details.append(
+            f"{checked} nav-item rule(s) scoped correctly (horizontal-only "
+            f"or orientation-neutral)"
+        )
     return r
 
 
@@ -7120,6 +7583,8 @@ def _build_results(offline: bool) -> list[Result]:
         check_outline_button_paired_with_primary(),
         check_wc_card_padding_not_zeroed(),
         check_hover_state_legibility(),
+        check_background_clip_text_legibility(),
+        check_nav_item_pill_scoped_to_horizontal(),
         check_distinctive_chrome(),
         check_cart_checkout_pages_are_wide(),
         check_wc_chrome_sentinel_present(),
