@@ -10,15 +10,7 @@ WooCommerce knows we're doing this. You can read along.
 
 ## See them running
 
-Each link below boots a fully-seeded WordPress + WooCommerce site **in your browser** — no install, no signup, no card. Give it 60 to 90 seconds on the first boot while it pulls the sample products and images.
-
-| Theme | Vibe | Click here |
-| --- | --- | --- |
-| **Obel** | Editorial, soft, restrained | [demo.regionallyfamous.com/obel/](https://demo.regionallyfamous.com/obel/) |
-| **Chonk** | Neo-brutalist, chunky, high-contrast | [demo.regionallyfamous.com/chonk/](https://demo.regionallyfamous.com/chonk/) |
-| **Selvedge** | Workwear indigo, woven textures, raw edges | [demo.regionallyfamous.com/selvedge/](https://demo.regionallyfamous.com/selvedge/) |
-| **Lysholm** | Quiet Nordic, white-on-white, blonde wood | [demo.regionallyfamous.com/lysholm/](https://demo.regionallyfamous.com/lysholm/) |
-| **Aero** | Iridescent dark mode, glass surfaces, signal accents | [demo.regionallyfamous.com/aero/](https://demo.regionallyfamous.com/aero/) |
+Every shipped theme — and every concept still in the queue — lives at **[demo.regionallyfamous.com](https://demo.regionallyfamous.com/)**. Each tile boots a fully-seeded WordPress + WooCommerce site **in your browser** — no install, no signup, no card. Give it 60 to 90 seconds on the first boot while it pulls the sample products and images.
 
 You land on the homepage as `admin / password`. From there click into the shop, a product, the (already pre-filled) cart, checkout, the customer dashboard, the journal, the 404. Sign in as `customer / customer` to see the customer side. Break stuff — it's disposable.
 
