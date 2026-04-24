@@ -172,13 +172,12 @@ add_filter(
 
 		// First, honour an explicit category thumbnail if WC ever
 		// gets one set (some themes / importers do attach term meta).
-		$image_id  = (int) get_term_meta( $term_id, 'thumbnail_id', true );
-		$image_url = $image_id ? wp_get_attachment_image_url( $image_id, 'large' ) : '';
+		$image_id = (int) get_term_meta( $term_id, 'thumbnail_id', true );
 
 		// Fallback: pull the first product in the category that has
 		// a featured image. WC's `product_cat` IDs and the underlying
 		// term IDs are the same, so we can pass the term_id directly.
-		if ( ! $image_url ) {
+		if ( ! $image_id ) {
 			$products = wc_get_products(
 				array(
 					'category' => array( $term->slug ),
@@ -190,12 +189,10 @@ add_filter(
 				)
 			);
 			foreach ( (array) $products as $pid ) {
-				$tid = get_post_thumbnail_id( $pid );
+				$tid = (int) get_post_thumbnail_id( $pid );
 				if ( $tid ) {
-					$image_url = wp_get_attachment_image_url( $tid, 'large' );
-					if ( $image_url ) {
-						break;
-					}
+					$image_id = $tid;
+					break;
 				}
 			}
 		}
@@ -209,25 +206,45 @@ add_filter(
 		// Skips silently if there's no image to inject (the cover
 		// then paints its overlay color flat -- the original
 		// behaviour, retained as an explicit fallback).
+		//
+		// We use wp_get_attachment_image() rather than hand-rolling the
+		// <img> because it emits `srcset` + a `sizes` hint so the
+		// browser can pick the smallest intermediate (thumbnail/medium/
+		// medium_large) instead of always downloading the 800px full
+		// size. The terms grid renders 5 tiles per row on >=782px
+		// (~20vw each) and stacks 2-wide on mobile (~50vw each); the
+		// `sizes` hint below matches that breakpoint so `snap.py`'s
+		// responsive-image-overserved heuristic no longer flags a
+		// 6× overserve on this route.
 		$updated = $block_content;
-		if ( $image_url ) {
-			$img = sprintf(
-				'<img class="wp-block-cover__image-background selvedge-cat-cover__img" alt="" src="%s" loading="lazy" decoding="async" />',
-				esc_url( $image_url )
+		if ( $image_id ) {
+			$img = wp_get_attachment_image(
+				$image_id,
+				'medium',
+				false,
+				array(
+					'class'    => 'wp-block-cover__image-background selvedge-cat-cover__img',
+					'alt'      => '',
+					'loading'  => 'lazy',
+					'decoding' => 'async',
+					'sizes'    => '(min-width: 782px) 20vw, 50vw',
+				)
 			);
-			// Splice the img right after the opening `<div
-			// class="wp-block-cover ...">`. Using a simple regex
-			// against the cover's leading tag is safe here because
-			// the block's render output always starts with that
-			// single <div ...> (see core/cover/render.php).
-			$spliced = preg_replace(
-				'/(<div\s+class="[^"]*wp-block-cover[^"]*"[^>]*>)/',
-				'$1' . $img,
-				$block_content,
-				1
-			);
-			if ( is_string( $spliced ) ) {
-				$updated = $spliced;
+			if ( $img ) {
+				// Splice the img right after the opening `<div
+				// class="wp-block-cover ...">`. Using a simple regex
+				// against the cover's leading tag is safe here because
+				// the block's render output always starts with that
+				// single <div ...> (see core/cover/render.php).
+				$spliced = preg_replace(
+					'/(<div\s+class="[^"]*wp-block-cover[^"]*"[^>]*>)/',
+					'$1' . $img,
+					$block_content,
+					1
+				);
+				if ( is_string( $spliced ) ) {
+					$updated = $spliced;
+				}
 			}
 		}
 
