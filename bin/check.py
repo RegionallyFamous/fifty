@@ -67,6 +67,16 @@ class Result:
         self.name = name
         self.passed = True
         self.skipped = False
+        # `demoted` flips to True when a failing check is matched against
+        # the `tests/check-baseline-failures.json` allowlist (see
+        # `_demote_baseline_failures` below). A demoted result still has
+        # `passed == False` (we want the check body, details, and any
+        # downstream reporting to treat it as a real finding), but the
+        # overall exit code ignores it so pre-existing debt on `main`
+        # does not block unrelated feature work. The `render()` pass
+        # labels it WARN-BASELINE instead of FAIL so the signal is still
+        # loud on stdout.
+        self.demoted = False
         self.details: list[str] = []
 
     def fail(self, detail: str) -> None:
@@ -82,12 +92,97 @@ class Result:
             label = f"{YELLOW}SKIP{RESET}"
         elif self.passed:
             label = f"{GREEN}PASS{RESET}"
+        elif self.demoted:
+            # Yellow, not red -- and with a distinct tag so log scrapers
+            # can tell the difference between a new regression (FAIL) and
+            # known pre-existing debt on main (WARN-BASELINE).
+            label = f"{YELLOW}WARN-BASELINE{RESET}"
         else:
             label = f"{RED}FAIL{RESET}"
         line = f"  [{label}] {self.name}"
         for detail in self.details:
             line += f"\n         {DIM}{detail}{RESET}"
+        if self.demoted:
+            line += (
+                f"\n         {DIM}(demoted to warning by tests/check-baseline-failures.json; "
+                f"already failing on origin/main, so not treated as a regression){RESET}"
+            )
         return line
+
+
+# ---------------------------------------------------------------------------
+# Baseline-failure allowlist (FIFTY_ALLOW_BASELINE_FAILURES)
+# ---------------------------------------------------------------------------
+#
+# See `tests/check-baseline-failures.json` for the full rationale. The short
+# version: the hooks (pre-commit, pre-push) and CI's theme-gate set
+# `FIFTY_ALLOW_BASELINE_FAILURES=1` around their `bin/check.py` runs. That
+# tells this script to load the JSON file and DEMOTE any failing check
+# whose (theme_name, check_title) pair is listed there -- from FAIL
+# (exit-1-able) to WARN-BASELINE (still printed, but harmless).
+#
+# Rationale: main has always carried a tiny amount of latent debt (e.g.
+# Foundry's 2.14:1 hover contrast vs the 3:1 floor). That debt was
+# irrelevant to every unrelated PR but blocked them anyway, forcing
+# agents to reach for `git commit --no-verify` repeatedly. With this
+# mechanism, pre-existing debt is tracked explicitly, new regressions
+# still block, and the user's feature commits flow through without
+# manual intervention.
+#
+# Regeneration: `python3 bin/check.py --save-baseline-failures` writes
+# the current tree's failures back into the JSON. Run it on origin/main
+# (or let the pre-push hook auto-refresh via a detached `git worktree`
+# when it notices staleness).
+
+BASELINE_FAILURES_PATH = MONOREPO_ROOT / "tests" / "check-baseline-failures.json"
+
+
+def _load_baseline_failures() -> set[tuple[str, str]]:
+    """Return the set of (theme_name, check_title) pairs known to fail on
+    origin/main. Empty set if the file is missing or malformed -- in that
+    case the env var is a no-op and the gate stays strict.
+    """
+    if not BASELINE_FAILURES_PATH.exists():
+        return set()
+    try:
+        data = json.loads(BASELINE_FAILURES_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return set()
+    out: set[tuple[str, str]] = set()
+    for entry in data.get("failures", []) or []:
+        theme = entry.get("theme")
+        check = entry.get("check")
+        if isinstance(theme, str) and isinstance(check, str):
+            out.add((theme, check))
+    return out
+
+
+def _demote_baseline_failures(results: list[Result], theme_name: str) -> int:
+    """Walk `results` and flip `.demoted = True` on any failure whose
+    (theme_name, r.name) matches the baseline allowlist. Returns how many
+    were demoted.
+
+    No-op unless `FIFTY_ALLOW_BASELINE_FAILURES=1`. The env-var gate is
+    there because the default behaviour of `bin/check.py` (called by
+    hand, by `ci-on-main`, or by the `tooling-tests` job) must remain
+    strict: the allowlist is only correct for feature branches whose
+    job is to introduce *new* work without being blocked by pre-
+    existing debt. On main the allowlist would just hide real
+    regressions.
+    """
+    if os.environ.get("FIFTY_ALLOW_BASELINE_FAILURES") != "1":
+        return 0
+    allow = _load_baseline_failures()
+    if not allow:
+        return 0
+    demoted = 0
+    for r in results:
+        if r.passed or r.skipped:
+            continue
+        if (theme_name, r.name) in allow:
+            r.demoted = True
+            demoted += 1
+    return demoted
 
 
 def check_json_validity() -> Result:
@@ -6871,6 +6966,108 @@ def check_no_unpushed_commits() -> Result:
     return r
 
 
+def _save_baseline_failures(offline: bool) -> int:
+    """Rebuild `tests/check-baseline-failures.json` from the CURRENT
+    working tree. Runs every check silently across every theme in the
+    monorepo (via iter_themes), collects the names of every failure,
+    and writes them back as `(theme, check)` pairs alongside the
+    origin/main SHA the tree matches (if any).
+
+    Callers are expected to run this from a tree that REPRESENTS the
+    canonical baseline -- either a clean checkout of `origin/main`, or
+    a detached `git worktree` pointing there. Running it from an
+    arbitrary feature branch will record THAT branch's failure set,
+    which is almost never what you want -- but the file's
+    `recorded_sha` + `recorded_against` fields make it obvious after
+    the fact, and a human re-regeneration from main is cheap.
+
+    Returns 0 on successful write, 1 on any unexpected error.
+    """
+    global ROOT
+    pairs: list[dict[str, str]] = []
+    # Run silently -- no per-check rendering, no per-theme summaries.
+    # This is a scraping pass, not a user-facing gate. Temporarily
+    # disable the baseline-demote env var so a previously-generated
+    # baseline doesn't mask its own contents on a regeneration run.
+    prev_allow = os.environ.pop("FIFTY_ALLOW_BASELINE_FAILURES", None)
+    try:
+        for theme in iter_themes():
+            ROOT = theme
+            results = _build_results(offline=offline)
+            for r in results:
+                if not r.passed and not r.skipped:
+                    pairs.append({"theme": theme.name, "check": r.name})
+    finally:
+        if prev_allow is not None:
+            os.environ["FIFTY_ALLOW_BASELINE_FAILURES"] = prev_allow
+
+    # Try to capture the SHA this tree corresponds to. If origin/main
+    # resolves, assume the caller ran the regen against main (that's the
+    # documented workflow); fall back to the HEAD SHA so the record is
+    # at least truthful.
+    sha = ""
+    ref = "origin/main"
+    try:
+        sha = subprocess.run(
+            ["git", "rev-parse", "origin/main"],
+            cwd=str(MONOREPO_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=5,
+        ).stdout.strip()
+        if not sha:
+            raise RuntimeError("origin/main unresolved")
+    except (subprocess.TimeoutExpired, RuntimeError):
+        try:
+            sha = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=str(MONOREPO_ROOT),
+                capture_output=True,
+                text=True,
+                timeout=5,
+            ).stdout.strip()
+            ref = "HEAD"
+        except subprocess.TimeoutExpired:
+            sha = "UNKNOWN"
+
+    # Importing here (not at module scope) keeps the cold-start cost of
+    # bin/check.py low for the 99% of invocations that don't regenerate
+    # the baseline. `timezone.utc` is used instead of `datetime.UTC`
+    # so the script stays Python 3.9-compatible (`datetime.UTC` is
+    # 3.11+).
+    from datetime import datetime, timezone
+
+    payload = {
+        "_doc": [
+            "Snapshot of which (theme, check-title) pairs are already failing on",
+            "origin/main. When FIFTY_ALLOW_BASELINE_FAILURES=1 (which pre-commit,",
+            "pre-push, and CI's theme-gate set automatically), bin/check.py prints",
+            "these as WARN-BASELINE in yellow and does NOT count them toward its",
+            "exit code -- only NEW failures, introduced by the current branch,",
+            "can block a commit/push/PR.",
+            "",
+            "Regenerate: `python3 bin/check.py --save-baseline-failures`, ideally",
+            "from a detached `git worktree` at origin/main so the snapshot",
+            "reflects main's reality and not the feature branch's.",
+        ],
+        "recorded_against": ref,
+        "recorded_sha": sha,
+        "recorded_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),  # noqa: UP017  (datetime.UTC is Py 3.11+; pyproject's `requires-python` is >=3.9)
+        "failures": sorted(pairs, key=lambda d: (d["theme"], d["check"])),
+    }
+    BASELINE_FAILURES_PATH.parent.mkdir(parents=True, exist_ok=True)
+    BASELINE_FAILURES_PATH.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    print(
+        f"{GREEN}wrote{RESET} {BASELINE_FAILURES_PATH.relative_to(MONOREPO_ROOT)} "
+        f"({len(pairs)} failure{'s' if len(pairs) != 1 else ''} recorded against "
+        f"{ref} @ {sha[:10]})"
+    )
+    return 0
+
+
 def iter_files(suffixes: tuple[str, ...]):
     skip_dirs = {".git", "node_modules", "vendor", "__pycache__"}
     for path in ROOT.rglob("*"):
@@ -6882,12 +7079,14 @@ def iter_files(suffixes: tuple[str, ...]):
             yield path
 
 
-def run_checks_for(theme_root: Path, offline: bool) -> int:
-    global ROOT
-    ROOT = theme_root
-    print(f"Running checks for {theme_root.name} ({'offline' if offline else 'online'})...\n")
-
-    results = [
+def _build_results(offline: bool) -> list[Result]:
+    """Single source of truth for the per-theme check list. Returns a
+    fresh list of Result objects; callers do whatever they want with
+    rendering + gating. Callers must set the module-level ROOT to the
+    target theme BEFORE calling this, since many checks read ROOT
+    directly.
+    """
+    return [
         check_json_validity(),
         check_design_intent_present(),
         check_php_syntax(),
@@ -6947,18 +7146,55 @@ def run_checks_for(theme_root: Path, offline: bool) -> int:
         check_no_unpushed_commits(),
     ]
 
+
+def run_checks_for(theme_root: Path, offline: bool) -> int:
+    global ROOT
+    ROOT = theme_root
+    print(f"Running checks for {theme_root.name} ({'offline' if offline else 'online'})...\n")
+
+    results = _build_results(offline)
+
+    # Demote known pre-existing failures (see `_demote_baseline_failures`)
+    # BEFORE rendering so the labels in `render()` reflect the demotion.
+    # No-op when the env var is unset or the JSON is empty. Count goes
+    # into the summary line below via `demoted_failed`, not a return
+    # value -- we need the per-Result state anyway to split real vs
+    # demoted failures, so pulling the number back out of the list is
+    # cheaper than plumbing an extra int through.
+    _demote_baseline_failures(results, theme_root.name)
+
     for r in results:
         print(r.render())
 
-    failed = [r for r in results if not r.passed and not r.skipped]
+    # Split failures into "real" (new, this-branch) vs "demoted" (already
+    # failing on origin/main, waved through by the baseline allowlist).
+    # Only real failures count toward exit 1.
+    real_failed = [r for r in results if not r.passed and not r.skipped and not r.demoted]
+    demoted_failed = [r for r in results if not r.passed and not r.skipped and r.demoted]
     skipped = [r for r in results if r.skipped]
 
     print()
-    if failed:
-        print(
-            f"{RED}FAILED{RESET}: {len(failed)} of {len(results)} checks failed for {theme_root.name}."
+    if real_failed:
+        msg = (
+            f"{RED}FAILED{RESET}: {len(real_failed)} of {len(results)} checks "
+            f"failed for {theme_root.name}."
         )
+        if demoted_failed:
+            msg += (
+                f" (+{len(demoted_failed)} pre-existing failure"
+                f"{'s' if len(demoted_failed) != 1 else ''} demoted via "
+                f"tests/check-baseline-failures.json)"
+            )
+        print(msg)
         return 1
+    if demoted_failed:
+        print(
+            f"{YELLOW}OK (with baseline warnings){RESET}: all new checks pass "
+            f"for {theme_root.name}; {len(demoted_failed)} pre-existing "
+            f"failure{'s' if len(demoted_failed) != 1 else ''} on origin/main "
+            f"demoted to WARN-BASELINE (see tests/check-baseline-failures.json)."
+        )
+        return 0
     if skipped:
         print(
             f"{GREEN}OK{RESET}: all checks passed for {theme_root.name} ({len(skipped)} skipped)."
@@ -7037,9 +7273,28 @@ def main() -> int:
             "Only used when --visual is passed."
         ),
     )
+    parser.add_argument(
+        "--save-baseline-failures",
+        action="store_true",
+        help=(
+            "Run every check across every theme and write the resulting "
+            "set of failing (theme, check-title) pairs to "
+            "tests/check-baseline-failures.json. That file is consulted "
+            "by FIFTY_ALLOW_BASELINE_FAILURES=1 (set by the git hooks + "
+            "CI theme-gate) to demote pre-existing failures on main to "
+            "WARN-BASELINE so feature branches don't get blocked by "
+            "unrelated debt. Regenerate this file whenever origin/main "
+            "moves in a way that changes the failure set -- ideally "
+            "from a detached worktree pointing at origin/main so the "
+            "baseline reflects main's reality, not your branch's."
+        ),
+    )
     args = parser.parse_args()
 
     offline = args.offline or args.quick
+
+    if args.save_baseline_failures:
+        return _save_baseline_failures(offline=offline)
 
     if args.all:
         exit_codes = []

@@ -278,6 +278,45 @@ python3 bin/snap.py allowlist diff                 # show pending changes; exits
 
 Re-run `regenerate` only when the team has consciously decided to accept a new batch of pre-existing offences. The default path is "fix the new finding, don't add it to the allowlist".
 
+#### Static-check baseline allowlist (`tests/check-baseline-failures.json`)
+
+`bin/check.py` has its own baseline allowlist for the same reason: main has always carried a small amount of latent debt (Foundry's 2.14:1 hover contrast, stray WC-override specificity losses) that was irrelevant to every unrelated PR but blocked them anyway, forcing agents into a `git commit --no-verify` habit that defeats the whole point of having a gate.
+
+`tests/check-baseline-failures.json` lists `(theme, check-title)` pairs that fail on `origin/main`. When `FIFTY_ALLOW_BASELINE_FAILURES=1` (set automatically by `.githooks/pre-commit`, `.githooks/pre-push`, and the PR-side of `.github/workflows/check.yml`'s `theme-gate`), `bin/check.py` **demotes** matching failures from `FAIL` (exit 1) to `WARN-BASELINE` (printed in yellow, exit 0). New failures introduced by the branch — anything NOT in the JSON — still block normally. Push-to-main CI keeps the strict gate so the baseline can't silently grow.
+
+File shape:
+
+```json
+{
+  "recorded_against": "origin/main",
+  "recorded_sha": "<40-char sha>",
+  "recorded_at_utc": "2026-04-24T05:45:00Z",
+  "failures": [
+    {"theme": "foundry", "check": "Hover/focus states have legible text-vs-background contrast"},
+    {"theme": "obel", "check": "WC override selectors win the cascade vs WC Blocks defaults"}
+  ]
+}
+```
+
+Managing it:
+
+```bash
+# Regenerate from the CURRENT tree (run this while checked out on
+# a clean origin/main, or from a detached `git worktree` that is).
+python3 bin/check.py --save-baseline-failures
+```
+
+Staleness is graceful:
+- Stale additions (things already fixed on main but still listed) just produce extra permissiveness on the fixed checks. Harmless.
+- Stale omissions (new failures on main that aren't listed yet) block unrelated PRs. Regenerate the file when this happens.
+
+Re-generate whenever:
+1. You add or remove a check title in `bin/check.py` (the allowlist matches on the exact `Result(...)` title string).
+2. You land a fix on main that resolves a listed failure (optional — the stale entry just becomes a no-op).
+3. You notice a new pre-existing failure on main is blocking unrelated work.
+
+The JSON does NOT let agents hide *new* regressions introduced by the current branch. If the check title isn't already listed in the file — with the `recorded_sha` pointing at real main — the demote doesn't fire.
+
 #### Allowlist vs `A11Y_SUPPRESSIONS`: when to use which
 
 These are different tools for different problems and should not be conflated:
