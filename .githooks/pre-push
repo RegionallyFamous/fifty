@@ -173,3 +173,50 @@ print(" ".join(_changed_themes("origin/main") or []))
 fi
 
 echo "✓ pre-push: all gates green."
+
+# ---------------------------------------------------------------------------
+# Auto-arm GitHub auto-merge (--squash) on the matching PR
+# ---------------------------------------------------------------------------
+# The repo's branch protection on `main` requires the 7 CI status checks to
+# pass but no longer requires a manual review. Arming auto-merge here means
+# every PR squash-merges itself the instant CI clears, with no second
+# `gh pr merge` step needed after the push.
+#
+# Idempotent: if auto-merge is already armed on the PR, this no-ops. If no
+# PR exists yet for the branch (e.g. the very first push, before
+# `gh pr create`), it silently skips — the next push (or a subsequent run
+# of this hook) will arm it once the PR exists.
+#
+# Convenience-only: failures here NEVER block the push. The push has
+# already passed every gate above; whether auto-merge gets armed is
+# strictly a UX nicety and a stuck `gh` shouldn't strand a green push.
+#
+# Escape hatch: FIFTY_SKIP_AUTO_MERGE=1 git push   (e.g. when you want to
+# review a PR's diff yourself before merging, or hold a PR open for
+# discussion). Pushes to `main` itself, to `HEAD`, or with no resolvable
+# branch name skip auto-arming automatically.
+if [ "${FIFTY_SKIP_AUTO_MERGE:-0}" != "1" ] && command -v gh >/dev/null 2>&1; then
+  current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+  if [ -n "$current_branch" ] \
+     && [ "$current_branch" != "HEAD" ] \
+     && [ "$current_branch" != "main" ]; then
+    pr_json="$(gh pr view "$current_branch" \
+                  --json number,autoMergeRequest,state \
+                  2>/dev/null || true)"
+    if [ -n "$pr_json" ]; then
+      pr_state="$(echo "$pr_json" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("state",""))' 2>/dev/null || echo "")"
+      pr_num="$(echo "$pr_json" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("number",""))' 2>/dev/null || echo "")"
+      already="$(echo "$pr_json" | python3 -c 'import json,sys;print("yes" if json.load(sys.stdin).get("autoMergeRequest") else "no")' 2>/dev/null || echo "no")"
+      if [ "$pr_state" = "OPEN" ] && [ -n "$pr_num" ]; then
+        if [ "$already" = "yes" ]; then
+          echo "▸ pre-push: PR #$pr_num auto-merge already armed."
+        else
+          echo "▸ pre-push: arming auto-merge --squash on PR #$pr_num"
+          if ! gh pr merge "$pr_num" --auto --squash >/dev/null 2>&1; then
+            echo "  (could not arm auto-merge; not blocking push)"
+          fi
+        fi
+      fi
+    fi
+  fi
+fi
