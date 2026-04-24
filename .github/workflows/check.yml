@@ -37,6 +37,17 @@ jobs:
   theme-gate:
     name: bin/check.py --all --offline
     runs-on: ubuntu-latest
+    # FIFTY_ALLOW_BASELINE_FAILURES=1 on PRs (NOT on push-to-main) tells
+    # bin/check.py to consult tests/check-baseline-failures.json and
+    # demote any (theme, check-title) pair already failing on main from
+    # FAIL to WARN-BASELINE. The policy: feature branches are blocked
+    # only by *new* regressions they introduce, not by pre-existing
+    # debt on main. Push-to-main keeps the strict gate so the baseline
+    # file stays honest -- if main regresses, the push-to-main run
+    # fails and either someone fixes the regression or regenerates the
+    # baseline via `python3 bin/check.py --save-baseline-failures`.
+    env:
+      FIFTY_ALLOW_BASELINE_FAILURES: ${{ github.event_name == 'pull_request' && '1' || '0' }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -138,8 +149,12 @@ jobs:
           --changed-base origin/main --quick --concurrency 1
       - name: Run check.py with evidence required
         if: steps.changed.outputs.has_themes == 'true'
+        # Same pr-only baseline allowlist as theme-gate (see the env
+        # block at the top of that job for the full rationale): PR
+        # runs demote pre-existing failures; push-to-main stays strict.
         env:
           FIFTY_REQUIRE_SNAP_EVIDENCE: '1'
+          FIFTY_ALLOW_BASELINE_FAILURES: ${{ github.event_name == 'pull_request' && '1' || '0' }}
         # Per-theme check: only require evidence for the themes we
         # actually shot. This avoids the "I touched a doc, why is CI
         # demanding evidence for every theme on a fresh runner?"

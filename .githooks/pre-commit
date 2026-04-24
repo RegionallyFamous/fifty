@@ -42,7 +42,20 @@ echo "▸ pre-commit: bin/check.py --all --offline (catches !important leaks, he
 # new commit until the user manually pushes. CI keeps the env var
 # unset and gets the full check, so the safety net is preserved
 # where it actually matters.
-if ! FIFTY_SKIP_UNPUSHED_CHECK=1 python3 bin/check.py --all --offline; then
+#
+# FIFTY_ALLOW_BASELINE_FAILURES=1 consults
+# `tests/check-baseline-failures.json` (regenerated from origin/main)
+# and demotes any failure already present on main from FAIL (exit-1)
+# to WARN-BASELINE (still printed, but harmless). The point is to
+# stop pre-existing debt from blocking unrelated feature commits --
+# if you're fixing the Foundry return-to-cart button, you should not
+# also have to fix Foundry's 2.14:1 hover contrast ratio on the same
+# commit just to land your change. New regressions (pairs NOT in the
+# JSON) still block normally. CI on `main` is the source of truth
+# for what debt exists; see the JSON's `_doc` field for the
+# regeneration workflow.
+if ! FIFTY_SKIP_UNPUSHED_CHECK=1 FIFTY_ALLOW_BASELINE_FAILURES=1 \
+     python3 bin/check.py --all --offline; then
   echo
   echo "✘ pre-commit blocked: bin/check.py reported failures above."
   echo "  Fix the failures and re-stage, or pass --no-verify if you"

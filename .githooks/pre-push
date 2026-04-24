@@ -77,7 +77,15 @@ echo "▸ pre-push: bin/check.py --all --offline"
 # hook returns 0, so leaving it on would deadlock every push. CI and
 # pre-commit and local invocations leave the env var unset and get
 # the full check.
-if ! FIFTY_SKIP_UNPUSHED_CHECK=1 python3 bin/check.py --all --offline; then
+#
+# FIFTY_ALLOW_BASELINE_FAILURES=1 -- see the pre-commit hook for the
+# full explanation. Short version: demote failures already present
+# on origin/main to WARN-BASELINE (still printed, but exit 0) so that
+# pre-existing debt doesn't block unrelated feature pushes. New
+# regressions not listed in `tests/check-baseline-failures.json`
+# still block. CI's theme-gate sets the same env var for parity.
+if ! FIFTY_SKIP_UNPUSHED_CHECK=1 FIFTY_ALLOW_BASELINE_FAILURES=1 \
+     python3 bin/check.py --all --offline; then
   echo
   echo "✘ pre-push blocked: bin/check.py reported failures above."
   echo "  Fix locally, commit, then re-push. Don't bypass — CI runs"
@@ -152,6 +160,7 @@ print(" ".join(_changed_themes("origin/main") or []))
     echo "▸ pre-push: bin/check.py per-changed-theme (snap evidence required)"
     for t in $changed; do
       if ! FIFTY_SKIP_UNPUSHED_CHECK=1 FIFTY_SKIP_EVIDENCE_FRESHNESS=1 \
+            FIFTY_ALLOW_BASELINE_FAILURES=1 \
             FIFTY_REQUIRE_SNAP_EVIDENCE=1 python3 bin/check.py "$t" --offline; then
         echo
         echo "✘ pre-push blocked: $t failed the snap-evidence-required gate."

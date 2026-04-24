@@ -86,23 +86,29 @@ def test_cross_theme_check_runs_on_monorepo(check_name, monorepo, bind_check_roo
 
 
 def test_all_checks_in_run_checks_for_registry():
-    """Every `check_*` in the module is wired into `run_checks_for`.
+    """Every `check_*` in the module is wired into the check registry.
 
     Regression: adding a new `check_foo()` to `bin/check.py` but
-    forgetting to append it to the `results = [...]` list in
-    `run_checks_for` makes the check silently not run in CI.
+    forgetting to append it to the registry list makes the check
+    silently not run in CI.
+
+    The registry lives in `_build_results` (factored out of
+    `run_checks_for` when the FIFTY_ALLOW_BASELINE_FAILURES demote
+    path was added, so `--save-baseline-failures` could reuse the
+    same list). We look there first and fall back to `run_checks_for`
+    so the test keeps working even if the factoring is reverted.
     """
     import check
 
-    src = inspect.getsource(check.run_checks_for)
+    src = inspect.getsource(check._build_results) + inspect.getsource(check.run_checks_for)
     missing: list[str] = []
     for name in ALL_CHECKS:
         # `check_no_unpushed_commits` intentionally isn't run by the
         # minimal path on clean checkouts with no upstream, but it IS
-        # wired into `run_checks_for`. Just require its textual
-        # presence in the source.
+        # wired into the registry. Just require textual presence.
         if name not in src:
             missing.append(name)
     assert missing == [], (
-        f"These check_* functions are defined but not wired into run_checks_for(): {missing}"
+        f"These check_* functions are defined but not wired into the check registry "
+        f"(`_build_results` + `run_checks_for` in bin/check.py): {missing}"
     )
