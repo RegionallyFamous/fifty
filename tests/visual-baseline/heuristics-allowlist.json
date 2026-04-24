@@ -69,11 +69,6 @@
       "*"
     ]
   },
-  "chonk:desktop:product-simple.reviews-open": {
-    "heading-clipped-vertical": [
-      "#reviews"
-    ]
-  },
   "chonk:wide:cart-filled": {
     "narrow-wc-block": [
       ".wc-block-cart-items"
@@ -90,11 +85,6 @@
     ],
     "a11y-color-contrast": [
       "*"
-    ]
-  },
-  "chonk:wide:product-simple.reviews-open": {
-    "heading-clipped-vertical": [
-      "#reviews"
     ]
   },
   "foundry:desktop:cart-filled": {

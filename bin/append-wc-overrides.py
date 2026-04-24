@@ -1831,6 +1831,29 @@ CSS_PHASE_CC = f"""{SENTINEL_OPEN_PHASE_CC}
 {SENTINEL_CLOSE_PHASE_CC}"""
 
 
+# Phase DD — give the `woocommerce/product-reviews-title` heading enough
+# vertical room that heavy display fonts (chonk at line-height 1.1 +
+# font-weight 900 + 4.25rem) don't overflow their own line-box.
+#
+# The WC block renders as `<h2 class="wp-block-woocommerce-product-reviews-title">`
+# without the `wp-block-heading` class, so none of the theme's existing
+# `h2.wp-block-heading` rules (phase-V) apply. On chonk, the elements.h2
+# default `line-height: var(--custom--line-height--tight, 1.1)` combined
+# with the display font's extreme cap-height produces scrollHeight 163
+# vs clientHeight 150 on the two-line "0 reviews for …" heading, tripping
+# the `heading-clipped-vertical` heuristic.
+#
+# We raise line-height to 1.3 (doubled class for specificity, matching
+# phase-V) only on this specific heading. All other h2s keep their
+# designed metrics; this is purely a guard against the WC block's
+# unstyled-by-default fall-through.
+SENTINEL_OPEN_PHASE_DD = "/* wc-tells-phase-dd-reviews-title-line-height */"
+SENTINEL_CLOSE_PHASE_DD = "/* /wc-tells-phase-dd-reviews-title-line-height */"
+CSS_PHASE_DD = f"""{SENTINEL_OPEN_PHASE_DD}
+.wp-block-woocommerce-product-reviews-title.wp-block-woocommerce-product-reviews-title{{line-height:1.3;}}
+{SENTINEL_CLOSE_PHASE_DD}"""
+
+
 SENTINEL_OPEN_PHASE_V = "/* wc-tells-phase-v-real-bug-cleanup-6 */"
 SENTINEL_CLOSE_PHASE_V = "/* /wc-tells-phase-v-real-bug-cleanup-6 */"
 CSS_PHASE_V = f"""{SENTINEL_OPEN_PHASE_V}
@@ -2056,6 +2079,12 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_PHASE_CC,
         CSS_PHASE_CC,
         SENTINEL_CLOSE_PHASE_BB,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_DD,
+        SENTINEL_CLOSE_PHASE_DD,
+        CSS_PHASE_DD,
+        SENTINEL_CLOSE_PHASE_CC,
     ),
 ]
 
