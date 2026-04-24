@@ -638,38 +638,83 @@ def boot_server(theme: str, port: int | None = None,
     if cache_state:
         cache_dir = _state_cache_dir(theme)
         cache_dir.mkdir(parents=True, exist_ok=True)
-        # SPIKE STATUS (phase3-state-cache):
-        # ---------------------------------
-        # @wp-playground/cli 3.1.20 supports `--mount-before-install` +
-        # `--wordpress-install-mode=install-from-existing-files-if-needed`,
-        # but the combination is intolerant of an *empty* mount: the
-        # CLI sees the directory, decides "site present, skip install",
-        # then aborts with `Error: Error connecting to the SQLite
-        # database` because the SQLite DB hasn't been initialised yet.
-        # We can't safely cache-mount an empty directory.
+        # Cache invalidation on CLI version bump: a fresh install done
+        # by Playground CLI X is not guaranteed to work when later
+        # booted under CLI Y (wasm runtime + SQLite integration plugin
+        # can differ). We stamp the cache with the pinned CLI version
+        # on prime and nuke-on-mismatch, so `npm install` is the only
+        # action needed to get a clean cache after a version bump --
+        # no extra `--reset-cache` hoop.
+        version_marker = cache_dir.parent / "cli-version.txt"
+        current_pin = _pinned_playground_cli_spec()  # e.g. "@wp-playground/cli@3.1.20"
+        if cache_dir.is_dir() and (cache_dir / "wp-config.php").exists():
+            prior = version_marker.read_text().strip() if version_marker.exists() else ""
+            if prior and prior != current_pin:
+                print(
+                    f"  cache-state: CLI pin changed ({prior} -> {current_pin}); "
+                    f"invalidating stale cache at {cache_dir}."
+                )
+                shutil.rmtree(cache_dir)
+                cache_dir.mkdir(parents=True, exist_ok=True)
+        # Phase 3 (phase3-state-cache): per-theme warm cache.
+        # ---------------------------------------------------
+        # @wp-playground/cli 3.1.20 exposes two orthogonal flags:
         #
-        # Workable contract: only attach the cache if it already
-        # contains a `wp-config.php` (i.e. a prior successful boot
-        # completed and left the install on disk). First boot of a
-        # fresh theme runs the full blueprint (~127s) without the
-        # cache mount; the user (or a future `bin/snap.py prime-cache`
-        # subcommand) is responsible for populating the cache from
-        # that boot's runtime dir before subsequent boots can benefit.
+        #   --mount-before-install=<host>:<vfs>   bidirectional NODEFS
+        #                                         mount attached BEFORE
+        #                                         the WP install step.
+        #   --wordpress-install-mode=<mode>       how to treat /wordpress
+        #                                         at boot. Modes:
+        #                                           download-and-install
+        #                                             (default; fresh WP)
+        #                                           install-from-existing-files-if-needed
+        #                                             (skip install if
+        #                                              /wordpress already
+        #                                              looks set up)
+        #                                           install-from-existing-files
+        #                                           do-not-attempt-installing
         #
-        # See WordPress/wordpress-playground discussions for the
-        # canonical "wp-content mount" recipe and `start` mode's
-        # automatic persistence model; both are tracked as candidate
-        # follow-ups but deliberately out of scope for the spike.
+        # The earlier spike (see commit history for the phase3 spike
+        # write-up) hit a failure when pairing `--mount-before-install=
+        # <empty>` with `install-from-existing-files-if-needed`: the CLI
+        # mis-identified the empty dir as a present install, skipped
+        # setup, then aborted on SQLite. The fix is obvious in hindsight:
+        # on first boot we just leave install-mode at the default
+        # (download-and-install) and still mount the empty cache dir --
+        # the fresh install writes straight THROUGH the mount into the
+        # host cache dir (because --mount-before-install is NODEFS, not
+        # a copy). After the first boot completes, the host dir contains
+        # a live wp-config.php + /wp-content/ tree. Subsequent boots
+        # detect the marker and add `install-from-existing-files-if-
+        # needed` so WP + WXR + WC seeder all skip, amortizing the
+        # ~127s cold boot down to ~20-30s of blueprint-free warm boot.
+        #
+        # Per-theme isolation is preserved because each theme gets its
+        # own cache dir (see _state_cache_dir). --reset-cache wipes it.
         cache_marker = cache_dir / "wp-config.php"
+        cmd.append(f"--mount-before-install={cache_dir}:/wordpress")
         if cache_marker.exists():
-            cmd.append(f"--mount-before-install={cache_dir}:/wordpress")
             cmd.append("--wordpress-install-mode=install-from-existing-files-if-needed")
             print(f"  cache-state: reusing populated cache at {cache_dir}")
         else:
+            # Drop the CLI-version marker next to the cache dir so a
+            # future `--cache-state` boot can detect a version mismatch
+            # and self-invalidate. Writing it BEFORE the boot is safe
+            # because the next validation read happens on a subsequent
+            # process; if this boot fails mid-prime the marker just
+            # points at an incomplete cache, which the wp-config.php
+            # check above will still correctly refuse to reuse.
+            try:
+                version_marker.parent.mkdir(parents=True, exist_ok=True)
+                version_marker.write_text(current_pin + "\n", encoding="utf-8")
+            except OSError as e:
+                print(f"  cache-state: warning: could not write version marker: {e}")
             print(
-                f"  cache-state: cache at {cache_dir} is empty; running full "
-                f"blueprint to prime it (subsequent boots can reuse). "
-                f"See bin/snap.py source for the spike write-up."
+                f"  cache-state: cache at {cache_dir} is empty; priming "
+                f"from a fresh install (bidirectional mount captures the "
+                f"install into the host dir). Subsequent --cache-state "
+                f"boots skip the WP install + plugin install (~40-100s "
+                f"saved per boot)."
             )
     if login:
         cmd.append("--login")
@@ -5007,11 +5052,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--cache-state", action="store_true",
         help=(
             "Mount tmp/playground-state/<theme>/wordpress -> /wordpress "
-            "(via --mount-before-install) and pass "
+            "(via --mount-before-install). First boot auto-primes the "
+            "cache (bidirectional NODEFS mount captures the WP install "
+            "into the host dir). Subsequent boots add "
             "--wordpress-install-mode=install-from-existing-files-if-needed "
-            "so warm restarts skip the WP install + WXR + WC seeder. "
-            "First boot still runs the full blueprint and primes the cache. "
-            "Phase 3 (phase3-state-cache) of the closed-loop plan."
+            "so WP install + plugin install both skip (~40-100s saved "
+            "per boot). The blueprint's importWxr + seeder steps still "
+            "re-run every boot so content stays fresh. Cache auto-"
+            "invalidates on @wp-playground/cli version bump."
         ),
     )
     s_serve.add_argument(
@@ -5068,10 +5116,13 @@ def build_parser() -> argparse.ArgumentParser:
     s_shoot.add_argument(
         "--cache-state", action="store_true",
         help=(
-            "Reuse tmp/playground-state/<theme>/wordpress across boots so "
-            "warm restarts skip the WP install + WXR + WC seeder. See "
-            "`bin/snap.py serve --cache-state --help` for the underlying "
-            "Playground flags. Phase 3 (phase3-state-cache)."
+            "Reuse tmp/playground-state/<theme>/wordpress across boots. "
+            "First boot auto-primes; subsequent boots skip WP install + "
+            "plugin install (~40-100s saved per boot, which matters most "
+            "for iterative single-cell shoots during an audit). Content "
+            "seeder still re-runs every boot so playground/content/ edits "
+            "are never stale. Cache auto-invalidates on CLI version bump. "
+            "See `bin/snap.py serve --cache-state --help` for details."
         ),
     )
     s_shoot.add_argument(
