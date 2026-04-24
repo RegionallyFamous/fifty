@@ -167,7 +167,7 @@ def _track(s, n):
 
 
 # ------------------------------------------------------------------ card
-def make_image(slug, label, kicker):
+def make_image(slug, label, kicker, fmt="PNG"):
     seed = abs(hash(slug)) % (2**31)
     rng = random.Random(seed)
 
@@ -229,8 +229,13 @@ def make_image(slug, label, kicker):
     mx = (SIZE - (bb[2] - bb[0])) // 2 - bb[0]
     draw.text((mx, SIZE - 50), mark, font=mark_font, fill=(*DEEP, 200))
 
-    img.convert("RGB").save(OUT_DIR / f"{slug}.png", "PNG", optimize=True)
-    print(f"  ok  {slug}.png")
+    ext = "jpg" if fmt.upper() == "JPEG" else "png"
+    out = OUT_DIR / f"{slug}.{ext}"
+    if fmt.upper() == "JPEG":
+        img.convert("RGB").save(out, "JPEG", quality=85, optimize=True)
+    else:
+        img.convert("RGB").save(out, "PNG", optimize=True)
+    print(f"  ok  {out.name}")
 
 
 # ------------------------------------------------------------------ manifest
@@ -268,13 +273,30 @@ PAGES = [
     ("wonders-page-shipping-returns", "Shipping & Returns", "POLICY"),
 ]
 
+# Category covers. Filenames MUST match `playground/content/category-images.json`
+# values so `playground/wo-configure.php` can attach them as term thumbnails.
+# Emitted as JPEG because the seeder writes them to the media library and
+# WordPress prefers JPEG for photographic category covers (smaller + compatible
+# with WC's fallback image pipeline).
+CATEGORIES = [
+    ("cat-curiosities", "Curiosities", "RANGE"),
+    ("cat-forbidden-snacks", "Forbidden Snacks", "RANGE"),
+    ("cat-moods-feelings", "Moods & Feelings", "RANGE"),
+    ("cat-impossibilities", "Impossibilities", "RANGE"),
+    ("cat-digital-oddments", "Digital Oddments", "RANGE"),
+    ("cat-curated-bundles", "Curated Bundles", "RANGE"),
+]
+
 
 def main():
     items = POSTS + PAGES
     print(f"Generating {len(items)} Aero hero cards into {OUT_DIR}/")
     for slug, label, kicker in items:
         make_image(slug, label, kicker)
-    print(f"\nDone. {len(items)} hero cards written.")
+    print(f"Generating {len(CATEGORIES)} Aero category covers into {OUT_DIR}/")
+    for slug, label, kicker in CATEGORIES:
+        make_image(slug, label, kicker, fmt="JPEG")
+    print(f"\nDone. {len(items) + len(CATEGORIES)} cards written.")
     return 0
 
 
