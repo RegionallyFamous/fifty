@@ -2935,6 +2935,147 @@ def check_nav_item_pill_scoped_to_horizontal() -> Result:
     return r
 
 
+def check_disabled_atc_button_styled_per_theme() -> Result:
+    """Fail if a theme's `single_add_to_cart_button.disabled` /
+    `:disabled` / `.wc-variation-selection-needed` state is not
+    explicitly restated under `body.theme-<slug>`.
+
+    Why this exists:
+      Variable-product PDPs ship the WooCommerce add-to-cart button
+      pre-disabled (until the shopper picks a variant). Without an
+      explicit theme-scoped disabled-state rule, the browser drops the
+      theme's `--contrast` paint and falls back to UA defaults: a flat
+      ~#7B7974 / ~#8A8987 background under the theme's `--base` text.
+      The result is a ~2.2-3.2:1 ratio (axe-core flags it as a
+      `serious` `color-contrast` violation, blocking the AA 4.5:1
+      threshold for body text). In-production example (caught
+      2026-04-24 on Foundry's `/product/bottled-morning-variants/`):
+      the "Into the parcel" button rendered as a muted khaki pill
+      (~#9a9580 background, ~#f0e8d8 text) with WCAG ratio ~2.18:1.
+
+      The fix is one line per theme that restates the active state's
+      `--contrast` ground + `--base` ink, plus `opacity:1` and
+      `cursor:not-allowed` so the disabled affordance is carried by
+      the cursor rather than by fading the label below legibility.
+
+    What this check enforces:
+      For every theme (chonk, lysholm, obel, selvedge, foundry, aero
+      -- the six theme slugs we ship), top-level `styles.css` MUST
+      contain a rule whose selector starts with `body.theme-<slug> `
+      (or `body.theme-<slug>.`) and matches at least one of:
+        - `.single_add_to_cart_button.disabled`
+        - `.single_add_to_cart_button:disabled`
+        - `.single_add_to_cart_button.wc-variation-selection-needed`
+
+      AND whose body sets a non-default `background:` (any value other
+      than `transparent` / `inherit` / `initial`) so we know the rule
+      is doing the contrast restoration.
+
+    The check operates on the merged top-level `styles.css` of the
+    current theme (not a multi-theme sweep), but it scans for the
+    CURRENT theme's slug only. The append-wc-overrides.py phase-M
+    block ships rules for ALL six themes into every theme.json (the
+    selectors are body-scoped so they're inert in the wrong theme),
+    so this check passes for any of the six theme dirs.
+
+    See AGENTS.md "WooCommerce add-to-cart disabled state" rule.
+    """
+    r = Result("Disabled add-to-cart button has theme-scoped contrast rule")
+
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.skip("theme.json missing")
+        return r
+    try:
+        data = json.loads(theme_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        r.fail(f"theme.json: invalid JSON ({exc}).")
+        return r
+
+    top_css = (data.get("styles", {}) or {}).get("css") or ""
+    if not top_css.strip():
+        r.skip("no top-level styles.css")
+        return r
+
+    # Identify which theme dir we're in -- slug comes from the
+    # parent directory name (one of the six known theme slugs) so we
+    # don't have to parse style.css.
+    slug = ROOT.name.lower()
+    KNOWN = {"chonk", "lysholm", "obel", "selvedge", "foundry", "aero"}
+    if slug not in KNOWN:
+        r.skip(f"theme dir `{slug}` is not one of the six known shopper themes")
+        return r
+
+    css_no_comments = re.sub(r"/\*.*?\*/", " ", top_css, flags=re.S)
+
+    # Look for ANY rule containing both `body.theme-<slug>` and a
+    # disabled-state selector. We're permissive on selector form
+    # (any of the three signatures suffices) and just need one
+    # non-transparent background declaration.
+    body_re = re.escape(f"body.theme-{slug}")
+    disabled_signature_re = re.compile(
+        body_re
+        + r"\s*[^{}]*?\.single_add_to_cart_button"
+        + r"(?:\.disabled|:disabled|\.wc-variation-selection-needed)"
+        + r"[^{}]*\{([^{}]*)\}",
+        re.IGNORECASE,
+    )
+
+    found_rule = False
+    has_background = False
+    for m in disabled_signature_re.finditer(css_no_comments):
+        found_rule = True
+        body = m.group(1)
+        # Reject `transparent` / `inherit` / `initial` / `none` -- the
+        # rule has to actually paint a background.
+        bg_match = re.search(
+            r"background(?:-color)?\s*:\s*([^;}!]+)", body, re.IGNORECASE
+        )
+        if bg_match:
+            value = bg_match.group(1).strip().lower()
+            if value not in {"transparent", "inherit", "initial", "none", ""}:
+                has_background = True
+                break
+
+    if not found_rule:
+        r.fail(
+            f"`body.theme-{slug}` has no disabled-state rule for "
+            f"`.single_add_to_cart_button`. Variable-product PDPs ship "
+            f"the button pre-disabled until a variant is picked; without "
+            f"an explicit theme-scoped rule the browser falls back to "
+            f"UA grey chrome (~2.2-3.2:1 contrast vs `--base` text), "
+            f"which axe flags as a serious color-contrast violation. "
+            f"Add a rule under `body.theme-{slug} "
+            f".single_add_to_cart_button.disabled, "
+            f"body.theme-{slug} .single_add_to_cart_button:disabled, "
+            f"body.theme-{slug} "
+            f".single_add_to_cart_button.wc-variation-selection-needed` "
+            f"that restates `background:var(--wp--preset--color--contrast)`, "
+            f"`color:var(--wp--preset--color--base)`, `opacity:1`, and "
+            f"`cursor:not-allowed`. (See "
+            f"`bin/append-wc-overrides.py` Phase M for the canonical "
+            f"shape.)"
+        )
+        return r
+    if not has_background:
+        r.fail(
+            f"`body.theme-{slug}` has a disabled-state selector for "
+            f"`.single_add_to_cart_button` but doesn't paint a "
+            f"non-transparent `background:`. The whole point of the "
+            f"rule is to restore `--contrast` ground under `--base` "
+            f"ink so the disabled paint clears WCAG AA 4.5:1. Add "
+            f"`background:var(--wp--preset--color--contrast) "
+            f"!important;` to the rule body."
+        )
+        return r
+
+    r.details.append(
+        f"`body.theme-{slug}` ships an explicit disabled-state rule "
+        f"with a non-transparent background"
+    )
+    return r
+
+
 def check_account_grid_scoped_to_sidebar() -> Result:
     """Fail if `.woocommerce-account .woocommerce` is given a sidebar-style
     two-column grid (`grid-template-columns: <fixed-px> 1fr`) without
@@ -5108,6 +5249,109 @@ def _extract_template_headings(theme_dir: Path) -> dict[str, set[str]]:
             if headings:
                 out[path.relative_to(theme_dir).as_posix()] = headings
     return out
+
+
+def check_no_woocommerce_placeholder_in_findings() -> Result:
+    """Fail if the latest `tmp/snaps/<theme>/<viewport>/<route>.findings.json`
+    files for the current theme contain "placeholder rendered where a
+    product image was expected" warnings.
+
+    Why this exists:
+      The WooCommerce placeholder image
+      (`woocommerce-placeholder-*.webp`) is the single strongest
+      "this is a half-built demo" visual tell on the site. It appears
+      whenever a product card or category cover lacks a featured
+      image. Common root causes (caught 2026-04-22 on Foundry):
+        - `playground/content/product-images.json` is missing, so the
+          seeder never sideloads per-theme product images for variant
+          parent products.
+        - `playground/content/category-images.json` is missing, so
+          the seeder never attaches category cover images.
+        - The CSV's `Images` column points at a 404 URL (typo in a
+          filename or a slug change without a sync).
+        - The blueprint inlined `wo-import.php` script ran but was
+          rate-limited / network-failed, leaving products with no
+          attachment.
+
+      This check looks at the LATEST findings.json files written to
+      `tmp/snaps/<theme>/<viewport>/<route>.findings.json` (which
+      `bin/snap.py shoot` writes per route + viewport) and fails if
+      any of them contains a "Placeholder image rendered where a
+      product image was expected" warning. That is the runtime ground
+      truth -- if the rendered page shows a placeholder, it doesn't
+      matter why; the demo is broken and a Proprietor will lose
+      confidence in the theme.
+
+    What this check enforces:
+      For each `*.findings.json` under `tmp/snaps/<current-theme>/`,
+      collect every issue whose message starts with "Placeholder image
+      rendered". If the count is > 0, fail with the affected
+      route/viewport list and remediation guidance.
+
+    If no findings.json files exist (e.g. the theme was never shot),
+    the check skips. Run `python3 bin/snap.py shoot <theme>` first.
+
+    See AGENTS.md root rule "Every theme that seeds products must seed
+    images too".
+    """
+    r = Result("No WooCommerce placeholder images in latest snap.py findings")
+
+    theme_slug = ROOT.name.lower()
+    snaps_root = ROOT.parent / "tmp" / "snaps" / theme_slug
+    if not snaps_root.is_dir():
+        r.skip(
+            f"no `tmp/snaps/{theme_slug}/` (theme has not been shot; run "
+            f"`python3 bin/snap.py shoot {theme_slug}` to populate)."
+        )
+        return r
+
+    placeholder_hits: list[tuple[str, str]] = []  # (route, viewport)
+    for findings_path in sorted(snaps_root.rglob("*.findings.json")):
+        try:
+            data = json.loads(findings_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        issues = data.get("issues") or data.get("findings") or []
+        for issue in issues:
+            msg = (issue.get("message") or issue.get("title") or "").lower()
+            if "placeholder" in msg and (
+                "product image" in msg or "expected" in msg
+            ):
+                viewport = findings_path.parent.name
+                route = findings_path.stem.replace(".findings", "")
+                placeholder_hits.append((route, viewport))
+                break
+
+    if placeholder_hits:
+        # Group by viewport for readability.
+        from collections import defaultdict
+        by_vp: dict[str, list[str]] = defaultdict(list)
+        for route, vp in placeholder_hits:
+            by_vp[vp].append(route)
+        groups = "; ".join(
+            f"{vp}: {', '.join(sorted(set(routes)))}"
+            for vp, routes in sorted(by_vp.items())
+        )
+        r.fail(
+            f"`{theme_slug}` is rendering the WooCommerce placeholder "
+            f"image on {len(placeholder_hits)} cell(s): {groups}. "
+            f"This is the strongest 'half-built demo' visual tell. "
+            f"Likely fixes (apply in order): "
+            f"(1) ensure `{theme_slug}/playground/content/product-images.json` "
+            f"and `category-images.json` exist (copy from `obel/` if "
+            f"the SKUs match), "
+            f"(2) verify the CSV `Images` column points at real URLs "
+            f"under `{theme_slug}/playground/images/`, "
+            f"(3) re-shoot with `python3 bin/snap.py shoot {theme_slug}` "
+            f"to refresh the findings."
+        )
+        return r
+
+    r.details.append(
+        f"scanned {sum(1 for _ in snaps_root.rglob('*.findings.json'))} "
+        f"findings.json files; no placeholder rendering."
+    )
+    return r
 
 
 def check_pattern_microcopy_distinct() -> Result:
@@ -7739,12 +7983,14 @@ def _build_results(offline: bool) -> list[Result]:
         check_background_clip_text_legibility(),
         check_nav_item_pill_scoped_to_horizontal(),
         check_account_grid_scoped_to_sidebar(),
+        check_disabled_atc_button_styled_per_theme(),
         check_distinctive_chrome(),
         check_cart_checkout_pages_are_wide(),
         check_wc_chrome_sentinel_present(),
         check_blueprint_landing_page(),
         check_front_page_unique_layout(),
         check_pdp_has_image(),
+        check_no_woocommerce_placeholder_in_findings(),
         check_pattern_microcopy_distinct(),
         check_all_rendered_text_distinct_across_themes(),
         check_no_default_wc_strings(),

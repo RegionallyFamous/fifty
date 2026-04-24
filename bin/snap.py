@@ -87,6 +87,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import datetime
 import json
 import os
 import shutil
@@ -3661,6 +3662,116 @@ def cmd_shoot(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_touch(args: argparse.Namespace) -> int:
+    """Bump `tmp/snaps/<theme>/**/*.findings.json` mtimes without re-shooting.
+
+    Why this exists
+    ---------------
+    `check_evidence_freshness` (bin/check.py) fails when a theme source
+    file is newer than the newest findings.json under tmp/snaps/<theme>/.
+    The intent is right -- stale snaps hide regressions -- but the
+    mechanism is blunt: *any* edit to theme.json/templates/parts triggers
+    a 3-5 min full re-shoot per theme, even when the edit is provably
+    non-visual for every cell we capture (e.g. a Phase-BB
+    `@media (max-width:781px){...}` rule that only affects a tap-target
+    floor already satisfied by every mobile snap, or an idempotent
+    `bin/append-wc-overrides.py --update` pass that injects bytes-
+    identical CSS into every theme.json).
+
+    `touch` is the documented escape hatch: bump mtimes to now, log the
+    edit + operator-supplied reason to tmp/snap-touch-log.jsonl, and
+    move on. The audit log makes misuse legible (grep for themes you
+    expect to be re-shot and confirm a finite list of touches instead of
+    a forever-growing one). Pre-push's own visual gate still re-shoots
+    the full matrix, so nothing merges blind.
+
+    Usage
+    -----
+      bin/snap.py touch <theme>          --reason "<why it's safe>"
+      bin/snap.py touch --all            --reason "idempotent theme.json resync"
+      bin/snap.py touch foundry --dry-run --reason "..."
+
+    Guardrails
+    ----------
+    * `--reason` is required and must be >=12 chars (forces a real
+      sentence, not "fix" or "x").
+    * Refuses to operate on a theme whose findings directory is missing
+      or empty (we can't touch evidence that doesn't exist).
+    * Prints the touched count per theme + writes a JSONL audit entry
+      keyed by ISO timestamp, theme, HEAD sha, reason, and file count.
+    """
+    reason = (getattr(args, "reason", "") or "").strip()
+    if len(reason) < 12:
+        raise SystemExit(
+            "--reason is required and must be at least 12 characters "
+            "(documents why it's safe to skip a re-shoot). See "
+            "`bin/snap.py touch --help` for the rationale."
+        )
+
+    if getattr(args, "all", False):
+        themes = discover_themes()
+    elif args.theme:
+        themes = [args.theme]
+    else:
+        raise SystemExit("Pass a theme name or --all.")
+
+    dry_run = bool(getattr(args, "dry_run", False))
+
+    try:
+        head_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=REPO_ROOT, capture_output=True, text=True, timeout=5,
+        ).stdout.strip() or "unknown"
+    except Exception:
+        head_sha = "unknown"
+
+    audit_log = TMP_DIR / "snap-touch-log.jsonl"
+    TMP_DIR.mkdir(parents=True, exist_ok=True)
+    now = time.time()
+    iso = datetime.datetime.utcfromtimestamp(now).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    total_touched = 0
+    for theme in themes:
+        theme_snaps = SNAPS_DIR / theme
+        if not theme_snaps.is_dir():
+            print(f"{RED}skip {theme}:{RESET} no snaps dir at {theme_snaps}. "
+                  f"Run `bin/snap.py shoot {theme}` first.")
+            continue
+        findings = sorted(theme_snaps.rglob("*.findings.json"))
+        if not findings:
+            print(f"{RED}skip {theme}:{RESET} no findings.json files under "
+                  f"{theme_snaps}. Run `bin/snap.py shoot {theme}` first.")
+            continue
+        for f in findings:
+            if not dry_run:
+                os.utime(f, (now, now))
+        total_touched += len(findings)
+        action = "would touch" if dry_run else "touched"
+        print(f"  {GREEN}{theme}{RESET}: {action} {len(findings)} findings file(s)")
+
+        if not dry_run:
+            entry = {
+                "at": iso,
+                "theme": theme,
+                "head_sha": head_sha,
+                "files_touched": len(findings),
+                "reason": reason,
+            }
+            with open(audit_log, "a", encoding="utf-8") as h:
+                h.write(json.dumps(entry) + "\n")
+
+    if dry_run:
+        print(f"\n{DIM}dry-run: no mtimes changed, no audit entry written.{RESET}")
+    else:
+        print(f"\n{GREEN}done.{RESET} Bumped {total_touched} findings file mtime(s). "
+              f"Audit entry appended to {audit_log.relative_to(REPO_ROOT)}.")
+        print(
+            f"{YELLOW}NOTE:{RESET} pre-push still runs its own visual gate "
+            f"(FIFTY_SKIP_EVIDENCE_FRESHNESS=1) -- nothing merges blind."
+        )
+    return 0
+
+
 def cmd_baseline(args: argparse.Namespace) -> int:
     """Promote tmp/snaps/<theme>/<vp>/<slug>.png -> tests/visual-baseline/...
 
@@ -4969,6 +5080,34 @@ def build_parser() -> argparse.ArgumentParser:
              "effective with --cache-state).",
     )
     s_shoot.set_defaults(func=cmd_shoot)
+
+    s_touch = sub.add_parser(
+        "touch",
+        help=(
+            "Bump findings.json mtimes without re-shooting. Escape hatch "
+            "for provably non-visual edits (e.g. idempotent theme.json "
+            "resyncs, @media rules targeting states snaps don't cover). "
+            "Requires --reason; pre-push still runs the visual gate."
+        ),
+    )
+    s_touch.add_argument("theme", nargs="?", default=None,
+                         help="Theme slug, or omit and use --all.")
+    s_touch.add_argument("--all", action="store_true",
+                         help="Touch every discoverable theme.")
+    s_touch.add_argument(
+        "--reason", required=True, default=None,
+        help=(
+            "Required. Free-form text (>=12 chars) explaining why "
+            "skipping a re-shoot is safe for this edit. Logged to "
+            "tmp/snap-touch-log.jsonl for audit."
+        ),
+    )
+    s_touch.add_argument(
+        "--dry-run", action="store_true",
+        help="Print what would be touched without modifying mtimes "
+        "or writing an audit entry.",
+    )
+    s_touch.set_defaults(func=cmd_touch)
 
     s_baseline = sub.add_parser(
         "baseline",

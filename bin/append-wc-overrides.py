@@ -1090,12 +1090,20 @@ body .wc-block-components-snackbar-notice .wc-block-components-button:hover,body
 #       drops the `body.theme-<slug>` paint and falls back to its UA
 #       greyed-out chrome (a flat ~#7B7974 / ~#8A8987 background under
 #       the theme's `--base` text). Ratios land at 3.20-4.42 across
-#       chonk / lysholm / obel / selvedge -- all below the 4.5:1 AA
-#       threshold for body text. We restate the same `--contrast` ground
-#       + `--base` ink the active state uses, set `opacity:1` so the
-#       cursor change carries the disabled affordance instead of fading
-#       the label, and add `cursor:not-allowed` so pointer users still
-#       perceive the disabled state.
+#       chonk / lysholm / obel / selvedge / foundry / aero -- all below
+#       the 4.5:1 AA threshold for body text. We restate the same
+#       `--contrast` ground + `--base` ink the active state uses, set
+#       `opacity:1` so the cursor change carries the disabled affordance
+#       instead of fading the label, and add `cursor:not-allowed` so
+#       pointer users still perceive the disabled state.
+#
+#       Coverage history: chonk/lysholm/obel/selvedge shipped first
+#       (caught by the original axe sweep on those four themes). Foundry
+#       and aero were added 2026-04-24 after the
+#       `check_disabled_button_contrast_per_theme` static check
+#       generalised the failure surface across all six themes (axe found
+#       foundry's khaki disabled paint at 2.18:1 on /product/ when no
+#       variant is picked).
 #
 #   M2. `.wp-block-comment-reply-link a, .comment-reply-link`
 #       chonk / lysholm / obel paint the comment Reply link in their
@@ -1131,6 +1139,8 @@ body.theme-chonk .single_add_to_cart_button.disabled,body.theme-chonk .single_ad
 body.theme-lysholm .single_add_to_cart_button.disabled,body.theme-lysholm .single_add_to_cart_button:disabled,body.theme-lysholm .single_add_to_cart_button.wc-variation-selection-needed{{background:var(--wp--preset--color--contrast) !important;color:var(--wp--preset--color--base) !important;border-color:var(--wp--preset--color--contrast) !important;opacity:1 !important;cursor:not-allowed;}}
 body.theme-obel .single_add_to_cart_button.disabled,body.theme-obel .single_add_to_cart_button:disabled,body.theme-obel .single_add_to_cart_button.wc-variation-selection-needed{{background:var(--wp--preset--color--contrast) !important;color:var(--wp--preset--color--base) !important;border-color:var(--wp--preset--color--contrast) !important;opacity:1 !important;cursor:not-allowed;}}
 body.theme-selvedge .single_add_to_cart_button.disabled,body.theme-selvedge .single_add_to_cart_button:disabled,body.theme-selvedge .single_add_to_cart_button.wc-variation-selection-needed{{background:var(--wp--preset--color--contrast) !important;color:var(--wp--preset--color--base) !important;border-color:var(--wp--preset--color--contrast) !important;opacity:1 !important;cursor:not-allowed;}}
+body.theme-foundry .single_add_to_cart_button.disabled,body.theme-foundry .single_add_to_cart_button:disabled,body.theme-foundry .single_add_to_cart_button.wc-variation-selection-needed{{background:var(--wp--preset--color--contrast) !important;color:var(--wp--preset--color--base) !important;border-color:var(--wp--preset--color--contrast) !important;opacity:1 !important;cursor:not-allowed;}}
+body.theme-aero .single_add_to_cart_button.disabled,body.theme-aero .single_add_to_cart_button:disabled,body.theme-aero .single_add_to_cart_button.wc-variation-selection-needed{{background:var(--wp--preset--color--contrast) !important;color:var(--wp--preset--color--base) !important;border-color:var(--wp--preset--color--contrast) !important;opacity:1 !important;cursor:not-allowed;}}
 body.theme-chonk .wp-block-comment-reply-link a,body.theme-chonk .comment-reply-link,body.theme-lysholm .wp-block-comment-reply-link a,body.theme-lysholm .comment-reply-link,body.theme-obel .wp-block-comment-reply-link a,body.theme-obel .comment-reply-link{{color:var(--wp--preset--color--contrast) !important;}}
 body.theme-chonk .wp-block-comment-reply-link a:hover,body.theme-chonk .comment-reply-link:hover,body.theme-lysholm .wp-block-comment-reply-link a:hover,body.theme-lysholm .comment-reply-link:hover,body.theme-obel .wp-block-comment-reply-link a:hover,body.theme-obel .comment-reply-link:hover{{text-decoration:underline !important;text-decoration-thickness:2px !important;text-underline-offset:3px !important;text-decoration-color:var(--wp--preset--color--accent) !important;}}
 body .wc-block-cart-items .is-disabled,body .wc-block-cart-items .is-disabled .wc-block-cart-item__product,body .wc-block-cart-items .is-disabled .wc-block-cart-item__total,body .wc-block-cart-items .is-disabled .wc-block-cart-item__product *,body .wc-block-cart-items .is-disabled .wc-block-cart-item__total *{{color:var(--wp--preset--color--contrast) !important;opacity:1 !important;}}
@@ -1758,6 +1768,30 @@ CSS_PHASE_AA = f"""{SENTINEL_OPEN_PHASE_AA}
 {SENTINEL_CLOSE_PHASE_AA}"""
 
 
+# Phase BB — universal post-title tap-target floor (issued 2026-04-22).
+#
+# FAIL MODE WE'RE FIXING
+# ----------------------
+# `<h*.wp-block-post-title isLink>` renders as a single anchor inside a
+# heading. The anchor's hit-box equals its rendered line-box. With a
+# fluid `lg` font (1.25rem min on mobile) and a tight editorial
+# line-height (e.g. 1.25), single-line titles compute to ~25px tall —
+# below the 32px tap-target floor snap.py enforces. Foundry's home
+# journal cards regressed exactly this way (3 warnings/run). Other
+# themes happen to use looser line-heights, but they're one editorial
+# tweak away from the same bug.
+#
+# Defense in depth: regardless of font-size or line-height, any post-
+# title rendered as a link gets `min-height:32px` on mobile via
+# inline-flex with vertical centering. The visible text rhythm is
+# unchanged; only the anchor's bounding box grows to meet WCAG.
+SENTINEL_OPEN_PHASE_BB = "/* wc-tells-phase-bb-post-title-tap-target */"
+SENTINEL_CLOSE_PHASE_BB = "/* /wc-tells-phase-bb-post-title-tap-target */"
+CSS_PHASE_BB = f"""{SENTINEL_OPEN_PHASE_BB}
+@media (max-width:781px){{.wp-block-post-title.wp-block-post-title>a,h1.wp-block-post-title.wp-block-post-title>a,h2.wp-block-post-title.wp-block-post-title>a,h3.wp-block-post-title.wp-block-post-title>a,h4.wp-block-post-title.wp-block-post-title>a,h5.wp-block-post-title.wp-block-post-title>a,h6.wp-block-post-title.wp-block-post-title>a{{display:inline-flex;align-items:center;min-height:32px;}}}}
+{SENTINEL_CLOSE_PHASE_BB}"""
+
+
 SENTINEL_OPEN_PHASE_V = "/* wc-tells-phase-v-real-bug-cleanup-6 */"
 SENTINEL_CLOSE_PHASE_V = "/* /wc-tells-phase-v-real-bug-cleanup-6 */"
 CSS_PHASE_V = f"""{SENTINEL_OPEN_PHASE_V}
@@ -1971,6 +2005,12 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         SENTINEL_CLOSE_PHASE_AA,
         CSS_PHASE_AA,
         SENTINEL_CLOSE_PHASE_Z,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_BB,
+        SENTINEL_CLOSE_PHASE_BB,
+        CSS_PHASE_BB,
+        SENTINEL_CLOSE_PHASE_AA,
     ),
 ]
 

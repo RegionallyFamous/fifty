@@ -3,7 +3,7 @@
     "wc_version": "10.7.0",
     "generated_at": 1776861717,
     "comment": "Override selectors in bin/append-wc-overrides.py CHUNKS that currently lose the CSS specificity cascade against WooCommerce Blocks defaults. Grandfathered so check_wc_specificity_winnable() catches NEW regressions only.",
-    "count": 196
+    "count": 203
   },
   "selectors": [
     ".added_to_cart",
@@ -208,6 +208,13 @@
     "body.theme-selvedge .woocommerce-MyAccount-content h2",
     "table.variations td",
     "table.variations th",
-    "table.variations tr"
+    "table.variations tr",
+    ".wp-block-post-title.wp-block-post-title>a",
+    "h1.wp-block-post-title.wp-block-post-title>a",
+    "h2.wp-block-post-title.wp-block-post-title>a",
+    "h3.wp-block-post-title.wp-block-post-title>a",
+    "h4.wp-block-post-title.wp-block-post-title>a",
+    "h5.wp-block-post-title.wp-block-post-title>a",
+    "h6.wp-block-post-title.wp-block-post-title>a"
   ]
 }

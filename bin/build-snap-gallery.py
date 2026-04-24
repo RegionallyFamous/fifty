@@ -128,15 +128,52 @@ ROUTE_ORDER = [r.slug for r in ROUTES]
 ROUTE_BY_SLUG = {r.slug: r for r in ROUTES}
 
 # Per-theme blurb. Mirrors `docs/index.html`'s wording so the gallery and
-# the Playground launcher stay aligned. Keep these in sync if you touch
-# the landing page.
+# the Playground launcher stay aligned. Any theme not listed here falls
+# back to `_blurb_fallback(theme)`, which reads the first non-empty line
+# from `<theme>/design-intent.md` (or `<theme>/BRIEF.md`) so newly-added
+# themes appear in the gallery with their own voice automatically — no
+# "update THEME_BLURBS" step required. Keep these in sync with
+# demo.regionallyfamous.com's landing page only when you want to override
+# the auto-extracted copy with hand-crafted wording.
 THEME_BLURBS: dict[str, str] = {
     "obel": "Editorial: hairline borders, generous whitespace, warm cream palette.",
     "chonk": "Neo-brutalist: cream + 4px black borders, hard offset shadows, no rounded corners. For shops that want to be loud on purpose.",
     "selvedge": "Workwear-heritage: warm dark palette, italic display serif, small-batch maker's voice.",
     "lysholm": "Nordic home goods: pale cream, soft tan accents, unhurried serif typography.",
     "aero": "Y2K iridescent: holographic pastels, glassy chrome buttons, sparkle product cards.",
+    "foundry": "Victorian apothecary: cream + rust palette, antique serif display, ornamental dividers, pressed-ink lockups.",
 }
+
+
+def _blurb_fallback(theme: str) -> str:
+    """Extract a one-line blurb from `<theme>/design-intent.md` or BRIEF.md
+    for any theme missing an explicit `THEME_BLURBS` entry, so new themes
+    render in the gallery immediately after `bin/snap.py shoot` without
+    requiring a matching edit to this file. Returns "" if no source doc
+    exists; the gallery hides the `.blurb` paragraph in that case rather
+    than showing empty whitespace."""
+    for candidate in ("design-intent.md", "BRIEF.md", "README.md"):
+        path = ROOT / theme / candidate
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        # Skip headings/frontmatter; return the first substantive prose
+        # line, trimmed to a sane one-line length for the card.
+        for raw in text.splitlines():
+            line = raw.strip()
+            if not line or line.startswith(("#", "---", "```", ">", "-", "*")):
+                continue
+            return (line[:220] + "…") if len(line) > 220 else line
+    return ""
+
+
+def _blurb_for(theme: str) -> str:
+    """Resolve a theme's blurb: explicit `THEME_BLURBS` entry wins, else
+    best-effort extraction from `<theme>/design-intent.md`."""
+    return THEME_BLURBS.get(theme) or _blurb_fallback(theme)
 
 
 # ---------------------------------------------------------------------------
@@ -182,9 +219,31 @@ class Cell(NamedTuple):
 
 
 def _discover_themes() -> list[str]:
-    """Return themes in canonical THEME_ORDER, filtered to those with at
-    least a `theme.json` so we don't list a stale folder."""
-    return [t for t in THEME_ORDER if (ROOT / t / "theme.json").is_file()]
+    """Return every real theme slug on disk, in a stable order.
+
+    A "real theme" is any top-level folder with BOTH `theme.json` and
+    `playground/blueprint.json` — the same definition `bin/snap.py` and
+    `bin/append-wc-overrides.py` use. We sort by `THEME_ORDER` first (for
+    diff stability + canonical magazine-cover ordering on the gallery
+    index), then append any newly-added themes alphabetically.
+
+    Why auto-discovery: the previous hardcoded filter silently excluded
+    any theme not listed in `snap_config.THEME_ORDER`. Foundry was added
+    to the repo after that list was written, so its Playground booted,
+    its PNGs were shot, and its `theme.json` passed every check — but
+    the snap gallery skipped it entirely, leaving users with a
+    five-theme picker that pretended foundry didn't exist. Auto-discovery
+    means "every theme on disk ships on demo.regionallyfamous.com/snaps/"
+    is the default, and no maintenance commit is required when a new
+    theme lands."""
+    have = {
+        p.parent.name
+        for p in ROOT.glob("*/theme.json")
+        if (p.parent / "playground" / "blueprint.json").exists()
+    }
+    ordered = [t for t in THEME_ORDER if t in have]
+    extras = sorted(have - set(ordered))
+    return ordered + extras
 
 
 def _cells_from_manifest(theme: str) -> list[Cell] | None:
@@ -702,7 +761,7 @@ def _render_theme_page(theme: str, cells: list[Cell], source_label: str) -> str:
     for c in cells:
         by_viewport.setdefault(c.viewport, []).append(c)
 
-    blurb = THEME_BLURBS.get(theme, "")
+    blurb = _blurb_for(theme)
     sections: list[str] = []
     for vp in VIEWPORT_ORDER:
         vp_cells = by_viewport.get(vp, [])
@@ -792,7 +851,7 @@ def _render_index_page(theme_summaries: list[dict]) -> str:
     rows: list[str] = []
     for i, s in enumerate(theme_summaries, start=1):
         theme = s["theme"]
-        blurb = THEME_BLURBS.get(theme, "")
+        blurb = _blurb_for(theme)
         hero_rel = s["hero_rel"]
         stats = s["stats"]
         stat_bits: list[str] = [f'<span>{stats["cells"]} shots</span>']

@@ -151,9 +151,15 @@ QUICK_ROUTES: set[str] = {"home", "shop", "product-simple", "checkout-filled"}
 QUICK_VIEWPORTS: set[str] = {"desktop"}
 
 
-# Themes are auto-discovered from the repo (any folder with a theme.json).
-# Override here if you want to pin the order or skip experimental themes.
-THEME_ORDER: list[str] = ["obel", "chonk", "selvedge", "lysholm", "aero"]
+# Preferred ordering for the five original themes (diff stability + hero
+# ordering on demo.regionallyfamous.com). This list is NOT the set of
+# "known themes" — it's just a sort hint. Every folder with a theme.json +
+# playground/blueprint.json is picked up automatically by
+# `bin/snap.py::discover_themes()`, `bin/append-wc-overrides.py`, and
+# `bin/build-snap-gallery.py`; any theme missing from here lands after
+# these in alphabetical order. Add a new theme to this list only if you
+# want it to slot into a specific spot in the canonical order.
+THEME_ORDER: list[str] = ["obel", "chonk", "selvedge", "lysholm", "aero", "foundry"]
 
 
 # ---------------------------------------------------------------------------
