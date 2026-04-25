@@ -235,12 +235,9 @@ main,
       key emphasis phrase ("closing that gap") so it gets the lime
       stripe — the punk-zine equivalent of italicising for emphasis.
 
-   5. CTA-ROW uses an inline-list-with-middot-separators pattern via
-      `:not(:last-child)::after`. Below 720px the row stacks vertically
-      and the middots are dropped (they orphan as accidental punctuation
-      when each CTA is on its own line). The first CTA gets the lime
-      highlighter as a filled background — the visual primary — and
-      inverts to ink-on-lime on hover.
+  5. CTA-ROW renders as a set of fat pill buttons. The first CTA gets
+     the lime highlighter as a filled background — the visual primary —
+     and inverts to ink-on-lime on hover.
    ------------------------------------------------------------------------ */
 .cover {
   padding: clamp(1.5rem, 4vw, 3rem) 0 clamp(2rem, 4vw, 3rem);
@@ -333,25 +330,28 @@ main,
 .cover .cta-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  /* Row gap when the row wraps; column gap is zero because the separator
-     pseudo-element below provides all horizontal spacing. */
-  gap: .65rem 0;
-}
-.cover .cta-row .cta:not(:last-child)::after {
-  content: "·";
-  display: inline-block;
-  padding: 0 clamp(.85rem, 2vw, 1.4rem);
-  color: var(--ink);
-  font-style: normal;
-  opacity: .45;
+  align-items: center;
+  gap: .65rem;
 }
 /* The first CTA in the row is the visual primary — gets the lime
    highlighter behind it so the page has one obvious "do this" button. */
+.cover .cta-row .cta {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  min-height: 2.65rem;
+  padding: .62rem 1.15rem .58rem;
+  border: var(--hairline) solid var(--ink);
+  border-radius: 999px;
+  background: transparent;
+  font-weight: 700;
+  font-size: .85rem;
+  letter-spacing: .12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
 .cover .cta-row .cta:first-child {
   background: var(--highlight);
-  padding: .45rem .9rem;
-  border-bottom: none;
 }
 .cover .cta-row .cta:first-child:hover,
 .cover .cta-row .cta:first-child:focus-visible {
@@ -383,12 +383,7 @@ main,
 @media (max-width: 720px) {
   .cover .lede { grid-template-columns: 1fr; }
   .cover .lede > p:first-child + p { margin-top: 1rem; }
-  /* When the CTA row stacks vertically (one CTA per line), the middot
-     separators end up hanging at the end of each line and read as
-     accidental punctuation rather than as inline-list separators. Drop
-     them at the same breakpoint as the lede stack. */
   .cover .cta-row { flex-direction: column; align-items: flex-start; gap: .85rem; }
-  .cover .cta-row .cta:not(:last-child)::after { content: none; }
 }
 
 .cta {
