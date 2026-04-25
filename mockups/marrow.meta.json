@@ -1,0 +1,25 @@
+{
+  "slug": "marrow",
+  "name": "Marrow",
+  "blurb": "Bone-broth + offal supper-club: deep oxblood, bone cream, hand-drawn anatomical chart.",
+  "tags": {
+    "palette": [
+      "oxblood",
+      "cream",
+      "ink",
+      "burgundy"
+    ],
+    "type": "oldstyle-serif",
+    "era": "pre-1900",
+    "sector": "food",
+    "hero": "diagram-led"
+  },
+  "palette_hex": [
+    "#f3f1e4",
+    "#c5a57e",
+    "#1d2528",
+    "#936851",
+    "#ceccc6"
+  ],
+  "type_specimen": "Display: Caslon. Body: Crimson Pro."
+}

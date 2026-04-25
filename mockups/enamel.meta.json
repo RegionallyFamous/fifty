@@ -1,0 +1,25 @@
+{
+  "slug": "enamel",
+  "name": "Enamel",
+  "blurb": "Vitreous enamel jewelry: cobalt + flame red, glossy enamel-on-copper hero brooch.",
+  "tags": {
+    "palette": [
+      "cobalt",
+      "scarlet",
+      "gold",
+      "cream"
+    ],
+    "type": "geometric-sans",
+    "era": "mid-century",
+    "sector": "jewelry",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#011472",
+    "#f6f3ed",
+    "#b41e04",
+    "#cfc8be",
+    "#2d4492"
+  ],
+  "type_specimen": "Display: Futura. Body: Public Sans."
+}

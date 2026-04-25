@@ -1,0 +1,25 @@
+{
+  "slug": "tarpan",
+  "name": "Tarpan",
+  "blurb": "Steppe-horse + saddlery shop: dust beige, antique russet, Mongolian-felt textures.",
+  "tags": {
+    "palette": [
+      "tan",
+      "rust",
+      "cream",
+      "olive"
+    ],
+    "type": "slab-serif",
+    "era": "pre-1950",
+    "sector": "leather-goods",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#f2efe2",
+    "#7a4620",
+    "#d1c8ae",
+    "#a89e90",
+    "#967051"
+  ],
+  "type_specimen": "Display: Industry. Body: Lora."
+}

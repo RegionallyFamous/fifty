@@ -1,0 +1,25 @@
+{
+  "slug": "neon",
+  "name": "Neon",
+  "blurb": "After-dark sign shop: jet black, neon pink + lime + cyan glowing tubes.",
+  "tags": {
+    "palette": [
+      "black",
+      "magenta",
+      "lime",
+      "turquoise"
+    ],
+    "type": "hand-lettered",
+    "era": "1980s",
+    "sector": "art-print",
+    "hero": "type-led"
+  },
+  "palette_hex": [
+    "#260e2e",
+    "#701248",
+    "#ecedf0",
+    "#f95584",
+    "#234954"
+  ],
+  "type_specimen": "Display: Bungee Shade. Body: Inter."
+}

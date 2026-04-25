@@ -8044,6 +8044,51 @@ def check_view_transitions_wired() -> Result:
     return r
 
 
+def check_concept_similarity() -> Result:
+    """Cross-concept similarity audit. Wraps `bin/check-concept-similarity.py`.
+
+    Runs the same tag-overlap + perceptual-hash analysis as
+    `bin/audit-concepts.py` but in a Result-returning shape so the
+    standard check.py table picks it up. Pairs flagged as warnings
+    keep `r.passed == True` (so the gate doesn't block on iterative
+    overlap that the Proprietor will resolve out of band); only true
+    duplicates (5/5 axis overlap or pHash distance ≤ 2) flip the
+    Result to failed, and even those can be allowlisted in
+    `bin/concept-similarity-allowlist.json`.
+
+    The work itself lives in the standalone script so it can also be
+    run by hand (`python3 bin/check-concept-similarity.py --json`)
+    while triaging the allowlist.
+    """
+    r = Result("Concept queue similarity (tag overlap + perceptual hash)")
+    # Importing here (not at module scope) keeps cold-start cheap for
+    # the 99% of runs that don't end up needing the similarity audit.
+    # The hyphen in the filename means we go through importlib rather
+    # than a normal `import` statement.
+    try:
+        from importlib import import_module
+        sim_mod = import_module("check-concept-similarity")
+    except ImportError as e:
+        r.skip(f"could not import check-concept-similarity ({e})")
+        return r
+    sub = sim_mod.run_check()
+    if sub.skipped:
+        r.skip(sub.details[0] if sub.details else "no concept metas to compare")
+        return r
+    # The sub-script appends both fails AND warns to `details` but
+    # only flips `passed` for true duplicates. Mirror that here by
+    # re-classifying via the message wording (the only stable signal
+    # since `_Result.warn` discards the fail/warn distinction). Fails
+    # come from the hard thresholds in run_check() and use one of two
+    # specific phrasings we own.
+    for d in sub.details:
+        if "duplicate concept" in d or "near-identical" in d:
+            r.fail(d)
+        else:
+            r.details.append(d)
+    return r
+
+
 def check_no_unpushed_commits() -> Result:
     """Fail if local HEAD has commits that haven't reached origin yet.
 
@@ -8332,6 +8377,7 @@ def _build_results(offline: bool) -> list[Result]:
         check_allowlist_entries_resolve(),
         check_evidence_freshness(),
         check_view_transitions_wired(),
+        check_concept_similarity(),
         check_no_unpushed_commits(),
     ]
 

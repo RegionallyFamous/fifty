@@ -1,0 +1,24 @@
+{
+  "slug": "azulejo",
+  "name": "Azulejo",
+  "blurb": "Portuguese tile shop: cobalt + white glazed patterns, ceramic homewares.",
+  "tags": {
+    "palette": [
+      "cobalt",
+      "white",
+      "cream"
+    ],
+    "type": "transitional-serif",
+    "era": "pre-1900",
+    "sector": "ceramics",
+    "hero": "pattern-led"
+  },
+  "palette_hex": [
+    "#f6f3e7",
+    "#2d5092",
+    "#7a8db1",
+    "#bbc1cc",
+    "#b09447"
+  ],
+  "type_specimen": "Display: Cormorant Garamond. Body: Lora."
+}

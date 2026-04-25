@@ -1,0 +1,25 @@
+{
+  "slug": "vitrine",
+  "name": "Vitrine",
+  "blurb": "Curated-collector's display-case shop: deep teal velvet, brass museum labels.",
+  "tags": {
+    "palette": [
+      "teal",
+      "gold",
+      "cream",
+      "ink"
+    ],
+    "type": "modern-serif",
+    "era": "pre-1900",
+    "sector": "gallery",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#f5f7f1",
+    "#b0a18c",
+    "#d2d3cd",
+    "#6f5a40",
+    "#453219"
+  ],
+  "type_specimen": "Display: Bodoni 72. Body: Lora."
+}

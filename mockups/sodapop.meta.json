@@ -1,0 +1,25 @@
+{
+  "slug": "sodapop",
+  "name": "Sodapop",
+  "blurb": "1950s soda-fountain: pastel pink + mint, chrome diner trim, hand-painted bottle caps.",
+  "tags": {
+    "palette": [
+      "pink",
+      "turquoise",
+      "cream",
+      "chrome"
+    ],
+    "type": "chrome-deco",
+    "era": "mid-century",
+    "sector": "beverage",
+    "hero": "illustration-led"
+  },
+  "palette_hex": [
+    "#f9efd6",
+    "#cb3124",
+    "#e7b5a0",
+    "#d26d5e",
+    "#a6e7da"
+  ],
+  "type_specimen": "Display: Lobster. Body: Inter."
+}

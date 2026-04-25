@@ -1,0 +1,24 @@
+{
+  "slug": "lattice",
+  "name": "Lattice",
+  "blurb": "Architectural-screen tile shop: cream + matte navy lattice patterns, hairline rules.",
+  "tags": {
+    "palette": [
+      "cream",
+      "navy",
+      "white"
+    ],
+    "type": "modern-serif",
+    "era": "contemporary",
+    "sector": "homewares",
+    "hero": "pattern-led"
+  },
+  "palette_hex": [
+    "#f1e9d4",
+    "#b7b9b8",
+    "#8a96a3",
+    "#496085",
+    "#19396c"
+  ],
+  "type_specimen": "Display: Bodoni Egyptian. Body: Inter."
+}

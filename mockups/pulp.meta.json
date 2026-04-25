@@ -1,0 +1,25 @@
+{
+  "slug": "pulp",
+  "name": "Pulp",
+  "blurb": "1950s pulp-novel cover art: yellowed newsprint, scarlet shouts, dame + danger illos.",
+  "tags": {
+    "palette": [
+      "butter",
+      "scarlet",
+      "cream",
+      "ink"
+    ],
+    "type": "condensed-sans",
+    "era": "mid-century",
+    "sector": "books",
+    "hero": "illustration-led"
+  },
+  "palette_hex": [
+    "#f3edd7",
+    "#0498c5",
+    "#cec9b8",
+    "#d90275",
+    "#56b1c5"
+  ],
+  "type_specimen": "Display: Druk Wide Bold. Body: Roboto Condensed."
+}

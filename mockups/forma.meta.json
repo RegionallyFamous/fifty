@@ -1,0 +1,24 @@
+{
+  "slug": "forma",
+  "name": "Forma",
+  "blurb": "Italian modernist furniture: cream + matte black + a single saturated accent.",
+  "tags": {
+    "palette": [
+      "cream",
+      "ink",
+      "scarlet"
+    ],
+    "type": "geometric-sans",
+    "era": "mid-century",
+    "sector": "furniture",
+    "hero": "type-led"
+  },
+  "palette_hex": [
+    "#f5f4eb",
+    "#dd3823",
+    "#f2df29",
+    "#2757a3",
+    "#b4b4af"
+  ],
+  "type_specimen": "Display: Neue Haas Grotesk. Body: Inter."
+}

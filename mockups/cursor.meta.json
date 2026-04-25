@@ -1,0 +1,25 @@
+{
+  "slug": "cursor",
+  "name": "Cursor",
+  "blurb": "AI-tooling brand store: monospace UI chrome, neon accents on near-black.",
+  "tags": {
+    "palette": [
+      "black",
+      "lime",
+      "magenta",
+      "white"
+    ],
+    "type": "monospace",
+    "era": "contemporary",
+    "sector": "electronics",
+    "hero": "type-led"
+  },
+  "palette_hex": [
+    "#030b06",
+    "#7ad893",
+    "#4a4328",
+    "#4f8b5f",
+    "#8d8e89"
+  ],
+  "type_specimen": "Display: Berkeley Mono. Body: IBM Plex Mono."
+}

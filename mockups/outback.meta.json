@@ -1,0 +1,25 @@
+{
+  "slug": "outback",
+  "name": "Outback",
+  "blurb": "Australian-outback workwear: rust ochre dirt, oilskin, eucalyptus-sage accent.",
+  "tags": {
+    "palette": [
+      "rust",
+      "sage",
+      "tan",
+      "charcoal"
+    ],
+    "type": "slab-serif",
+    "era": "contemporary",
+    "sector": "workwear",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#8b391f",
+    "#f0ece1",
+    "#d4c3a6",
+    "#ac7865",
+    "#344439"
+  ],
+  "type_specimen": "Display: Roslindale. Body: Inter."
+}

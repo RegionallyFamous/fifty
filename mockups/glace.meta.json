@@ -1,0 +1,25 @@
+{
+  "slug": "glace",
+  "name": "Glace",
+  "blurb": "Pastel ice-cream parlour: mint, peach, vanilla, scoop-on-cone illustrations.",
+  "tags": {
+    "palette": [
+      "pastel",
+      "peach",
+      "sage",
+      "cream"
+    ],
+    "type": "hand-script",
+    "era": "contemporary",
+    "sector": "bakery",
+    "hero": "illustration-led"
+  },
+  "palette_hex": [
+    "#f4e8e5",
+    "#cec2ae",
+    "#958367",
+    "#c99e58",
+    "#9b5e20"
+  ],
+  "type_specimen": "Display: Pacifico. Body: Public Sans."
+}

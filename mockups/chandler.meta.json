@@ -1,0 +1,25 @@
+{
+  "slug": "chandler",
+  "name": "Chandler",
+  "blurb": "Hand-poured candle shop: deep rust, cream, wick-stamped wax cylinders.",
+  "tags": {
+    "palette": [
+      "rust",
+      "cream",
+      "ochre",
+      "burgundy"
+    ],
+    "type": "transitional-serif",
+    "era": "pre-1900",
+    "sector": "homewares",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#f1e3c6",
+    "#dca646",
+    "#e7c582",
+    "#1d1510",
+    "#b4ada4"
+  ],
+  "type_specimen": "Display: Cormorant. Body: Crimson Pro."
+}

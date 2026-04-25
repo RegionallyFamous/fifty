@@ -1,0 +1,17 @@
+{
+  "_doc": [
+    "Pairs of concept slugs that bin/check-concept-similarity.py should",
+    "skip when comparing tag-overlap and perceptual-hash distance.",
+    "",
+    "Add an entry here when the Proprietor has reviewed a flagged pair",
+    "and decided to keep both — typically because the third (or",
+    "fourth) axis genuinely separates them in spite of the overlap, or",
+    "because both mockups are placeholders awaiting a refresh and the",
+    "overlap will resolve naturally.",
+    "",
+    "Each entry is a 2-element array of slugs. Order doesn't matter.",
+    "Add a `note` sibling for every entry so the next person to look",
+    "knows why the pair was waved through."
+  ],
+  "pairs": []
+}

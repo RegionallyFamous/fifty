@@ -1,0 +1,25 @@
+{
+  "slug": "sari",
+  "name": "Sari",
+  "blurb": "Indian-textile shop: jewel-tone silks, gold-bordered hero, henna-line ornament.",
+  "tags": {
+    "palette": [
+      "magenta",
+      "gold",
+      "cream",
+      "forest-green"
+    ],
+    "type": "ornamental",
+    "era": "pre-1950",
+    "sector": "textiles",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#f1e9cc",
+    "#a91b55",
+    "#ddc88f",
+    "#391636",
+    "#08606e"
+  ],
+  "type_specimen": "Display: Yatra One. Body: Lora."
+}

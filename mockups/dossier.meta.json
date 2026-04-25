@@ -1,0 +1,25 @@
+{
+  "slug": "dossier",
+  "name": "Dossier",
+  "blurb": "Spy-thriller stationery: manila kraft, red CONFIDENTIAL stamps, typewriter mono.",
+  "tags": {
+    "palette": [
+      "kraft",
+      "scarlet",
+      "ink",
+      "cream"
+    ],
+    "type": "monospace",
+    "era": "mid-century",
+    "sector": "stationery",
+    "hero": "collage"
+  },
+  "palette_hex": [
+    "#b5a999",
+    "#918574",
+    "#f3efe6",
+    "#0e1a28",
+    "#4e3e2c"
+  ],
+  "type_specimen": "Display: Special Elite. Body: IBM Plex Mono."
+}

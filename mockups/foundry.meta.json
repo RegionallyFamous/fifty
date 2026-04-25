@@ -1,0 +1,25 @@
+{
+  "slug": "foundry",
+  "name": "Foundry",
+  "blurb": "Victorian apothecary: cream + rust, antique serif display, ornamental dividers.",
+  "tags": {
+    "palette": [
+      "cream",
+      "rust",
+      "ink",
+      "ochre"
+    ],
+    "type": "ornamental",
+    "era": "pre-1900",
+    "sector": "specialty",
+    "hero": "type-led"
+  },
+  "palette_hex": [
+    "#f0e8d5",
+    "#b2ab9f",
+    "#50504d",
+    "#141414",
+    "#877a64"
+  ],
+  "type_specimen": "Display: Antique No. 5. Body: Crimson Pro."
+}

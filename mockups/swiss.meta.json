@@ -1,0 +1,24 @@
+{
+  "slug": "swiss",
+  "name": "Swiss",
+  "blurb": "International Typographic Style: white grid, Helvetica, hairline red flag accent.",
+  "tags": {
+    "palette": [
+      "white",
+      "ink",
+      "scarlet"
+    ],
+    "type": "grotesk-sans",
+    "era": "mid-century",
+    "sector": "art-print",
+    "hero": "type-led"
+  },
+  "palette_hex": [
+    "#ffffff",
+    "#d1d1d1",
+    "#949493",
+    "#0b44b0",
+    "#707070"
+  ],
+  "type_specimen": "Display: Helvetica Neue. Body: Helvetica Neue."
+}

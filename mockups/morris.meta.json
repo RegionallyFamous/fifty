@@ -1,0 +1,25 @@
+{
+  "slug": "morris",
+  "name": "Morris",
+  "blurb": "William-Morris arts-and-crafts wallpaper shop: dense floral pattern, deep teal + ochre.",
+  "tags": {
+    "palette": [
+      "teal",
+      "ochre",
+      "burgundy",
+      "cream"
+    ],
+    "type": "art-nouveau",
+    "era": "pre-1900",
+    "sector": "homewares",
+    "hero": "pattern-led"
+  },
+  "palette_hex": [
+    "#efe5ca",
+    "#566e4a",
+    "#692619",
+    "#30492d",
+    "#ae8d39"
+  ],
+  "type_specimen": "Display: Goudy Old Style. Body: Lora."
+}

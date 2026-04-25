@@ -1,0 +1,24 @@
+{
+  "slug": "vellum",
+  "name": "Vellum",
+  "blurb": "Hand-bound stationer: warm parchment, deep ink, calligraphic capitals.",
+  "tags": {
+    "palette": [
+      "cream",
+      "ink",
+      "burgundy"
+    ],
+    "type": "blackletter",
+    "era": "pre-1900",
+    "sector": "stationery",
+    "hero": "type-led"
+  },
+  "palette_hex": [
+    "#f8f4e6",
+    "#ce6a2c",
+    "#1b3623",
+    "#eba845",
+    "#94341a"
+  ],
+  "type_specimen": "Display: UnifrakturMaguntia. Body: Crimson Pro."
+}

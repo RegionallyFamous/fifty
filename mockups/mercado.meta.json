@@ -1,0 +1,25 @@
+{
+  "slug": "mercado",
+  "name": "Mercado",
+  "blurb": "Latin American market: vibrant papel picado banners, terracotta + cobalt, sun motifs.",
+  "tags": {
+    "palette": [
+      "terracotta",
+      "cobalt",
+      "butter",
+      "scarlet"
+    ],
+    "type": "hand-lettered",
+    "era": "contemporary",
+    "sector": "food",
+    "hero": "pattern-led"
+  },
+  "palette_hex": [
+    "#f3e4c7",
+    "#a94221",
+    "#f7b208",
+    "#b06f50",
+    "#0384a5"
+  ],
+  "type_specimen": "Display: Mexcellent / hand-painted. Body: Public Sans."
+}

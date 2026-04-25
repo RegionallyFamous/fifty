@@ -1,0 +1,25 @@
+{
+  "slug": "fado",
+  "name": "Fado",
+  "blurb": "Lisbon fado-bar feel: deep wine, ivory, black-shawl illustration, hand-tile pattern.",
+  "tags": {
+    "palette": [
+      "burgundy",
+      "cream",
+      "ink",
+      "cobalt"
+    ],
+    "type": "oldstyle-serif",
+    "era": "pre-1950",
+    "sector": "music",
+    "hero": "illustration-led"
+  },
+  "palette_hex": [
+    "#f0e9d3",
+    "#8b98ac",
+    "#5c7298",
+    "#b5bbc5",
+    "#6f5e3d"
+  ],
+  "type_specimen": "Display: Cormorant Garamond. Body: Lora."
+}

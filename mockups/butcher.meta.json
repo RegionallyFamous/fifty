@@ -1,0 +1,25 @@
+{
+  "slug": "butcher",
+  "name": "Butcher",
+  "blurb": "Bench-cut butchery: white tile, oxblood, butcher paper, bone-handle knives.",
+  "tags": {
+    "palette": [
+      "oxblood",
+      "white",
+      "cream",
+      "ink"
+    ],
+    "type": "wood-type",
+    "era": "pre-1950",
+    "sector": "food",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#f2efe0",
+    "#6a1e11",
+    "#ceb9ab",
+    "#2e1402",
+    "#8b5042"
+  ],
+  "type_specimen": "Display: Caslon Antique / Wood Type. Body: Inter."
+}

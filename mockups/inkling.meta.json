@@ -1,0 +1,25 @@
+{
+  "slug": "inkling",
+  "name": "Inkling",
+  "blurb": "Independent bookbinder + ink-pen shop: ivory paper, sepia ink swirls, marbled endpapers.",
+  "tags": {
+    "palette": [
+      "cream",
+      "brown",
+      "ink",
+      "burgundy"
+    ],
+    "type": "oldstyle-serif",
+    "era": "pre-1900",
+    "sector": "stationery",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#f8f2e0",
+    "#fca2a8",
+    "#3656b3",
+    "#cec9bb",
+    "#f8e255"
+  ],
+  "type_specimen": "Display: Garamond Premier. Body: Crimson Pro."
+}

@@ -1,0 +1,25 @@
+{
+  "slug": "agave",
+  "name": "Agave",
+  "blurb": "Desert botanical apothecary: dust pink, sage, terracotta, tall cacti hand-drawn.",
+  "tags": {
+    "palette": [
+      "pink",
+      "sage",
+      "terracotta",
+      "cream"
+    ],
+    "type": "humanist-sans",
+    "era": "contemporary",
+    "sector": "beauty",
+    "hero": "illustration-led"
+  },
+  "palette_hex": [
+    "#faf4e4",
+    "#6a3622",
+    "#ac6039",
+    "#d2ccbe",
+    "#c8a386"
+  ],
+  "type_specimen": "Display: Recoleta. Body: Inter."
+}

@@ -1,0 +1,25 @@
+{
+  "slug": "halcyon",
+  "name": "Halcyon",
+  "blurb": "Calm wellness boutique: dawn pink, sage, very generous whitespace, soft hairlines.",
+  "tags": {
+    "palette": [
+      "pink",
+      "sage",
+      "cream",
+      "white"
+    ],
+    "type": "transitional-serif",
+    "era": "contemporary",
+    "sector": "beauty",
+    "hero": "type-led"
+  },
+  "palette_hex": [
+    "#faf9f3",
+    "#523827",
+    "#adaeaf",
+    "#d4993a",
+    "#907455"
+  ],
+  "type_specimen": "Display: Recoleta. Body: Inter."
+}

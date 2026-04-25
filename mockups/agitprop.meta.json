@@ -1,0 +1,24 @@
+{
+  "slug": "agitprop",
+  "name": "Agitprop",
+  "blurb": "Soviet constructivist storefront: scarlet + black, slabs of geometric type, diagonal blocks.",
+  "tags": {
+    "palette": [
+      "scarlet",
+      "black",
+      "cream"
+    ],
+    "type": "geometric-sans",
+    "era": "pre-1950",
+    "sector": "art-print",
+    "hero": "type-led"
+  },
+  "palette_hex": [
+    "#e7dcc2",
+    "#be2428",
+    "#110e07",
+    "#aea894",
+    "#726c5e"
+  ],
+  "type_specimen": "Display: Rodchenko / Bebas Neue. Body: Roboto Condensed."
+}

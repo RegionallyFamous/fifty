@@ -1,0 +1,25 @@
+{
+  "slug": "subway",
+  "name": "Subway",
+  "blurb": "NYC-MTA transit-design merch: Helvetica + colored line discs, Vignelli map hero.",
+  "tags": {
+    "palette": [
+      "white",
+      "ink",
+      "cobalt",
+      "scarlet"
+    ],
+    "type": "grotesk-sans",
+    "era": "1970s",
+    "sector": "art-print",
+    "hero": "diagram-led"
+  },
+  "palette_hex": [
+    "#ffffff",
+    "#d1d1d1",
+    "#989898",
+    "#000100",
+    "#ed782a"
+  ],
+  "type_specimen": "Display: Helvetica Bold. Body: Helvetica."
+}

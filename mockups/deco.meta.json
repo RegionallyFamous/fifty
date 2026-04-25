@@ -1,0 +1,25 @@
+{
+  "slug": "deco",
+  "name": "Deco",
+  "blurb": "Art-deco chrome + emerald: stepped gold borders, fan-motif hero, jewel tones.",
+  "tags": {
+    "palette": [
+      "forest-green",
+      "gold",
+      "black",
+      "cream"
+    ],
+    "type": "art-deco",
+    "era": "pre-1950",
+    "sector": "jewelry",
+    "hero": "type-led"
+  },
+  "palette_hex": [
+    "#efe4ce",
+    "#0a0911",
+    "#8d7442",
+    "#50422c",
+    "#d8bf8f"
+  ],
+  "type_specimen": "Display: Poiret One. Body: Cormorant."
+}

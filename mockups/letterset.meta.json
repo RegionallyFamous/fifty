@@ -1,0 +1,25 @@
+{
+  "slug": "letterset",
+  "name": "Letterset",
+  "blurb": "Letterpress print shop: cotton paper, deep-impression type specimens, ink swatches.",
+  "tags": {
+    "palette": [
+      "cream",
+      "ink",
+      "scarlet",
+      "navy"
+    ],
+    "type": "wood-type",
+    "era": "pre-1950",
+    "sector": "stationery",
+    "hero": "specimen-grid"
+  },
+  "palette_hex": [
+    "#f4eedb",
+    "#b7a095",
+    "#875850",
+    "#5c211a",
+    "#f4b13b"
+  ],
+  "type_specimen": "Display: Wood Type. Body: Garamond."
+}

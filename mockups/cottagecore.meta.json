@@ -1,0 +1,25 @@
+{
+  "slug": "cottagecore",
+  "name": "Cottagecore",
+  "blurb": "Watercolor cottage + garden: butter cream, sage, dusty rose, wildflower wallpaper.",
+  "tags": {
+    "palette": [
+      "cream",
+      "sage",
+      "pink",
+      "sky-blue"
+    ],
+    "type": "hand-script",
+    "era": "contemporary",
+    "sector": "garden",
+    "hero": "illustration-led"
+  },
+  "palette_hex": [
+    "#f9f5e9",
+    "#cdcdcd",
+    "#d1c08e",
+    "#889164",
+    "#c98976"
+  ],
+  "type_specimen": "Display: Allura. Body: Cormorant."
+}

@@ -1,0 +1,25 @@
+{
+  "slug": "aero",
+  "name": "Aero",
+  "blurb": "Y2K iridescent shop: holographic pastels, glassy chrome buttons, sparkle product cards.",
+  "tags": {
+    "palette": [
+      "pastel",
+      "lavender",
+      "chrome",
+      "lilac"
+    ],
+    "type": "chrome-deco",
+    "era": "y2k",
+    "sector": "gift-shop",
+    "hero": "full-bleed"
+  },
+  "palette_hex": [
+    "#ffd1b8",
+    "#d5c7f4",
+    "#0059e7",
+    "#4481e4",
+    "#95b2d3"
+  ],
+  "type_specimen": "Display: Eurostile / Bank Gothic. Body: Inter."
+}

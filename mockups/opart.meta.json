@@ -1,0 +1,24 @@
+{
+  "slug": "opart",
+  "name": "Op Art",
+  "blurb": "Bridget-Riley op-art shop: vibrating black + white moiré, single magenta accent.",
+  "tags": {
+    "palette": [
+      "black",
+      "white",
+      "magenta"
+    ],
+    "type": "geometric-sans",
+    "era": "1970s",
+    "sector": "art-print",
+    "hero": "pattern-led"
+  },
+  "palette_hex": [
+    "#ffffff",
+    "#6f6f6f",
+    "#e8c0d7",
+    "#000000",
+    "#acacac"
+  ],
+  "type_specimen": "Display: Helvetica Neue. Body: Inter."
+}

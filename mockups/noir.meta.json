@@ -1,0 +1,25 @@
+{
+  "slug": "noir",
+  "name": "Noir",
+  "blurb": "1940s detective trench-coat shop: jet black, smoky grey, single scarlet accent.",
+  "tags": {
+    "palette": [
+      "black",
+      "charcoal",
+      "scarlet",
+      "cream"
+    ],
+    "type": "condensed-sans",
+    "era": "pre-1950",
+    "sector": "apparel",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#141414",
+    "#4c4c4c",
+    "#8f8e8e",
+    "#cbcbcb",
+    "#662522"
+  ],
+  "type_specimen": "Display: ITC Cheltenham Condensed. Body: Inter."
+}

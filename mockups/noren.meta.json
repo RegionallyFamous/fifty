@@ -1,0 +1,24 @@
+{
+  "slug": "noren",
+  "name": "Noren",
+  "blurb": "Japanese textile shop: indigo, off-white, hand-dyed linen noren-curtain hero.",
+  "tags": {
+    "palette": [
+      "navy",
+      "cream",
+      "ink"
+    ],
+    "type": "humanist-sans",
+    "era": "pre-1950",
+    "sector": "textiles",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#e9dfc4",
+    "#1c2a46",
+    "#b0744a",
+    "#c6af82",
+    "#150701"
+  ],
+  "type_specimen": "Display: Klee One. Body: Noto Serif JP."
+}

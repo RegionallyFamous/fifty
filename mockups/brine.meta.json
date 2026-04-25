@@ -1,0 +1,25 @@
+{
+  "slug": "brine",
+  "name": "Brine",
+  "blurb": "Pickling + ferments shop: jar-glass green, cream, vinegary mustard accents.",
+  "tags": {
+    "palette": [
+      "sage",
+      "olive",
+      "cream",
+      "mustard"
+    ],
+    "type": "slab-serif",
+    "era": "contemporary",
+    "sector": "food",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#f1e9d2",
+    "#a7d3d5",
+    "#fd6855",
+    "#7ab2b5",
+    "#f59b88"
+  ],
+  "type_specimen": "Display: Roslindale. Body: Inter."
+}

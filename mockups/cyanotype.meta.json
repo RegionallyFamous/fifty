@@ -1,0 +1,23 @@
+{
+  "slug": "cyanotype",
+  "name": "Cyanotype",
+  "blurb": "Sun-printed botanical art: Prussian-blue + white only, fern-silhouette hero.",
+  "tags": {
+    "palette": [
+      "prussian-blue",
+      "white"
+    ],
+    "type": "transitional-serif",
+    "era": "pre-1900",
+    "sector": "art-print",
+    "hero": "illustration-led"
+  },
+  "palette_hex": [
+    "#0f3a67",
+    "#f5f5f4",
+    "#a68d76",
+    "#3e678b",
+    "#7996ad"
+  ],
+  "type_specimen": "Display: Cormorant Garamond. Body: Lora."
+}

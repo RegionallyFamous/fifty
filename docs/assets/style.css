@@ -884,3 +884,370 @@ body.redirector main {
   50% { opacity: .25; transform: scale(.65); }
 }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
+/* ------------------------------------------------------------------------
+   Concept queue v2 — palette dots, tag chips, filter strip, detail page.
+
+   This block was added when the concept queue grew past 100 entries and
+   started reading as an undifferentiated wall of thumbnails. Each
+   concept now ships:
+
+     * `.palette-dots`   — 5 auto-extracted hex circles per card so the
+                           color identity is visible at thumbnail size.
+     * `.chip`           — small-caps sector / era / type tag chips.
+     * `.concept-filters` — collapsible filter strip above the grid;
+                           buttons toggle data-attr matches with no JS
+                           framework.
+     * `.concept-detail__*` — per-concept detail page (carousel, palette
+                              strip, type spec, CTAs).
+
+   The whole block is scoped under existing `.concept` / `.concept-grid`
+   parents wherever possible so it inherits the magazine-cover design
+   tokens (--paper, --ink, --accent, --hairline) and a future redesign
+   can swap them out in one place.
+   ------------------------------------------------------------------------ */
+
+.palette-dots {
+  display: inline-flex;
+  gap: .25rem;
+  align-items: center;
+  margin-top: .25rem;
+  min-height: .9rem;
+}
+.palette-dots .dot {
+  width: .9rem;
+  height: .9rem;
+  border-radius: 999px;
+  border: var(--hairline) solid rgba(0, 0, 0, .25);
+  display: inline-block;
+}
+
+/* Generic chip — used for sector/era/type/hero tags everywhere in the
+   concept system. Distinct from `.concept .badge` (which is the
+   filled "In queue" / "Shipped" pill) so the two register types
+   don't fight inside the meta line. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--body);
+  font-weight: 700;
+  font-size: .58rem;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  line-height: 1;
+  padding: .22rem .55rem .18rem;
+  border: var(--hairline) solid var(--rule);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+}
+.chip + .chip { margin-left: .25rem; }
+.chip-sector { border-color: var(--ink); }
+.chip-era    { border-color: var(--accent); }
+.chip-type   { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.chip-hero   { background: var(--highlight); border-color: var(--ink); }
+.chip-palette { font-variant-caps: all-small-caps; }
+
+/* The redesigned concept-card meta line packs more into the same
+   vertical real estate. Keep wrapping clean by letting chips flow on
+   their own row when there isn't room. */
+.concept .meta { row-gap: .35rem; }
+
+/* Filter strip — sits between the subhero and the first section
+   header. Each axis is a collapsible <details> so the strip stays
+   compact on narrow viewports without JS. */
+.concept-filters {
+  margin: 1.5rem 0 1rem;
+  padding: 1rem 0 1.25rem;
+  border-top: var(--hairline) solid var(--rule);
+  border-bottom: var(--hairline) solid var(--rule);
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem 1.5rem;
+  align-items: flex-start;
+  font-family: var(--body);
+}
+.concept-filters__group {
+  /* Keep each filter group on its own line of summaries until opened. */
+  flex: 0 0 auto;
+}
+.concept-filters__group > summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  padding: .35rem .25rem;
+  list-style: none;
+}
+.concept-filters__group > summary::-webkit-details-marker { display: none; }
+.concept-filters__group > summary::after {
+  content: " ▾";
+  color: var(--accent);
+}
+.concept-filters__group[open] > summary::after { content: " ▴"; }
+.concept-filters__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  padding: .5rem 0 0;
+  max-width: 38rem;
+}
+.filter-btn {
+  font-family: var(--body);
+  font-weight: 700;
+  font-size: .62rem;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  padding: .35rem .65rem .3rem;
+  background: var(--paper);
+  color: var(--ink);
+  border: var(--hairline) solid var(--rule);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color .12s ease, color .12s ease, border-color .12s ease;
+}
+.filter-btn:hover { border-color: var(--ink); }
+.filter-btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.filter-clear {
+  align-self: center;
+  background: transparent;
+  border-color: transparent;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--accent);
+}
+.filter-clear:hover { background: var(--highlight); border-color: var(--ink); }
+.concept-filters__count {
+  flex: 1 0 100%;
+  margin: .25rem 0 0;
+  font-size: .68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--muted);
+}
+/* Hide cards filtered out by the JS strip (uses the `hidden` HTML attr
+   so cards remain accessible to assistive tech that ignores `hidden`
+   when navigating the queue with the filter active). */
+.concept[hidden] { display: none; }
+
+/* ----------------------------------------------------------------
+   Per-concept detail page — concepts/<slug>/index.html
+   ---------------------------------------------------------------- */
+.concept-detail {
+  display: grid;
+  gap: clamp(2rem, 4vw, 3.5rem);
+  padding: clamp(1.5rem, 4vw, 3rem) 0 4rem;
+}
+.concept-detail__header { max-width: 60rem; }
+.concept-detail__header .eyebrow {
+  display: inline-block;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--body);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  font-size: .68rem;
+  padding: .35rem .7rem .3rem;
+  border-radius: 999px;
+  margin: 0 0 1rem;
+  line-height: 1;
+}
+.concept-detail__header h1 {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(3rem, 9vw, 7.5rem);
+  line-height: .9;
+  letter-spacing: -.04em;
+  margin: 0 0 1rem;
+  text-transform: lowercase;
+}
+.concept-detail__header .deck {
+  font-family: var(--body);
+  font-weight: 500;
+  font-size: clamp(1.1rem, 2vw, 1.45rem);
+  line-height: 1.45;
+  margin: 0 0 1.5rem;
+}
+/* Tag definition list — `<dl>` row of `<div><dt><dd>`. The dl uses
+   flex-wrap rather than a grid so chip rows reflow naturally on
+   narrow viewports. */
+.concept-detail__tags {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem 1.5rem;
+}
+.concept-detail__tags > div {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+.concept-detail__tags dt {
+  font-family: var(--body);
+  font-weight: 700;
+  font-size: .6rem;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--muted);
+}
+.concept-detail__tags dd { margin: 0; }
+
+/* Gallery — solo (single image) renders centered + full width; multi-
+   slide renders as a horizontally scrollable strip with snap-points
+   so a click on a thumbnail pulls it into view. Each slide also acts
+   as a "open original PNG in new tab" link via the wrapping <a>. */
+.concept-detail__gallery {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: .75rem;
+  scroll-snap-type: x mandatory;
+}
+.gallery-slide {
+  margin: 0;
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  background: #ece6d3;
+  border: var(--hairline) solid var(--rule);
+  display: flex;
+  flex-direction: column;
+}
+.gallery-slide--solo {
+  flex: 1 1 auto;
+  width: 100%;
+  align-items: center;
+}
+.gallery-slide__zoom {
+  display: block;
+  cursor: zoom-in;
+  outline: 2px solid transparent;
+  outline-offset: -4px;
+  transition: outline-color .12s ease;
+}
+.gallery-slide__zoom:hover,
+.gallery-slide__zoom:focus-visible { outline-color: var(--accent); }
+.gallery-slide img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.gallery-slide--solo img { max-height: 80vh; }
+.gallery-slide:not(.gallery-slide--solo) img {
+  width: 22rem;
+  height: auto;
+}
+.gallery-slide figcaption {
+  font-family: var(--body);
+  font-weight: 700;
+  font-size: .65rem;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  padding: .5rem .75rem;
+  background: var(--paper);
+  border-top: var(--hairline) solid var(--rule);
+}
+
+/* Palette strip — large swatches with hex labels under them. Two-row
+   layout: hex swatches on top, curated palette tag chips below so the
+   relationship between extracted color and curated tag is visible. */
+.concept-detail__palette h2,
+.concept-detail__type h2 {
+  font-family: var(--body);
+  font-weight: 700;
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  margin: 0 0 1rem;
+}
+.swatch-row {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .35rem;
+}
+.swatch__chip {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 4px;
+  border: var(--hairline) solid var(--rule);
+  display: block;
+}
+.swatch code {
+  font-family: var(--mono, "IBM Plex Mono", monospace);
+  font-size: .72rem;
+  letter-spacing: .02em;
+}
+.palette-tags {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+}
+
+/* Type specimen — set the actual type spec in the body sans for now;
+   pulling the named display+body fonts in is left for a future
+   iteration that loads each concept's actual web fonts. */
+.concept-detail__type .type-genre { margin: 0 0 .75rem; }
+.concept-detail__type .type-specimen {
+  font-family: var(--body);
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 0;
+  color: var(--ink);
+}
+
+/* CTA aside — primary "Pick this one" / "See it live" button + an
+   optional secondary action / note. */
+.concept-detail__cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: center;
+  padding-top: 1.5rem;
+  border-top: var(--hairline) solid var(--rule);
+}
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  font-family: var(--body);
+  font-weight: 700;
+  font-size: .85rem;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  padding: .85rem 1.4rem .8rem;
+  border-radius: 999px;
+  border: var(--hairline) solid var(--ink);
+  text-decoration: none;
+  transition: background-color .12s ease, color .12s ease;
+}
+.cta-primary { background: var(--ink); color: var(--paper); }
+.cta-primary:hover { background: var(--accent); color: var(--ink); }
+.cta-secondary { background: var(--paper); color: var(--ink); }
+.cta-secondary:hover { background: var(--highlight); }
+.cta .arrow { color: var(--accent); }
+.cta-primary .arrow { color: var(--paper); }
+.cta-primary:hover .arrow { color: var(--ink); }
+.cta-note {
+  margin: 0;
+  font-size: .72rem;
+  color: var(--muted);
+  flex: 1 1 16rem;
+}
+

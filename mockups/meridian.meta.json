@@ -1,0 +1,25 @@
+{
+  "slug": "meridian",
+  "name": "Meridian",
+  "blurb": "Travel-trunk + map shop: warm tan leather, brass buckles, hand-drawn world maps.",
+  "tags": {
+    "palette": [
+      "tan",
+      "brown",
+      "cream",
+      "navy"
+    ],
+    "type": "transitional-serif",
+    "era": "pre-1950",
+    "sector": "leather-goods",
+    "hero": "illustration-led"
+  },
+  "palette_hex": [
+    "#101823",
+    "#ecebe6",
+    "#696a69",
+    "#adada8",
+    "#3a4046"
+  ],
+  "type_specimen": "Display: Trajan. Body: Lora."
+}

@@ -1,0 +1,25 @@
+{
+  "slug": "cay",
+  "name": "Cay",
+  "blurb": "Caribbean island goods: turquoise sea, coral pink, woven palm fronds.",
+  "tags": {
+    "palette": [
+      "turquoise",
+      "coral",
+      "cream",
+      "sage"
+    ],
+    "type": "hand-script",
+    "era": "contemporary",
+    "sector": "gift-shop",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#f7f0df",
+    "#f3c66e",
+    "#9eccc1",
+    "#d5755a",
+    "#d8c4a8"
+  ],
+  "type_specimen": "Display: Caveat. Body: Public Sans."
+}

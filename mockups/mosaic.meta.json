@@ -1,0 +1,25 @@
+{
+  "slug": "mosaic",
+  "name": "Mosaic",
+  "blurb": "Byzantine-style mosaic atelier: gold smalti + lapis + terracotta tessera medallion.",
+  "tags": {
+    "palette": [
+      "gold",
+      "cobalt",
+      "terracotta",
+      "cream"
+    ],
+    "type": "transitional-serif",
+    "era": "pre-1900",
+    "sector": "art-print",
+    "hero": "illustration-led"
+  },
+  "palette_hex": [
+    "#ebe4d2",
+    "#b0a593",
+    "#33251c",
+    "#71533f",
+    "#ad884d"
+  ],
+  "type_specimen": "Display: Trajan. Body: Lora."
+}

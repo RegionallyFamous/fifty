@@ -1,0 +1,25 @@
+{
+  "slug": "batik",
+  "name": "Batik",
+  "blurb": "Indonesian wax-resist textiles: indigo, ivory, copper-rust, intricate pattern hero.",
+  "tags": {
+    "palette": [
+      "navy",
+      "cream",
+      "rust",
+      "ochre"
+    ],
+    "type": "humanist-sans",
+    "era": "pre-1950",
+    "sector": "textiles",
+    "hero": "pattern-led"
+  },
+  "palette_hex": [
+    "#eee5cd",
+    "#1b2a50",
+    "#91652f",
+    "#afa38f",
+    "#4e2d1a"
+  ],
+  "type_specimen": "Display: Trajan. Body: Lora."
+}

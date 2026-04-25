@@ -1,0 +1,25 @@
+{
+  "slug": "quench",
+  "name": "Quench",
+  "blurb": "Cold-press juice + sparkling-water shop: bright citrus accents, cream + glass green.",
+  "tags": {
+    "palette": [
+      "lime",
+      "ochre",
+      "cream",
+      "sage"
+    ],
+    "type": "humanist-sans",
+    "era": "contemporary",
+    "sector": "beverage",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#bcfe24",
+    "#010101",
+    "#302f2f",
+    "#d4e3f8",
+    "#68891d"
+  ],
+  "type_specimen": "Display: Recoleta. Body: Public Sans."
+}

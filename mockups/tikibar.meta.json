@@ -1,0 +1,25 @@
+{
+  "slug": "tikibar",
+  "name": "Tiki Bar",
+  "blurb": "Polynesian rum lounge: turquoise, coral, papaya, carved-tiki mug + bamboo borders.",
+  "tags": {
+    "palette": [
+      "turquoise",
+      "coral",
+      "ochre",
+      "sage"
+    ],
+    "type": "hand-lettered",
+    "era": "mid-century",
+    "sector": "beverage",
+    "hero": "illustration-led"
+  },
+  "palette_hex": [
+    "#faf0d6",
+    "#03aea7",
+    "#ceab5c",
+    "#fb7d4b",
+    "#d7c7b1"
+  ],
+  "type_specimen": "Display: Mahalo. Body: Public Sans."
+}

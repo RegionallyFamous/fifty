@@ -1,0 +1,25 @@
+{
+  "slug": "weft",
+  "name": "Weft",
+  "blurb": "Hand-loom weaver: oatmeal warp, indigo + ochre weft, exposed-thread textures.",
+  "tags": {
+    "palette": [
+      "cream",
+      "navy",
+      "ochre",
+      "tan"
+    ],
+    "type": "slab-serif",
+    "era": "pre-1950",
+    "sector": "textiles",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#c8c5c3",
+    "#f2f1ea",
+    "#8e7f73",
+    "#4c2f19",
+    "#71533f"
+  ],
+  "type_specimen": "Display: Roslindale. Body: Inter."
+}

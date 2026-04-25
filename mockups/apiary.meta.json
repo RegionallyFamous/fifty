@@ -1,0 +1,25 @@
+{
+  "slug": "apiary",
+  "name": "Apiary",
+  "blurb": "Honey + beeswax shop: butter yellow, cream, hexagon motifs, soft hand-drawn bees.",
+  "tags": {
+    "palette": [
+      "butter",
+      "ochre",
+      "cream",
+      "brown"
+    ],
+    "type": "humanist-sans",
+    "era": "contemporary",
+    "sector": "food",
+    "hero": "pattern-led"
+  },
+  "palette_hex": [
+    "#faf3df",
+    "#cfc4a5",
+    "#cd8d23",
+    "#948d79",
+    "#9a690f"
+  ],
+  "type_specimen": "Display: Recoleta. Body: Public Sans."
+}

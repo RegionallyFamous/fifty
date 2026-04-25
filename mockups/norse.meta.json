@@ -1,0 +1,25 @@
+{
+  "slug": "norse",
+  "name": "Norse",
+  "blurb": "Nordic woodcraft shop: ash-grey, oxblood, antler-handled tools, runic motifs.",
+  "tags": {
+    "palette": [
+      "slate",
+      "oxblood",
+      "cream",
+      "brown"
+    ],
+    "type": "blackletter",
+    "era": "pre-1900",
+    "sector": "gear-tool",
+    "hero": "illustration-led"
+  },
+  "palette_hex": [
+    "#ece4cd",
+    "#1c1912",
+    "#70695d",
+    "#671f13",
+    "#b2a894"
+  ],
+  "type_specimen": "Display: UnifrakturCook. Body: Lora."
+}

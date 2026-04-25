@@ -1,0 +1,25 @@
+{
+  "slug": "holler",
+  "name": "Holler",
+  "blurb": "Appalachian bluegrass record + folk-craft shop: warm clay, oak, banjo illustrations.",
+  "tags": {
+    "palette": [
+      "terracotta",
+      "ochre",
+      "cream",
+      "forest-green"
+    ],
+    "type": "wood-type",
+    "era": "pre-1950",
+    "sector": "music",
+    "hero": "illustration-led"
+  },
+  "palette_hex": [
+    "#eee5c9",
+    "#c48f5d",
+    "#b0a996",
+    "#b64937",
+    "#262626"
+  ],
+  "type_specimen": "Display: Wood Type. Body: Roslindale."
+}

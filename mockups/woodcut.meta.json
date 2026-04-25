@@ -1,0 +1,24 @@
+{
+  "slug": "woodcut",
+  "name": "Woodcut",
+  "blurb": "Sosaku-hanga woodblock print shop: mulberry paper cream, bold black-ink hawk hero.",
+  "tags": {
+    "palette": [
+      "cream",
+      "ink",
+      "tan"
+    ],
+    "type": "wood-type",
+    "era": "pre-1950",
+    "sector": "art-print",
+    "hero": "illustration-led"
+  },
+  "palette_hex": [
+    "#f9f4e8",
+    "#af855d",
+    "#212226",
+    "#d0cbbf",
+    "#726f69"
+  ],
+  "type_specimen": "Display: Roslindale. Body: Lora."
+}

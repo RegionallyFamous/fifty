@@ -1,0 +1,25 @@
+{
+  "slug": "crock",
+  "name": "Crock",
+  "blurb": "Stoneware kitchen crocks: warm beige, salt-glaze speckle, slow-cooking copy.",
+  "tags": {
+    "palette": [
+      "tan",
+      "cream",
+      "brown",
+      "sage"
+    ],
+    "type": "slab-serif",
+    "era": "pre-1950",
+    "sector": "tableware",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#c9a278",
+    "#a87951",
+    "#dbdbdb",
+    "#2e2e2e",
+    "#765034"
+  ],
+  "type_specimen": "Display: Roslindale. Body: Lora."
+}
