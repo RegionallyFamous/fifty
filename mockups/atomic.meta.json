@@ -1,7 +1,7 @@
 {
   "slug": "atomic",
   "name": "Atomic",
-  "blurb": "Mid-century atomic-age homewares: starbursts, boomerangs, mustard + teal + charcoal.",
+  "blurb": "Mid-century atomic-age gift shop: hand-drawn starburst + boomerang + rocketship icons, mustard + teal + charcoal.",
   "tags": {
     "palette": [
       "mustard",
@@ -11,15 +11,15 @@
     ],
     "type": "geometric-sans",
     "era": "mid-century",
-    "sector": "homewares",
-    "hero": "pattern-led"
+    "sector": "gift-shop",
+    "hero": "illustration-led"
   },
   "palette_hex": [
-    "#6b772f",
-    "#f4ebd3",
-    "#cd9b37",
-    "#d6c391",
-    "#b04b11"
+    "#f4edd3",
+    "#3e898c",
+    "#cfa231",
+    "#2f3334",
+    "#b69369"
   ],
   "type_specimen": "Display: Futura Bold. Body: Futura Book."
 }

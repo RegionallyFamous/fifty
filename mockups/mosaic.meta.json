@@ -1,7 +1,7 @@
 {
   "slug": "mosaic",
   "name": "Mosaic",
-  "blurb": "Byzantine-style mosaic atelier: gold smalti + lapis + terracotta tessera medallion.",
+  "blurb": "Byzantine mosaic-tile workshop: gridded specimen catalog of tessera medallions, gold smalti + lapis + terracotta, ornamental tile-maker's wordmark.",
   "tags": {
     "palette": [
       "gold",
@@ -9,17 +9,17 @@
       "terracotta",
       "cream"
     ],
-    "type": "transitional-serif",
+    "type": "ornamental",
     "era": "pre-1900",
-    "sector": "art-print",
-    "hero": "illustration-led"
+    "sector": "ceramics",
+    "hero": "specimen-grid"
   },
   "palette_hex": [
-    "#ebe4d2",
-    "#b0a593",
-    "#33251c",
-    "#71533f",
-    "#ad884d"
+    "#f4e9cc",
+    "#cda85b",
+    "#b07f37",
+    "#8e401d",
+    "#cabfa8"
   ],
-  "type_specimen": "Display: Trajan. Body: Lora."
+  "type_specimen": "Display: IM Fell Great Primer. Body: Lora."
 }

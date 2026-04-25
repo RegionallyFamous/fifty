@@ -1,25 +1,25 @@
 {
   "slug": "terrazzo",
   "name": "Terrazzo",
-  "blurb": "Postwar-Milanese terrazzo slabs: cream + multicolor chips, slab + tabletop product cards.",
+  "blurb": "Contemporary terrazzo ceramics atelier: pastel slab photography, hairline metal serif wordmark, single hero vessel per product card.",
   "tags": {
     "palette": [
       "cream",
       "pink",
-      "navy",
+      "turquoise",
       "mustard"
     ],
-    "type": "geometric-sans",
-    "era": "mid-century",
-    "sector": "homewares",
-    "hero": "pattern-led"
+    "type": "modern-serif",
+    "era": "contemporary",
+    "sector": "ceramics",
+    "hero": "photo-hero"
   },
   "palette_hex": [
-    "#f7f3e9",
-    "#cfcfce",
-    "#918675",
-    "#201f1d",
-    "#544434"
+    "#f9f9f1",
+    "#dbd5c5",
+    "#ae9a7b",
+    "#8f7755",
+    "#efb84e"
   ],
-  "type_specimen": "Display: Forma DJR. Body: Inter."
+  "type_specimen": "Display: GT Super Display. Body: Inter."
 }

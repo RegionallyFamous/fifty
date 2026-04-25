@@ -1,25 +1,25 @@
 {
   "slug": "mire",
   "name": "Mire",
-  "blurb": "Bog-cottage moody homewares: deep moss, peat brown, candlelit photography.",
+  "blurb": "Bog-cottage moody homewares: soft ink-wash illustration of a misty peat-bog horizon with a single reed-lantern, deep moss + slate + bone cream.",
   "tags": {
     "palette": [
       "forest-green",
-      "brown",
-      "ink",
-      "cream"
+      "slate",
+      "cream",
+      "ink"
     ],
     "type": "blackletter",
     "era": "pre-1900",
     "sector": "homewares",
-    "hero": "photo-hero"
+    "hero": "illustration-led"
   },
   "palette_hex": [
-    "#1f1f1f",
-    "#fcfcfc",
-    "#6b2f15",
-    "#6f514c",
-    "#d3d3d3"
+    "#fbf8e8",
+    "#7f8395",
+    "#c9c8d5",
+    "#434a34",
+    "#874718"
   ],
   "type_specimen": "Display: UnifrakturMaguntia. Body: Crimson Pro."
 }

@@ -1,25 +1,25 @@
 {
   "slug": "luthier",
   "name": "Luthier",
-  "blurb": "Hand-built guitar shop: warm spruce, rosewood, hand-drawn fretboard schematics.",
+  "blurb": "Hand-built guitar shop: gridded specimen catalog of acoustic-body silhouettes, ochre + sepia ink, numbered plate labels in old-style italic.",
   "tags": {
     "palette": [
-      "tan",
-      "brown",
+      "ochre",
       "cream",
+      "ink",
       "burgundy"
     ],
     "type": "transitional-serif",
     "era": "pre-1950",
     "sector": "music",
-    "hero": "diagram-led"
+    "hero": "specimen-grid"
   },
   "palette_hex": [
-    "#ede3c8",
-    "#54361e",
-    "#15100c",
-    "#b0a793",
-    "#92653f"
+    "#f9f3e4",
+    "#b6aa99",
+    "#ad7e35",
+    "#d1cbc5",
+    "#776453"
   ],
   "type_specimen": "Display: Caslon. Body: Lora."
 }

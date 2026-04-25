@@ -1,25 +1,25 @@
 {
   "slug": "weft",
   "name": "Weft",
-  "blurb": "Hand-loom weaver: oatmeal warp, indigo + ochre weft, exposed-thread textures.",
+  "blurb": "Hand-loom homewares shop: exploded-diagram hero of warp-weighted loom, warm tan + oxblood + cream, hand-woven throw + rug product stills.",
   "tags": {
     "palette": [
-      "cream",
-      "navy",
-      "ochre",
-      "tan"
+      "tan",
+      "brown",
+      "oxblood",
+      "cream"
     ],
     "type": "slab-serif",
     "era": "pre-1950",
-    "sector": "textiles",
-    "hero": "photo-hero"
+    "sector": "homewares",
+    "hero": "diagram-led"
   },
   "palette_hex": [
-    "#c8c5c3",
-    "#f2f1ea",
-    "#8e7f73",
-    "#4c2f19",
-    "#71533f"
+    "#fbf5e7",
+    "#dbc5a6",
+    "#8c735c",
+    "#b5a182",
+    "#744b31"
   ],
   "type_specimen": "Display: Roslindale. Body: Inter."
 }

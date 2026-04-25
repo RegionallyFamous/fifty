@@ -1,25 +1,25 @@
 {
   "slug": "kindling",
   "name": "Kindling",
-  "blurb": "Outdoor fire-starter + axe shop: smoky charcoal, cedar, ember orange, woodgrain.",
+  "blurb": "Technical backcountry fire-tool brand: condensed trail-sign sans, exploded-diagram heroes of axe heads + tinder-knives, charcoal + butter-yellow safety accents.",
   "tags": {
     "palette": [
       "charcoal",
-      "rust",
-      "ochre",
-      "brown"
+      "sage",
+      "butter",
+      "white"
     ],
-    "type": "slab-serif",
+    "type": "condensed-sans",
     "era": "contemporary",
     "sector": "outdoor",
-    "hero": "photo-hero"
+    "hero": "diagram-led"
   },
   "palette_hex": [
-    "#4e5d67",
-    "#f2792e",
-    "#363636",
-    "#7a8488",
-    "#ae6130"
+    "#f5f5ea",
+    "#afafa9",
+    "#f4d564",
+    "#2b2b2b",
+    "#71716e"
   ],
-  "type_specimen": "Display: Roslindale. Body: Inter."
+  "type_specimen": "Display: Acumin Pro Condensed. Body: Inter."
 }

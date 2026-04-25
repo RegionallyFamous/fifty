@@ -1,7 +1,7 @@
 {
   "slug": "mondrian",
   "name": "Mondrian",
-  "blurb": "De-Stijl primary blocks: white grid, red/blue/yellow rectangles, heavy black rules.",
+  "blurb": "De-Stijl art-print shop: oversized full-bleed primary-colour block hero, Helvetica wordmark, thick black keylines between sections.",
   "tags": {
     "palette": [
       "white",
@@ -9,17 +9,17 @@
       "cobalt",
       "butter"
     ],
-    "type": "geometric-sans",
+    "type": "grotesk-sans",
     "era": "pre-1950",
     "sector": "art-print",
-    "hero": "specimen-grid"
+    "hero": "full-bleed"
   },
   "palette_hex": [
-    "#db3d25",
-    "#f8f8f9",
-    "#1c389e",
-    "#f1d534",
-    "#d4d4d4"
+    "#e11511",
+    "#0242a3",
+    "#f7dd02",
+    "#ffffff",
+    "#000000"
   ],
-  "type_specimen": "Display: Futura. Body: Inter."
+  "type_specimen": "Display: Neue Haas Grotesk Display. Body: Helvetica Neue."
 }

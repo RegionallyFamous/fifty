@@ -82,8 +82,17 @@ def _load_allowlist() -> set[frozenset[str]]:
         return set()
     out: set[frozenset[str]] = set()
     for entry in data.get("pairs", []):
+        # Two accepted shapes:
+        #   ["slug-a", "slug-b"]                       — terse
+        #   {"slugs": ["slug-a", "slug-b"], "note": …} — annotated
+        # The annotated form lets reviewers leave a paper trail alongside
+        # each waiver. We treat the `note` field as documentation only.
         if isinstance(entry, list) and len(entry) == 2:
             out.add(frozenset([str(entry[0]), str(entry[1])]))
+        elif isinstance(entry, dict):
+            slugs = entry.get("slugs")
+            if isinstance(slugs, list) and len(slugs) == 2:
+                out.add(frozenset([str(slugs[0]), str(slugs[1])]))
     return out
 
 

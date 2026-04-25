@@ -1,7 +1,7 @@
 {
   "slug": "bauhaus",
   "name": "Bauhaus",
-  "blurb": "Bauhaus primaries: red + yellow + blue circles + squares, Universal-style geometric type.",
+  "blurb": "Bauhaus stationery press: circle + square + triangle hero icon, red + yellow + blue + cream, Universal-style geometric type.",
   "tags": {
     "palette": [
       "scarlet",
@@ -11,15 +11,15 @@
     ],
     "type": "geometric-sans",
     "era": "pre-1950",
-    "sector": "art-print",
-    "hero": "specimen-grid"
+    "sector": "stationery",
+    "hero": "illustration-led"
   },
   "palette_hex": [
-    "#ffffff",
-    "#efc519",
-    "#cf3326",
-    "#0a4ca2",
-    "#d5d5d5"
+    "#f3e9cc",
+    "#ebc309",
+    "#d62616",
+    "#1f5191",
+    "#cfc4a9"
   ],
   "type_specimen": "Display: Universal / Futura. Body: Futura Book."
 }

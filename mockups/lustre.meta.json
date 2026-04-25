@@ -1,25 +1,25 @@
 {
   "slug": "lustre",
   "name": "Lustre",
-  "blurb": "Pearl + iridescent jewelry: opal, mother-of-pearl, very pale lavender + champagne.",
+  "blurb": "Y2K iridescent jeweler: chrome-deco wordmark, full-bleed oil-slick iridescent hero, pearl + lavender + champagne gradients.",
   "tags": {
     "palette": [
       "lilac",
-      "cream",
-      "gold",
-      "pastel"
+      "chrome",
+      "pastel",
+      "silver"
     ],
-    "type": "modern-serif",
-    "era": "contemporary",
+    "type": "chrome-deco",
+    "era": "y2k",
     "sector": "jewelry",
-    "hero": "photo-hero"
+    "hero": "full-bleed"
   },
   "palette_hex": [
-    "#0d0e13",
-    "#f6f6f6",
-    "#cecccb",
-    "#4a4950",
-    "#8f785e"
+    "#afa2d5",
+    "#f0f0ee",
+    "#d7c6b0",
+    "#f3b2e3",
+    "#b69a93"
   ],
-  "type_specimen": "Display: Bodoni 72. Body: Lora."
+  "type_specimen": "Display: Eurostile Extended. Body: Inter."
 }

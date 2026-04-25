@@ -9,9 +9,17 @@
     "because both mockups are placeholders awaiting a refresh and the",
     "overlap will resolve naturally.",
     "",
-    "Each entry is a 2-element array of slugs. Order doesn't matter.",
-    "Add a `note` sibling for every entry so the next person to look",
-    "knows why the pair was waved through."
+    "Each entry is either a 2-element array of slugs:",
+    "    [\"slug-a\", \"slug-b\"]",
+    "or an annotated object with a required `slugs` field and a `note`:",
+    "    { \"slugs\": [\"slug-a\", \"slug-b\"], \"note\": \"why\" }",
+    "Order doesn't matter. Prefer the annotated form so the next person",
+    "to look knows why the pair was waved through."
   ],
-  "pairs": []
+  "pairs": [
+    {
+      "slugs": ["emoji", "futurism"],
+      "note": "Borderline pHash distance (8/64). Tags are fully distinct: emoji is y2k-free contemporary gift-shop collage in bright pastels, futurism is pre-1950 scarlet+ink manifesto poster. Thumbnails share a diagonal-energy silhouette but read differently at card size."
+    }
+  ]
 }

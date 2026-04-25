@@ -1,25 +1,25 @@
 {
   "slug": "meridian",
   "name": "Meridian",
-  "blurb": "Travel-trunk + map shop: warm tan leather, brass buckles, hand-drawn world maps.",
+  "blurb": "Travel-trunk + compass goods: nautical chart hero with compass rose and meridian-line overlays, navy + brass + cognac, engraved oldstyle numerals.",
   "tags": {
     "palette": [
+      "navy",
+      "brass",
       "tan",
-      "brown",
-      "cream",
-      "navy"
+      "cream"
     ],
-    "type": "transitional-serif",
+    "type": "oldstyle-serif",
     "era": "pre-1950",
-    "sector": "leather-goods",
-    "hero": "illustration-led"
+    "sector": "gear-tool",
+    "hero": "diagram-led"
   },
   "palette_hex": [
-    "#101823",
-    "#ecebe6",
-    "#696a69",
-    "#adada8",
-    "#3a4046"
+    "#f9f1dd",
+    "#d9c9ab",
+    "#919292",
+    "#713b20",
+    "#b26e3a"
   ],
-  "type_specimen": "Display: Trajan. Body: Lora."
+  "type_specimen": "Display: Garamond Premier. Body: Lora."
 }

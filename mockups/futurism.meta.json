@@ -1,7 +1,7 @@
 {
   "slug": "futurism",
   "name": "Futurism",
-  "blurb": "Italian-futurist propaganda: dynamic diagonals, scarlet + ink + speed-lines.",
+  "blurb": "Italian-futurist manifesto poster: full-bleed propaganda banner, scarlet + ink diagonal speed-lines.",
   "tags": {
     "palette": [
       "scarlet",
@@ -11,7 +11,7 @@
     "type": "condensed-sans",
     "era": "pre-1950",
     "sector": "art-print",
-    "hero": "type-led"
+    "hero": "full-bleed"
   },
   "palette_hex": [
     "#e8ddbf",

@@ -1,7 +1,7 @@
 {
   "slug": "facet",
   "name": "Facet",
-  "blurb": "Cut-gemstone jeweler: deep navy, gold hairlines, faceted-crystal product photography.",
+  "blurb": "Cut-gemstone jeweler: technical gem-cut schematic diagrams, deep navy + gold hairlines, geometric UI chrome.",
   "tags": {
     "palette": [
       "navy",
@@ -9,17 +9,17 @@
       "cream",
       "white"
     ],
-    "type": "modern-serif",
+    "type": "geometric-sans",
     "era": "contemporary",
     "sector": "jewelry",
-    "hero": "photo-hero"
+    "hero": "diagram-led"
   },
   "palette_hex": [
-    "#f9f4e8",
-    "#100b08",
-    "#4f422c",
-    "#8e7851",
-    "#c8a768"
+    "#ffffff",
+    "#cdced1",
+    "#a2a5ae",
+    "#777d8b",
+    "#c4a05b"
   ],
   "type_specimen": "Display: Bodoni 72. Body: Inter."
 }

@@ -1316,6 +1316,12 @@ def build(*, dry_run: bool = False) -> int:
         Path("favicon.ico"),
         Path("apple-touch-icon.png"),
         Path("assets/og-default.png"),
+        # AUDIT.md is the rendered output of `bin/audit-concepts.py`,
+        # which is run independently. Preserve it here so a contributor
+        # can run `bin/build-redirects.py` without first re-running the
+        # audit (the queue card markup is rebuilt; the audit summary
+        # stays whatever the audit script last wrote).
+        Path("concepts/AUDIT.md"),
     ]
     preserved: dict[Path, bytes] = {}
     for rel in PRESERVED_FILES:

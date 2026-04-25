@@ -1,25 +1,25 @@
 {
   "slug": "tarpan",
   "name": "Tarpan",
-  "blurb": "Steppe-horse + saddlery shop: dust beige, antique russet, Mongolian-felt textures.",
+  "blurb": "Modern trail-running kit: condensed waystation sans, hero pattern of topographic contour lines, dust tan + rust + pea-green safety accents.",
   "tags": {
     "palette": [
       "tan",
       "rust",
-      "cream",
-      "olive"
+      "pea-green",
+      "charcoal"
     ],
-    "type": "slab-serif",
-    "era": "pre-1950",
-    "sector": "leather-goods",
-    "hero": "photo-hero"
+    "type": "condensed-sans",
+    "era": "contemporary",
+    "sector": "outdoor",
+    "hero": "pattern-led"
   },
   "palette_hex": [
-    "#f2efe2",
-    "#7a4620",
-    "#d1c8ae",
-    "#a89e90",
-    "#967051"
+    "#e6ddc6",
+    "#c5ab8a",
+    "#789d18",
+    "#9db252",
+    "#766550"
   ],
-  "type_specimen": "Display: Industry. Body: Lora."
+  "type_specimen": "Display: Acumin Pro Condensed. Body: Inter."
 }

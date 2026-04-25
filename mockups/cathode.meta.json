@@ -1,24 +1,25 @@
 {
   "slug": "cathode",
   "name": "Cathode",
-  "blurb": "CRT monitor green-on-black terminal aesthetic: glowing phosphor type, scanlines.",
+  "blurb": "80s TV-era home electronics: vintage CRT + VCR photography, SMPTE colour-bar turquoise + coral + butter + cream.",
   "tags": {
     "palette": [
-      "lime",
-      "black",
-      "monochrome"
+      "turquoise",
+      "coral",
+      "butter",
+      "cream"
     ],
     "type": "monospace",
     "era": "1980s",
-    "sector": "electronics",
-    "hero": "type-led"
+    "sector": "homewares",
+    "hero": "photo-hero"
   },
   "palette_hex": [
-    "#000617",
-    "#176476",
-    "#e1e4e6",
-    "#821c87",
-    "#430e4b"
+    "#f7f4e0",
+    "#fa7258",
+    "#52311a",
+    "#c7bda8",
+    "#2fc0bb"
   ],
   "type_specimen": "Display: VT323 / IBM 3270. Body: IBM Plex Mono."
 }

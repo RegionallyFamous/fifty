@@ -1,25 +1,25 @@
 {
   "slug": "cay",
   "name": "Cay",
-  "blurb": "Caribbean island goods: turquoise sea, coral pink, woven palm fronds.",
+  "blurb": "Caribbean island goods: hand-drawn palm + seashell illustration hero, sky-blue + peach + sand, casual script wordmark on paper cream.",
   "tags": {
     "palette": [
-      "turquoise",
-      "coral",
-      "cream",
-      "sage"
+      "sky-blue",
+      "peach",
+      "pink",
+      "cream"
     ],
     "type": "hand-script",
     "era": "contemporary",
     "sector": "gift-shop",
-    "hero": "photo-hero"
+    "hero": "illustration-led"
   },
   "palette_hex": [
-    "#f7f0df",
-    "#f3c66e",
-    "#9eccc1",
-    "#d5755a",
-    "#d8c4a8"
+    "#fdfbef",
+    "#c3e2e6",
+    "#fac9ad",
+    "#b4b2ab",
+    "#779692"
   ],
   "type_specimen": "Display: Caveat. Body: Public Sans."
 }

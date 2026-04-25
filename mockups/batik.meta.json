@@ -1,25 +1,25 @@
 {
   "slug": "batik",
   "name": "Batik",
-  "blurb": "Indonesian wax-resist textiles: indigo, ivory, copper-rust, intricate pattern hero.",
+  "blurb": "Contemporary batik revival studio: saturated indigo + saffron + magenta wax-resist, ornamental wordmark, full-bleed pattern hero.",
   "tags": {
     "palette": [
       "navy",
-      "cream",
-      "rust",
-      "ochre"
+      "ochre",
+      "magenta",
+      "cream"
     ],
-    "type": "humanist-sans",
-    "era": "pre-1950",
+    "type": "ornamental",
+    "era": "contemporary",
     "sector": "textiles",
     "hero": "pattern-led"
   },
   "palette_hex": [
-    "#eee5cd",
-    "#1b2a50",
-    "#91652f",
-    "#afa38f",
-    "#4e2d1a"
+    "#181234",
+    "#c5c4c2",
+    "#b15e39",
+    "#ea922e",
+    "#f1ebd8"
   ],
-  "type_specimen": "Display: Trajan. Body: Lora."
+  "type_specimen": "Display: IM Fell DW Pica. Body: Public Sans."
 }

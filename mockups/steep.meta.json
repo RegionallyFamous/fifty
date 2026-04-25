@@ -1,25 +1,25 @@
 {
   "slug": "steep",
   "name": "Steep",
-  "blurb": "Loose-leaf tea apothecary: warm clay, cream, hand-drawn botanical labels.",
+  "blurb": "Victorian tea-merchant: antique oldstyle-serif labels, specimen-grid catalog of numbered tin varieties, warm clay + cream + forest-green.",
   "tags": {
     "palette": [
       "terracotta",
       "cream",
-      "sage",
-      "ochre"
+      "forest-green",
+      "brown"
     ],
-    "type": "transitional-serif",
-    "era": "pre-1950",
+    "type": "oldstyle-serif",
+    "era": "pre-1900",
     "sector": "beverage",
-    "hero": "photo-hero"
+    "hero": "specimen-grid"
   },
   "palette_hex": [
-    "#f7f3ea",
-    "#1a1b1d",
-    "#afa493",
-    "#ba6f4f",
-    "#554732"
+    "#f7eacf",
+    "#b1a18c",
+    "#8d4b2b",
+    "#20351d",
+    "#877262"
   ],
-  "type_specimen": "Display: Recoleta. Body: Lora."
+  "type_specimen": "Display: Garamond Premier. Body: Crimson Pro."
 }

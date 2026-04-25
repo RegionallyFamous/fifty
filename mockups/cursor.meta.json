@@ -1,25 +1,25 @@
 {
   "slug": "cursor",
   "name": "Cursor",
-  "blurb": "AI-tooling brand store: monospace UI chrome, neon accents on near-black.",
+  "blurb": "AI-tooling brand store: warm amber-on-black terminal, sans-serif UI chrome, ASCII-box diagram hero showing keyboard-shortcut flow.",
   "tags": {
     "palette": [
       "black",
-      "lime",
-      "magenta",
+      "ochre",
+      "gold",
       "white"
     ],
-    "type": "monospace",
+    "type": "grotesk-sans",
     "era": "contemporary",
     "sector": "electronics",
-    "hero": "type-led"
+    "hero": "diagram-led"
   },
   "palette_hex": [
-    "#030b06",
-    "#7ad893",
-    "#4a4328",
-    "#4f8b5f",
-    "#8d8e89"
+    "#000000",
+    "#4e3619",
+    "#867446",
+    "#8a470c",
+    "#f3f3f3"
   ],
-  "type_specimen": "Display: Berkeley Mono. Body: IBM Plex Mono."
+  "type_specimen": "Display: Inter Display. Body: JetBrains Mono."
 }
