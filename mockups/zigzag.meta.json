@@ -1,0 +1,24 @@
+{
+  "slug": "zigzag",
+  "name": "Zigzag",
+  "blurb": "Geometric-pattern textile shop: cream + black zigzags, single mustard accent.",
+  "tags": {
+    "palette": [
+      "cream",
+      "ink",
+      "mustard"
+    ],
+    "type": "geometric-sans",
+    "era": "1980s",
+    "sector": "textiles",
+    "hero": "pattern-led"
+  },
+  "palette_hex": [
+    "#ffffff",
+    "#fc8a78",
+    "#fdf513",
+    "#c6eddc",
+    "#c9a9e8"
+  ],
+  "type_specimen": "Display: Druk. Body: Inter."
+}

@@ -1,0 +1,25 @@
+{
+  "slug": "kindling",
+  "name": "Kindling",
+  "blurb": "Outdoor fire-starter + axe shop: smoky charcoal, cedar, ember orange, woodgrain.",
+  "tags": {
+    "palette": [
+      "charcoal",
+      "rust",
+      "ochre",
+      "brown"
+    ],
+    "type": "slab-serif",
+    "era": "contemporary",
+    "sector": "outdoor",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#4e5d67",
+    "#f2792e",
+    "#363636",
+    "#7a8488",
+    "#ae6130"
+  ],
+  "type_specimen": "Display: Roslindale. Body: Inter."
+}

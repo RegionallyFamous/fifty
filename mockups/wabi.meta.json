@@ -1,0 +1,25 @@
+{
+  "slug": "wabi",
+  "name": "Wabi",
+  "blurb": "Japanese wabi-sabi ceramics: kintsugi-gold cracks, soft greys, very generous space.",
+  "tags": {
+    "palette": [
+      "cream",
+      "slate",
+      "gold",
+      "ink"
+    ],
+    "type": "humanist-sans",
+    "era": "contemporary",
+    "sector": "ceramics",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#f4f4ea",
+    "#bab9b2",
+    "#2e2b25",
+    "#939085",
+    "#505151"
+  ],
+  "type_specimen": "Display: Klee One. Body: Noto Sans JP."
+}

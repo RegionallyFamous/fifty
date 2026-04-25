@@ -1,0 +1,25 @@
+{
+  "slug": "disco",
+  "name": "Disco",
+  "blurb": "1978 nightclub apparel + vinyl: chrome-rainbow wordmark, mirror-ball hero on black.",
+  "tags": {
+    "palette": [
+      "chrome",
+      "magenta",
+      "black",
+      "gold"
+    ],
+    "type": "chrome-deco",
+    "era": "1970s",
+    "sector": "music",
+    "hero": "full-bleed"
+  },
+  "palette_hex": [
+    "#000000",
+    "#b14a9b",
+    "#4d0e3d",
+    "#564c2e",
+    "#713060"
+  ],
+  "type_specimen": "Display: ITC Avant Garde Gothic. Body: Inter."
+}

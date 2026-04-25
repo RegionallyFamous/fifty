@@ -1,0 +1,25 @@
+{
+  "slug": "roastery",
+  "name": "Roastery",
+  "blurb": "Specialty-coffee roastery: dark espresso brown, cream chemex, hand-stamped bean bags.",
+  "tags": {
+    "palette": [
+      "brown",
+      "cream",
+      "ochre",
+      "ink"
+    ],
+    "type": "slab-serif",
+    "era": "contemporary",
+    "sector": "coffee",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#f3e7cc",
+    "#ae885e",
+    "#d2b07e",
+    "#341d0f",
+    "#714523"
+  ],
+  "type_specimen": "Display: Roslindale. Body: Inter."
+}

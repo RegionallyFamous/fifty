@@ -1,0 +1,24 @@
+{
+  "slug": "futurism",
+  "name": "Futurism",
+  "blurb": "Italian-futurist propaganda: dynamic diagonals, scarlet + ink + speed-lines.",
+  "tags": {
+    "palette": [
+      "scarlet",
+      "ink",
+      "cream"
+    ],
+    "type": "condensed-sans",
+    "era": "pre-1950",
+    "sector": "art-print",
+    "hero": "type-led"
+  },
+  "palette_hex": [
+    "#e8ddbf",
+    "#aea68f",
+    "#100d08",
+    "#736c5e",
+    "#4a453b"
+  ],
+  "type_specimen": "Display: Acumin Condensed Black. Body: Roboto Condensed."
+}

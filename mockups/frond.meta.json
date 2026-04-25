@@ -1,0 +1,24 @@
+{
+  "slug": "frond",
+  "name": "Frond",
+  "blurb": "Tropical houseplant nursery: lush jungle green, terracotta pots, hand-cut paper leaves.",
+  "tags": {
+    "palette": [
+      "forest-green",
+      "terracotta",
+      "cream"
+    ],
+    "type": "humanist-sans",
+    "era": "contemporary",
+    "sector": "garden",
+    "hero": "illustration-led"
+  },
+  "palette_hex": [
+    "#f8f5e8",
+    "#b4aea4",
+    "#958b7b",
+    "#6e472e",
+    "#d1845b"
+  ],
+  "type_specimen": "Display: Recoleta. Body: Inter."
+}

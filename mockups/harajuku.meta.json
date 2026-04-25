@@ -1,0 +1,25 @@
+{
+  "slug": "harajuku",
+  "name": "Harajuku",
+  "blurb": "Tokyo street-fashion shop: clashing pinks, kawaii stickers, dense product wall.",
+  "tags": {
+    "palette": [
+      "magenta",
+      "pastel",
+      "lime",
+      "sky-blue"
+    ],
+    "type": "hand-lettered",
+    "era": "y2k",
+    "sector": "apparel",
+    "hero": "collage"
+  },
+  "palette_hex": [
+    "#ffffff",
+    "#aeefe0",
+    "#fde985",
+    "#f6a9c7",
+    "#fa68a5"
+  ],
+  "type_specimen": "Display: Mochiy Pop. Body: Inter."
+}

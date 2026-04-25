@@ -1,0 +1,25 @@
+{
+  "slug": "terrazzo",
+  "name": "Terrazzo",
+  "blurb": "Postwar-Milanese terrazzo slabs: cream + multicolor chips, slab + tabletop product cards.",
+  "tags": {
+    "palette": [
+      "cream",
+      "pink",
+      "navy",
+      "mustard"
+    ],
+    "type": "geometric-sans",
+    "era": "mid-century",
+    "sector": "homewares",
+    "hero": "pattern-led"
+  },
+  "palette_hex": [
+    "#f7f3e9",
+    "#cfcfce",
+    "#918675",
+    "#201f1d",
+    "#544434"
+  ],
+  "type_specimen": "Display: Forma DJR. Body: Inter."
+}

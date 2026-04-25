@@ -1,0 +1,25 @@
+{
+  "slug": "dada",
+  "name": "Dada",
+  "blurb": "Dadaist collage: ransom-note typography, torn-paper layers, anti-grid layout.",
+  "tags": {
+    "palette": [
+      "cream",
+      "black",
+      "scarlet",
+      "kraft"
+    ],
+    "type": "hand-lettered",
+    "era": "pre-1950",
+    "sector": "art-print",
+    "hero": "collage"
+  },
+  "palette_hex": [
+    "#e8ddc3",
+    "#aca492",
+    "#6c675c",
+    "#ad7361",
+    "#31302a"
+  ],
+  "type_specimen": "Display: Mixed wood-type. Body: IBM Plex Mono."
+}

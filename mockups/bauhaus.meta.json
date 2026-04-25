@@ -1,0 +1,25 @@
+{
+  "slug": "bauhaus",
+  "name": "Bauhaus",
+  "blurb": "Bauhaus primaries: red + yellow + blue circles + squares, Universal-style geometric type.",
+  "tags": {
+    "palette": [
+      "scarlet",
+      "butter",
+      "cobalt",
+      "cream"
+    ],
+    "type": "geometric-sans",
+    "era": "pre-1950",
+    "sector": "art-print",
+    "hero": "specimen-grid"
+  },
+  "palette_hex": [
+    "#ffffff",
+    "#efc519",
+    "#cf3326",
+    "#0a4ca2",
+    "#d5d5d5"
+  ],
+  "type_specimen": "Display: Universal / Futura. Body: Futura Book."
+}

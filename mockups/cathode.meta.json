@@ -1,0 +1,24 @@
+{
+  "slug": "cathode",
+  "name": "Cathode",
+  "blurb": "CRT monitor green-on-black terminal aesthetic: glowing phosphor type, scanlines.",
+  "tags": {
+    "palette": [
+      "lime",
+      "black",
+      "monochrome"
+    ],
+    "type": "monospace",
+    "era": "1980s",
+    "sector": "electronics",
+    "hero": "type-led"
+  },
+  "palette_hex": [
+    "#000617",
+    "#176476",
+    "#e1e4e6",
+    "#821c87",
+    "#430e4b"
+  ],
+  "type_specimen": "Display: VT323 / IBM 3270. Body: IBM Plex Mono."
+}

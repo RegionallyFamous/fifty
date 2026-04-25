@@ -1,0 +1,25 @@
+{
+  "slug": "emoji",
+  "name": "Emoji",
+  "blurb": "Gen-Z gift-shop: bright yellow, hot pink, chat-bubble navigation, plush emoji hero.",
+  "tags": {
+    "palette": [
+      "butter",
+      "magenta",
+      "sky-blue",
+      "lime"
+    ],
+    "type": "humanist-sans",
+    "era": "contemporary",
+    "sector": "gift-shop",
+    "hero": "collage"
+  },
+  "palette_hex": [
+    "#fddb3c",
+    "#f33b7f",
+    "#ffffff",
+    "#ab9842",
+    "#2c2c2c"
+  ],
+  "type_specimen": "Display: Nunito. Body: Nunito."
+}

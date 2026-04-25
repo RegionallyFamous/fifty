@@ -1,0 +1,25 @@
+{
+  "slug": "western",
+  "name": "Western",
+  "blurb": "Frontier outfitter: dust tan, oxblood, ink, ornamental wood-type saloon wordmark.",
+  "tags": {
+    "palette": [
+      "tan",
+      "oxblood",
+      "cream",
+      "ink"
+    ],
+    "type": "wood-type",
+    "era": "pre-1900",
+    "sector": "workwear",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#caae86",
+    "#2d0f0d",
+    "#f3f4f5",
+    "#4f3a2e",
+    "#75634d"
+  ],
+  "type_specimen": "Display: Wood Type Antique. Body: Crimson Pro."
+}

@@ -1,0 +1,25 @@
+{
+  "slug": "darkacademia",
+  "name": "Dark Academia",
+  "blurb": "Antiquarian bookshop: forest green, ink, parchment, fountain pens + leather journals.",
+  "tags": {
+    "palette": [
+      "forest-green",
+      "ink",
+      "cream",
+      "oxblood"
+    ],
+    "type": "oldstyle-serif",
+    "era": "pre-1900",
+    "sector": "books",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#1d2f21",
+    "#eadcc0",
+    "#673f2e",
+    "#d1ba93",
+    "#958e7a"
+  ],
+  "type_specimen": "Display: Cormorant Garamond SC. Body: Crimson Pro."
+}

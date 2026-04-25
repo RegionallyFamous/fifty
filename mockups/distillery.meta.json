@@ -1,0 +1,25 @@
+{
+  "slug": "distillery",
+  "name": "Distillery",
+  "blurb": "Small-batch spirits: amber bottle photography, ink + cream labels, copper still.",
+  "tags": {
+    "palette": [
+      "ochre",
+      "burgundy",
+      "cream",
+      "brown"
+    ],
+    "type": "transitional-serif",
+    "era": "pre-1950",
+    "sector": "beverage",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#efe7cf",
+    "#163526",
+    "#91532e",
+    "#afb3a4",
+    "#100400"
+  ],
+  "type_specimen": "Display: Roslindale. Body: Crimson Pro."
+}

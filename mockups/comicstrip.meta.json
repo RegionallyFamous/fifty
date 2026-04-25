@@ -1,0 +1,25 @@
+{
+  "slug": "comicstrip",
+  "name": "Comic Strip",
+  "blurb": "Sunday-funnies comic shop: 4-panel hero, primary red/blue/yellow, halftone dots.",
+  "tags": {
+    "palette": [
+      "scarlet",
+      "cobalt",
+      "butter",
+      "cream"
+    ],
+    "type": "comic",
+    "era": "mid-century",
+    "sector": "books",
+    "hero": "multi-panel"
+  },
+  "palette_hex": [
+    "#f8f1de",
+    "#f9e136",
+    "#e7312b",
+    "#8c7e29",
+    "#b0ac9f"
+  ],
+  "type_specimen": "Display: Comic-book ink lettering. Body: Public Sans."
+}

@@ -1,0 +1,25 @@
+{
+  "slug": "ember",
+  "name": "Ember",
+  "blurb": "Wood-fired hearth shop: deep charcoal, ember-orange, smoky cream, log textures.",
+  "tags": {
+    "palette": [
+      "charcoal",
+      "rust",
+      "cream",
+      "ochre"
+    ],
+    "type": "slab-serif",
+    "era": "contemporary",
+    "sector": "homewares",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#191815",
+    "#543219",
+    "#d3591f",
+    "#4f4f4e",
+    "#906342"
+  ],
+  "type_specimen": "Display: Roslindale. Body: Inter."
+}

@@ -1,0 +1,25 @@
+{
+  "slug": "sable",
+  "name": "Sable",
+  "blurb": "Inkwash brushstroke gallery: paper white, sable-brown ink, single vermilion seal.",
+  "tags": {
+    "palette": [
+      "cream",
+      "brown",
+      "ink",
+      "scarlet"
+    ],
+    "type": "brush-script",
+    "era": "pre-1900",
+    "sector": "gallery",
+    "hero": "illustration-led"
+  },
+  "palette_hex": [
+    "#f8f4e6",
+    "#cac4bb",
+    "#6d5e4b",
+    "#938777",
+    "#372c1f"
+  ],
+  "type_specimen": "Display: Klee One. Body: Lora."
+}

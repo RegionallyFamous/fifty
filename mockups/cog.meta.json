@@ -1,0 +1,24 @@
+{
+  "slug": "cog",
+  "name": "Cog",
+  "blurb": "Bike-mechanic shop: oil-stained cream, scarlet, sprocket icons, exploded diagrams.",
+  "tags": {
+    "palette": [
+      "scarlet",
+      "cream",
+      "charcoal"
+    ],
+    "type": "condensed-sans",
+    "era": "contemporary",
+    "sector": "gear-tool",
+    "hero": "diagram-led"
+  },
+  "palette_hex": [
+    "#131418",
+    "#4a4b4b",
+    "#8d7f62",
+    "#afb0b0",
+    "#dfe4e7"
+  ],
+  "type_specimen": "Display: Bebas Neue. Body: Inter."
+}

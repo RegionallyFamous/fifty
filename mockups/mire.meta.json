@@ -1,0 +1,25 @@
+{
+  "slug": "mire",
+  "name": "Mire",
+  "blurb": "Bog-cottage moody homewares: deep moss, peat brown, candlelit photography.",
+  "tags": {
+    "palette": [
+      "forest-green",
+      "brown",
+      "ink",
+      "cream"
+    ],
+    "type": "blackletter",
+    "era": "pre-1900",
+    "sector": "homewares",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#1f1f1f",
+    "#fcfcfc",
+    "#6b2f15",
+    "#6f514c",
+    "#d3d3d3"
+  ],
+  "type_specimen": "Display: UnifrakturMaguntia. Body: Crimson Pro."
+}

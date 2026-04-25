@@ -37,6 +37,7 @@ _NO_ARGPARSE_HELP = frozenset(
         "validate-theme-json.py",  # takes a positional theme path; `--help` → error
         "install-hooks.py",  # no argparse; runs actual install on invocation
         "snap_config.py",  # pure config module, no CLI
+        "concept_seed.py",  # source-of-truth data module, no CLI
     }
 )
 

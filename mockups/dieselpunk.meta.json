@@ -1,0 +1,25 @@
+{
+  "slug": "dieselpunk",
+  "name": "Dieselpunk",
+  "blurb": "1930s industrial leather + brass: oxidized copper, riveted-steel plates, oilskin.",
+  "tags": {
+    "palette": [
+      "forest-green",
+      "brass",
+      "oxblood",
+      "charcoal"
+    ],
+    "type": "slab-serif",
+    "era": "pre-1950",
+    "sector": "leather-goods",
+    "hero": "illustration-led"
+  },
+  "palette_hex": [
+    "#617464",
+    "#f1f3f3",
+    "#aebba7",
+    "#ac8f52",
+    "#060807"
+  ],
+  "type_specimen": "Display: Industry. Body: Inter."
+}

@@ -1,0 +1,25 @@
+{
+  "slug": "prism",
+  "name": "Prism",
+  "blurb": "Crystal + light-refraction homewares: prismatic spectrum, white + clear glass.",
+  "tags": {
+    "palette": [
+      "white",
+      "pastel",
+      "lavender",
+      "turquoise"
+    ],
+    "type": "geometric-sans",
+    "era": "contemporary",
+    "sector": "homewares",
+    "hero": "full-bleed"
+  },
+  "palette_hex": [
+    "#f7f5ee",
+    "#d2d1cd",
+    "#121f32",
+    "#ca9877",
+    "#ad724d"
+  ],
+  "type_specimen": "Display: Sora. Body: Inter."
+}

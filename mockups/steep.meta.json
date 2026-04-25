@@ -1,0 +1,25 @@
+{
+  "slug": "steep",
+  "name": "Steep",
+  "blurb": "Loose-leaf tea apothecary: warm clay, cream, hand-drawn botanical labels.",
+  "tags": {
+    "palette": [
+      "terracotta",
+      "cream",
+      "sage",
+      "ochre"
+    ],
+    "type": "transitional-serif",
+    "era": "pre-1950",
+    "sector": "beverage",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#f7f3ea",
+    "#1a1b1d",
+    "#afa493",
+    "#ba6f4f",
+    "#554732"
+  ],
+  "type_specimen": "Display: Recoleta. Body: Lora."
+}

@@ -1,0 +1,23 @@
+{
+  "slug": "gameboy",
+  "name": "Game Boy",
+  "blurb": "8-bit handheld merch: 4-shade pea-green, pixel font, cartridge-box product cards.",
+  "tags": {
+    "palette": [
+      "pea-green",
+      "cream"
+    ],
+    "type": "pixel",
+    "era": "1990s",
+    "sector": "electronics",
+    "hero": "specimen-grid"
+  },
+  "palette_hex": [
+    "#e1f5c3",
+    "#b1cc70",
+    "#547a40",
+    "#83a464",
+    "#1b3617"
+  ],
+  "type_specimen": "Display: Press Start 2P. Body: Press Start 2P."
+}

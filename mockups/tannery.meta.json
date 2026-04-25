@@ -1,0 +1,25 @@
+{
+  "slug": "tannery",
+  "name": "Tannery",
+  "blurb": "Vegetable-tanned leather goods: warm cognac, cream, hand-stitched wallets + belts.",
+  "tags": {
+    "palette": [
+      "brown",
+      "tan",
+      "cream",
+      "burgundy"
+    ],
+    "type": "slab-serif",
+    "era": "pre-1950",
+    "sector": "leather-goods",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#90532a",
+    "#e6dbbd",
+    "#f8f8fb",
+    "#b4957b",
+    "#2e1e14"
+  ],
+  "type_specimen": "Display: Roslindale. Body: Inter."
+}

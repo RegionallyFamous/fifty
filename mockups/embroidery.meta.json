@@ -1,0 +1,25 @@
+{
+  "slug": "embroidery",
+  "name": "Embroidery",
+  "blurb": "Hand-embroidery hoops: warm linen, satin-stitch florals, dashed thread borders.",
+  "tags": {
+    "palette": [
+      "cream",
+      "coral",
+      "sage",
+      "ochre"
+    ],
+    "type": "hand-script",
+    "era": "contemporary",
+    "sector": "textiles",
+    "hero": "illustration-led"
+  },
+  "palette_hex": [
+    "#f4f0e5",
+    "#cbbead",
+    "#b05237",
+    "#202125",
+    "#c4886f"
+  ],
+  "type_specimen": "Display: Recoleta. Body: Caveat."
+}

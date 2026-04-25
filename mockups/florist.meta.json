@@ -1,0 +1,25 @@
+{
+  "slug": "florist",
+  "name": "Florist",
+  "blurb": "Neighbourhood flower-shop: butcher-paper wrapped bouquets, hand-script blackboard.",
+  "tags": {
+    "palette": [
+      "pink",
+      "sage",
+      "cream",
+      "kraft"
+    ],
+    "type": "hand-script",
+    "era": "contemporary",
+    "sector": "floral",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#f3ebd9",
+    "#4b4034",
+    "#b38c7a",
+    "#cfb2a9",
+    "#8c6c53"
+  ],
+  "type_specimen": "Display: Caveat Brush. Body: Public Sans."
+}

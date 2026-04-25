@@ -1,0 +1,25 @@
+{
+  "slug": "tincture",
+  "name": "Tincture",
+  "blurb": "Herbal-tincture apothecary: amber dropper bottles, sage + cream, Latin-name labels.",
+  "tags": {
+    "palette": [
+      "sage",
+      "cream",
+      "ochre",
+      "olive"
+    ],
+    "type": "oldstyle-serif",
+    "era": "pre-1950",
+    "sector": "beauty",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#f7f0db",
+    "#d0cab9",
+    "#8e877a",
+    "#92581c",
+    "#573110"
+  ],
+  "type_specimen": "Display: Cormorant Garamond. Body: Crimson Pro."
+}

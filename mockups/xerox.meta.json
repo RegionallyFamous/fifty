@@ -1,0 +1,24 @@
+{
+  "slug": "xerox",
+  "name": "Xerox",
+  "blurb": "Xerographed zine shop: high-contrast greyscale, copy-machine streaks, staple-bound feel.",
+  "tags": {
+    "palette": [
+      "white",
+      "ink",
+      "monochrome"
+    ],
+    "type": "monospace",
+    "era": "1990s",
+    "sector": "books",
+    "hero": "collage"
+  },
+  "palette_hex": [
+    "#f4f3ec",
+    "#b0b0ad",
+    "#717170",
+    "#2d2d2c",
+    "#f1764c"
+  ],
+  "type_specimen": "Display: Courier Bold. Body: Courier Prime."
+}

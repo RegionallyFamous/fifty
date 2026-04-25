@@ -1,0 +1,25 @@
+{
+  "slug": "bodega",
+  "name": "Bodega",
+  "blurb": "NYC corner-store: hand-painted awning, fluorescent price stickers, neon OPEN.",
+  "tags": {
+    "palette": [
+      "scarlet",
+      "butter",
+      "lime",
+      "cream"
+    ],
+    "type": "hand-lettered",
+    "era": "contemporary",
+    "sector": "food",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#f8c50a",
+    "#d12f22",
+    "#f3ecda",
+    "#96492d",
+    "#c68d56"
+  ],
+  "type_specimen": "Display: Hand-painted sign. Body: Inter."
+}

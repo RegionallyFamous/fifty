@@ -1,0 +1,24 @@
+{
+  "slug": "cumulus",
+  "name": "Cumulus",
+  "blurb": "Soft cloud-pattern bedding shop: powder blue, cream, white, very airy.",
+  "tags": {
+    "palette": [
+      "sky-blue",
+      "white",
+      "cream"
+    ],
+    "type": "humanist-sans",
+    "era": "contemporary",
+    "sector": "homewares",
+    "hero": "full-bleed"
+  },
+  "palette_hex": [
+    "#f7f3e7",
+    "#c79051",
+    "#95653f",
+    "#cbc5bc",
+    "#b2a090"
+  ],
+  "type_specimen": "Display: Recoleta. Body: Inter."
+}

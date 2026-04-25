@@ -1,0 +1,25 @@
+{
+  "slug": "chalkboard",
+  "name": "Chalkboard",
+  "blurb": "Cafe chalkboard menu: slate green, hand-drawn chalk type, daily-special panels.",
+  "tags": {
+    "palette": [
+      "forest-green",
+      "white",
+      "butter",
+      "pink"
+    ],
+    "type": "hand-lettered",
+    "era": "contemporary",
+    "sector": "bakery",
+    "hero": "type-led"
+  },
+  "palette_hex": [
+    "#374b4a",
+    "#fafafa",
+    "#202125",
+    "#b7b8b8",
+    "#868a89"
+  ],
+  "type_specimen": "Display: Hand-drawn chalk. Body: Caveat."
+}

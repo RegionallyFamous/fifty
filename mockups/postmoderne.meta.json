@@ -1,0 +1,25 @@
+{
+  "slug": "postmoderne",
+  "name": "Postmoderne",
+  "blurb": "Memphis-Milano postmodern design: pastel chunks, squiggle motifs, terrazzo pattern.",
+  "tags": {
+    "palette": [
+      "pastel",
+      "magenta",
+      "turquoise",
+      "butter"
+    ],
+    "type": "geometric-sans",
+    "era": "1980s",
+    "sector": "homewares",
+    "hero": "pattern-led"
+  },
+  "palette_hex": [
+    "#ffffff",
+    "#02b8dc",
+    "#f5d527",
+    "#f22e87",
+    "#192aa2"
+  ],
+  "type_specimen": "Display: Druk. Body: Inter."
+}

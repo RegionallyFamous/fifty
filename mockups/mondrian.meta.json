@@ -1,0 +1,25 @@
+{
+  "slug": "mondrian",
+  "name": "Mondrian",
+  "blurb": "De-Stijl primary blocks: white grid, red/blue/yellow rectangles, heavy black rules.",
+  "tags": {
+    "palette": [
+      "white",
+      "scarlet",
+      "cobalt",
+      "butter"
+    ],
+    "type": "geometric-sans",
+    "era": "pre-1950",
+    "sector": "art-print",
+    "hero": "specimen-grid"
+  },
+  "palette_hex": [
+    "#db3d25",
+    "#f8f8f9",
+    "#1c389e",
+    "#f1d534",
+    "#d4d4d4"
+  ],
+  "type_specimen": "Display: Futura. Body: Inter."
+}

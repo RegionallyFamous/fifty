@@ -1,0 +1,25 @@
+{
+  "slug": "tacklebox",
+  "name": "Tacklebox",
+  "blurb": "Lake-fishing tackle shop: olive canvas, brass swivels, hand-tied fly illustrations.",
+  "tags": {
+    "palette": [
+      "olive",
+      "ochre",
+      "brown",
+      "cream"
+    ],
+    "type": "wood-type",
+    "era": "pre-1950",
+    "sector": "outdoor",
+    "hero": "diagram-led"
+  },
+  "palette_hex": [
+    "#5b6236",
+    "#85875d",
+    "#ede7cd",
+    "#c9c1a6",
+    "#322d1b"
+  ],
+  "type_specimen": "Display: Wood Type. Body: Roslindale."
+}

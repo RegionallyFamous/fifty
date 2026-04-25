@@ -1,0 +1,25 @@
+{
+  "slug": "mezze",
+  "name": "Mezze",
+  "blurb": "Levantine pantry: olive, ochre, terracotta, hand-glazed dishes, tile borders.",
+  "tags": {
+    "palette": [
+      "olive",
+      "ochre",
+      "terracotta",
+      "cream"
+    ],
+    "type": "humanist-sans",
+    "era": "contemporary",
+    "sector": "food",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#f2e3c9",
+    "#667744",
+    "#daa02d",
+    "#cdb891",
+    "#9b301d"
+  ],
+  "type_specimen": "Display: Recoleta. Body: Public Sans."
+}

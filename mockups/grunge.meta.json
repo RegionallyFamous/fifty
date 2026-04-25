@@ -1,0 +1,25 @@
+{
+  "slug": "grunge",
+  "name": "Grunge",
+  "blurb": "1990s alt-zine record store: torn paper, Xeroxed photos, ransom-cut headlines.",
+  "tags": {
+    "palette": [
+      "black",
+      "cream",
+      "scarlet",
+      "kraft"
+    ],
+    "type": "hand-lettered",
+    "era": "1990s",
+    "sector": "music",
+    "hero": "collage"
+  },
+  "palette_hex": [
+    "#ebe2cb",
+    "#942e17",
+    "#cfaa92",
+    "#ac624b",
+    "#0d0b07"
+  ],
+  "type_specimen": "Display: Trade Gothic. Body: Public Sans."
+}

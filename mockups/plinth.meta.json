@@ -1,0 +1,24 @@
+{
+  "slug": "plinth",
+  "name": "Plinth",
+  "blurb": "Sculpture-pedestal stoneware: pale plaster, single jet-black accent, museum hairlines.",
+  "tags": {
+    "palette": [
+      "cream",
+      "white",
+      "ink"
+    ],
+    "type": "modern-serif",
+    "era": "contemporary",
+    "sector": "gallery",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#f6f6f6",
+    "#b8b8b8",
+    "#fe4b00",
+    "#8f8e8e",
+    "#545454"
+  ],
+  "type_specimen": "Display: Bodoni 72. Body: Inter."
+}

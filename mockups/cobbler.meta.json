@@ -1,0 +1,25 @@
+{
+  "slug": "cobbler",
+  "name": "Cobbler",
+  "blurb": "Bench-made footwear, Goodyear-welted: oxblood + cream, leather + brass eyelets.",
+  "tags": {
+    "palette": [
+      "oxblood",
+      "cream",
+      "brown",
+      "brass"
+    ],
+    "type": "oldstyle-serif",
+    "era": "pre-1950",
+    "sector": "footwear",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#ede2c6",
+    "#2c1e11",
+    "#925131",
+    "#cbb8ab",
+    "#544b41"
+  ],
+  "type_specimen": "Display: ITC Caslon. Body: Crimson Pro."
+}

@@ -1,0 +1,25 @@
+{
+  "slug": "riso",
+  "name": "Riso",
+  "blurb": "Risograph print shop: fluoro pink + teal misregistration, cream paper texture.",
+  "tags": {
+    "palette": [
+      "pink",
+      "teal",
+      "cream",
+      "butter"
+    ],
+    "type": "hand-lettered",
+    "era": "contemporary",
+    "sector": "art-print",
+    "hero": "specimen-grid"
+  },
+  "palette_hex": [
+    "#f5ebd5",
+    "#f0a7c1",
+    "#aacec2",
+    "#019095",
+    "#65b5b0"
+  ],
+  "type_specimen": "Display: Druk. Body: IBM Plex Mono."
+}

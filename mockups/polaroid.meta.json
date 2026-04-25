@@ -1,0 +1,25 @@
+{
+  "slug": "polaroid",
+  "name": "Polaroid",
+  "blurb": "Instax-camera keepsake shop: cream paper, scotch-tape accents, hand-captioned snaps.",
+  "tags": {
+    "palette": [
+      "cream",
+      "kraft",
+      "sky-blue",
+      "ink"
+    ],
+    "type": "hand-lettered",
+    "era": "contemporary",
+    "sector": "photography",
+    "hero": "collage"
+  },
+  "palette_hex": [
+    "#fbf4e2",
+    "#d4c8b0",
+    "#91918f",
+    "#948743",
+    "#94b9d6"
+  ],
+  "type_specimen": "Display: Permanent Marker. Body: Caveat."
+}

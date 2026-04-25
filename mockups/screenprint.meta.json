@@ -1,0 +1,25 @@
+{
+  "slug": "screenprint",
+  "name": "Screenprint",
+  "blurb": "DIY squeegee poster shop: kraft brown paper, 3-spot misregistration, hand-pulled feel.",
+  "tags": {
+    "palette": [
+      "kraft",
+      "scarlet",
+      "mustard",
+      "ink"
+    ],
+    "type": "stencil",
+    "era": "contemporary",
+    "sector": "art-print",
+    "hero": "specimen-grid"
+  },
+  "palette_hex": [
+    "#d5b890",
+    "#fbfbfb",
+    "#8d7a61",
+    "#202125",
+    "#a53133"
+  ],
+  "type_specimen": "Display: Druk Wide. Body: IBM Plex Mono."
+}

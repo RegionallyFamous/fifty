@@ -1,0 +1,24 @@
+{
+  "slug": "eink",
+  "name": "E-Ink",
+  "blurb": "Quiet e-reader bookshop: 16 shades of warm grey, no color, paperback-led product cards.",
+  "tags": {
+    "palette": [
+      "monochrome",
+      "cream",
+      "charcoal"
+    ],
+    "type": "oldstyle-serif",
+    "era": "contemporary",
+    "sector": "books",
+    "hero": "type-led"
+  },
+  "palette_hex": [
+    "#f2f1ec",
+    "#d1cec7",
+    "#908d87",
+    "#4f4e48",
+    "#282622"
+  ],
+  "type_specimen": "Display: Source Serif Pro. Body: Source Serif Pro."
+}

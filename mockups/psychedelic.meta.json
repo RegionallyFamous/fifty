@@ -1,0 +1,25 @@
+{
+  "slug": "psychedelic",
+  "name": "Psychedelic",
+  "blurb": "1960s Wes-Wilson poster shop: vibrating magenta + orange swirls, melting type.",
+  "tags": {
+    "palette": [
+      "magenta",
+      "ochre",
+      "lime",
+      "turquoise"
+    ],
+    "type": "hand-lettered",
+    "era": "1970s",
+    "sector": "art-print",
+    "hero": "type-led"
+  },
+  "palette_hex": [
+    "#fd5e07",
+    "#9fd838",
+    "#e90fa7",
+    "#7d15d0",
+    "#fcb924"
+  ],
+  "type_specimen": "Display: Wes Wilson / Fillmore. Body: Public Sans."
+}

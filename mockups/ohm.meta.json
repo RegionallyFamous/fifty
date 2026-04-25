@@ -1,0 +1,24 @@
+{
+  "slug": "ohm",
+  "name": "Ohm",
+  "blurb": "Vintage radio + tube-amp shop: bakelite brown, cream dials, exposed copper wiring.",
+  "tags": {
+    "palette": [
+      "brown",
+      "cream",
+      "ochre"
+    ],
+    "type": "geometric-sans",
+    "era": "mid-century",
+    "sector": "electronics",
+    "hero": "diagram-led"
+  },
+  "palette_hex": [
+    "#0e0e0e",
+    "#533d2e",
+    "#8f8f8e",
+    "#eeeeeb",
+    "#935544"
+  ],
+  "type_specimen": "Display: Eurostile. Body: Inter."
+}

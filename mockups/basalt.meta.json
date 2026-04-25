@@ -1,0 +1,25 @@
+{
+  "slug": "basalt",
+  "name": "Basalt",
+  "blurb": "Mineral-grey ceramics: matte slate, charcoal, single warm clay accent.",
+  "tags": {
+    "palette": [
+      "slate",
+      "charcoal",
+      "terracotta",
+      "monochrome"
+    ],
+    "type": "geometric-sans",
+    "era": "contemporary",
+    "sector": "ceramics",
+    "hero": "photo-hero"
+  },
+  "palette_hex": [
+    "#ffffff",
+    "#cccccc",
+    "#8d8e8d",
+    "#535352",
+    "#2c2d2c"
+  ],
+  "type_specimen": "Display: Söhne. Body: Söhne."
+}

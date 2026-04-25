@@ -1,0 +1,25 @@
+{
+  "slug": "klang",
+  "name": "Klang",
+  "blurb": "German hi-fi audio store: cool grey, single neon-cyan accent, monospace specs.",
+  "tags": {
+    "palette": [
+      "slate",
+      "white",
+      "turquoise",
+      "ink"
+    ],
+    "type": "monospace",
+    "era": "1980s",
+    "sector": "electronics",
+    "hero": "diagram-led"
+  },
+  "palette_hex": [
+    "#0d0d0d",
+    "#4e4e4d",
+    "#d83222",
+    "#691e18",
+    "#848484"
+  ],
+  "type_specimen": "Display: FF DIN. Body: IBM Plex Mono."
+}
