@@ -1,7 +1,7 @@
 {
   "slug": "agave",
   "name": "Agave",
-  "blurb": "Desert botanical apothecary: full-bleed saturated terracotta + deep sage cacti pattern hero, hand-drawn agave silhouettes wrapping the viewport edge-to-edge.",
+  "blurb": "Desert botanical apothecary as a specimen atlas: cream paper with a 3-cell labelled plant-grid (Agave tequilana, Opuntia ficus-indica, Yucca filamentosa) in fine-line ink, terracotta wordmark band up top, sage + dust-pink captions, products presented as specimen cards in the same grid.",
   "tags": {
     "palette": [
       "terracotta",
@@ -12,14 +12,14 @@
     "type": "humanist-sans",
     "era": "contemporary",
     "sector": "beauty",
-    "hero": "full-bleed"
+    "hero": "specimen-grid"
   },
   "palette_hex": [
-    "#8e442b",
-    "#5f6d56",
-    "#eae2cb",
-    "#523a2e",
-    "#ae7e72"
+    "#f2ebd8",
+    "#b98e85",
+    "#d2baad",
+    "#813822",
+    "#9b6451"
   ],
   "type_specimen": "Display: Recoleta. Body: Inter."
 }

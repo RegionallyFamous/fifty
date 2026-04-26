@@ -198,12 +198,12 @@ CONCEPTS: list[dict] = [
     {
         "slug": "agave",
         "name": "Agave",
-        "blurb": "Desert botanical apothecary: full-bleed saturated terracotta + deep sage cacti pattern hero, hand-drawn agave silhouettes wrapping the viewport edge-to-edge.",
+        "blurb": "Desert botanical apothecary as a specimen atlas: cream paper with a 3-cell labelled plant-grid (Agave tequilana, Opuntia ficus-indica, Yucca filamentosa) in fine-line ink, terracotta wordmark band up top, sage + dust-pink captions, products presented as specimen cards in the same grid.",
         "palette_tags": ["terracotta", "sage", "pink", "cream"],
         "type_genre": "humanist-sans",
         "era": "contemporary",
         "sector": "beauty",
-        "hero_composition": "full-bleed",
+        "hero_composition": "specimen-grid",
         "type_specimen": "Display: Recoleta. Body: Inter.",
     },
     {

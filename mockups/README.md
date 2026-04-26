@@ -5,6 +5,39 @@ storefront the build agents have not yet shipped. The static GitHub
 Pages site at <https://demo.regionallyfamous.com/concepts/> renders
 this folder as the public queue.
 
+## Composition: two-view (home + shop) is mandatory
+
+**Every concept mockup MUST be a two-view composition: a home page on
+the LEFT and a shop / category grid on the RIGHT, shown as two desktop
+browser windows side-by-side on a neutral backdrop.** The Bauhaus
+mockup (`mockups/mockup-bauhaus.png`) is the canonical reference —
+match its STRUCTURE (two browser windows, full chrome on each, same
+brand mark + nav across both) when generating any new concept, even
+though the brand voice (palette, typography, era) will differ.
+
+Why this is non-negotiable:
+
+- The public queue at <https://demo.regionallyfamous.com/concepts/>
+  browses as a grid of cards. When the cards are a mix of single-page
+  compositions, abstract patterns, and editorial spreads the queue
+  reads as an unrelated bag of design sketches rather than a coherent
+  preview library. Forcing every mockup into the same two-view shape
+  is the cheapest way to make the queue feel like one project.
+- A reviewer evaluating a concept needs to see at minimum (a) what
+  the home page looks like (brand mark, hero composition, voice) and
+  (b) what the shop grid looks like (whether the brand voice survives
+  contact with a 12-product grid — which is where most stylistic
+  experiments fall apart). One single-page mockup answers (a) but not
+  (b). The two-view composition answers both at one glance.
+
+The canonical prompt template lives in
+[`bin/paint-mockup.py`](../bin/paint-mockup.py) — never hand-write a
+new prompt for image generation; always derive it from the concept's
+`<slug>.meta.json` via that script. See the "Workflow" section below.
+
+The output dimensions are fixed at **1376x768 pixels** (landscape,
+~1.79:1) so every queue card lays out at the same aspect ratio.
+
 ## Layout
 
 Two layouts are supported. Pick the simpler one until you need the
@@ -13,7 +46,7 @@ richer one.
 ```
 mockups/
 ├── README.md               (this file)
-├── mockup-<slug>.png       (single-image concept)
+├── mockup-<slug>.png       (single-image concept; the two-view PNG)
 ├── <slug>.meta.json        (paired metadata; required for every concept)
 └── <slug>/                 (multi-image concept, OPTIONAL)
     ├── home.png            (required if directory form is used; treated as hero)
@@ -22,6 +55,9 @@ mockups/
     └── mobile.png          (optional)
 ```
 
+* "Single-image" here means one PNG file — the file itself paints the
+  required two views (home on the left, shop on the right). It does
+  NOT mean "one page view".
 * The single-image form (`mockup-<slug>.png`) and the directory form
   (`<slug>/home.png`) are mutually exclusive — pick one per concept.
   Both forms coexist across the folder.
@@ -77,16 +113,29 @@ commit `concept_seed.py` and the regenerated artefacts together.
 
 ## Workflow when adding a concept
 
-1. Drop `mockup-<slug>.png` into `mockups/` (or create `mockups/<slug>/home.png`
-   if you have multiple views).
-2. Add an entry to `CONCEPTS` in `bin/concept_seed.py`. Keep blurbs to
-   one declarative sentence.
-3. Run `python3 bin/build-concept-meta.py` to write/update the
-   `<slug>.meta.json` (palette_hex is auto-extracted).
-4. Run `python3 bin/audit-concepts.py` to refresh `docs/concepts/AUDIT.md`.
-5. Run `python3 bin/build-redirects.py` to regenerate the concept queue
+1. Add an entry to `CONCEPTS` in `bin/concept_seed.py`. Keep blurbs
+   to one declarative sentence.
+2. Run `python3 bin/build-concept-meta.py --slug <slug>` to write the
+   initial `<slug>.meta.json` (palette_hex will be `[]` until step 4).
+3. **Generate the two-view PNG** using the canonical prompt:
+   ```bash
+   python3 bin/paint-mockup.py <slug>          # prints the prompt
+   python3 bin/paint-mockup.py <slug> --json   # JSON envelope (prompt
+                                               # + filename + dims +
+                                               # reference image path)
+   ```
+   Hand the prompt + the Bauhaus reference image
+   (`mockups/mockup-bauhaus.png`) to your image generator of choice
+   (an agent's image tool, Midjourney, Imagen, ChatGPT) and save the
+   result as `mockups/mockup-<slug>.png` at 1376x768. Do not
+   hand-write a custom prompt — derive it from the meta.json so the
+   composition stays consistent across the queue.
+4. Re-run `python3 bin/build-concept-meta.py --slug <slug>` so
+   `palette_hex` gets auto-extracted from the newly painted PNG.
+5. Run `python3 bin/audit-concepts.py` to refresh `docs/concepts/AUDIT.md`.
+6. Run `python3 bin/build-redirects.py` to regenerate the concept queue
    page and per-concept detail pages.
-6. Commit everything in one go.
+7. Commit everything in one go.
 
 ## Workflow when removing or replacing a concept
 
