@@ -80,7 +80,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib import MONOREPO_ROOT  # noqa: E402
+from _lib import MONOREPO_ROOT
 
 MOCKUPS_DIR = MONOREPO_ROOT / "mockups"
 
