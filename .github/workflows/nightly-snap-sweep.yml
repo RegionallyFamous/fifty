@@ -1,0 +1,213 @@
+name: nightly-snap-sweep
+
+# Scheduled full reshoot of every theme with Phase 2 signature skip
+# DISABLED (`--no-skip`). The point is explicitly to NOT trust the
+# signature manifest and instead compare fresh pixels against the
+# committed baselines -- if the Chromium rasterizer, a bundled font,
+# or any other snap.py input silently drifts in a way that our
+# content-hash signature doesn't capture, this job is the canary.
+#
+# Without this workflow a drift that shifts every baseline by 2px
+# would be invisible on PRs (Phase 2 would skip every cell because
+# the ROUTE_DEPENDENCIES hashes didn't move) until someone changed
+# a template, at which point suddenly-shot cells would look like
+# regressions caused by that template edit. This job catches that
+# scenario out-of-band so the fix can be a single rebaseline PR
+# attributed to "ubuntu-latest Chromium update" rather than a
+# confused "pattern edit made everything move 2px" review.
+#
+# ---- Schedule & scope -----------------------------------------------
+# Cron: 08:00 UTC daily (~midnight PT). Far enough from typical push
+# spikes that GitHub's scheduled-runner contention is minimal, and it
+# lands in inbox-sized batches rather than on-demand.
+#
+# Shoots ALL themes in serial on a single runner with `--no-skip` and
+# `--cache-state`. Serial (not matrix) is deliberate: the nightly run
+# isn't latency-critical (it's a cron that only fires if drift
+# actually occurred), and serial shares one Playwright browser cache
+# + one warm Playground state across themes.
+#
+# ---- Output ----------------------------------------------------------
+# On clean: no output, job succeeds, nobody notices. (Which is what
+# you want 99% of the time.)
+#
+# On drift: `bin/snap.py diff --all` emits diff PNGs + a summary which
+# we upload as an artifact and post a GitHub issue pointing at the
+# run. The issue has label `snap-drift` so the backlog can surface
+# batches of drift findings (e.g. "all 5 themes drifted by the same
+# amount on the same day = Chromium bump" is a 1-PR fix; "one theme
+# drifted while others didn't" is a real theme regression).
+
+on:
+  schedule:
+    # 08:00 UTC every day.
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+    inputs:
+      themes:
+        description: 'Space-separated theme slugs (blank = all)'
+        required: false
+        default: ''
+      skip_issue:
+        description: 'Skip issue creation on drift (artifact-only)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: nightly-snap-sweep
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # Required for the `peter-evans/create-issue-from-file` style step;
+  # we use the gh CLI instead but the token still needs issues:write.
+  issues: write
+
+jobs:
+  sweep:
+    name: nightly sweep (--no-skip, all themes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements-dev.txt playwright==1.58.0 Pillow
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-1.58.0
+
+      - name: Install Playwright Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: python3 -m playwright install --with-deps chromium
+
+      - name: Install system deps for Playwright (cache hit case)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: python3 -m playwright install-deps chromium
+
+      - name: Restore Playground state cache (aggregate)
+        # Shared cache across themes. We deliberately don't care about
+        # per-theme isolation here -- the nightly sweep wants a warm
+        # WordPress install per theme, and `snap.py --cache-state`
+        # already keys `tmp/playground-state/<theme>/wordpress`
+        # subdirs by theme slug.
+        id: pg-state-cache
+        uses: actions/cache@v5
+        with:
+          path: tmp/playground-state
+          key: pg-state-v1-nightly-${{ hashFiles('*/playground/**', 'package.json', 'package-lock.json') }}
+          restore-keys: |
+            pg-state-v1-nightly-
+            pg-state-v1-quick-
+
+      - name: Full reshoot (no skip, no route narrowing)
+        # --no-skip: bypass Phase 2 signature skip. Every cell boots
+        # Playwright and re-captures from scratch. This is the whole
+        # point of the workflow (catch Chromium / font drift that
+        # hashes miss).
+        #
+        # No --auto-routes + no --changed: shoot every route in every
+        # theme, not just those touched by a diff. The nightly run
+        # doesn't have a diff base -- it's comparing today's
+        # ubuntu-latest + today's Chromium + today's Chromium fonts
+        # vs whatever shipped last.
+        #
+        # FIFTY_FORCE_RESHOOT mirrors --no-skip so recursive invocations
+        # (none today, but future subprocesses) inherit the same
+        # intent without a second CLI flag.
+        env:
+          FIFTY_FORCE_RESHOOT: '1'
+          FIFTY_CONTENT_REF: ''
+        run: |
+          THEMES="${{ github.event.inputs.themes }}"
+          if [ -n "$THEMES" ]; then
+            for t in $THEMES; do
+              python3 bin/snap.py shoot "$t" --cache-state --no-skip
+            done
+          else
+            python3 bin/snap.py shoot --all --cache-state --no-skip
+          fi
+
+      - name: Diff against committed baselines
+        id: diff
+        # Exit code is meaningful: 0 = no drift, non-zero = drift found.
+        # `continue-on-error` so we always reach the issue-filer step;
+        # we read the exit code from steps.diff.outcome instead.
+        continue-on-error: true
+        run: python3 bin/snap.py diff --all
+
+      - name: Report
+        # `report` without --strict so a drift finding doesn't abort
+        # before we upload artifacts. The diff step above is the
+        # authoritative drift signal for this workflow.
+        continue-on-error: true
+        run: python3 bin/snap.py report
+
+      - name: Upload sweep artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-snap-sweep-${{ github.run_id }}
+          path: |
+            tmp/snaps/**/*.png
+            tmp/snaps/**/findings.json
+            tmp/snaps/**/review.md
+            tmp/snaps/**/review.json
+            tmp/snaps/**/diffs/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: File drift issue
+        # Only runs when diff reported drift AND the human didn't tick
+        # skip_issue on a manual dispatch. `gh issue create` is
+        # preinstalled on ubuntu-latest and inherits GITHUB_TOKEN.
+        if: >-
+          steps.diff.outcome == 'failure'
+          && github.event.inputs.skip_issue != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="nightly-snap-sweep: drift detected ($(date -u +%Y-%m-%d))"
+          body=$(cat <<'EOF'
+          The nightly snap sweep detected pixel drift against committed
+          baselines in `tests/visual-baseline/`. Every cell was
+          re-captured with `--no-skip`, so this is NOT a Phase 2 signature
+          mismatch -- it's the Chromium / font / raster pipeline itself
+          producing different pixels.
+
+          Next steps:
+            1. Download the workflow artifact `nightly-snap-sweep-<run_id>`
+               and inspect `tmp/snaps/<theme>/<vp>/diffs/*.png` to confirm
+               the drift is uniform (Chromium bump) vs theme-specific
+               (regression).
+            2. If uniform: run `python3 bin/snap.py baseline --all` and
+               open a PR titled `snap: rebaseline after ubuntu-latest
+               Chromium bump`. Phase 2 signatures will re-stamp so
+               future PRs skip cleanly against the new baseline.
+            3. If theme-specific: treat as a real regression -- bisect
+               which commit introduced it and either fix or rebaseline
+               with an explicit reason in the PR body.
+
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EOF
+          )
+          gh issue create \
+            --title "$title" \
+            --body "$body" \
+            --label snap-drift

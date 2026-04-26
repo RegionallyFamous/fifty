@@ -112,6 +112,8 @@ from snap_config import (
     KNOWN_NOISE_SUBSTRINGS,
     QUICK_ROUTES,
     QUICK_VIEWPORTS,
+    ROUTE_DEPENDENCIES,
+    ROUTE_GLOBAL_GLOBS,
     ROUTES,
     THEME_ORDER,
     VIEWPORTS,
@@ -149,45 +151,93 @@ RESET = "\033[0m" if _C else ""
 # ---------------------------------------------------------------------------
 # Theme + blueprint discovery
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Framework-wide invalidation allowlist.
+#
+# Narrow set of files whose changes MUST invalidate every theme's snaps (as
+# opposed to the older "any bin/* touch invalidates everything" heuristic,
+# which over-shot by re-running the entire visual matrix whenever an
+# unrelated tooling script like bin/audit-concepts.py or
+# bin/build-snap-gallery.py was edited). At 100 themes that over-shoot is
+# hours of compute per push, so we keep the list minimal and rely on the
+# nightly `nightly-snap-sweep.yml` run (Phase 4) to catch any false
+# negative within 24 hours.
+#
+# Inclusion criteria: a file is here only if editing it can visibly change
+# the rendered page for any theme. Examples:
+#   * bin/snap.py, bin/snap_config.py — drive the capture itself (viewport
+#     sizes, freeze CSS, heuristic engine). A bug here shifts every pixel.
+#   * bin/append-wc-overrides.py — rewrites every theme's theme.json with
+#     WooCommerce-block CSS overrides.
+#   * bin/sync-playground.py — inlines playground/*.php into every
+#     blueprint; blueprint content seeding changes user-visible fixtures.
+#   * bin/_lib.py — shared GITHUB_ORG / REPO constants used by
+#     _retarget_content_ref and others.
+#   * package.json / package-lock.json — pins @wp-playground/cli, whose
+#     version changes the underlying WP/WC behavior and auto-invalidates
+#     tmp/playground-state/ via the version marker in boot_server.
+#   * playground/ at the repo root — shared playground/*.php scripts that
+#     every theme's blueprint inlines via sync-playground.py.
+#
+# Explicitly NOT on this list: bin/build-*.py, bin/audit-*.py,
+# bin/extract-*.py, bin/check*.py (static), bin/paint-*.py, bin/spec-*.py,
+# documentation generators, concept-pipeline helpers — they don't touch
+# the runtime that produces the PNGs.
+# ---------------------------------------------------------------------------
+SNAP_AFFECTING_FRAMEWORK_FILES: frozenset[str] = frozenset({
+    "bin/snap.py",
+    "bin/snap_config.py",
+    "bin/append-wc-overrides.py",
+    "bin/sync-playground.py",
+    "bin/_lib.py",
+    "package.json",
+    "package-lock.json",
+})
+
+# Path prefixes whose children are all framework-affecting. Matched with
+# startswith() against each git-diff path (POSIX-separated).
+SNAP_AFFECTING_FRAMEWORK_PREFIXES: tuple[str, ...] = (
+    "playground/",  # shared playground/*.php inlined into every blueprint
+)
+
+
+def _is_framework_file(path: str) -> bool:
+    """True iff the path belongs to the narrow framework-files allowlist.
+
+    Split out as a module-level helper so both `_changed_themes` and the
+    unit tests can drive the classifier without subprocess-ing git.
+    """
+    if path in SNAP_AFFECTING_FRAMEWORK_FILES:
+        return True
+    return any(path.startswith(prefix) for prefix in SNAP_AFFECTING_FRAMEWORK_PREFIXES)
+
+
 def _changed_themes(base: str | None = None) -> list[str] | None:
     """Return the subset of themes affected by uncommitted + base..HEAD
     git changes.
 
     Returns:
-      None             -> framework changed (bin/, snap_config.py); the
-                          caller should fall back to "all themes".
+      None             -> framework changed (see `_is_framework_file`);
+                          the caller should fall back to "all themes".
       []               -> nothing relevant changed; nothing to shoot.
       ["obel", ...]    -> only those themes need a reshoot.
 
     Path mapping (theme dir IS the git root):
       <theme>/**                       -> theme is affected
       tests/visual-baseline/<theme>/** -> theme is affected
-      bin/**, snap_config.py           -> framework; all themes
-      anything else                    -> no theme affected
+      framework allowlist (narrow)     -> all themes; see
+                                          SNAP_AFFECTING_FRAMEWORK_FILES
+                                          / _PREFIXES above
+      anything else                    -> no theme affected (including
+                                          unrelated bin/* tooling edits
+                                          — the nightly sweep catches any
+                                          false negative within 24h)
     """
     known = set(discover_themes())
-    paths: set[str] = set()
-    try:
-        # Uncommitted (staged + unstaged + untracked tracked files).
-        for cmd in (
-            ["git", "diff", "--name-only", "HEAD"],
-            ["git", "ls-files", "--others", "--exclude-standard"],
-        ):
-            r = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True,
-                               text=True, check=False)
-            if r.returncode == 0:
-                paths.update(p for p in r.stdout.splitlines() if p)
-        if base:
-            r = subprocess.run(
-                ["git", "diff", "--name-only", f"{base}...HEAD"],
-                cwd=REPO_ROOT, capture_output=True, text=True, check=False,
-            )
-            if r.returncode == 0:
-                paths.update(p for p in r.stdout.splitlines() if p)
-    except FileNotFoundError:
+    paths = _diff_paths(base)
+    if paths is None:
         # git not installed -- can't be smart, fall back to "all".
         return None
-
     if not paths:
         return []
 
@@ -202,10 +252,475 @@ def _changed_themes(base: str | None = None) -> list[str] | None:
             if parts[2] in known:
                 affected.add(parts[2])
             continue
-        # Framework-level changes invalidate every theme's snaps.
-        if head == "bin" or head in ("snap_config.py",):
+        # Narrow framework-level allowlist: only files that can actually
+        # shift rendered pixels for every theme. Editing unrelated bin/*
+        # tooling (audit scripts, doc generators) no longer triggers a
+        # full all-themes reshoot -- the nightly sweep is the safety net.
+        if _is_framework_file(p):
             return None
     return sorted(affected)
+
+
+def _diff_paths(base: str | None) -> set[str] | None:
+    """Return the set of POSIX paths touched by uncommitted + base..HEAD
+    changes, or None if git is unavailable.
+
+    Shared helper between `_changed_themes` (theme-level scope) and
+    `_changed_routes` (route-level scope within a theme). Keeping both
+    callers on the same diff source guarantees the two classifications
+    agree: a theme that appears in `_changed_themes` will have at least
+    one path visible to `_changed_routes`.
+    """
+    paths: set[str] = set()
+    try:
+        for cmd in (
+            ["git", "diff", "--name-only", "HEAD"],
+            ["git", "ls-files", "--others", "--exclude-standard"],
+        ):
+            r = subprocess.run(
+                cmd, cwd=REPO_ROOT, capture_output=True, text=True, check=False,
+            )
+            if r.returncode == 0:
+                paths.update(p for p in r.stdout.splitlines() if p)
+        if base:
+            r = subprocess.run(
+                ["git", "diff", "--name-only", f"{base}...HEAD"],
+                cwd=REPO_ROOT, capture_output=True, text=True, check=False,
+            )
+            if r.returncode == 0:
+                paths.update(p for p in r.stdout.splitlines() if p)
+    except FileNotFoundError:
+        return None
+    return paths
+
+
+def _match_glob(rel_path: str, glob: str) -> bool:
+    """Return True iff rel_path matches the glob.
+
+    `rel_path` is relative to a theme root (e.g. "templates/single-product.html").
+    `glob` is a snap_config pattern (e.g. "patterns/product-*.html" or
+    "styles/**").
+
+    Semantics (deliberately narrower than fnmatch):
+      * `**` (as a whole path segment) matches any number of path
+        segments, including zero. Only legal as a full segment.
+      * `*` matches one or more characters WITHIN a single segment
+        (never eats `/`). This is the crucial difference from
+        fnmatch.translate, which would let `patterns/*.html` match
+        `patterns/foo/bar.html`.
+      * `?` matches exactly one non-`/` character.
+      * Everything else is literal, case-sensitive.
+
+    We hand-roll the translator because:
+      * fnmatch collapses `**` into `*` and lets `*` cross `/`.
+      * pathlib.PurePath.match can't cross segment boundaries at all.
+      * pathspec / wcmatch would be fine but we don't want a new dep.
+    """
+    import re
+
+    def _translate_segment(part: str) -> str:
+        out: list[str] = []
+        for ch in part:
+            if ch == "*":
+                # Match non-empty run of non-slash chars (so `product-*`
+                # requires at least one char after the hyphen and never
+                # crosses directory boundaries).
+                out.append("[^/]*")
+            elif ch == "?":
+                out.append("[^/]")
+            else:
+                out.append(re.escape(ch))
+        return "".join(out)
+
+    parts = glob.split("/")
+    regex_parts: list[str] = []
+    for part in parts:
+        if part == "**":
+            regex_parts.append("(?:.*)")
+        else:
+            regex_parts.append(_translate_segment(part))
+    # Join segments with escaped `/`; for `**` we also need to allow
+    # the trailing slash to be absorbed (so `styles/**` matches
+    # `styles/winter.json`). Easiest impl: post-process the joined
+    # pattern to collapse `/(?:.*)/` or trailing `/(?:.*)` robustly.
+    pattern = "/".join(regex_parts)
+    # `styles/**` should match `styles/foo` AND `styles/foo/bar`:
+    # the literal `/` between `styles` and `**` is already in the
+    # joined pattern. `(?:.*)` handles any-or-zero chars after that.
+    # `foo/**/bar` (zero-segment case) needs `/(?:.*/)?` -- handle it
+    # by replacing `/(?:.*)/` with `/(?:[^/]+/)*(?:[^/]+/)?` ... no,
+    # simpler: replace `**` sub-pattern with `.*` and allow the
+    # surrounding `/` to be either present or absorbed. The manifest
+    # only uses `**` at the end of a pattern (`styles/**`,
+    # `playground/**`) so we don't need the mid-glob case.
+    full_pattern = "^" + pattern + "$"
+    return re.match(full_pattern, rel_path) is not None
+
+
+def _changed_routes(theme: str, base: str | None = None) -> set[str] | None:
+    """Return the set of route slugs touched by the diff within `theme`.
+
+    Returns:
+      None            -> a ROUTE_GLOBAL_GLOBS file changed (header,
+                         footer, theme.json, styles/**, blueprint
+                         content, etc.) OR a framework file changed;
+                         the caller should treat every route as stale.
+      set()           -> the theme appears in the diff but only through
+                         files that don't map to any known route; the
+                         caller should treat every route as stale
+                         defensively (file-outside-manifest is the same
+                         risk as an unknown global).
+      {"shop", ...}   -> exactly those route slugs depend on a file in
+                         the diff.
+
+    This is the per-theme companion to `_changed_themes`; together they
+    let `cmd_shoot --auto-routes` narrow a fan-out to just the cells
+    that could visibly have changed.
+    """
+    paths = _diff_paths(base)
+    if paths is None:
+        return None
+
+    theme_prefix = f"{theme}/"
+    # Relative-to-theme paths, e.g. "templates/home.html".
+    rel_paths: list[str] = []
+    for p in paths:
+        if _is_framework_file(p):
+            # Framework edit invalidates every theme's every route.
+            return None
+        if p.startswith(theme_prefix):
+            rel_paths.append(p[len(theme_prefix):])
+        # Paths under `tests/visual-baseline/<theme>/` don't carry
+        # route dependency semantics -- they ARE the expected output,
+        # not an input. Treat as no-op for route narrowing.
+
+    if not rel_paths:
+        return set()
+
+    # Global invalidation check first: any global glob means every route.
+    for rel in rel_paths:
+        for glob in ROUTE_GLOBAL_GLOBS:
+            if _match_glob(rel, glob):
+                return None
+
+    # Per-route match. A single rel_path can contribute to multiple
+    # routes (e.g. templates/single-product.html feeds both
+    # product-simple and product-variable).
+    touched: set[str] = set()
+    unmapped: list[str] = []
+    for rel in rel_paths:
+        matched_any = False
+        for route_slug, globs in ROUTE_DEPENDENCIES.items():
+            for glob in globs:
+                if _match_glob(rel, glob):
+                    touched.add(route_slug)
+                    matched_any = True
+                    break
+        if not matched_any:
+            unmapped.append(rel)
+
+    if unmapped:
+        # An edit to a theme-root file we don't have a manifest entry
+        # for -- could be a brand-new template, a pattern we haven't
+        # categorized, or just a README. Degrade gracefully to "shoot
+        # every route" so we never ship a regression because of a
+        # manifest gap. Fix the manifest when this shows up repeatedly.
+        return None
+
+    return touched
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: per-(theme, viewport, route) signature stamps.
+#
+# The signature file lives alongside each baseline PNG at
+# `tests/visual-baseline/<theme>/<vp>/<slug>.sig.json` and records the
+# exact inputs that produced that baseline. Before shoot_theme opens
+# Playwright we recompute the signature for the current HEAD and
+# compare; a match means the rendered page CANNOT have changed, so we
+# copy the baseline into tmp/snaps/ and skip the capture entirely.
+# A mismatch (or missing sig / baseline) falls through to the normal
+# shoot path, which then writes a fresh sig.json into tmp/snaps/ so
+# `bin/snap.py baseline` can promote it alongside the new PNG.
+#
+# Contents:
+#   * deps[]    -- every file under ROUTE_DEPENDENCIES[slug] and
+#                  ROUTE_GLOBAL_GLOBS that exists in the theme, with
+#                  its sha256. Order-stable for diff-friendliness.
+#   * snap_py_sha / snap_config_sha
+#                  -- hashes of the capture engine + its config. A
+#                  bug in either can shift every pixel, so a change
+#                  invalidates every signature.
+#   * playground_cli -- the pinned @wp-playground/cli spec. Bumping
+#                  the CLI changes the underlying WP/WC runtime and
+#                  therefore what paints; auto-invalidates all sigs.
+#
+# Intentionally NOT in the signature:
+#   * Playwright pin -- already covered by snap.py (we'd update its
+#                  hard-coded version constants in the same commit
+#                  that bumps the install). One less file to hash.
+#   * machine identifiers / mtimes -- signatures must be reproducible
+#                  across runners, local machines, and CI.
+# ---------------------------------------------------------------------------
+_SIG_VERSION = 1  # bump to force a mass re-shoot on schema changes
+
+
+def _sha256_bytes(data: bytes) -> str:
+    import hashlib
+    return hashlib.sha256(data).hexdigest()
+
+
+def _sha256_file(path: Path) -> str | None:
+    try:
+        return _sha256_bytes(path.read_bytes())
+    except OSError:
+        return None
+
+
+def _collect_dep_paths(theme: str, route_slug: str) -> list[Path]:
+    """Return the absolute paths of every existing file that matches the
+    route's manifest entry + the global-glob list.
+
+    We walk the theme's own subdirs and evaluate each file against the
+    glob set. The walk is scoped to a small superset of relevant
+    directories so we don't stat the whole theme tree on every shoot.
+    """
+    tdir = theme_dir(theme)
+    globs: list[str] = list(ROUTE_GLOBAL_GLOBS)
+    globs.extend(ROUTE_DEPENDENCIES.get(route_slug, ()))
+
+    # Scan a narrow superset of candidate subdirs so we don't iterate
+    # the entire theme tree (which can include heavy content bundles).
+    candidate_dirs = [
+        tdir,  # for files at theme root (theme.json, functions.php)
+        tdir / "templates",
+        tdir / "parts",
+        tdir / "patterns",
+        tdir / "styles",
+        tdir / "playground",
+    ]
+    found: set[Path] = set()
+    for d in candidate_dirs:
+        if not d.is_dir():
+            continue
+        # For theme root we don't recurse (only direct children of tdir);
+        # for everything else we do, so `styles/**` can pick up
+        # `styles/variations/mono.json`.
+        iterator = d.iterdir() if d == tdir else d.rglob("*")
+        for fp in iterator:
+            if not fp.is_file():
+                continue
+            try:
+                rel = fp.relative_to(tdir).as_posix()
+            except ValueError:
+                continue
+            for glob in globs:
+                if _match_glob(rel, glob):
+                    found.add(fp)
+                    break
+
+    return sorted(found, key=lambda p: p.relative_to(tdir).as_posix())
+
+
+def compute_route_signature(theme: str, route_slug: str) -> dict:
+    """Return a serializable signature for the (theme, route) inputs.
+
+    The structure is stable (keys are inserted in deterministic order)
+    so the signature can be serialized to JSON, committed alongside the
+    baseline PNG, and compared byte-for-byte against a recomputed
+    signature in a later run without worrying about key ordering.
+
+    Missing inputs (e.g. a playground dir that doesn't exist on this
+    theme) simply drop out of the list -- a signature for the same
+    (theme, route) on a run where the file is still missing still
+    matches. If a NEW file appears under one of the globs it becomes
+    a new deps[] entry and invalidates the signature, which is the
+    correct behavior: a new template affects the render.
+    """
+    tdir = theme_dir(theme)
+    deps: list[dict] = []
+    for fp in _collect_dep_paths(theme, route_slug):
+        sha = _sha256_file(fp)
+        if sha is None:
+            continue
+        deps.append({
+            "path": fp.relative_to(tdir).as_posix(),
+            "sha": sha,
+        })
+
+    snap_py_sha = _sha256_file(Path(__file__)) or ""
+    snap_config_sha = _sha256_file(Path(__file__).resolve().parent / "snap_config.py") or ""
+    try:
+        cli_pin = _pinned_playground_cli_spec()
+    except SystemExit:
+        cli_pin = ""
+
+    return {
+        "version": _SIG_VERSION,
+        "theme": theme,
+        "route": route_slug,
+        "deps": deps,
+        "snap_py_sha": snap_py_sha,
+        "snap_config_sha": snap_config_sha,
+        "playground_cli": cli_pin,
+    }
+
+
+def _signature_path(theme: str, vp_name: str, route_slug: str,
+                    root: Path | None = None) -> Path:
+    base = root if root is not None else BASELINE_DIR
+    return base / theme / vp_name / f"{route_slug}.sig.json"
+
+
+def _baseline_png_path(theme: str, vp_name: str, route_slug: str) -> Path:
+    return BASELINE_DIR / theme / vp_name / f"{route_slug}.png"
+
+
+def _tmp_cell_paths(theme: str, vp_name: str, route_slug: str) -> dict[str, Path]:
+    base = SNAPS_DIR / theme / vp_name
+    return {
+        "dir": base,
+        "png": base / f"{route_slug}.png",
+        "findings": base / f"{route_slug}.findings.json",
+        "sig": base / f"{route_slug}.sig.json",
+        "html": base / f"{route_slug}.html",
+        "a11y": base / f"{route_slug}.a11y.json",
+    }
+
+
+def _load_sig(path: Path) -> dict | None:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _signatures_equal(a: dict, b: dict) -> bool:
+    """Semantic equality for signature dicts.
+
+    Compares every key EXCEPT any future additive metadata (timestamps,
+    runner id) we might want to stash later. Today the dicts are
+    identical-shape so we can just ==, but we encode the comparison
+    via explicit keys for forward compatibility.
+    """
+    fields = ("version", "theme", "route", "snap_py_sha",
+              "snap_config_sha", "playground_cli")
+    for f in fields:
+        if a.get(f) != b.get(f):
+            return False
+    # deps[] compared as sets of (path, sha) tuples so we don't care
+    # about list ordering (we write sorted, but a hand-edited baseline
+    # sig shouldn't re-shoot just because ordering drifted).
+    da = {(d.get("path"), d.get("sha")) for d in (a.get("deps") or [])}
+    db = {(d.get("path"), d.get("sha")) for d in (b.get("deps") or [])}
+    return da == db
+
+
+def _should_skip_cell(theme: str, vp_name: str, route_slug: str,
+                     current_sig: dict) -> bool:
+    """True iff we can reuse the baseline PNG for this cell.
+
+    Both halves must be present: the baseline PNG (so there's
+    something to copy) and a matching signature file (so we've proved
+    the inputs are unchanged). Either missing -> shoot.
+    """
+    if os.environ.get("FIFTY_FORCE_RESHOOT") == "1":
+        return False
+    png = _baseline_png_path(theme, vp_name, route_slug)
+    if not png.is_file():
+        return False
+    sig_path = _signature_path(theme, vp_name, route_slug)
+    stored = _load_sig(sig_path)
+    if stored is None:
+        return False
+    return _signatures_equal(stored, current_sig)
+
+
+def _materialize_skipped_cell(theme: str, vp_name: str, route_slug: str,
+                              current_sig: dict) -> None:
+    """Copy baseline PNG into tmp/snaps/ and emit a skip-stub findings.json.
+
+    After this runs the cell looks -- from the aggregator's perspective
+    -- exactly like a freshly-shot cell with no findings to report:
+      * tmp/snaps/<theme>/<vp>/<slug>.png       (byte copy of baseline)
+      * tmp/snaps/<theme>/<vp>/<slug>.findings.json (skip-stub)
+      * tmp/snaps/<theme>/<vp>/<slug>.sig.json  (current signature)
+
+    The findings stub uses `skipped_via_signature: true` so `bin/snap.py
+    report` and `bin/check.py` can tell a deliberately-skipped cell
+    apart from a shoot that ran and found nothing. Empty lists for
+    findings/console/page_errors/network_failures satisfy the evidence
+    gate's shape checks.
+
+    A baseline-side findings.json (written by a future `cmd_baseline`
+    that promotes findings alongside PNGs) is PREFERRED over the stub:
+    if the signature matches, the findings the theme currently carries
+    are by definition the last-shot findings for this exact input set.
+    """
+    paths = _tmp_cell_paths(theme, vp_name, route_slug)
+    paths["dir"].mkdir(parents=True, exist_ok=True)
+
+    src_png = _baseline_png_path(theme, vp_name, route_slug)
+    shutil.copy2(src_png, paths["png"])
+
+    # Prefer promoted baseline findings/a11y/html if they exist --
+    # those represent the true last-captured state for these inputs.
+    # Fall through to a stub when the baseline tree predates Phase 2.
+    baseline_root = BASELINE_DIR / theme / vp_name
+    baseline_findings = baseline_root / f"{route_slug}.findings.json"
+    if baseline_findings.is_file():
+        shutil.copy2(baseline_findings, paths["findings"])
+    else:
+        stub = {
+            "theme": theme,
+            "viewport": vp_name,
+            "route": route_slug,
+            "skipped_via_signature": True,
+            "findings": [],
+            "console": [],
+            "page_errors": [],
+            "network_failures": [],
+        }
+        paths["findings"].write_text(
+            json.dumps(stub, indent=2), encoding="utf-8",
+        )
+
+    baseline_a11y = baseline_root / f"{route_slug}.a11y.json"
+    if baseline_a11y.is_file():
+        shutil.copy2(baseline_a11y, paths["a11y"])
+    baseline_html = baseline_root / f"{route_slug}.html"
+    if baseline_html.is_file():
+        shutil.copy2(baseline_html, paths["html"])
+
+    paths["sig"].write_text(
+        json.dumps(current_sig, indent=2), encoding="utf-8",
+    )
+
+    # Touch the findings file so `check_evidence_freshness` sees it as
+    # newer than any uncommitted theme source edits (otherwise the
+    # freshness gate would fail on a skip-copy with a stale mtime from
+    # the baseline). copy2 preserves mtime, which is wrong for this use.
+    now = time.time()
+    for key in ("png", "findings", "sig", "a11y", "html"):
+        p = paths[key]
+        if p.exists():
+            try:
+                os.utime(p, (now, now))
+            except OSError:
+                pass
+
+
+def _write_sig_after_shoot(theme: str, vp_name: str, route_slug: str,
+                           current_sig: dict) -> None:
+    """Write the just-computed signature next to the freshly-shot PNG.
+
+    Called from inside the shoot loop after Playwright has produced
+    tmp/snaps/<theme>/<vp>/<slug>.png. On promotion via cmd_baseline
+    the sig is copied into tests/visual-baseline/ alongside the PNG.
+    """
+    sig_path = SNAPS_DIR / theme / vp_name / f"{route_slug}.sig.json"
+    sig_path.parent.mkdir(parents=True, exist_ok=True)
+    sig_path.write_text(json.dumps(current_sig, indent=2), encoding="utf-8")
 
 
 def discover_themes() -> list[str]:
@@ -2965,6 +3480,8 @@ def shoot_theme(
     routes: list[Route],
     viewports: list[Viewport],
     out_root: Path,
+    skip_cells: set[tuple[str, str]] | None = None,
+    signatures: dict[tuple[str, str], dict] | None = None,
 ) -> dict:
     """Drive Playwright across (route, viewport). Returns a manifest dict.
 
@@ -3040,6 +3557,20 @@ def shoot_theme(
                 vp_dir = out_root / vp.name
                 vp_dir.mkdir(parents=True, exist_ok=True)
                 for route in routes:
+                    # Phase 2 skip: if the caller computed that this
+                    # cell's signature matches the baseline, the tmp
+                    # tree was already populated by _materialize_skipped_
+                    # cell() before we booted. Don't re-navigate or
+                    # re-capture -- the whole point is to keep 40 of 44
+                    # cells out of Playwright's hot loop.
+                    if skip_cells and (vp.name, route.slug) in skip_cells:
+                        print(
+                            f"  {DIM}{vp.name:7s}{RESET} "
+                            f"{route.slug:18s} {GREEN}skip{RESET} "
+                            f"{DIM}(signature match){RESET}",
+                            flush=True,
+                        )
+                        continue
                     url = server_url + route.path
                     print(
                         f"  {DIM}{vp.name:7s}{RESET} "
@@ -3125,6 +3656,20 @@ def shoot_theme(
                     )
                     if static_entry:
                         manifest["shots"].append(static_entry)
+                        # Phase 2: stamp the route's signature next to
+                        # the freshly-captured PNG so the next run can
+                        # skip this cell if nothing upstream changes.
+                        # We prefer the signature passed in by the
+                        # caller (pre-computed once per theme, reused
+                        # across viewports) over recomputing it here
+                        # -- identical values, one less filesystem walk.
+                        cell_key = (vp.name, route.slug)
+                        sig = None
+                        if signatures and cell_key in signatures:
+                            sig = signatures[cell_key]
+                        else:
+                            sig = compute_route_signature(theme, route.slug)
+                        _write_sig_after_shoot(theme, vp.name, route.slug, sig)
 
                     # Interactive cells (Phase 3). Run any flows
                     # registered for this route + viewport. Each flow
@@ -3627,22 +4172,89 @@ def cmd_serve(args: argparse.Namespace) -> int:
                 pass
 
 
+def _plan_skip_cells(
+    theme: str, routes: list[Route], viewports: list[Viewport],
+    skip_unchanged: bool,
+) -> tuple[set[tuple[str, str]], dict[tuple[str, str], dict]]:
+    """Compute which (viewport, route) cells can be skipped for this theme.
+
+    Returns a pair:
+      * skip_cells: set of (vp_name, route_slug) that have a matching
+                    signature + baseline PNG. These are materialized
+                    directly into tmp/snaps/ by the caller; the
+                    Playwright loop is told to skip them.
+      * signatures: dict of (vp_name, route_slug) -> current signature
+                    for every cell. The shoot path reuses the signature
+                    when writing tmp/snaps/<slug>.sig.json so it doesn't
+                    recompute the same hash twice.
+
+    When skip_unchanged is False (e.g. `--no-skip`, rebaseline mode, or
+    FIFTY_FORCE_RESHOOT=1 globally) the skip_cells set is always empty;
+    signatures are still computed so they can be stamped alongside the
+    freshly-shot PNGs for the next run to benefit from.
+    """
+    skip_cells: set[tuple[str, str]] = set()
+    sigs: dict[tuple[str, str], dict] = {}
+    # Signature only varies on (theme, route) -- the viewport doesn't
+    # change which files feed the render. Compute once per route, reuse.
+    sig_by_route: dict[str, dict] = {}
+    for r in routes:
+        sig_by_route[r.slug] = compute_route_signature(theme, r.slug)
+    for vp in viewports:
+        for r in routes:
+            sig = sig_by_route[r.slug]
+            sigs[(vp.name, r.slug)] = sig
+            if skip_unchanged and _should_skip_cell(theme, vp.name, r.slug, sig):
+                skip_cells.add((vp.name, r.slug))
+    return skip_cells, sigs
+
+
 def _shoot_one_theme(theme: str, routes: list[Route],
                      viewports: list[Viewport], port: int | None,
                      verbosity: str,
-                     cache_state: bool = False) -> tuple[str, str | None]:
+                     cache_state: bool = False,
+                     skip_unchanged: bool = True) -> tuple[str, str | None]:
     """Worker used by both the serial and concurrent shoot paths.
 
     Returns (theme, error) -- error is None on success, otherwise the
     exception message. We never raise here so a single bad theme
     doesn't abort the whole sweep.
+
+    `skip_unchanged=True` (the Phase 2 default) triggers the per-cell
+    signature check: cells whose (deps, snap engine, cli pin) signature
+    matches the baseline's stored sig have their baseline PNG copied
+    into tmp/snaps/ and are removed from the Playwright loop. If every
+    cell in the requested matrix can be skipped we never even boot
+    Playground -- the only cost is O(files-in-theme) sha256s.
     """
     out_root = SNAPS_DIR / theme
+    skip_cells, sigs = _plan_skip_cells(theme, routes, viewports, skip_unchanged)
+
+    # Materialize skipped cells up front so the findings/sig/png tree
+    # is populated regardless of what happens in the Playwright path.
+    for (vp_name, slug) in skip_cells:
+        _materialize_skipped_cell(theme, vp_name, slug, sigs[(vp_name, slug)])
+
+    total_cells = len(routes) * len(viewports)
+    if skip_cells:
+        print(
+            f"  {DIM}{theme}: reusing baseline for {len(skip_cells)} / "
+            f"{total_cells} cell(s) (signature match){RESET}"
+        )
+    if len(skip_cells) == total_cells:
+        # Everything up-to-date -- skip the Playground boot entirely.
+        # This is the core Phase 2 win at 100 themes: a no-theme-diff
+        # push pays only an O(files) sha256 cost per theme, no browser.
+        return theme, None
+
     try:
         with running_server(
             theme, port=port, verbosity=verbosity, cache_state=cache_state,
         ) as server:
-            shoot_theme(theme, server.url, routes, viewports, out_root)
+            shoot_theme(
+                theme, server.url, routes, viewports, out_root,
+                skip_cells=skip_cells, signatures=sigs,
+            )
     except SystemExit as e:
         return theme, f"failed: {e}"
     except Exception as e:
@@ -3682,16 +4294,62 @@ def cmd_shoot(args: argparse.Namespace) -> int:
     if not themes:
         raise SystemExit("Pass a theme name or --all.")
 
-    routes = filter_routes(args.routes or (sorted(QUICK_ROUTES) if args.quick else None))
+    base_routes = filter_routes(args.routes or (sorted(QUICK_ROUTES) if args.quick else None))
     viewports = filter_viewports(args.viewports or (sorted(QUICK_VIEWPORTS) if args.quick else None))
     concurrency = max(1, getattr(args, "concurrency", 1) or 1)
     if concurrency > len(themes):
         concurrency = len(themes)
 
+    # Per-theme route narrowing with --auto-routes. The manifest lives in
+    # snap_config.ROUTE_DEPENDENCIES / ROUTE_GLOBAL_GLOBS; the diff is
+    # scoped per-theme because each theme has independently-changing
+    # files (the framework-wide case short-circuits via _changed_routes
+    # returning None, which we fall back to `base_routes` -- i.e. no
+    # narrowing).
+    auto_routes = bool(getattr(args, "auto_routes", False))
+    changed_base = getattr(args, "changed_base", None)
+    theme_routes: dict[str, list[Route]] = {}
+    total_cells = 0
+    for theme in themes:
+        if auto_routes:
+            narrowed = _changed_routes(theme, changed_base)
+            if narrowed is None:
+                # Framework / global change -> every route for this theme.
+                theme_routes[theme] = base_routes
+                print(
+                    f"  {DIM}--auto-routes: {theme} has global/framework "
+                    f"changes -> all {len(base_routes)} routes{RESET}"
+                )
+            else:
+                # Intersect with base_routes so --routes / --quick still wins.
+                allowed = {r.slug for r in base_routes}
+                picked = [r for r in base_routes if r.slug in narrowed and r.slug in allowed]
+                theme_routes[theme] = picked
+                if picked:
+                    print(
+                        f"  {DIM}--auto-routes: {theme} -> "
+                        f"{', '.join(r.slug for r in picked)}{RESET}"
+                    )
+                else:
+                    print(
+                        f"  {DIM}--auto-routes: {theme} has no "
+                        f"route-relevant changes -> skipped{RESET}"
+                    )
+        else:
+            theme_routes[theme] = base_routes
+        total_cells += len(theme_routes[theme]) * len(viewports)
+
+    # Drop themes that ended up with zero routes after auto-narrowing
+    # so the shoot loop doesn't pay for an empty Playground boot.
+    themes = [t for t in themes if theme_routes[t]]
+    if not themes:
+        print(f"{GREEN}--auto-routes: no stale (theme, route) cells; nothing to shoot.{RESET}")
+        return 0
+
     print(
-        f"Shooting {len(themes)} theme(s) × {len(routes)} route(s) × "
+        f"Shooting {len(themes)} theme(s) across "
         f"{len(viewports)} viewport(s) = "
-        f"{len(themes)*len(routes)*len(viewports)} screenshot(s)"
+        f"{total_cells} screenshot(s)"
         f"  [concurrency={concurrency}]\n"
     )
 
@@ -3703,12 +4361,25 @@ def cmd_shoot(args: argparse.Namespace) -> int:
             cleared = reset_state_cache(theme)
             print(f"  cleared state cache at {cleared}")
 
+    # Phase 2 skip logic: on by default. `--no-skip` (CLI) or the
+    # `FIFTY_FORCE_RESHOOT=1` env var (universal, honored by
+    # `_should_skip_cell` too) force a full reshoot. We OR them here so
+    # flipping the env var in CI covers both the outer plan step and any
+    # recursive invocations the worker might trigger.
+    skip_unchanged = not bool(getattr(args, "no_skip", False))
+    if os.environ.get("FIFTY_FORCE_RESHOOT") == "1":
+        skip_unchanged = False
+    if not skip_unchanged:
+        print(f"{DIM}(skip-when-unchanged disabled; every cell will be "
+              f"shot from scratch){RESET}")
+
     if concurrency == 1 or len(themes) == 1:
         for theme in themes:
             print(f"=== {GREEN}{theme}{RESET} ===")
             t, err = _shoot_one_theme(
-                theme, routes, viewports, args.port, args.verbosity,
+                theme, theme_routes[theme], viewports, args.port, args.verbosity,
                 cache_state=cache_state,
+                skip_unchanged=skip_unchanged,
             )
             if err:
                 print(f"{RED}{t} {err}{RESET}")
@@ -3726,8 +4397,9 @@ def cmd_shoot(args: argparse.Namespace) -> int:
             # and is concurrent-safe because the bind happens via
             # subprocess.Popen immediately after.
             futures = {
-                ex.submit(_shoot_one_theme, theme, routes, viewports,
-                          None, args.verbosity, cache_state): theme
+                ex.submit(_shoot_one_theme, theme, theme_routes[theme], viewports,
+                          None, args.verbosity, cache_state,
+                          skip_unchanged): theme
                 for theme in themes
             }
             for fut in concurrent.futures.as_completed(futures):
@@ -3903,6 +4575,32 @@ def cmd_baseline(args: argparse.Namespace) -> int:
                 shutil.copy2(png, dst)
                 promoted += 1
                 print(f"  baselined: {rel}")
+
+                # Phase 2: promote the signature + per-cell evidence so
+                # a subsequent run with unchanged inputs can skip this
+                # cell entirely via `_should_skip_cell`. We only promote
+                # files that share the PNG's stem (i.e. the static cell
+                # OR a specific interaction flow); interaction-scoped
+                # artifacts don't have their own sig but DO benefit from
+                # findings/a11y promotion so the skip-copy path can
+                # surface them. Missing side-files are silently skipped
+                # -- older snaps predating Phase 2 simply won't have
+                # them, and that's fine (we'll degrade to the stub
+                # findings.json path on skip-copy).
+                stem = png.stem
+                side_files = [
+                    f"{stem}.sig.json",
+                    f"{stem}.findings.json",
+                    f"{stem}.a11y.json",
+                    f"{stem}.html",
+                ]
+                for side in side_files:
+                    src_side = vp_dir / side
+                    if not src_side.is_file():
+                        continue
+                    dst_side = dst.parent / side
+                    shutil.copy2(src_side, dst_side)
+
     suffix = f" ({skipped} skipped, already existed)" if missing_only and skipped else ""
     print(f"\n{GREEN}done.{RESET} {promoted} baseline(s) updated under "
           f"{BASELINE_DIR.relative_to(REPO_ROOT)}/{suffix}")
@@ -5149,6 +5847,18 @@ def build_parser() -> argparse.ArgumentParser:
                          help="Subset of viewport names (default: all).")
     s_shoot.add_argument("--quick", action="store_true",
                          help="Use snap_config.QUICK_* subsets only.")
+    s_shoot.add_argument(
+        "--auto-routes", action="store_true",
+        help=(
+            "Smart: within each affected theme, shoot only the routes "
+            "whose template/part/pattern dependencies were touched by "
+            "the diff. See ROUTE_DEPENDENCIES + ROUTE_GLOBAL_GLOBS in "
+            "bin/snap_config.py for the manifest. Falls back to every "
+            "route when a global file (theme.json, styles/**, header/"
+            "footer, playground fixtures) changes. Combine with "
+            "--changed to narrow theme AND route scope together."
+        ),
+    )
     s_shoot.add_argument("--port", type=int, default=None,
                          help="Pin the playground port. Ignored when "
                          "--concurrency > 1 (each worker auto-picks).")
@@ -5188,6 +5898,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--reset-cache", action="store_true",
         help="Wipe tmp/playground-state/<theme>/ before each shoot (only "
              "effective with --cache-state).",
+    )
+    s_shoot.add_argument(
+        "--no-skip", action="store_true",
+        help=(
+            "Disable Phase 2 signature-based cell skipping -- always "
+            "boot Playground and re-shoot every (theme, viewport, route) "
+            "cell, even when ROUTE_DEPENDENCIES prove nothing upstream "
+            "changed. Use for debugging the skip logic itself, or when "
+            "baselines drift for reasons the manifest can't see (flaky "
+            "fonts, Chromium rasterization deltas, etc.). Equivalent to "
+            "FIFTY_FORCE_RESHOOT=1 but scoped to the invocation."
+        ),
     )
     s_shoot.set_defaults(func=cmd_shoot)
 

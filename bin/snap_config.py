@@ -153,6 +153,122 @@ QUICK_ROUTES: set[str] = {"home", "shop", "product-simple", "checkout-filled"}
 QUICK_VIEWPORTS: set[str] = {"desktop"}
 
 
+# ---------------------------------------------------------------------------
+# Per-route source-file dependency manifest.
+#
+# Drives `bin/snap.py::_changed_routes(theme, base)`, which narrows the
+# "which routes need reshooting?" question from "the whole route table
+# because this theme had a git diff" down to "only these slugs map to
+# the files that changed". For a theme with a 1-line `single-product.html`
+# edit this collapses 44 PNG captures (11 routes x 4 viewports) into 8
+# (2 product routes x 4 viewports) and stays visually faithful as long
+# as the manifest tracks reality.
+#
+# Each glob pattern is evaluated against the theme's relative path (the
+# same form `git diff --name-only` emits, minus the `<theme>/` prefix).
+# We use `pathlib.PurePath.match` which does NOT recurse on `**`, so we
+# list concrete path shapes instead of trying to be clever. The extra
+# verbosity is deliberate: every entry below is a documented assertion
+# that "editing this file can change that route", reviewed when themes
+# are added or templates are renamed.
+#
+# Maintenance rule: when adding a route to `ROUTES` above, also add
+# every template/part/pattern whose contents control what paints at
+# that path. When in doubt, add the file -- a false positive (over-
+# shooting) costs minutes; a false negative (missing a diff) ships a
+# regression. The nightly-snap-sweep.yml workflow catches false
+# negatives within 24h as a safety net.
+#
+# Templates/parts that appear on EVERY route (header, footer, global
+# styles, theme.json, blueprint content) belong in ROUTE_GLOBAL_GLOBS
+# below -- those invalidate every route at once.
+# ---------------------------------------------------------------------------
+ROUTE_DEPENDENCIES: dict[str, tuple[str, ...]] = {
+    "home": (
+        "templates/front-page.html",
+        "templates/home.html",
+        "templates/index.html",
+        "patterns/home-*.html",
+        "patterns/front-page-*.html",
+    ),
+    "shop": (
+        "templates/archive-product.html",
+        "patterns/shop-*.html",
+        "patterns/product-grid-*.html",
+    ),
+    "product-simple": (
+        "templates/single-product.html",
+        "parts/product-meta.html",
+        "patterns/product-*.html",
+    ),
+    "product-variable": (
+        "templates/single-product.html",
+        "parts/product-meta.html",
+        "patterns/product-*.html",
+    ),
+    "category": (
+        "templates/taxonomy-product_cat.html",
+        "templates/taxonomy.html",
+        "templates/archive-product.html",
+        "templates/category.html",
+        "patterns/shop-*.html",
+    ),
+    "cart-filled": (
+        "templates/page-cart.html",
+        "patterns/cart-*.html",
+    ),
+    "cart-empty": (
+        "templates/page-cart.html",
+        "patterns/cart-*.html",
+    ),
+    "checkout-filled": (
+        "templates/page-checkout.html",
+        "parts/checkout-header.html",
+        "patterns/checkout-*.html",
+    ),
+    "my-account": (
+        "templates/page-my-account.html",
+    ),
+    "journal": (
+        "templates/home.html",
+        "templates/index.html",
+        "patterns/journal-*.html",
+    ),
+    "journal-post": (
+        "templates/single.html",
+        "templates/singular.html",
+        "parts/comments.html",
+        "parts/post-meta.html",
+        "patterns/post-*.html",
+    ),
+}
+
+
+# Globs (evaluated relative to a theme's root) whose changes invalidate
+# EVERY route for that theme. Editing one of these means we can't prove
+# any particular cell is safe to skip.
+#
+# Why these are "all routes":
+#   theme.json       -> design tokens bleed into every template
+#   styles/**        -> style variations + global CSS
+#   parts/header.html, parts/footer.html, parts/announcement-bar.html
+#                     -> present on every rendered page via templates
+#   playground/**    -> blueprint content + seed scripts; a different
+#                       product set, option value, or fixture shifts
+#                       every cell simultaneously
+#   functions.php    -> PHP-level theme behavior (block supports,
+#                       asset loading, filters) touches every render
+ROUTE_GLOBAL_GLOBS: tuple[str, ...] = (
+    "theme.json",
+    "styles/**",
+    "parts/header.html",
+    "parts/footer.html",
+    "parts/announcement-bar.html",
+    "playground/**",
+    "functions.php",
+)
+
+
 # Preferred ordering for the five original themes (diff stability + hero
 # ordering on demo.regionallyfamous.com). This list is NOT the set of
 # "known themes" — it's just a sort hint. Every folder with a theme.json +

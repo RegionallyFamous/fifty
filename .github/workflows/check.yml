@@ -130,6 +130,28 @@ jobs:
             echo "has_themes=true" >> "$GITHUB_OUTPUT"
             echo "Will shoot + gate: $themes"
           fi
+      - name: Restore Playground state cache (changed themes)
+        # Same scheme as visual.yml: each changed theme gets a warm
+        # WordPress install restored from the previous shoot on this
+        # branch (or the `restore-keys:` fallback from main). snap.py's
+        # `--cache-state` invalidates stale entries via the version
+        # marker, so a partial/cross-theme restore is never unsafe.
+        #
+        # The path includes `tmp/playground-state/` wholesale rather
+        # than per-theme because this job shoots 1..N changed themes
+        # and the job doesn't know the slug list at step-setup time
+        # without an extra shell hop. Wholesale caching is slightly
+        # wasteful for single-theme PRs (unused theme dirs ride
+        # along) but correctness is identical.
+        if: steps.changed.outputs.has_themes == 'true'
+        id: pg-state-cache
+        uses: actions/cache@v5
+        with:
+          path: tmp/playground-state
+          key: pg-state-v1-changed-${{ hashFiles('*/playground/**', 'package.json', 'package-lock.json') }}
+          restore-keys: |
+            pg-state-v1-changed-
+
       - name: Shoot changed themes (quick subset)
         if: steps.changed.outputs.has_themes == 'true'
         # Pass `--changed-base origin/main` so brand-new themes (present on
@@ -139,13 +161,18 @@ jobs:
         # check.py below to fail because tmp/snaps/<theme>/ never got
         # populated. See `_changed_themes()` in bin/snap.py.
         #
+        # `--cache-state` reuses the warm /wordpress install restored
+        # by the pg-state-cache step above; on cold cache it primes the
+        # dir in-place and the post-job cache save persists it for the
+        # next run. ~40-100s saved per theme per shoot on cache hit.
+        #
         # FIFTY_CONTENT_REF: on a PR, rewrite main-branch URLs in the
         # blueprint to the PR head SHA so a brand-new theme's playground/
         # content + images resolve. See _retarget_content_ref() in snap.py.
         env:
           FIFTY_CONTENT_REF: ${{ github.event.pull_request.head.sha || '' }}
         run: >-
-          python3 bin/snap.py shoot --changed
+          python3 bin/snap.py shoot --changed --cache-state
           --changed-base origin/main --quick --concurrency 1
       - name: Run check.py with evidence required
         if: steps.changed.outputs.has_themes == 'true'
