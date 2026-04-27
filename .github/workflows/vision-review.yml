@@ -64,6 +64,16 @@ jobs:
     name: design label gate
     runs-on: ubuntu-latest
     timeout-minutes: 1
+    # Bail fast when the trigger was the workflow labelling itself with
+    # `vision-reviewed` (or any other non-`design` label change). Without
+    # this filter, vision-review.yml retriggers after every successful
+    # run: the label it adds fires a `labeled` event, the gate passes
+    # on `design`-still-present, and the full ~12-min critique runs a
+    # second time on the same SHA. See bin/snap.py PR #62 / #63 notes
+    # for the cycle history.
+    if: >
+      github.event.action != 'labeled' ||
+      github.event.label.name == 'design'
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
     steps:
