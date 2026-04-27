@@ -857,9 +857,68 @@ def build_local_blueprint(theme: str, login: bool = False) -> Path:
     return out
 
 
-def _retarget_content_ref(payload: str) -> str:
-    """Rewrite `raw.githubusercontent.com/<org>/<repo>/main/` URLs in the
-    snap blueprint to point at a PR-branch SHA when requested via env.
+def _auto_detect_content_ref() -> tuple[str | None, str]:
+    """Work out what raw.githubusercontent ref the blueprint should use.
+
+    Returns a ``(ref, source)`` tuple. ``ref`` is either a branch name, a
+    commit SHA, or ``None`` when the default (``main``) should be kept.
+    ``source`` is a short human-readable tag explaining how we picked it
+    ("env", "branch", "main-default", "detached") used when we print a
+    one-line banner so the operator knows which content set the snap is
+    actually pointing at.
+
+    Precedence:
+        1. ``FIFTY_CONTENT_REF`` env var wins (CI sets this explicitly).
+        2. If the current git branch is ``main``, use ``main``.
+        3. Else, if the current branch has a pushed counterpart at
+           ``origin/<branch>``, use that branch name (so re-pushing the
+           same branch auto-invalidates Playground's cache).
+        4. Else, keep ``main`` and print a hint — the caller is on an
+           unpublished branch and raw.githubusercontent will serve main's
+           copy of playground/ (which is correct for existing themes and
+           404s for brand-new ones; the push step resolves either case).
+    """
+    import os
+    import subprocess
+
+    env_ref = os.environ.get("FIFTY_CONTENT_REF")
+    if env_ref:
+        return (env_ref, "env")
+
+    try:
+        branch = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return (None, "no-git")
+
+    if branch in ("HEAD", ""):
+        return (None, "detached")
+    if branch == "main":
+        return ("main", "main-default")
+
+    # Does origin know about this branch?
+    try:
+        subprocess.run(
+            ["git", "rev-parse", "--verify", f"refs/remotes/origin/{branch}"],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError:
+        return (None, "unpublished")
+
+    return (branch, "branch")
+
+
+def _retarget_content_ref(payload: str, *, _verbose: bool = True) -> str:
+    """Rewrite ``raw.githubusercontent.com/<org>/<repo>/main/`` URLs in
+    the snap blueprint to point at a PR-branch SHA / branch name when
+    the current checkout is on a non-main branch.
 
     Why this exists:
         Every blueprint inlines absolute raw.githubusercontent.com URLs
@@ -874,19 +933,35 @@ def _retarget_content_ref(payload: str) -> str:
 
         Setting `FIFTY_CONTENT_REF` (typically to `$GITHUB_SHA` on a PR
         runner) redirects every main-branch URL to that ref so the PR's
-        own content is sideloaded. Local shoots leave the env var unset
-        and keep the production URLs.
+        own content is sideloaded. For local shoots we auto-detect the
+        current branch via ``_auto_detect_content_ref`` so the operator
+        doesn't have to remember to set the env var. That change fixed
+        the single biggest "boot smoke failed on a new theme" footgun.
 
     The substitution is a pure text replace on the serialized blueprint
     so it catches both `"url": "..."` fields (importWxr) and URLs
     embedded inside PHP `"data"` strings (wo-import.php,
     wo-configure.php, wo-cart.php).
     """
-    import os
-    ref = os.environ.get("FIFTY_CONTENT_REF")
+    from _lib import GITHUB_ORG, GITHUB_REPO
+
+    ref, source = _auto_detect_content_ref()
+    if _verbose and source not in ("main-default",):
+        if ref:
+            print(
+                f"[snap] content ref = {ref} (source: {source})",
+                file=sys.stderr,
+            )
+        elif source == "unpublished":
+            print(
+                "[snap] content ref = main (current branch is not pushed; "
+                "content URLs will point at main — push your branch to "
+                "serve its own playground/ content)",
+                file=sys.stderr,
+            )
+
     if not ref or ref == "main":
         return payload
-    from _lib import GITHUB_ORG, GITHUB_REPO
     src = f"raw.githubusercontent.com/{GITHUB_ORG}/{GITHUB_REPO}/main/"
     dst = f"raw.githubusercontent.com/{GITHUB_ORG}/{GITHUB_REPO}/{ref}/"
     return payload.replace(src, dst)
