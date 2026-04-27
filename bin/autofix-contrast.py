@@ -44,6 +44,7 @@ Exit codes
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -249,12 +250,160 @@ def _rewrite_file(
     return new_text, messages
 
 
+def _rewrite_css_hover_contrast(
+    css: str,
+    palette: dict[str, str],
+    *,
+    min_ratio: float = 3.0,
+) -> tuple[str, list[str]]:
+    """Scan CSS hover/focus rules and fix color-vs-background contrast.
+
+    Any rule that sets ``color: var(--X)`` inside a ``:hover``/``:focus``/
+    ``:focus-visible``/``:active`` selector, where the resolved color has
+    < `min_ratio` contrast against the effective background, is rewritten:
+    ``color: var(--X)`` → ``color: var(--<best_slug>)`` where
+    ``<best_slug>`` is the palette token with the highest contrast against
+    that background.
+
+    Returns ``(new_css, [message, …])``.
+    """
+    # Match a :hover/:focus/:active/:focus-visible rule block, e.g.
+    # ``.foo:hover { color: var(--base); background: var(--accent); }``
+    # We handle both "standalone" and "comma-joined" selectors.
+    _state_selectors_re = re.compile(
+        r"(:hover|:focus(?:-visible)?|:active|:focus-within)",
+    )
+    _rule_re = re.compile(
+        r"([^{}]+\{[^{}]*\})",
+        re.DOTALL,
+    )
+    _color_var_re = re.compile(r"(?<![a-z-])color\s*:\s*var\(--([a-z0-9-]+)\)")
+    _bg_var_re = re.compile(
+        r"background(?:-color)?\s*:\s*var\(--([a-z0-9-]+)\)"
+    )
+
+    messages: list[str] = []
+    rewrites: list[tuple[int, int, str]] = []
+
+    for m in _rule_re.finditer(css):
+        block = m.group(1)
+        # Only look at state-selector rules
+        if not _state_selectors_re.search(block):
+            continue
+
+        # Extract color + background var slugs from the rule body
+        brace_open = block.index("{")
+        selector = block[:brace_open]
+        body = block[brace_open:]
+
+        color_m = _color_var_re.search(body)
+        bg_m = _bg_var_re.search(body)
+        if not color_m:
+            continue
+
+        color_slug = color_m.group(1)
+        bg_slug = bg_m.group(1) if bg_m else "base"
+
+        color_hex = palette.get(color_slug, "")
+        bg_hex = palette.get(bg_slug, "")
+        if not color_hex or not bg_hex:
+            continue
+
+        ratio = contrast_ratio(color_hex, bg_hex)
+        if ratio >= min_ratio:
+            continue
+
+        # Pick the best-contrast replacement from {contrast, base, secondary, tertiary}
+        best = best_text_slug(bg_hex, palette)
+        if best is None:
+            continue
+        new_slug, new_ratio = best
+
+        if new_slug == color_slug:
+            continue  # Already the best we can do
+
+        messages.append(
+            f"hover/focus rule `{selector.strip()[:60]}`: "
+            f"color var(--{color_slug}) ({color_hex}) vs "
+            f"bg var(--{bg_slug}) ({bg_hex}) = {ratio:.2f}:1 < {min_ratio}:1 → "
+            f"var(--{new_slug}) ({new_ratio:.2f}:1)"
+        )
+
+        # Splice: rewrite the color var inside the body
+        new_body = _color_var_re.sub(
+            lambda mc, ns=new_slug: mc.group(0).replace(
+                f"var(--{mc.group(1)})", f"var(--{ns})"
+            ),
+            body,
+            count=1,
+        )
+        new_block = block[:brace_open] + new_body
+        rewrites.append((m.start(), m.end(), new_block))
+
+    if not rewrites:
+        return css, messages
+
+    new_css = css
+    for start, end, replacement in sorted(rewrites, key=lambda s: s[0], reverse=True):
+        new_css = new_css[:start] + replacement + new_css[end:]
+
+    return new_css, messages
+
+
+def _run_theme_css_contrast(
+    theme_root: Path,
+    *,
+    check_only: bool,
+    quiet: bool,
+    min_ratio: float = 3.0,
+) -> int:
+    """Fix hover/focus contrast in the ``styles.css`` section of ``theme.json``.
+
+    Returns 1 if a rewrite was made (or would be made in check mode), else 0.
+    """
+    tj_path = theme_root / "theme.json"
+    if not tj_path.is_file():
+        return 0
+
+    palette = load_palette(tj_path)
+    if not palette:
+        return 0
+
+    try:
+        tj = json.loads(tj_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return 0
+
+    css_original = tj.get("styles", {}).get("css", "")
+    if not css_original:
+        return 0
+
+    new_css, messages = _rewrite_css_hover_contrast(
+        css_original, palette, min_ratio=min_ratio
+    )
+    if not messages:
+        return 0
+
+    if not quiet:
+        print(f"{theme_root.name}/theme.json styles.css hover-contrast:")
+        for msg in messages:
+            print(f"  - {msg}")
+
+    if new_css != css_original and not check_only:
+        tj["styles"]["css"] = new_css
+        tj_path.write_text(json.dumps(tj, indent="\t", ensure_ascii=False) + "\n",
+                           encoding="utf-8")
+
+    return 1
+
+
 def _run_theme(
     theme_root: Path,
     *,
     check_only: bool,
     quiet: bool,
     min_ratio: float,
+    fix_css: bool = True,
 ) -> int:
     """Return number of files that changed (or would change)."""
     palette = load_palette(theme_root / "theme.json")
@@ -285,6 +434,12 @@ def _run_theme(
                 total_changes += 1
                 if not check_only:
                     path.write_text(new_text, encoding="utf-8")
+
+    # Also fix CSS hover contrast in theme.json
+    if fix_css:
+        total_changes += _run_theme_css_contrast(
+            theme_root, check_only=check_only, quiet=quiet, min_ratio=3.0
+        )
 
     if total_changes == 0:
         if not quiet:
