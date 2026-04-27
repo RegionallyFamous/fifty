@@ -1,7 +1,7 @@
 {
-  "stage": "shipping",
-  "summary": "Nordic home-goods WooCommerce block theme: pale cream surfaces, soft tan accents, unhurried serif typography for slow, considered storefronts.",
+  "stage": "incubating",
+  "summary": "apiary: WIP (first-5 batch retrofit). Edit this summary with the theme's brand voice once the design pass is complete.",
   "owner": "nick",
-  "last_checked": "2026-04-26",
-  "notes": "Original five-theme batch."
+  "last_checked": "",
+  "notes": "First-5 batch retrofit: stage flipped to incubating so check.py skips baseline checks until .github/workflows/first-baseline.yml auto-generates baselines (triggered by applying the ready-for-baseline label on PR)."
 }
