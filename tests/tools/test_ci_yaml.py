@@ -40,6 +40,19 @@ Covered bug classes:
    that listens on `labeled` but runs every job unconditionally is
    the exact shape of the bug.
 
+4. **Broken clean-critique label contract.** `vision-review.yml`'s
+   "clean critique" labelling step MUST add BOTH `vision-reviewed`
+   (satisfies `check.yml.vision-review-gate`) AND `ready-for-baseline`
+   (triggers `first-baseline.yml`, which generates
+   `tests/visual-baseline/<theme>/` and flips `readiness.stage` to
+   `shipping`). Dropping `ready-for-baseline` is the exact shape of
+   the 2026-04-27 end-to-end automation stall: vision pass goes green,
+   check.yml's vision-gate passes, but no one tells `first-baseline.yml`
+   to do its job, and the PR sits at `stage: incubating` forever
+   waiting on a human label click. Dropping `vision-reviewed` is the
+   symmetric failure that blocked basalt for the first batch. Both
+   labels must land atomically.
+
 Add new bug classes here as we find them. Each one is one ~10-line
 test that runs in ~50ms and is impossible for a human to forget
 (unlike a convention documented only in a PR description).
@@ -184,4 +197,74 @@ def test_labeled_trigger_has_label_name_filter(wf_path: Path) -> None:
         "labels, but no job uses `if:` with `github.event.action` or "
         "`github.event.label.name` to filter out self-triggers. Without this "
         "filter the workflow re-runs every time it labels a PR."
+    )
+
+
+def test_vision_review_adds_both_labels_atomically() -> None:
+    """`vision-review.yml`'s clean-critique labelling step must add
+    BOTH `vision-reviewed` and `ready-for-baseline`.
+
+    `vision-reviewed` satisfies `check.yml.vision-review-gate` (the
+    required check that blocks new-theme PRs until a design pass has
+    happened). `ready-for-baseline` is the label
+    `first-baseline.yml` listens for — it's what kicks off the
+    automated baseline generation + `readiness.stage → shipping`
+    flip. Adding only one half gets the PR stuck: either the gate
+    stays red (missing `vision-reviewed`) or the gate clears but
+    baselines never generate (missing `ready-for-baseline`).
+
+    We assert both label names appear inside a single `gh pr edit
+    ... --add-label ...` command so the labels land in ONE webhook
+    write. Splitting them across two `gh pr edit` calls would
+    technically work but doubles the `labeled`-event fan-out; one
+    atomic command is both cheaper AND the shape the downstream
+    filters in vision-review.yml's gate and first-baseline.yml's
+    setup expect.
+    """
+    wf = REPO_ROOT / ".github" / "workflows" / "vision-review.yml"
+    raw = wf.read_text()
+    # Find every `gh pr edit ... --add-label ...` invocation, reading
+    # forward across shell line-continuations (trailing `\` on a line
+    # joins it with the next). Returning the joined text so a regex
+    # test on it sees both labels when they're split across lines by
+    # a `run: |` block scalar.
+    joined_cmds: list[str] = []
+    lines = raw.splitlines()
+    i = 0
+    while i < len(lines):
+        stripped = lines[i].lstrip()
+        if stripped.startswith("gh pr edit"):
+            # Accumulate continuations.
+            buf = [lines[i].rstrip()]
+            while buf[-1].endswith("\\"):
+                buf[-1] = buf[-1][:-1]  # strip trailing `\`
+                i += 1
+                if i >= len(lines):
+                    break
+                buf.append(lines[i].rstrip())
+            joined_cmds.append(" ".join(buf))
+        i += 1
+    found_pair = any(
+        "--add-label vision-reviewed" in c and "--add-label ready-for-baseline" in c
+        for c in joined_cmds
+    )
+    assert found_pair, (
+        "vision-review.yml must add BOTH `vision-reviewed` AND "
+        "`ready-for-baseline` in a single `gh pr edit --add-label ...` "
+        "call. Adding only one half stalls the new-theme automation: "
+        "either check.yml's vision-review-gate stays red or "
+        "first-baseline.yml never runs. "
+        f"Observed `gh pr edit` invocations: {joined_cmds!r}"
+    )
+    # Belt-and-suspenders: also confirm the step body still keys off
+    # the vision-review.exit files (i.e. we don't blanket-label every
+    # run — the labels are gated on a clean critique). Without this
+    # guard a well-intended refactor could move the labelling out of
+    # the exit-code-checking block and start labelling failed
+    # critiques, which would freeze a broken design into the
+    # baseline set.
+    assert "vision-review.exit" in raw, (
+        "vision-review.yml must gate labelling on `vision-review.exit` "
+        "files (zero exit = clean critique). A blanket label on every "
+        "run would freeze broken designs into the baseline tree."
     )
