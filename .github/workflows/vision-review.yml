@@ -292,3 +292,38 @@ jobs:
             echo "Posting new sticky comment"
             gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY"
           fi
+
+      - name: Add vision-reviewed label when critique exited cleanly
+        # check.yml's vision-review-gate requires this label on any PR
+        # that introduces a brand-new theme. The gate used to be
+        # impossible to satisfy from automation alone: this workflow
+        # never added the label, and check.yml did not re-run on
+        # `labeled` events. We add the label here only when every
+        # per-theme vision-review subprocess exited 0 (API key present,
+        # budget OK, reviewer did not hard-fail). Humans can still
+        # add/remove the label manually; duplicate adds are harmless.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mapfile -t exits < <(find tmp/snaps -name vision-review.exit -type f 2>/dev/null || true)
+          if [ ${#exits[@]} -eq 0 ]; then
+            echo "No vision-review.exit files under tmp/snaps; skipping label."
+            exit 0
+          fi
+          bad=0
+          for ex in "${exits[@]}"; do
+            code="$(tr -d ' \n\r\t' < "$ex")"
+            if [ "$code" != "0" ]; then
+              echo "::notice::vision-review exited ${code} at ${ex} — not auto-labeling."
+              bad=1
+            fi
+          done
+          if [ "$bad" -ne 0 ]; then
+            echo "Critique did not complete cleanly; add \`vision-reviewed\` manually after triage."
+            exit 0
+          fi
+          echo "All vision-review.exit files are 0 — adding vision-reviewed label."
+          gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label vision-reviewed
