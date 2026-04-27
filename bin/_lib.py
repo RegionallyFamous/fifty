@@ -108,11 +108,45 @@ def resolve_theme_root(name: str | None = None) -> Path:
     )
 
 
-def iter_themes(monorepo_root: Path = MONOREPO_ROOT) -> Iterable[Path]:
+def iter_themes(
+    monorepo_root: Path = MONOREPO_ROOT,
+    stages: Iterable[str] | None = None,
+) -> Iterable[Path]:
     """Yield every theme directory in the monorepo (any sibling of bin/ that
-    contains theme.json)."""
+    contains theme.json).
+
+    If ``stages`` is None (default), apply the readiness filter's
+    ``DEFAULT_VISIBLE_STAGES`` (shipping only) so incubating/retired
+    themes drop out of sweeps, gallery, and check.py runs without the
+    caller having to know the manifest exists. Pass an explicit tuple
+    like ``stages=("shipping", "incubating")`` to opt WIP themes back
+    in (what a design/clone script wants while iterating on a new
+    concept). Pass ``stages=()`` to yield EVERY theme regardless of
+    stage (used by the theme-status dashboard generator).
+
+    A theme with no readiness.json on disk is treated as
+    ``stage="shipping"`` (see ``_readiness.load_readiness``), which
+    keeps the existing six themes visible until their manifests land.
+    """
+    from _readiness import DEFAULT_VISIBLE_STAGES, load_readiness
+
+    if stages is None:
+        wanted: frozenset[str] | None = DEFAULT_VISIBLE_STAGES
+    else:
+        s = frozenset(stages)
+        wanted = s if s else None
+
     for entry in sorted(monorepo_root.iterdir()):
-        if entry.is_dir() and not entry.name.startswith(".") and (entry / "theme.json").is_file():
+        if not (
+            entry.is_dir()
+            and not entry.name.startswith(".")
+            and (entry / "theme.json").is_file()
+        ):
+            continue
+        if wanted is None:
+            yield entry
+            continue
+        if load_readiness(entry).stage in wanted:
             yield entry
 
 

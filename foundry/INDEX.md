@@ -170,6 +170,7 @@ Read this file at the start of any LLM session to discover the project's structu
 |-- design-intent.md
 |-- functions.php
 |-- INDEX.md
+|-- readiness.json
 |-- README.md
 |-- readme.txt
 |-- screenshot.png

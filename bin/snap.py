@@ -723,17 +723,46 @@ def _write_sig_after_shoot(theme: str, vp_name: str, route_slug: str,
     sig_path.write_text(json.dumps(current_sig, indent=2), encoding="utf-8")
 
 
-def discover_themes() -> list[str]:
+def discover_themes(stages: Iterable[str] | None = None) -> list[str]:
     """Return theme slugs (folder names) that have a theme.json + blueprint.
 
     Honours snap_config.THEME_ORDER for stable ordering; any new theme
     folder discovered on disk is appended after the configured order.
+
+    ``stages`` filters by readiness manifest (Tier 1.3):
+
+      * ``None`` (default) -> ``DEFAULT_VISIBLE_STAGES`` (shipping
+        only). Incubating themes are invisible to `shoot --all`,
+        `diff --all`, `check --all`, so a WIP theme can't fail CI
+        until its operator flips `readiness.json` to `shipping`.
+      * ``()`` (empty tuple) -> EVERY theme regardless of stage.
+        Used by the theme-status dashboard generator (Tier 2.2) and
+        by operator tools that want to see the whole fleet including
+        retired slugs.
+      * explicit tuple -> only those stages. E.g. passing
+        ``("shipping", "incubating")`` is how `design.py` opts a
+        fresh clone into the visibility set while still iterating.
+
+    A theme with no readiness.json is treated as ``stage="shipping"``
+    (see ``_readiness.load_readiness``) for backward compat with the
+    six original themes pre-manifest.
     """
-    have = {
-        p.parent.name
-        for p in REPO_ROOT.glob("*/theme.json")
-        if (p.parent / "playground" / "blueprint.json").exists()
-    }
+    from _readiness import DEFAULT_VISIBLE_STAGES, load_readiness
+
+    if stages is None:
+        wanted: frozenset[str] | None = DEFAULT_VISIBLE_STAGES
+    else:
+        s = frozenset(stages)
+        wanted = s if s else None
+
+    have: set[str] = set()
+    for p in REPO_ROOT.glob("*/theme.json"):
+        if not (p.parent / "playground" / "blueprint.json").exists():
+            continue
+        if wanted is not None and load_readiness(p.parent).stage not in wanted:
+            continue
+        have.add(p.parent.name)
+
     ordered = [t for t in THEME_ORDER if t in have]
     extras = sorted(have - set(ordered))
     return ordered + extras

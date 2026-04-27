@@ -252,6 +252,77 @@ def check_design_intent_present() -> Result:
     return r
 
 
+def check_theme_readiness() -> Result:
+    """Every theme SHOULD ship a `readiness.json` (Tier 1.3 of the
+    pre-100-themes hardening plan).
+
+    The manifest declares what stage the theme is in
+    (``incubating`` | ``shipping`` | ``retired``) and drives:
+
+      * discovery: whether `bin/snap.py shoot --all`, `bin/check.py
+        --all`, `bin/append-wc-overrides.py`, and the snap gallery
+        include this theme in their default sweep. Incubating themes
+        drop out so a WIP folder can't bring CI down until it's
+        actually ready.
+      * the theme-status dashboard (Tier 2.2): each row's stage + last
+        human review date come from this file.
+
+    For backward compat with the six pre-manifest themes we emit WARN
+    (not FAIL) when the file is missing; the WARN nudges operators to
+    add one without blocking the existing gate. New themes created by
+    `bin/clone.py` (Tier 1.2 concept-to-spec integration) will write
+    the manifest automatically, so the WARN stays temporary.
+
+    When the file IS present, we validate it strictly: a bad JSON body
+    or an invalid `stage` is a FAIL because the discovery layer would
+    have silently fallen back to "shipping" and hidden the drift.
+    """
+    r = Result("readiness.json manifest (stage + summary + owner)")
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.skip("no theme.json -- nothing to classify")
+        return r
+    # Import lazily so check.py still runs in isolated environments
+    # where bin/ isn't on sys.path (e.g. pytest harness importing a
+    # single function). The module is stdlib-only so the import is
+    # cheap.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from _readiness import (
+        MANIFEST_NAME,
+        STAGE_SHIPPING,
+        VALID_STAGES,
+        manifest_path,
+        validate_payload,
+    )
+
+    path = manifest_path(ROOT)
+    if not path.is_file():
+        # WARN: soft for backward compat, see docstring.
+        r.details.append(
+            f"{MANIFEST_NAME} missing. Add one with at least "
+            f"`stage` (one of {sorted(VALID_STAGES)}), `summary`, "
+            f"and `owner`. Defaults to stage={STAGE_SHIPPING!r} for "
+            "discovery today; this check will be upgraded to FAIL "
+            "once the backfill has rolled through every branch."
+        )
+        r.skip("readiness.json missing (backward compat; add one)")
+        return r
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        r.fail(f"{MANIFEST_NAME} is not valid JSON: {exc}")
+        return r
+    problems = validate_payload(data)
+    if problems:
+        r.fail(
+            f"{MANIFEST_NAME} has schema problems: "
+            + "; ".join(problems)
+        )
+        return r
+    r.details.append(f"stage={data.get('stage')!r}, owner={data.get('owner', '(blank)')!r}")
+    return r
+
+
 def check_php_syntax() -> Result:
     r = Result("PHP syntax (functions.php + patterns/*.php)")
     if not shutil.which("php"):
@@ -8315,6 +8386,7 @@ def _build_results(offline: bool) -> list[Result]:
     return [
         check_json_validity(),
         check_design_intent_present(),
+        check_theme_readiness(),
         check_php_syntax(),
         check_block_names(offline=offline),
         check_index_in_sync(),
