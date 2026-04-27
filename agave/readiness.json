@@ -1,7 +1,7 @@
 {
-  "stage": "shipping",
-  "summary": "Editorial WooCommerce block theme with hairline borders, generous whitespace, and a warm cream palette for quiet, measured storefronts.",
+  "stage": "incubating",
+  "summary": "agave: WIP (first-5 batch retrofit). Edit this summary with the theme's brand voice once the design pass is complete.",
   "owner": "nick",
-  "last_checked": "2026-04-26",
-  "notes": "Original five-theme batch; anchor of the snap baseline set."
+  "last_checked": "",
+  "notes": "First-5 batch retrofit: stage flipped to incubating so check.py skips baseline checks until .github/workflows/first-baseline.yml auto-generates baselines (triggered by applying the ready-for-baseline label on PR)."
 }
