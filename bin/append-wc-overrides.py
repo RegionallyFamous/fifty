@@ -37,31 +37,52 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def discover_themes() -> list[str]:
+def discover_themes(stages=None) -> list[str]:
     """Return every real theme slug on disk, in a stable order.
 
     A "real theme" is any top-level folder under the repo root that has
     BOTH `theme.json` and `playground/blueprint.json`. This is the same
-    definition `bin/snap.py::discover_themes()` uses — we duplicate it
-    here (instead of importing) so this script keeps its minimal
-    top-of-file imports and stays runnable without pulling in the snap
-    dependency graph.
+    definition `bin/snap.py::discover_themes()` uses — we duplicate the
+    filesystem walk here (instead of importing) so this script keeps
+    its minimal top-of-file imports and stays runnable without pulling
+    in the snap dependency graph.
 
     Why auto-discovery matters: the previous hardcoded list silently
     excluded Foundry (added after the list was written), which meant
     every cart/checkout/my-account WC chrome polish phase skipped
     Foundry and shipped a visibly broken theme to demo.regionallyfamous.
     Auto-discovery means "every theme ships every phase" is the default.
+
+    Tier 1.3 readiness filter: ``stages`` is either None (use the
+    default visible set = shipping only), an empty tuple / list (every
+    stage including retired), or an explicit iterable of stage names.
+    A theme without a readiness.json is treated as ``stage="shipping"``
+    for backward compat. Incubating themes are hidden from the default
+    WC-override append so a WIP theme's CSS chain doesn't become a
+    tracked drift target before it's ready to ship.
     """
-    have = sorted(
-        p.parent.name
-        for p in ROOT.glob("*/theme.json")
-        if (p.parent / "playground" / "blueprint.json").exists()
-    )
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from _readiness import DEFAULT_VISIBLE_STAGES, load_readiness
+
+    wanted: frozenset[str] | None
+    if stages is None:
+        wanted = DEFAULT_VISIBLE_STAGES
+    else:
+        s = frozenset(stages)
+        wanted = s if s else None
+
+    have: list[str] = []
+    for p in sorted(ROOT.glob("*/theme.json")):
+        if not (p.parent / "playground" / "blueprint.json").exists():
+            continue
+        if wanted is not None and load_readiness(p.parent).stage not in wanted:
+            continue
+        have.append(p.parent.name)
+    have_set = set(have)
     # Historical order for the five original themes, for diff stability
     # (any new theme folder lands alphabetically after these).
     preferred = ["obel", "chonk", "selvedge", "lysholm", "aero"]
-    ordered = [t for t in preferred if t in have]
+    ordered = [t for t in preferred if t in have_set]
     extras = [t for t in have if t not in preferred]
     return ordered + extras
 

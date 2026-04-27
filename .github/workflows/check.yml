@@ -130,6 +130,69 @@ jobs:
             echo "has_themes=true" >> "$GITHUB_OUTPUT"
             echo "Will shoot + gate: $themes"
           fi
+      - name: Restore Playground state cache (changed themes)
+        # Same scheme as visual.yml: each changed theme gets a warm
+        # WordPress install restored from the previous shoot on this
+        # branch (or the `restore-keys:` fallback from main). snap.py's
+        # `--cache-state` invalidates stale entries via the version
+        # marker, so a partial/cross-theme restore is never unsafe.
+        #
+        # The path includes `tmp/playground-state/` wholesale rather
+        # than per-theme because this job shoots 1..N changed themes
+        # and the job doesn't know the slug list at step-setup time
+        # without an extra shell hop. Wholesale caching is slightly
+        # wasteful for single-theme PRs (unused theme dirs ride
+        # along) but correctness is identical.
+        if: steps.changed.outputs.has_themes == 'true'
+        id: pg-state-cache
+        uses: actions/cache@v5
+        with:
+          path: tmp/playground-state
+          key: pg-state-v1-changed-${{ hashFiles('*/playground/**', 'package.json', 'package-lock.json') }}
+          restore-keys: |
+            pg-state-v1-changed-
+
+      - name: Pre-shoot boot smoke
+        # Tier 1.1 pre-100-themes hardening: run `snap.py boot <theme>`
+        # against every changed theme BEFORE the full `snap.py shoot`
+        # matrix. A PHP fatal, a template parse error, or a plugin-
+        # activation crash shows up here in ~30-60s per theme instead
+        # of deep into a 10-minute cell-by-cell fan-out.
+        #
+        # Shares the `--cache-state` dir with the shoot step below,
+        # so the boot-smoke pass primes the cache: the shoot's own
+        # Playground boot reuses the populated /wordpress dir and
+        # only re-runs the blueprint's content-seeding step (~20-30s
+        # warm) instead of the full WP + plugin install (~127s cold).
+        # Net overhead on a green PR is small; on a red PR we save
+        # the entire shoot's wall time.
+        #
+        # Boot-smoke verdict JSON lands at tmp/<theme>-boot.json and
+        # is uploaded below on any failure so the PR author sees the
+        # exact fatal without hunting through server logs.
+        if: steps.changed.outputs.has_themes == 'true'
+        env:
+          FIFTY_CONTENT_REF: ${{ github.event.pull_request.head.sha || '' }}
+        run: |
+          fail=0
+          for t in ${{ steps.changed.outputs.themes }}; do
+            echo "::group::boot smoke: $t"
+            if ! python3 bin/snap.py boot "$t" --cache-state; then
+              fail=1
+              echo "::error title=Boot smoke failed for $t::See tmp/$t-boot.json artifact"
+            fi
+            echo "::endgroup::"
+          done
+          exit $fail
+      - name: Upload boot-smoke verdicts on failure
+        if: failure() && steps.changed.outputs.has_themes == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-smoke-verdicts
+          path: tmp/*-boot.json
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Shoot changed themes (quick subset)
         if: steps.changed.outputs.has_themes == 'true'
         # Pass `--changed-base origin/main` so brand-new themes (present on
@@ -139,13 +202,18 @@ jobs:
         # check.py below to fail because tmp/snaps/<theme>/ never got
         # populated. See `_changed_themes()` in bin/snap.py.
         #
+        # `--cache-state` reuses the warm /wordpress install restored
+        # by the pg-state-cache step above; on cold cache it primes the
+        # dir in-place and the post-job cache save persists it for the
+        # next run. ~40-100s saved per theme per shoot on cache hit.
+        #
         # FIFTY_CONTENT_REF: on a PR, rewrite main-branch URLs in the
         # blueprint to the PR head SHA so a brand-new theme's playground/
         # content + images resolve. See _retarget_content_ref() in snap.py.
         env:
           FIFTY_CONTENT_REF: ${{ github.event.pull_request.head.sha || '' }}
         run: >-
-          python3 bin/snap.py shoot --changed
+          python3 bin/snap.py shoot --changed --cache-state
           --changed-base origin/main --quick --concurrency 1
       - name: Run check.py with evidence required
         if: steps.changed.outputs.has_themes == 'true'
@@ -316,3 +384,139 @@ jobs:
         run: python3 -m pip install -r requirements-dev.txt
       - name: Run lint gate
         run: python3 bin/lint.py
+
+  vision-review-gate:
+    # Tier 2.3 of the pre-100-themes hardening plan: require the
+    # `vision-reviewed` label on any PR that adds a brand-new theme to
+    # main. "Brand-new" is derived from git: a theme is new iff
+    # `<slug>/theme.json` exists on HEAD but not on origin/main
+    # (detected by bin/visual-matrix.py's _new_themes helper).
+    #
+    # Why this gate exists:
+    #   The existing .github/workflows/vision-review.yml is label-
+    #   triggered and advisory -- opening a PR without the `design`
+    #   label means no vision critique runs at all. At six themes
+    #   that's fine; at 100 themes it's a recipe for an ugly theme
+    #   to ship because nobody remembered to ask for the critique.
+    #   This job encodes "new themes MUST get a human (or automated)
+    #   vision pass before first merge" as a required check.
+    #
+    # What it does:
+    #   * On pull_request, resolve `new_themes` via visual-matrix.py
+    #     (empty list for a PR that doesn't add a theme).
+    #   * If the list is empty, pass immediately -- existing themes
+    #     keep their old advisory flow.
+    #   * If the list is non-empty, require the `vision-reviewed`
+    #     label on the PR. Present => green; absent => red with a
+    #     message that explains how to get the label.
+    #
+    # Why not reuse vision-review.yml:
+    #   That workflow is `pull_request.types: [labeled, ...]` and
+    #   does a ~12-min shoot+critique. This gate must be fast (~30s)
+    #   and must fire on every PR, label or no label, so a new
+    #   theme can't sneak in under a fresh PR that forgot to label.
+    name: vision-reviewed required for new themes
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Resolve new themes on this PR
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_MODE: check-changed
+          BASE_REF: origin/main
+        run: python3 bin/visual-matrix.py
+      - name: Enforce vision-reviewed label on new-theme PRs
+        env:
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          IS_NEW_THEME: ${{ steps.scope.outputs.is_new_theme }}
+          NEW_THEMES: ${{ steps.scope.outputs.new_themes }}
+        run: |
+          if [ "$IS_NEW_THEME" != "true" ]; then
+            echo "No brand-new themes in this PR; vision gate is a no-op."
+            exit 0
+          fi
+          echo "This PR introduces brand-new theme(s): $NEW_THEMES"
+          # `LABELS` is a JSON array of strings like ["design","vision-reviewed"].
+          # grep the raw string to stay dependency-free, same shape as
+          # the gate in .github/workflows/vision-review.yml.
+          if echo "$LABELS" | grep -q '"vision-reviewed"'; then
+            echo "`vision-reviewed` label present -- gate passes."
+            exit 0
+          fi
+          echo "::error::This PR adds a brand-new theme but is missing the"
+          echo "         'vision-reviewed' label. Apply the 'design' label"
+          echo "         to trigger .github/workflows/vision-review.yml, or"
+          echo "         ask a human reviewer to add 'vision-reviewed'"
+          echo "         manually after a design pass. Existing themes"
+          echo "         stay on the advisory path and are not affected."
+          exit 1
+
+  theme-status-dashboard:
+    # Tier 2.2 of the pre-100-themes hardening plan: regenerate
+    # docs/themes/index.html after every successful static gate on main
+    # and auto-commit the result so the live dashboard always reflects
+    # what's on origin/main. At six themes this is a convenience; at
+    # 100 themes it's the only view that answers "which themes are
+    # shippable right now?" in one glance.
+    #
+    # On pull requests we instead run `--check` so reviewers see the
+    # dashboard go stale before it lands -- either the PR author runs
+    # `python3 bin/build-theme-status.py` locally and commits, or the
+    # push-to-main auto-commit handles it. Both paths are fine.
+    name: build docs/themes/index.html
+    runs-on: ubuntu-latest
+    needs: theme-gate
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Regenerate dashboard
+        run: python3 bin/build-theme-status.py
+
+      - name: Verify no unexpected drift (pull_request)
+        if: github.event_name == 'pull_request'
+        run: |
+          # On PRs the dashboard is advisory, not gating: a PR that
+          # changes a theme's status should not be blocked while the
+          # committed HTML catches up. We still surface the diff in
+          # the PR's checks list as a non-fatal warning so reviewers
+          # see the upcoming auto-commit content.
+          if ! git diff --quiet -- docs/themes/index.html; then
+            echo "::warning::docs/themes/index.html will update on push-to-main"
+            git --no-pager diff -- docs/themes/index.html
+          fi
+
+      - name: Commit regenerated dashboard (push to main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add docs/themes/index.html
+
+          if git diff --cached --quiet; then
+            echo "No theme-status drift; tree is identical."
+            exit 0
+          fi
+
+          # `[skip ci]` in the commit message keeps the bot's push from
+          # re-triggering check.yml. Same pattern as build-snap-gallery's
+          # auto-commit in visual.yml.
+          msg="docs: regenerate docs/themes/index.html [skip ci]
+
+          Auto-generated by .github/workflows/check.yml run #${{ github.run_id }}
+          "
+          git commit -m "$msg"
+          git push origin "HEAD:${{ github.ref_name }}"

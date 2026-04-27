@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import NamedTuple
@@ -43,7 +44,7 @@ from snap import _changed_themes, discover_themes  # noqa: E402
 
 
 class Scope(NamedTuple):
-    """Resolved (mode, themes, do_full_shoot) tuple emitted to GITHUB_OUTPUT.
+    """Resolved (mode, themes, do_full_shoot, new_themes) tuple emitted to GITHUB_OUTPUT.
 
     NamedTuple (rather than @dataclass) is deliberate: the smoke test
     in tests/tools/test_bin_scripts_smoke.py loads this module via
@@ -51,11 +52,64 @@ class Scope(NamedTuple):
     which isn't a valid Python identifier), and @dataclass's
     __module__ resolution chokes when sys.modules has no entry for
     the loaded module name. NamedTuple sidesteps that entirely.
+
+    `new_themes` is the Tier 2.3 pre-100-themes hardening signal: every
+    theme slug whose `<slug>/theme.json` exists on HEAD but NOT on
+    `base_ref`. The vision-review gate in `.github/workflows/check.yml`
+    reads this list to require a `vision-reviewed` label on a PR's
+    first-merge of a brand-new theme. Existing themes stay on the
+    advisory path in `.github/workflows/vision-review.yml`.
     """
 
     mode: str
     themes: list[str]
     do_full_shoot: bool
+    new_themes: list[str] = []  # noqa: RUF012  -- NamedTuple default must be literal
+
+
+def _new_themes(base_ref: str) -> list[str]:
+    """Return theme slugs present on HEAD but absent on `base_ref`.
+
+    Detection rule: a theme is "new" iff `<slug>/theme.json` exists in
+    the working tree AND does NOT exist at `base_ref`. We lean on
+    `git cat-file -e` for existence since it's the cheapest "does this
+    blob exist on that ref" primitive git offers and it works even when
+    the local checkout is shallow (the workflows do fetch-depth: 0,
+    so base_ref is always available, but we don't want to depend on
+    that invariant here).
+
+    Returns an empty list when:
+      * git is unavailable,
+      * `base_ref` can't be resolved (e.g. fresh clone without origin),
+      * no themes are new on this diff (the common case).
+
+    The pre-100-themes plan calls this the `is_new_theme` signal --
+    visible as both `new_themes[]` and the derived `is_new_theme`
+    boolean in emit().
+    """
+    if not base_ref:
+        return []
+    new: list[str] = []
+    for slug in discover_themes(stages=()):
+        theme_json = f"{slug}/theme.json"
+        try:
+            r = subprocess.run(
+                ["git", "cat-file", "-e", f"{base_ref}:{theme_json}"],
+                cwd=REPO_ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except FileNotFoundError:
+            # No git on PATH -- can't classify; be conservative and
+            # return [] rather than flagging every theme as "new".
+            return []
+        # Non-zero means the path doesn't exist at base_ref, i.e. the
+        # theme is brand-new on this branch. cat-file prints on stderr
+        # so we don't need to parse stdout.
+        if r.returncode != 0:
+            new.append(slug)
+    return sorted(new)
 
 
 def compute(
@@ -71,21 +125,27 @@ def compute(
     monkey-patching environment variables.
     """
     explicit_themes = input_themes.split() if input_themes else []
+    # `new_themes` is always relative to `base_ref`, so we compute it
+    # once and thread it through every branch below. The regenerate-
+    # gallery / rebaseline modes don't care about it (they're not
+    # tied to a PR gate) but surfacing it unconditionally keeps the
+    # CLI contract uniform.
+    new = _new_themes(base_ref)
 
     if event == "workflow_dispatch" and input_mode == "regenerate-gallery":
         themes = explicit_themes or discover_themes()
-        return Scope(mode="regenerate-gallery", themes=themes, do_full_shoot=True)
+        return Scope(mode="regenerate-gallery", themes=themes, do_full_shoot=True, new_themes=new)
 
     if event == "workflow_dispatch" and input_mode == "rebaseline":
         themes = explicit_themes or discover_themes()
-        return Scope(mode="rebaseline", themes=themes, do_full_shoot=True)
+        return Scope(mode="rebaseline", themes=themes, do_full_shoot=True, new_themes=new)
 
     if event == "workflow_dispatch" and explicit_themes:
         # Manual check against an explicit theme list — useful for
         # re-running a previously failed gate without waiting for a
         # rebaseline. Behaves like check-changed (shoot + diff +
         # report) but on the user-supplied subset.
-        return Scope(mode="check-manual", themes=explicit_themes, do_full_shoot=False)
+        return Scope(mode="check-manual", themes=explicit_themes, do_full_shoot=False, new_themes=new)
 
     # check-changed (default for push / PR, and for workflow_dispatch
     # with mode=check-changed and no themes). Use git to figure out
@@ -101,7 +161,7 @@ def compute(
     else:
         themes = affected
 
-    return Scope(mode="check-changed", themes=themes, do_full_shoot=False)
+    return Scope(mode="check-changed", themes=themes, do_full_shoot=False, new_themes=new)
 
 
 def emit(scope: Scope, out_stream, out_path: str | None) -> None:
@@ -113,6 +173,12 @@ def emit(scope: Scope, out_stream, out_path: str | None) -> None:
         # `has_themes` is a convenience boolean for `if:` expressions.
         # The matrix-strategy `if: themes != '[]'` works but reads worse.
         f"has_themes={'true' if scope.themes else 'false'}",
+        # `new_themes` + `is_new_theme` are Tier 2.3 outputs consumed
+        # by the vision-review gate in .github/workflows/check.yml.
+        # A PR that adds a brand-new theme must carry the
+        # `vision-reviewed` label before it can merge to main.
+        f"new_themes={json.dumps(scope.new_themes)}",
+        f"is_new_theme={'true' if scope.new_themes else 'false'}",
     ]
 
     if out_path:

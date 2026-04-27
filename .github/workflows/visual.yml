@@ -235,11 +235,57 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: python3 -m playwright install-deps chromium
 
+      - name: Restore Playground state cache
+        # Per-theme warm WordPress install. `--cache-state` in snap.py
+        # primes `tmp/playground-state/<theme>/wordpress` on first boot
+        # (WP install + WXR + WC seeder writes straight through the
+        # NODEFS mount), and on every subsequent boot skips those
+        # ~40-100s steps via `install-from-existing-files-if-needed`.
+        #
+        # Cache key ingredients:
+        #   * theme slug (obvious — cache is per-theme)
+        #   * playground/ directory hash (blueprint.json + inlined
+        #     PHP scripts determine what the cache looks like)
+        #   * package.json / package-lock.json (the pinned
+        #     `@wp-playground/cli@<X>` lives here; snap.py's
+        #     version-marker self-invalidates on mismatch, but making
+        #     the cache key change too means we don't even attempt a
+        #     restore against a stale entry).
+        #
+        # `restore-keys` falls back to the previous cache for the same
+        # theme when the exact key misses — snap.py will detect any
+        # stale version marker and wipe+reprime before shooting, so a
+        # partial restore is never incorrect, only potentially a no-op.
+        id: pg-state-cache
+        uses: actions/cache@v5
+        with:
+          path: tmp/playground-state/${{ matrix.theme }}
+          key: pg-state-v1-${{ matrix.theme }}-${{ hashFiles(format('{0}/playground/**', matrix.theme), 'package.json', 'package-lock.json') }}
+          restore-keys: |
+            pg-state-v1-${{ matrix.theme }}-
+
       - name: Shoot ${{ matrix.theme }}
         # `--concurrency 1` is enforced (default) so this single-theme
         # job stays single-process within the runner. With 1 theme +
         # 1 worker there's no possible port race (the only Node server
         # in the runner's port table is ours).
+        #
+        # --auto-routes (Phase 1) narrows the in-theme fan-out to just
+        # the routes whose ROUTE_DEPENDENCIES map to a file in the
+        # current diff. Combined with Phase 2 signature skip (on by
+        # default) a PR touching a single pattern now does maybe one
+        # or two cells out of the usual 44, and frequently skips the
+        # Playground boot entirely. We pass `origin/main` as the base
+        # so the narrowing matches the setup job's _changed_themes
+        # scope exactly -- no risk of shooting against a narrower diff
+        # than the matrix expected to be shot.
+        #
+        # We DON'T pass --auto-routes in the full-shoot modes
+        # (regenerate-gallery / rebaseline) because those deliberately
+        # want the whole gallery regenerated -- a workflow_dispatch
+        # with "rebaseline" is the operator saying "accept every
+        # current render as the new truth", and narrowing would leave
+        # stale PNGs around for routes the diff didn't touch.
         #
         # FIFTY_CONTENT_REF: on a PR, rewrite the blueprint's inlined
         # `raw.githubusercontent.com/.../main/` URLs to point at the PR
@@ -251,7 +297,14 @@ jobs:
         env:
           FIFTY_CONTENT_REF: ${{ github.event.pull_request.head.sha || '' }}
         run: |
-          python3 bin/snap.py shoot ${{ matrix.theme }}
+          EXTRA_ARGS=""
+          if [ "${{ needs.setup.outputs.do_full_shoot }}" != "true" ]; then
+            # Use --changed-base (without --changed, since the theme is
+            # already pinned by matrix) so _changed_routes() compares
+            # against origin/main rather than only uncommitted edits.
+            EXTRA_ARGS="--auto-routes --changed-base origin/main"
+          fi
+          python3 bin/snap.py shoot ${{ matrix.theme }} --cache-state $EXTRA_ARGS
 
       - name: Diff ${{ matrix.theme }} vs baseline
         # Only meaningful for check-changed / check-manual modes; the

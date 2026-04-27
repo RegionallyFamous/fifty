@@ -1,0 +1,169 @@
+name: quick-visual
+
+# Fast visual-regression pre-gate. Runs on every PR in ONE runner,
+# narrows aggressively with `--changed --auto-routes --quick
+# --cache-state`, and leans on Phase 2 signature skipping so a PR
+# touching one pattern typically shoots 1-4 cells out of the ~44
+# per theme. Target wall time: ~2-4 min (vs visual.yml's 8-12 min
+# matrix).
+#
+# ---- Why a second workflow instead of "just make visual.yml faster"
+# ---------------------------------------------------------------------
+# visual.yml is the canonical gate: one runner per theme, strict report,
+# auto-rebaseline support, gallery regeneration. Those knobs make it
+# slow on-purpose (full parallelism across themes, per-theme artifact
+# uploads, merged aggregator step with branch-push permissions).
+#
+# quick-visual.yml is the developer-loop feedback gate: one runner,
+# one `python3 bin/snap.py shoot --changed --auto-routes --quick`, no
+# artifact uploads (outputs go straight into the PR check's summary).
+# It runs FIRST, fails fast if a heuristic regresses, and lets the
+# reviewer avoid waiting on the matrix for obvious breakage.
+#
+# At 100 themes this split matters: visual.yml's matrix may still take
+# 10+ min to spin up 100 runners even if each job finishes in 2 min
+# (queue time dominates). quick-visual stays at ~3 min regardless.
+#
+# ---- Scope & triggers ------------------------------------------------
+# PR-only (no push-to-main trigger) -- visual.yml is the push gate and
+# has artifact + gallery-commit duties we don't want to duplicate.
+# Same path filters as visual.yml so a docs-only PR doesn't run either.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/theme.json'
+      - '**/functions.php'
+      - '**/templates/**'
+      - '**/parts/**'
+      - '**/patterns/**'
+      - '**/styles/**'
+      - '**/playground/**'
+      - 'bin/snap.py'
+      - 'bin/snap_config.py'
+      - 'bin/visual-matrix.py'
+      - 'tests/visual-baseline/**'
+      - '.github/workflows/quick-visual.yml'
+
+concurrency:
+  # One quick-visual per PR branch; a rapid-fire re-push should cancel
+  # the in-flight run (the old snaps are stale anyway).
+  group: quick-visual-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quick-shoot:
+    name: quick snap (changed themes + routes only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # Need origin/main's history for `_changed_themes` +
+          # `_changed_routes` to compute a diff base. Shallow clones
+          # make both return None (framework fallback) which defeats
+          # the point of the narrow wave.
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements-dev.txt playwright==1.58.0 Pillow
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-1.58.0
+
+      - name: Install Playwright Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: python3 -m playwright install --with-deps chromium
+
+      - name: Install system deps for Playwright (cache hit case)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: python3 -m playwright install-deps chromium
+
+      - name: Restore Playground state cache (all themes)
+        # A single runner touches every changed theme, so we cache the
+        # whole tmp/playground-state tree with one key. The key
+        # includes every theme's playground/** so adding a new theme
+        # invalidates cleanly. restore-keys falls back to the previous
+        # aggregate cache; snap.py's version-marker self-invalidates
+        # any individual theme's wordpress/ tree on CLI bump.
+        id: pg-state-cache
+        uses: actions/cache@v5
+        with:
+          path: tmp/playground-state
+          key: pg-state-v1-quick-${{ hashFiles('*/playground/**', 'package.json', 'package-lock.json') }}
+          restore-keys: |
+            pg-state-v1-quick-
+
+      - name: Quick shoot (changed + auto-routes + cached state)
+        # Flags:
+        #   --changed      : only touch themes diffed vs origin/main
+        #   --auto-routes  : within each theme, only routes whose
+        #                    ROUTE_DEPENDENCIES map to changed files
+        #   --quick        : QUICK_ROUTES + QUICK_VIEWPORTS only; skips
+        #                    journal-post, my-account, rare flows that
+        #                    the full gate catches
+        #   --cache-state  : reuse tmp/playground-state/<theme>/wordpress
+        #   --concurrency 1: pinned because a single runner can't
+        #                    sustain two ~400MB Playground boots
+        # Phase 2 (signature skip) is on by default -- if the narrowed
+        # set of (theme, route, viewport) cells is already matched by
+        # baselines, the shoot returns instantly without any Playwright
+        # activity.
+        env:
+          FIFTY_CONTENT_REF: ${{ github.event.pull_request.head.sha || '' }}
+        run: |
+          python3 bin/snap.py shoot \
+            --changed --changed-base origin/main \
+            --auto-routes \
+            --quick \
+            --cache-state \
+            --concurrency 1
+
+      - name: Diff against baselines
+        # `bin/snap.py diff` only emits diff PNGs for cells that were
+        # actually shot in this invocation -- skipped (signature-
+        # matched) cells aren't touched, so no noise.
+        continue-on-error: true
+        run: python3 bin/snap.py diff --changed --changed-base origin/main
+
+      - name: Report (strict, fast subset)
+        # Strict mode fails on any heuristic-level regression. This
+        # workflow is advisory-first during rollout; promote to a
+        # required check once we've seen a week of green + no false
+        # positives from the signature-skip path. Until then a red
+        # quick-visual is a strong hint that visual.yml (the required
+        # gate) will also fail, but doesn't block merge on its own.
+        env:
+          FIFTY_REQUIRE_SNAP_EVIDENCE: '0'
+        run: python3 bin/snap.py report --strict
+
+      - name: Upload quick-visual artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: quick-visual-${{ github.run_id }}
+          path: |
+            tmp/snaps/**/*.png
+            tmp/snaps/**/findings.json
+            tmp/snaps/**/review.md
+            tmp/snaps/**/diffs/
+          if-no-files-found: ignore
+          retention-days: 7

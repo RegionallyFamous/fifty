@@ -48,6 +48,10 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _check_uniqueness import (
+    collect_fleet,
+    find_value_overlaps,
+)
 from _lib import MONOREPO_ROOT, iter_themes, resolve_theme_root
 
 # ROOT is set per-theme in main() before any check runs.
@@ -249,6 +253,77 @@ def check_design_intent_present() -> Result:
         )
         return r
     r.details.append(f"{len(body.splitlines())} lines, {len(body)} chars")
+    return r
+
+
+def check_theme_readiness() -> Result:
+    """Every theme SHOULD ship a `readiness.json` (Tier 1.3 of the
+    pre-100-themes hardening plan).
+
+    The manifest declares what stage the theme is in
+    (``incubating`` | ``shipping`` | ``retired``) and drives:
+
+      * discovery: whether `bin/snap.py shoot --all`, `bin/check.py
+        --all`, `bin/append-wc-overrides.py`, and the snap gallery
+        include this theme in their default sweep. Incubating themes
+        drop out so a WIP folder can't bring CI down until it's
+        actually ready.
+      * the theme-status dashboard (Tier 2.2): each row's stage + last
+        human review date come from this file.
+
+    For backward compat with the six pre-manifest themes we emit WARN
+    (not FAIL) when the file is missing; the WARN nudges operators to
+    add one without blocking the existing gate. New themes created by
+    `bin/clone.py` (Tier 1.2 concept-to-spec integration) will write
+    the manifest automatically, so the WARN stays temporary.
+
+    When the file IS present, we validate it strictly: a bad JSON body
+    or an invalid `stage` is a FAIL because the discovery layer would
+    have silently fallen back to "shipping" and hidden the drift.
+    """
+    r = Result("readiness.json manifest (stage + summary + owner)")
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.skip("no theme.json -- nothing to classify")
+        return r
+    # Import lazily so check.py still runs in isolated environments
+    # where bin/ isn't on sys.path (e.g. pytest harness importing a
+    # single function). The module is stdlib-only so the import is
+    # cheap.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from _readiness import (
+        MANIFEST_NAME,
+        STAGE_SHIPPING,
+        VALID_STAGES,
+        manifest_path,
+        validate_payload,
+    )
+
+    path = manifest_path(ROOT)
+    if not path.is_file():
+        # WARN: soft for backward compat, see docstring.
+        r.details.append(
+            f"{MANIFEST_NAME} missing. Add one with at least "
+            f"`stage` (one of {sorted(VALID_STAGES)}), `summary`, "
+            f"and `owner`. Defaults to stage={STAGE_SHIPPING!r} for "
+            "discovery today; this check will be upgraded to FAIL "
+            "once the backfill has rolled through every branch."
+        )
+        r.skip("readiness.json missing (backward compat; add one)")
+        return r
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        r.fail(f"{MANIFEST_NAME} is not valid JSON: {exc}")
+        return r
+    problems = validate_payload(data)
+    if problems:
+        r.fail(
+            f"{MANIFEST_NAME} has schema problems: "
+            + "; ".join(problems)
+        )
+        return r
+    r.details.append(f"stage={data.get('stage')!r}, owner={data.get('owner', '(blank)')!r}")
     return r
 
 
@@ -4332,18 +4407,35 @@ def check_distinctive_chrome() -> Result:
     """
     r = Result("Visible chrome rules are theme-distinct (no shared 'standard' look)")
 
-    theme_css: dict[str, str] = {}
-    for slug in _KNOWN_THEME_SLUGS:
-        path = MONOREPO_ROOT / slug / "theme.json"
-        if not path.exists():
-            continue
+    def _chrome_inputs(theme: Path) -> list[Path]:
+        p = theme / "theme.json"
+        return [p] if p.exists() else []
+
+    def _chrome_fp(theme: Path) -> dict[str, str]:
+        p = theme / "theme.json"
+        if not p.exists():
+            return {}
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
+            data = json.loads(p.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
-            continue
+            return {}
         css = (data.get("styles", {}) or {}).get("css") or ""
-        if css.strip():
-            theme_css[slug] = css
+        return {"css": css} if css.strip() else {}
+
+    known_theme_dirs = [
+        MONOREPO_ROOT / slug for slug in _KNOWN_THEME_SLUGS if (MONOREPO_ROOT / slug / "theme.json").exists()
+    ]
+    cached_css = collect_fleet(
+        known_theme_dirs,
+        check_name="distinctive_chrome",
+        input_builder=_chrome_inputs,
+        compute_fn=_chrome_fp,
+    )
+    theme_css: dict[str, str] = {
+        slug: payload["css"]
+        for slug, payload in cached_css.items()
+        if payload and payload.get("css")
+    }
 
     if len(theme_css) < 2:
         r.skip(
@@ -5118,16 +5210,29 @@ def check_front_page_unique_layout() -> Result:
         )
         return r
 
+    def _inputs(theme: Path) -> list[Path]:
+        return [theme / "templates" / "front-page.html"]
+
+    def _compute(theme: Path) -> list[str]:
+        p = theme / "templates" / "front-page.html"
+        if not p.exists():
+            return []
+        return list(_front_page_fingerprint(p.read_text(encoding="utf-8")))
+
+    by_theme = collect_fleet(
+        list(iter_themes()),
+        check_name="front_page_unique_layout",
+        input_builder=_inputs,
+        compute_fn=_compute,
+    )
     conflicts: list[tuple[str, list[str]]] = []
-    for other in iter_themes():
-        if other.resolve() == ROOT.resolve():
+    for slug, other_fp in by_theme.items():
+        if not other_fp:
             continue
-        other_fp_path = other / "templates" / "front-page.html"
-        if not other_fp_path.exists():
+        if slug == ROOT.name:
             continue
-        other_fp = _front_page_fingerprint(other_fp_path.read_text(encoding="utf-8"))
-        if other_fp == my_fp:
-            conflicts.append((other.name, other_fp))
+        if other_fp == list(my_fp):
+            conflicts.append((slug, other_fp))
 
     if conflicts:
         names = ", ".join(name for name, _ in conflicts)
@@ -5727,12 +5832,47 @@ def check_pattern_microcopy_distinct() -> Result:
         r.skip("no patterns/*.php and no headings in templates/ or parts/")
         return r
 
+    def _pattern_inputs(theme: Path) -> list[Path]:
+        d = theme / "patterns"
+        return sorted(d.glob("*.php")) if d.is_dir() else []
+
+    def _compute_patterns(theme: Path) -> dict[str, list[str]]:
+        raw = _extract_pattern_microcopy(theme / "patterns")
+        return {k: sorted(v) for k, v in raw.items()}
+
+    def _headings_inputs(theme: Path) -> list[Path]:
+        out: list[Path] = []
+        for sub in ("templates", "parts", "patterns"):
+            d = theme / sub
+            if d.is_dir():
+                out.extend(sorted(d.rglob("*.html")))
+                out.extend(sorted(d.rglob("*.php")))
+        return out
+
+    def _compute_headings(theme: Path) -> dict[str, list[str]]:
+        raw = _extract_template_headings(theme)
+        return {k: sorted(v) for k, v in raw.items()}
+
+    cached_patterns = collect_fleet(
+        list(iter_themes()),
+        check_name="pattern_microcopy_distinct.patterns",
+        input_builder=_pattern_inputs,
+        compute_fn=_compute_patterns,
+    )
+    cached_headings = collect_fleet(
+        list(iter_themes()),
+        check_name="pattern_microcopy_distinct.headings",
+        input_builder=_headings_inputs,
+        compute_fn=_compute_headings,
+    )
+
     # PATTERN-vs-PATTERN: pairwise across every other theme.
     for other in iter_themes():
         other_slug = other.name
         if other_slug == theme_slug:
             continue
-        other_patterns = _extract_pattern_microcopy(other / "patterns")
+        other_patterns_raw = cached_patterns.get(other_slug) or {}
+        other_patterns = {k: set(v) for k, v in other_patterns_raw.items()}
         if not other_patterns:
             continue
         for fname, strings in sorted(theme_patterns.items()):
@@ -5758,7 +5898,8 @@ def check_pattern_microcopy_distinct() -> Result:
             other_slug = other.name
             if other_slug == theme_slug:
                 continue
-            other_headings = _extract_template_headings(other)
+            other_headings_raw = cached_headings.get(other_slug) or {}
+            other_headings = {k: set(v) for k, v in other_headings_raw.items()}
             if not other_headings:
                 continue
             other_all = set().union(*other_headings.values())
@@ -6071,16 +6212,32 @@ def check_all_rendered_text_distinct_across_themes() -> Result:
         r.skip("no templates/, parts/, or patterns/ with rendered text")
         return r
 
-    # Build other-theme index lazily — once per other theme, not once
-    # per fragment. Keys are normalised text; values are
-    # {theme_slug: {rel_paths}}.
+    def _text_inputs(theme: Path) -> list[Path]:
+        out: list[Path] = []
+        for sub in ("templates", "parts", "patterns"):
+            d = theme / sub
+            if d.is_dir():
+                out.extend(sorted(d.rglob("*.html")))
+                out.extend(sorted(d.rglob("*.php")))
+        return out
+
+    def _compute_text(theme: Path) -> dict[str, list[str]]:
+        # _extract_all_rendered_text returns {normalised: set(rel_paths)};
+        # serialize sets as sorted lists for JSON storage.
+        return {norm: sorted(rels) for norm, rels in _extract_all_rendered_text(theme).items()}
+
+    cached_text = collect_fleet(
+        list(iter_themes()),
+        check_name="all_rendered_text_distinct",
+        input_builder=_text_inputs,
+        compute_fn=_compute_text,
+    )
     other_index: dict[str, dict[str, set[str]]] = {}
-    for other in iter_themes():
-        other_slug = other.name
+    for other_slug, norm_map in cached_text.items():
         if other_slug == theme_slug:
             continue
-        for norm, rels in _extract_all_rendered_text(other).items():
-            other_index.setdefault(norm, {})[other_slug] = rels
+        for norm, rels in norm_map.items():
+            other_index.setdefault(norm, {})[other_slug] = set(rels)
 
     collisions = 0
     for norm in sorted(my_text):
@@ -6552,31 +6709,35 @@ def check_wc_microcopy_distinct_across_themes() -> Result:
         # PHP single-quoted strings: only \\ and \' are escaped.
         return literal.replace("\\'", "'").replace("\\\\", "\\")
 
-    # theme_slug -> { wc_default -> override }
-    per_theme: dict[str, dict[str, str]] = {}
-    for theme_dir in iter_themes():
-        fn_path = theme_dir / "functions.php"
+    def _inputs(theme: Path) -> list[Path]:
+        return [theme / "functions.php"]
+
+    def _parse_map(theme: Path) -> dict[str, str]:
+        fn_path = theme / "functions.php"
         if not fn_path.is_file():
-            continue
+            return {}
         src = fn_path.read_text(encoding="utf-8")
         if begin not in src or end not in src:
-            # check_no_default_wc_strings flags the missing block
-            # already; don't double-fail here, just skip the theme
-            # in the cross-theme comparison.
-            continue
+            return {}
         block = src[src.index(begin) : src.index(end) + len(end)]
-        # Narrow to the first `static $map = array(...)` so we don't
-        # accidentally pick up sort-label entries or other arrays.
         map_match = re.search(
             r"static\s+\$map\s*=\s*array\s*\(([\s\S]*?)\)\s*;",
             block,
         )
         if not map_match:
-            continue
+            return {}
         map_body = map_match.group(1)
-        per_theme[theme_dir.name] = {
+        return {
             php_unquote(k): php_unquote(v) for k, v in pair_re.findall(map_body)
         }
+
+    per_theme_raw = collect_fleet(
+        list(iter_themes()),
+        check_name="wc_microcopy_distinct",
+        input_builder=_inputs,
+        compute_fn=_parse_map,
+    )
+    per_theme: dict[str, dict[str, str]] = {k: v for k, v in per_theme_raw.items() if v}
 
     if len(per_theme) < 2:
         r.skip(
@@ -6909,29 +7070,36 @@ def check_product_images_unique_across_themes() -> Result:
 
     r = Result("Product photographs are unique across themes (no copy-paste leak)")
 
-    by_hash: dict[str, list[str]] = {}
-    total_photos = 0
-    for theme in iter_themes():
-        images_dir = theme / "playground" / "images"
-        if not images_dir.is_dir():
-            continue
-        for path in sorted(images_dir.glob("product-wo-*.jpg")):
+    def _inputs(theme: Path) -> list[Path]:
+        d = theme / "playground" / "images"
+        return sorted(d.glob("product-wo-*.jpg")) if d.is_dir() else []
+
+    def _fp(theme: Path) -> dict[str, str]:
+        out: dict[str, str] = {}
+        for p in _inputs(theme):
             try:
-                digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                out[p.name] = hashlib.sha256(p.read_bytes()).hexdigest()
             except OSError:
                 continue
-            total_photos += 1
-            by_hash.setdefault(digest, []).append(f"{theme.name}/{path.name}")
+        return out
 
+    by_theme = collect_fleet(
+        list(iter_themes()),
+        check_name="product_images_unique",
+        input_builder=_inputs,
+        compute_fn=_fp,
+    )
+    total_photos = sum(len(v) for v in by_theme.values())
     if not total_photos:
         r.skip("no product-wo-*.jpg photographs found in any theme")
         return r
 
-    leaks = [(h, files) for h, files in by_hash.items() if len(files) > 1]
-    if leaks:
+    overlaps = find_value_overlaps(by_theme)
+    if overlaps:
         themes_involved: dict[frozenset[str], list[tuple[str, list[str]]]] = {}
-        for digest, files in leaks:
-            theme_set = frozenset(f.split("/", 1)[0] for f in files)
+        for digest, sites in overlaps:
+            theme_set = frozenset(slug for slug, _ in sites)
+            files = [f"{slug}/{fname}" for slug, fname in sites]
             themes_involved.setdefault(theme_set, []).append((digest, files))
 
         for theme_set, group in sorted(themes_involved.items(), key=lambda kv: sorted(kv[0])):
@@ -7001,21 +7169,30 @@ def check_hero_images_unique_across_themes() -> Result:
         "(no copy-paste leak in wonders-page-*.png / wonders-post-*.png)"
     )
 
-    by_hash: dict[str, list[str]] = {}
-    total_heroes = 0
-    for theme in iter_themes():
-        images_dir = theme / "playground" / "images"
-        if not images_dir.is_dir():
-            continue
-        for pattern in ("wonders-page-*.png", "wonders-post-*.png"):
-            for path in sorted(images_dir.glob(pattern)):
-                try:
-                    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-                except OSError:
-                    continue
-                total_heroes += 1
-                by_hash.setdefault(digest, []).append(f"{theme.name}/{path.name}")
+    def _inputs(theme: Path) -> list[Path]:
+        d = theme / "playground" / "images"
+        if not d.is_dir():
+            return []
+        return sorted(
+            list(d.glob("wonders-page-*.png")) + list(d.glob("wonders-post-*.png"))
+        )
 
+    def _fp(theme: Path) -> dict[str, str]:
+        out: dict[str, str] = {}
+        for p in _inputs(theme):
+            try:
+                out[p.name] = hashlib.sha256(p.read_bytes()).hexdigest()
+            except OSError:
+                continue
+        return out
+
+    by_theme = collect_fleet(
+        list(iter_themes()),
+        check_name="hero_images_unique",
+        input_builder=_inputs,
+        compute_fn=_fp,
+    )
+    total_heroes = sum(len(v) for v in by_theme.values())
     if not total_heroes:
         r.skip(
             "no wonders-page-*.png / wonders-post-*.png placeholders "
@@ -7023,11 +7200,12 @@ def check_hero_images_unique_across_themes() -> Result:
         )
         return r
 
-    leaks = [(h, files) for h, files in by_hash.items() if len(files) > 1]
-    if leaks:
+    overlaps = find_value_overlaps(by_theme)
+    if overlaps:
         themes_involved: dict[frozenset[str], list[tuple[str, list[str]]]] = {}
-        for digest, files in leaks:
-            theme_set = frozenset(f.split("/", 1)[0] for f in files)
+        for digest, sites in overlaps:
+            theme_set = frozenset(slug for slug, _ in sites)
+            files = [f"{slug}/{fname}" for slug, fname in sites]
             themes_involved.setdefault(theme_set, []).append((digest, files))
 
         for theme_set, group in sorted(
@@ -7104,19 +7282,36 @@ def check_theme_screenshots_distinct() -> Result:
 
     r = Result("Theme screenshots distinct (no duplicate-bytes)")
 
-    by_hash: dict[str, list[str]] = {}
-    for theme in iter_themes():
-        path = theme / "screenshot.png"
-        if not path.exists():
-            r.fail(f"{theme.name}/: missing screenshot.png")
-            continue
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        by_hash.setdefault(digest, []).append(theme.name)
+    def _inputs(theme: Path) -> list[Path]:
+        return [theme / "screenshot.png"]
 
+    def _fp(theme: Path) -> dict[str, str]:
+        p = theme / "screenshot.png"
+        if not p.exists():
+            return {}
+        return {"screenshot.png": hashlib.sha256(p.read_bytes()).hexdigest()}
+
+    themes_list = list(iter_themes())
+    for theme in themes_list:
+        if not (theme / "screenshot.png").exists():
+            r.fail(f"{theme.name}/: missing screenshot.png")
+
+    by_theme = collect_fleet(
+        themes_list,
+        check_name="theme_screenshot_distinct",
+        input_builder=_inputs,
+        compute_fn=_fp,
+    )
+    # Flatten {slug: {filename: digest}} -> {digest: [slugs]} for the
+    # message shape this check has always emitted.
+    by_hash: dict[str, list[str]] = {}
+    for slug, fps in by_theme.items():
+        for digest in fps.values():
+            by_hash.setdefault(digest, []).append(slug)
     for digest, themes in by_hash.items():
         if len(themes) > 1:
             r.fail(
-                f"{', '.join(themes)} share identical screenshot.png "
+                f"{', '.join(sorted(themes))} share identical screenshot.png "
                 f"(sha256={digest[:12]}…). Re-run "
                 f"`python3 bin/build-theme-screenshots.py` to regenerate "
                 f"per-theme screenshots from each theme's home snap."
@@ -8192,12 +8387,153 @@ def check_no_unpushed_commits() -> Result:
     return r
 
 
+def _baseline_decay(max_age_days: int = 30) -> int:
+    """Scan `tests/check-baseline-failures.json` and print which
+    entries are decayed -- older than `max_age_days` (default 30) or
+    missing the `justification` / `owner` fields. Exits 0 if nothing
+    is decayed, 1 if any entry needs attention.
+
+    Wired from `.github/workflows/nightly-snap-sweep.yml` (Tier 2.4
+    of the pre-100-themes hardening plan) so the baseline doesn't
+    quietly accrete permanent debt: any entry that's been on main
+    for more than 30 days without a justification opens a visible
+    workflow failure, which the owner is expected to resolve by
+    either fixing the underlying check or writing a real
+    justification.
+
+    We intentionally DO NOT auto-delete decayed entries. The allow
+    list is a safety net for feature branches, not a to-do list the
+    bot can prune. Humans pay the owner-notification cost on purpose.
+    """
+    from datetime import datetime, timezone
+
+    if not BASELINE_FAILURES_PATH.exists():
+        print(f"{GREEN}ok{RESET}: {BASELINE_FAILURES_PATH.name} not present; nothing to decay")
+        return 0
+    try:
+        data = json.loads(BASELINE_FAILURES_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        print(f"{RED}error{RESET}: cannot parse {BASELINE_FAILURES_PATH.name}: {exc}")
+        return 1
+
+    entries = data.get("failures", []) or []
+    if not entries:
+        print(f"{GREEN}ok{RESET}: no baseline failures recorded")
+        return 0
+
+    today = datetime.now(timezone.utc).date()  # noqa: UP017
+
+    stale: list[tuple[dict[str, str], int]] = []
+    missing_justification: list[dict[str, str]] = []
+    missing_owner: list[dict[str, str]] = []
+    malformed: list[dict[str, str]] = []
+
+    for entry in entries:
+        added_at = entry.get("added_at", "")
+        justification = (entry.get("justification") or "").strip()
+        owner = (entry.get("owner") or "").strip()
+
+        if not added_at:
+            malformed.append(entry)
+        else:
+            try:
+                added_date = datetime.strptime(added_at, "%Y-%m-%d").date()
+                age = (today - added_date).days
+                if age > max_age_days:
+                    stale.append((entry, age))
+            except ValueError:
+                malformed.append(entry)
+
+        if not justification:
+            missing_justification.append(entry)
+        if not owner:
+            missing_owner.append(entry)
+
+    def _fmt(entry: dict[str, str]) -> str:
+        return f"{entry.get('theme', '?')} / {entry.get('check', '?')}"
+
+    total_issues = len(stale) + len(missing_justification) + len(missing_owner) + len(malformed)
+    if total_issues == 0:
+        print(
+            f"{GREEN}ok{RESET}: {len(entries)} baseline entries, all within "
+            f"{max_age_days} days and fully documented"
+        )
+        return 0
+
+    print(
+        f"{YELLOW}baseline-decay{RESET}: {total_issues} issue"
+        f"{'s' if total_issues != 1 else ''} across {len(entries)} entries"
+    )
+    if stale:
+        print(f"\n{RED}stale ({len(stale)}, >{max_age_days}d old):{RESET}")
+        for entry, age in sorted(stale, key=lambda pair: -pair[1]):
+            print(f"  [{age}d] {_fmt(entry)}  (added_at={entry.get('added_at', '?')})")
+    if missing_justification:
+        print(f"\n{RED}missing justification ({len(missing_justification)}):{RESET}")
+        for entry in missing_justification:
+            print(f"  {_fmt(entry)}")
+    if missing_owner:
+        print(f"\n{YELLOW}missing owner ({len(missing_owner)}):{RESET}")
+        for entry in missing_owner:
+            print(f"  {_fmt(entry)}")
+    if malformed:
+        print(f"\n{RED}malformed or missing added_at ({len(malformed)}):{RESET}")
+        for entry in malformed:
+            print(f"  {_fmt(entry)}  (added_at={entry.get('added_at', '<missing>')!r})")
+    print(
+        "\nFix: edit tests/check-baseline-failures.json by hand -- add a real "
+        "justification, or fix the underlying check and re-run "
+        "`python3 bin/check.py --save-baseline-failures` from origin/main to "
+        "drop the entry."
+    )
+    return 1
+
+
+def _git_committer_email() -> str:
+    """Return `git log -1 --format=%ae` or '' on failure.
+
+    Used to auto-populate the `owner` field on newly-discovered baseline
+    entries so operators don't have to hand-type an email address when
+    first writing the file. When the tree is not a git checkout (or the
+    bot doesn't have an identity, like in ephemeral CI runners) we fall
+    back to '' and let `--baseline-decay` warn about the empty field
+    separately.
+    """
+    try:
+        r = subprocess.run(
+            ["git", "log", "-1", "--format=%ae"],
+            cwd=str(MONOREPO_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        return r.stdout.strip()
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return ""
+
+
 def _save_baseline_failures(offline: bool) -> int:
     """Rebuild `tests/check-baseline-failures.json` from the CURRENT
     working tree. Runs every check silently across every theme in the
     monorepo (via iter_themes), collects the names of every failure,
     and writes them back as `(theme, check)` pairs alongside the
     origin/main SHA the tree matches (if any).
+
+    Each entry carries three Tier 2.4 fields (pre-100-themes hardening):
+
+      * `added_at`      ISO date (YYYY-MM-DD) the pair was first seen.
+                        Preserved across regenerations so the decay
+                        rule (>30 days => nightly baseline-stale issue)
+                        isn't reset by a routine refresh.
+      * `owner`         Populated from `git log -1 --format=%ae` when
+                        the entry is first added. Re-runs keep the
+                        existing owner; a missing owner stays empty
+                        and is flagged by --baseline-decay.
+      * `justification` Short free-text explanation. Starts empty on
+                        first write; operators fill it in by hand
+                        when the entry lands. --baseline-decay flags
+                        empty justifications just like stale ones.
 
     Callers are expected to run this from a tree that REPRESENTS the
     canonical baseline -- either a clean checkout of `origin/main`, or
@@ -8209,12 +8545,30 @@ def _save_baseline_failures(offline: bool) -> int:
 
     Returns 0 on successful write, 1 on any unexpected error.
     """
+    from datetime import datetime, timezone
+
     global ROOT
+
+    # Preserve `added_at` / `owner` / `justification` across
+    # regenerations: a re-run that re-discovers an existing
+    # (theme, check) pair must NOT reset its first-seen date or the
+    # operator will never see the decay warning fire.
+    existing_by_key: dict[tuple[str, str], dict[str, str]] = {}
+    if BASELINE_FAILURES_PATH.exists():
+        try:
+            prior = json.loads(BASELINE_FAILURES_PATH.read_text(encoding="utf-8"))
+            for entry in prior.get("failures", []) or []:
+                theme = entry.get("theme")
+                check = entry.get("check")
+                if isinstance(theme, str) and isinstance(check, str):
+                    existing_by_key[(theme, check)] = entry
+        except (json.JSONDecodeError, OSError):
+            existing_by_key = {}
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")  # noqa: UP017
+    owner = _git_committer_email()
+
     pairs: list[dict[str, str]] = []
-    # Run silently -- no per-check rendering, no per-theme summaries.
-    # This is a scraping pass, not a user-facing gate. Temporarily
-    # disable the baseline-demote env var so a previously-generated
-    # baseline doesn't mask its own contents on a regeneration run.
     prev_allow = os.environ.pop("FIFTY_ALLOW_BASELINE_FAILURES", None)
     try:
         for theme in iter_themes():
@@ -8222,7 +8576,27 @@ def _save_baseline_failures(offline: bool) -> int:
             results = _build_results(offline=offline)
             for r in results:
                 if not r.passed and not r.skipped:
-                    pairs.append({"theme": theme.name, "check": r.name})
+                    key = (theme.name, r.name)
+                    prior_entry = existing_by_key.get(key)
+                    if prior_entry is not None:
+                        # Preserve every prior metadata field verbatim;
+                        # only `theme` and `check` are authoritative
+                        # from this run.
+                        entry = dict(prior_entry)
+                        entry["theme"] = theme.name
+                        entry["check"] = r.name
+                        entry.setdefault("added_at", today)
+                        entry.setdefault("owner", owner)
+                        entry.setdefault("justification", "")
+                    else:
+                        entry = {
+                            "theme": theme.name,
+                            "check": r.name,
+                            "added_at": today,
+                            "owner": owner,
+                            "justification": "",
+                        }
+                    pairs.append(entry)
     finally:
         if prev_allow is not None:
             os.environ["FIFTY_ALLOW_BASELINE_FAILURES"] = prev_allow
@@ -8256,13 +8630,6 @@ def _save_baseline_failures(offline: bool) -> int:
         except subprocess.TimeoutExpired:
             sha = "UNKNOWN"
 
-    # Importing here (not at module scope) keeps the cold-start cost of
-    # bin/check.py low for the 99% of invocations that don't regenerate
-    # the baseline. `timezone.utc` is used instead of `datetime.UTC`
-    # so the script stays Python 3.9-compatible (`datetime.UTC` is
-    # 3.11+).
-    from datetime import datetime, timezone
-
     payload = {
         "_doc": [
             "Snapshot of which (theme, check-title) pairs are already failing on",
@@ -8271,6 +8638,13 @@ def _save_baseline_failures(offline: bool) -> int:
             "these as WARN-BASELINE in yellow and does NOT count them toward its",
             "exit code -- only NEW failures, introduced by the current branch,",
             "can block a commit/push/PR.",
+            "",
+            "Each entry carries added_at (YYYY-MM-DD, preserved across refreshes),",
+            "owner (git committer email), and justification (operator-supplied).",
+            "Entries older than 30 days or missing a justification are surfaced",
+            "by `python3 bin/check.py --baseline-decay` (also run nightly via",
+            ".github/workflows/nightly-snap-sweep.yml) so the baseline doesn't",
+            "quietly accrete permanent debt.",
             "",
             "Regenerate: `python3 bin/check.py --save-baseline-failures`, ideally",
             "from a detached `git worktree` at origin/main so the snapshot",
@@ -8315,6 +8689,7 @@ def _build_results(offline: bool) -> list[Result]:
     return [
         check_json_validity(),
         check_design_intent_present(),
+        check_theme_readiness(),
         check_php_syntax(),
         check_block_names(offline=offline),
         check_index_in_sync(),
@@ -8524,12 +8899,38 @@ def main() -> int:
             "baseline reflects main's reality, not your branch's."
         ),
     )
+    parser.add_argument(
+        "--baseline-decay",
+        action="store_true",
+        help=(
+            "Scan tests/check-baseline-failures.json and exit 1 if any "
+            "entry is older than --baseline-decay-days (default 30) or "
+            "is missing a justification / owner. Wired from "
+            ".github/workflows/nightly-snap-sweep.yml (Tier 2.4 of the "
+            "pre-100-themes hardening plan) so the allow list doesn't "
+            "quietly accrete permanent debt. Intentionally does NOT "
+            "auto-delete decayed entries -- humans pay the owner-"
+            "notification cost on purpose."
+        ),
+    )
+    parser.add_argument(
+        "--baseline-decay-days",
+        type=int,
+        default=30,
+        help=(
+            "Max age (in days) for a baseline entry before "
+            "--baseline-decay flags it as stale. Default 30."
+        ),
+    )
     args = parser.parse_args()
 
     offline = args.offline or args.quick
 
     if args.save_baseline_failures:
         return _save_baseline_failures(offline=offline)
+
+    if args.baseline_decay:
+        return _baseline_decay(max_age_days=args.baseline_decay_days)
 
     if args.all:
         exit_codes = []

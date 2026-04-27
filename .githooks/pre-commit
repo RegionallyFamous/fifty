@@ -66,6 +66,62 @@ fi
 
 echo "✓ pre-commit: all themes pass."
 
+# ---------------------------------------------------------------------------
+# Boot-fatal smoke gate (Tier 1.1, pre-100-themes hardening)
+# ---------------------------------------------------------------------------
+# When a commit touches a theme's PHP or template layer we run
+# `bin/snap.py boot <theme> --cache-state` to catch the "my functions.php
+# has a syntax error" / "template-loader fatals on every request" class
+# of bug BEFORE it reaches CI. The smoke probes four public URLs and
+# scans both the response bodies and the server log for PHP fatals /
+# parse errors / uncaught critical errors.
+#
+# Cost: ~20-30s per theme on a warm --cache-state dir, ~2-3 min cold.
+# We ONLY fire when the diff actually touches PHP or template sources
+# (functions.php, template files, pattern PHP, plugin shims), so a
+# CSS-only or theme.json-only commit keeps the fast ~15s pre-commit
+# round-trip. Setting FIFTY_SKIP_BOOT_SMOKE=1 bypasses the gate for
+# the cases where the cold-cache penalty is genuinely unaffordable
+# (rebase-heavy sessions, offline commits). Like --no-verify the
+# bypass is visible to CI, where the smoke still runs.
+if [ "${FIFTY_SKIP_BOOT_SMOKE:-0}" != "1" ]; then
+  # Staged files that can crash the theme at runtime. We intentionally
+  # do NOT include theme.json, style.css, or *.json blueprints because
+  # those don't execute PHP and won't produce the kind of fatal the
+  # gate is designed to catch. Block pattern PHP (patterns/*.php) +
+  # block template parts (parts/*.html) + functions.php + templates/
+  # because all of them can syntax-error the theme or trip a call to
+  # undefined function.
+  php_changed_themes="$(
+    git diff --cached --name-only --diff-filter=ACMR \
+      -- '*/functions.php' '*/patterns/*.php' '*/templates/*.html' \
+         '*/parts/*.html' '*/inc/*.php' '*/playground/*.php' 2>/dev/null \
+    | awk -F/ '{print $1}' | sort -u
+  )"
+  if [ -n "$php_changed_themes" ]; then
+    echo
+    echo "▸ pre-commit: PHP/template diffs detected; running boot smoke"
+    echo "             on: $(echo "$php_changed_themes" | tr '\n' ' ')"
+    echo "             (set FIFTY_SKIP_BOOT_SMOKE=1 to bypass)"
+    for t in $php_changed_themes; do
+      # Safety filter: skip slugs that aren't real themes (e.g. the diff
+      # touched bin/ or tests/). `snap.py boot` would 404 on the
+      # blueprint anyway but the error message is clearer here.
+      if [ ! -f "$t/theme.json" ]; then
+        continue
+      fi
+      if ! python3 bin/snap.py boot "$t" --cache-state; then
+        echo
+        echo "✘ pre-commit blocked: boot smoke failed for $t."
+        echo "  See tmp/$t-boot.json for the probe + log scan verdict."
+        echo "  Bypass with FIFTY_SKIP_BOOT_SMOKE=1 (CI still runs it)."
+        exit 1
+      fi
+    done
+    echo "✓ pre-commit: boot smoke green for all touched themes."
+  fi
+fi
+
 # Soft warning (rule #20): if we're committing from the shared root
 # while agent worktrees are active, surface a heads-up. Always exits
 # 0; it does NOT block the commit.
