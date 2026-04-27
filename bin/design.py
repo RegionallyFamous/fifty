@@ -54,6 +54,18 @@ get the legacy informational behaviour for the check phase).
   D. index         - bin/build-index.py <slug> -- refreshes <slug>/INDEX.md
   E. seed          - bin/seed-playground-content.py (HARD-fail under default strict)
   F. sync          - bin/sync-playground.py
+  F½. prepublish   - `git add <slug>/ docs/ */playground/blueprint.json`
+                     + `git commit` + `git push -u origin HEAD` so that
+                     `raw.githubusercontent.com` can serve the new
+                     theme's `playground/content/` and `images/` when
+                     the snap phase boots Playground. Without this,
+                     `bin/snap.py shoot <slug>` 404s on every URL
+                     inlined in the blueprint and Playground dies with
+                     "W&O CSV looked malformed: fewer than 2 lines
+                     after trim." A later commit/publish pair sweeps
+                     up the baselines + screenshot + docs after snap.
+                     Skipped by `--skip-publish`, `--skip-commit`, or
+                     `--skip-prepublish`; no-op on `main`.
   G. snap          - bin/snap.py shoot <slug> -- generates tmp/snaps/<slug>/...
   H. vision-review - bin/snap-vision-review.py <slug> (skipped without ANTHROPIC_API_KEY)
   I. baseline      - promote baselines for routes that have none yet (no-op if all
@@ -100,6 +112,7 @@ Re-run only the apply phase (after editing the spec's palette)::
 
     python3 bin/design.py --spec tmp/midcentury.json --only apply
 """
+
 from __future__ import annotations
 
 import argparse
@@ -144,6 +157,22 @@ PHASES = (
     "index",
     "seed",
     "sync",
+    # F½. prepublish — commit + push the scaffolded theme BEFORE snap.
+    #                  The blueprint inlines `raw.githubusercontent.com`
+    #                  URLs for every `playground/content/*` and
+    #                  `playground/images/*` asset; on a brand-new
+    #                  theme those URLs only resolve once the branch
+    #                  is pushed (so raw.githubusercontent can serve
+    #                  the branch's tree). Without this phase
+    #                  `bin/snap.py shoot <new-theme>` dies with
+    #                  "W&O CSV looked malformed: fewer than 2 lines
+    #                  after trim." — the content fetch 404d, PHP
+    #                  parsed the 404 HTML as CSV, and Playground
+    #                  boot step #10 (`wo-import.php`) aborted.
+    #                  Phase N later sweeps up baselines + screenshots
+    #                  + docs as a second commit on the same branch;
+    #                  squash-merge collapses them on the final PR.
+    "prepublish",
     "snap",
     "vision-review",
     "baseline",
@@ -292,11 +321,25 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--skip-prepublish",
+        action="store_true",
+        help=(
+            "Skip phase F½ (prepublish). The snap phase will then rely "
+            "on content already being reachable at "
+            "`raw.githubusercontent.com/<org>/<repo>/main/<slug>/playground/` — "
+            "only correct when rebuilding an already-shipped theme. For "
+            "any NEW theme this WILL fail snap with 'W&O CSV looked "
+            "malformed'. Prefer `--skip-publish` (which also implies "
+            "skip-prepublish) if you want a pure local iteration."
+        ),
+    )
+    p.add_argument(
         "--skip-publish",
         action="store_true",
         help=(
             "Commit locally but don't push. Useful when you want to "
-            "review the commit before it reaches the remote."
+            "review the commit before it reaches the remote. Also "
+            "implies skip-prepublish (no mid-pipeline push either)."
         ),
     )
     p.add_argument(
@@ -381,17 +424,25 @@ def main(argv: list[str] | None = None) -> int:
         # `screenshot` is derived from the baseline PNG so it's equally
         # dependent on a fresh snap; group it with the snap phases.
         phases_to_run = [
-            p for p in phases_to_run
-            if p not in {"snap", "vision-review", "baseline",
-                         "screenshot", "report"}
+            p
+            for p in phases_to_run
+            if p not in {"snap", "vision-review", "baseline", "screenshot", "report"}
         ]
     if args.skip_commit and not args.only:
-        # --skip-commit also implies --skip-publish: you can't publish a
-        # commit that doesn't exist. Drop both.
-        phases_to_run = [p for p in phases_to_run
-                         if p not in {"commit", "publish"}]
+        # --skip-commit implies --skip-publish (you can't publish a
+        # commit that doesn't exist) AND --skip-prepublish (prepublish
+        # IS a commit, and the operator just said they don't want any
+        # commits). Drop all three.
+        phases_to_run = [p for p in phases_to_run if p not in {"prepublish", "commit", "publish"}]
     elif args.skip_publish and not args.only:
-        phases_to_run = [p for p in phases_to_run if p != "publish"]
+        # --skip-publish means "no push at all", which rules out the
+        # mid-pipeline prepublish push too. The snap phase will then
+        # fail fast on a brand-new theme (that's the documented
+        # --skip-publish trade-off) but re-baselines of existing
+        # themes still work because their content is already on main.
+        phases_to_run = [p for p in phases_to_run if p not in {"prepublish", "publish"}]
+    elif args.skip_prepublish and not args.only:
+        phases_to_run = [p for p in phases_to_run if p != "prepublish"]
     print(f"design.py: running phases {' -> '.join(phases_to_run)} for `{spec.slug}`")
 
     dest = MONOREPO_ROOT / spec.slug
@@ -474,7 +525,9 @@ def _phase_apply(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> N
         apply_fonts(theme_json, spec.fonts)
 
     theme_json_path.write_text(serialize_theme_json(theme_json), encoding="utf-8")
-    print(f"  [apply] wrote {theme_json_path.relative_to(MONOREPO_ROOT)} ({len(spec.palette)} color(s), {len(spec.fonts)} font slot(s))")
+    print(
+        f"  [apply] wrote {theme_json_path.relative_to(MONOREPO_ROOT)} ({len(spec.palette)} color(s), {len(spec.fonts)} font slot(s))"
+    )
 
     brief_path = dest / "BRIEF.md"
     brief_path.write_text(make_brief(spec, dest), encoding="utf-8")
@@ -542,7 +595,9 @@ def _phase_seed(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> No
     if rc != 0:
         if args.strict:
             raise PhaseError("seed", f"bin/seed-playground-content.py exited {rc}")
-        print(f"  [seed] WARN: bin/seed-playground-content.py exited {rc}; continuing (--no-strict).")
+        print(
+            f"  [seed] WARN: bin/seed-playground-content.py exited {rc}; continuing (--no-strict)."
+        )
 
 
 def _phase_sync(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
@@ -554,6 +609,137 @@ def _phase_sync(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> No
     rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
     if rc != 0:
         raise PhaseError("sync", f"bin/sync-playground.py exited {rc}")
+
+
+def _phase_prepublish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
+    """Commit the scaffolded theme and push the current branch to `origin`,
+    so `raw.githubusercontent.com` can serve the new theme's
+    `playground/content/` and `playground/images/` when the snap phase
+    boots Playground.
+
+    Why this exists
+    ---------------
+    `bin/sync-playground.py` inlines absolute `raw.githubusercontent.com`
+    URLs into every theme's `playground/blueprint.json` (`importWxr` step
+    and PHP `WO_CONTENT_BASE_URL` constant). Those URLs resolve against
+    whatever ref `bin/snap.py::_auto_detect_content_ref` picks:
+
+      * on `main`  → `main`
+      * on a pushed branch → that branch
+      * on an unpublished branch → falls back to `main` (with a hint)
+
+    For a brand-new theme, main DOESN'T HAVE the theme's `playground/`
+    files yet — so the fallback serves a GitHub 404 HTML page, PHP parses
+    the HTML as CSV, and Playground boot dies at step #10
+    (`wo-import.php`) with `Error: W&O CSV looked malformed: fewer than
+    2 lines after trim.` This phase exists specifically to make the
+    branch fetchable from raw.githubusercontent BEFORE the snap phase
+    runs.
+
+    How it works
+    ------------
+    1. Detect the current branch. No-op on `main` (the content IS on
+       main already, snap will just resolve against it) or on a detached
+       HEAD (no branch to push).
+    2. `git add <slug>/ docs/ */playground/blueprint.json` to capture
+       the freshly-cloned theme, any docs short-URL redirector updates,
+       and every theme's re-synced blueprint (sync-playground touches
+       them all).
+    3. If anything is staged, commit with
+       "design: scaffold <slug> (pre-snap content publish)".
+    4. `git push -u origin HEAD`, with `FIFTY_SKIP_VISUAL_PUSH=1` and
+       `FIFTY_SKIP_EVIDENCE_FRESHNESS=1` because the pre-push hook's
+       visual gate and snap-evidence-freshness gate both require snap
+       evidence that THIS phase runs BEFORE producing — skipping them
+       legitimately is the whole point of the phase order.
+
+    Phase N (`commit`) later sweeps up the snap baselines, screenshot,
+    and docs as a second commit on the same branch. On the merge,
+    squash-merge collapses the two commits into one — this is the same
+    pattern `design-batch.py` already relies on.
+
+    Skipped when
+    ------------
+      * `--skip-publish` — operator explicitly opted out of pushing.
+      * `--skip-commit`  — operator explicitly opted out of committing.
+      * `--skip-prepublish` — operator knows they're rebaselining an
+        already-shipping theme and just wants to skip the mid-pipeline
+        push.
+      * current branch is `main` — the content is already on the
+        default branch; snap will resolve content against `main`.
+      * current branch has no symbolic ref (detached HEAD).
+    """
+    git = ["git", "-C", str(MONOREPO_ROOT)]
+
+    proc = subprocess.run(
+        [*git, "symbolic-ref", "--short", "HEAD"],
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        print("  [prepublish] skipped: detached HEAD (no branch to push)")
+        return
+    branch = proc.stdout.strip()
+    if not branch or branch == "main":
+        print(
+            "  [prepublish] skipped: on main (raw.githubusercontent "
+            "already serves main; nothing to pre-publish)"
+        )
+        return
+
+    remote = args.publish_remote
+
+    # Stage what the earlier phases produced. We scope strictly to the
+    # theme dir + docs/ + every theme's blueprint (which
+    # sync-playground.py may have touched), NOT `-A`: the operator may
+    # have unrelated WIP in their worktree and we don't want to sweep
+    # that into the pre-snap commit.
+    slug = spec.slug
+    add_paths: list[str] = [f"{slug}/", "docs/"]
+    for bp in sorted(MONOREPO_ROOT.glob("*/playground/blueprint.json")):
+        add_paths.append(str(bp.relative_to(MONOREPO_ROOT)))
+
+    rc = subprocess.call([*git, "add", "--", *add_paths])
+    if rc != 0:
+        raise PhaseError("prepublish", f"git add exited {rc}")
+
+    # Is anything actually staged? On a re-run where the pre-snap
+    # commit already landed and nothing has changed since, `add` is a
+    # no-op and we skip the commit step to avoid an empty commit.
+    rc_clean = subprocess.call(
+        [*git, "diff", "--cached", "--quiet"],
+    )
+    if rc_clean == 0:
+        print("  [prepublish] nothing new to commit (already up to date)")
+    else:
+        msg = f"design: scaffold {slug} (pre-snap content publish)"
+        rc = subprocess.call([*git, "commit", "-m", msg])
+        if rc != 0:
+            raise PhaseError("prepublish", f"git commit exited {rc}")
+        print(f"  [prepublish] committed: {msg}")
+
+    # Push. Skip the pre-push visual gate AND the evidence-freshness
+    # gate: this phase runs BEFORE snap, so by definition the theme
+    # has no snap evidence or baselines yet, and both gates can't
+    # apply. Neither `--no-verify` nor anything dodgy — both env
+    # vars are documented first-class escape hatches.
+    env = os.environ.copy()
+    env["FIFTY_SKIP_VISUAL_PUSH"] = "1"
+    env["FIFTY_SKIP_EVIDENCE_FRESHNESS"] = "1"
+    print(f"  [prepublish] git push -u {remote} {branch}")
+    rc = subprocess.call(
+        [*git, "push", "-u", remote, "HEAD"],
+        env=env,
+    )
+    if rc != 0:
+        raise PhaseError(
+            "prepublish",
+            f"git push -u {remote} HEAD exited {rc}. "
+            "Resolve the conflict (likely 'behind remote' on a shared "
+            "branch, or missing remote-write credentials) and re-run "
+            "with `--from prepublish`.",
+        )
+    print(f"  [prepublish] {remote}/{branch} ready; raw.githubusercontent will serve {branch}")
 
 
 def _phase_snap(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
@@ -629,8 +815,10 @@ def _phase_screenshot(spec: ValidatedSpec, dest: Path, args: argparse.Namespace)
     if rc != 0:
         # Non-strict so a missing baseline (e.g. --skip-snap flow) doesn't
         # abort the whole run; check.py will still flag the mismatch.
-        print(f"  [screenshot] WARN: bin/build-theme-screenshots.py exited {rc}; "
-              "check.py will flag if screenshot.png is stale.")
+        print(
+            f"  [screenshot] WARN: bin/build-theme-screenshots.py exited {rc}; "
+            "check.py will flag if screenshot.png is stale."
+        )
 
 
 def _phase_check(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
@@ -690,8 +878,10 @@ def _phase_redirects(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) 
     print(f"  [redirects] {' '.join(cmd)}")
     rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
     if rc != 0:
-        print(f"  [redirects] WARN: bin/build-redirects.py exited {rc}; "
-              "run manually and commit the docs/ diff to publish to GH Pages.")
+        print(
+            f"  [redirects] WARN: bin/build-redirects.py exited {rc}; "
+            "run manually and commit the docs/ diff to publish to GH Pages."
+        )
 
 
 def _phase_commit(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
@@ -759,18 +949,16 @@ def _phase_commit(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> 
     # already matches HEAD will have `git add` succeed with 0 paths,
     # and a commit with no diff will fail loudly — we'd rather print
     # "nothing to commit" and move on.
-    proc = subprocess.run(
-        [*git, "diff", "--cached", "--quiet"], capture_output=True
-    )
+    proc = subprocess.run([*git, "diff", "--cached", "--quiet"], capture_output=True)
     if proc.returncode == 0:
-        print(f"  [commit] skip: no staged diff for {slug} "
-              "(theme already matches HEAD).")
+        print(f"  [commit] skip: no staged diff for {slug} (theme already matches HEAD).")
         return
 
     message = f"design: ship {slug} theme\n\nGenerated by bin/design.py"
     cproc = subprocess.run(
         [*git, "commit", "-m", message],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     if cproc.returncode != 0:
         # Surface both stdout and stderr so a pre-commit-hook failure
@@ -781,9 +969,7 @@ def _phase_commit(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> 
 
     # Log the SHA of the new commit so the operator can paste it into
     # the PR / issue / Linear ticket without another `git log`.
-    sha_proc = subprocess.run(
-        [*git, "rev-parse", "HEAD"], capture_output=True, text=True
-    )
+    sha_proc = subprocess.run([*git, "rev-parse", "HEAD"], capture_output=True, text=True)
     sha = sha_proc.stdout.strip()[:12] if sha_proc.returncode == 0 else "(unknown)"
     print(f"  [commit] {sha}  design: ship {slug} theme")
 
@@ -821,7 +1007,8 @@ def _phase_publish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) ->
         # return `HEAD` verbatim.
         proc = subprocess.run(
             [*git, "symbolic-ref", "--short", "HEAD"],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         if proc.returncode != 0:
             raise PhaseError(
@@ -843,11 +1030,11 @@ def _phase_publish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) ->
     # this branch in an earlier run.
     ahead_proc = subprocess.run(
         [*git, "status", "--porcelain=2", "--branch"],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     ahead_line = next(
-        (ln for ln in ahead_proc.stdout.splitlines()
-         if ln.startswith("# branch.ab ")),
+        (ln for ln in ahead_proc.stdout.splitlines() if ln.startswith("# branch.ab ")),
         "",
     )
     if ahead_line:
@@ -857,8 +1044,9 @@ def _phase_publish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) ->
         except (IndexError, ValueError):
             ahead = -1
         if ahead == 0:
-            print(f"  [publish] skip: {branch} is not ahead of "
-                  f"{remote}/{branch} (nothing to push).")
+            print(
+                f"  [publish] skip: {branch} is not ahead of {remote}/{branch} (nothing to push)."
+            )
             return
 
     print(f"  [publish] git push {remote} {branch}")
@@ -914,6 +1102,7 @@ _PHASE_HANDLERS = {
     "index": _phase_index,
     "seed": _phase_seed,
     "sync": _phase_sync,
+    "prepublish": _phase_prepublish,
     "snap": _phase_snap,
     "vision-review": _phase_vision_review,
     "baseline": _phase_baseline,
