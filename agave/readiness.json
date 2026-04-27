@@ -1,7 +1,7 @@
 {
-  "stage": "incubating",
+  "stage": "shipping",
   "summary": "agave: WIP (first-5 batch retrofit). Edit this summary with the theme's brand voice once the design pass is complete.",
   "owner": "nick",
-  "last_checked": "",
-  "notes": "First-5 batch retrofit: stage flipped to incubating so check.py skips baseline checks until .github/workflows/first-baseline.yml auto-generates baselines (triggered by applying the ready-for-baseline label on PR)."
+  "last_checked": "2026-04-27",
+  "notes": "First-5 batch retrofit: stage flipped to incubating so check.py skips baseline checks until .github/workflows/first-baseline.yml auto-generates baselines (triggered by applying the ready-for-baseline label on PR). Auto-promoted to shipping by first-baseline.yml run 25006201134."
 }

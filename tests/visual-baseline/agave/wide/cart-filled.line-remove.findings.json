@@ -1,0 +1,154 @@
+{
+  "findings": [
+    {
+      "severity": "info",
+      "kind": "responsive-image-overserved",
+      "message": "Served 600px wide for a 64px slot (>6x; wasted bytes).",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "natural_width": 600,
+      "rendered_width": 64
+    },
+    {
+      "severity": "info",
+      "kind": "responsive-image-overserved",
+      "message": "Served 600px wide for a 64px slot (>6x; wasted bytes).",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "natural_width": 600,
+      "rendered_width": 64
+    },
+    {
+      "severity": "info",
+      "kind": "responsive-image-overserved",
+      "message": "Served 600px wide for a 64px slot (>6x; wasted bytes).",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "natural_width": 600,
+      "rendered_width": 64
+    }
+  ],
+  "selectors": [
+    {
+      "selector": ".wc-block-cart",
+      "count": 1,
+      "instances": [
+        {
+          "width": 1440,
+          "height": 849,
+          "visible": true,
+          "display": "grid",
+          "grid_template_columns": "872px 480px",
+          "min_width": "0px",
+          "max_width": "1520px"
+        }
+      ]
+    },
+    {
+      "selector": ".wc-block-cart__sidebar",
+      "count": 1,
+      "instances": [
+        {
+          "width": 480,
+          "height": 849,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        }
+      ]
+    },
+    {
+      "selector": ".wc-block-cart__main",
+      "count": 1,
+      "instances": [
+        {
+          "width": 872,
+          "height": 590,
+          "visible": true,
+          "display": "block",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        }
+      ]
+    },
+    {
+      "selector": ".wc-block-cart-items",
+      "count": 1,
+      "instances": [
+        {
+          "width": 833,
+          "height": 590,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        }
+      ]
+    },
+    {
+      "selector": ".wc-block-cart__submit-container",
+      "count": 1,
+      "instances": [
+        {
+          "width": 400,
+          "height": 50,
+          "visible": true,
+          "display": "block",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        }
+      ]
+    }
+  ],
+  "dom": {
+    "width": 1920,
+    "height": 1080,
+    "scrollWidth": 1920,
+    "scrollHeight": 2075
+  },
+  "bg_image_pairs": [],
+  "theme": "agave",
+  "viewport": "wide",
+  "route": "cart-filled.line-remove",
+  "url": "http://127.0.0.1:9400/cart/?demo=cart",
+  "navigation_error": null,
+  "console": [
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    }
+  ],
+  "page_errors": [],
+  "network_failures": [],
+  "a11y_path": "tmp/snaps/agave/wide/cart-filled.line-remove.a11y.json"
+}

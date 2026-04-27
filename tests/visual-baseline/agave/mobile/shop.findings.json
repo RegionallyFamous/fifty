@@ -1,0 +1,228 @@
+{
+  "findings": [
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp"
+    },
+    {
+      "severity": "info",
+      "kind": "console-warn-budget",
+      "message": "18 console warnings on this cell (>10). Consider triaging.",
+      "count": 18,
+      "max": 10
+    }
+  ],
+  "selectors": [
+    {
+      "selector": ".wp-block-woocommerce-product-template",
+      "count": 1,
+      "instances": [
+        {
+          "width": 342,
+          "height": 2488,
+          "visible": true,
+          "display": "grid",
+          "grid_template_columns": "160.953px 160.969px",
+          "min_width": "0px",
+          "max_width": "100%"
+        }
+      ]
+    },
+    {
+      "selector": ".wc-block-product-template",
+      "count": 1,
+      "instances": [
+        {
+          "width": 342,
+          "height": 2488,
+          "visible": true,
+          "display": "grid",
+          "grid_template_columns": "160.953px 160.969px",
+          "min_width": "0px",
+          "max_width": "100%"
+        }
+      ]
+    }
+  ],
+  "dom": {
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "scrollHeight": 4280
+  },
+  "bg_image_pairs": [],
+  "theme": "agave",
+  "viewport": "mobile",
+  "route": "shop",
+  "url": "http://127.0.0.1:9400/shop/",
+  "navigation_error": null,
+  "console": [
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    }
+  ],
+  "page_errors": [],
+  "network_failures": [],
+  "a11y_path": "tmp/snaps/agave/mobile/shop.a11y.json"
+}

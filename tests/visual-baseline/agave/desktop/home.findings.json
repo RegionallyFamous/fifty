@@ -1,0 +1,204 @@
+{
+  "findings": [
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder.webp"
+    },
+    {
+      "severity": "warn",
+      "kind": "placeholder-image",
+      "message": "Placeholder image rendered where a product image was expected: http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder.webp",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder.webp"
+    },
+    {
+      "severity": "error",
+      "kind": "a11y-color-contrast",
+      "message": "Elements must meet minimum color contrast ratio thresholds (2 node(s)) \u2014 first: .agave-wordmark-band__ledger",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+      "axe_impact": "serious",
+      "axe_node_count": 2,
+      "axe_first_selectors": [
+        ".agave-wordmark-band__ledger",
+        ".agave-specimen-grid__eyebrow"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/agave/desktop/home.a11y-color-contrast.0.crop.jpg"
+    },
+    {
+      "severity": "warn",
+      "kind": "a11y-page-has-heading-one",
+      "message": "Page should contain a level-one heading (1 node(s)) \u2014 first: html",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+      "axe_impact": "moderate",
+      "axe_node_count": 1,
+      "axe_first_selectors": [
+        "html"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/agave/desktop/home.a11y-page-has-heading-one.0.crop.jpg"
+    },
+    {
+      "severity": "info",
+      "kind": "console-warn-budget",
+      "message": "24 console warnings on this cell (>10). Consider triaging.",
+      "count": 24,
+      "max": 10
+    }
+  ],
+  "selectors": [
+    {
+      "selector": ".wp-site-blocks > main",
+      "count": 1,
+      "instances": [
+        {
+          "width": 1280,
+          "height": 2731,
+          "visible": true,
+          "display": "block",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        }
+      ]
+    }
+  ],
+  "dom": {
+    "width": 1280,
+    "height": 800,
+    "scrollWidth": 1280,
+    "scrollHeight": 3519
+  },
+  "bg_image_pairs": [],
+  "theme": "agave",
+  "viewport": "desktop",
+  "route": "home",
+  "url": "http://127.0.0.1:9400/",
+  "navigation_error": null,
+  "console": [
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    }
+  ],
+  "page_errors": [],
+  "network_failures": [],
+  "a11y_path": "tmp/snaps/agave/desktop/home.a11y.json"
+}

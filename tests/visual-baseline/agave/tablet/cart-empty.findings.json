@@ -1,0 +1,109 @@
+{
+  "findings": [
+    {
+      "severity": "info",
+      "kind": "responsive-image-overserved",
+      "message": "Served 600px wide for a 64px slot (>6x; wasted bytes).",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "natural_width": 600,
+      "rendered_width": 64
+    },
+    {
+      "severity": "info",
+      "kind": "responsive-image-overserved",
+      "message": "Served 600px wide for a 64px slot (>6x; wasted bytes).",
+      "src": "http://127.0.0.1:9400/wp-content/uploads/woocommerce-placeholder-600x600.webp",
+      "natural_width": 600,
+      "rendered_width": 64
+    },
+    {
+      "severity": "info",
+      "kind": "console-warn-budget",
+      "message": "12 console warnings on this cell (>10). Consider triaging.",
+      "count": 12,
+      "max": 10
+    }
+  ],
+  "selectors": [
+    {
+      "selector": ".wc-block-cart",
+      "count": 1,
+      "instances": [
+        {
+          "width": 705,
+          "height": 1090,
+          "visible": true,
+          "display": "grid",
+          "grid_template_columns": "705.281px",
+          "min_width": "0px",
+          "max_width": "none"
+        }
+      ]
+    }
+  ],
+  "dom": {
+    "width": 768,
+    "height": 1024,
+    "scrollWidth": 768,
+    "scrollHeight": 2667
+  },
+  "bg_image_pairs": [],
+  "theme": "agave",
+  "viewport": "tablet",
+  "route": "cart-empty",
+  "url": "http://127.0.0.1:9400/cart/",
+  "navigation_error": null,
+  "console": [
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    }
+  ],
+  "page_errors": [],
+  "network_failures": [],
+  "a11y_path": "tmp/snaps/agave/tablet/cart-empty.a11y.json"
+}
