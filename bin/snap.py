@@ -232,8 +232,17 @@ def _changed_themes(base: str | None = None) -> list[str] | None:
                                           unrelated bin/* tooling edits
                                           — the nightly sweep catches any
                                           false negative within 24h)
+
+    Stage visibility: we include BOTH shipping AND incubating themes in
+    the `known` set so a PR that modifies a WIP-new theme still triggers
+    quick-visual / vision-review matrix population. The default
+    ``discover_themes()`` call (shipping only) is the right answer for
+    --all fan-outs but the wrong answer for "what changed on THIS PR" —
+    a new theme starts at incubating (see `bin/clone.py`) and would
+    otherwise be invisible to every per-PR gate until it was promoted
+    via `first-baseline.yml`, creating a chicken-and-egg cycle.
     """
-    known = set(discover_themes())
+    known = set(discover_themes(stages=("shipping", "incubating")))
     paths = _diff_paths(base)
     if paths is None:
         # git not installed -- can't be smart, fall back to "all".
