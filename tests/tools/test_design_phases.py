@@ -241,6 +241,73 @@ def test_skip_publish_drops_prepublish_too() -> None:
         )
 
 
+def test_prepublish_push_skips_every_snap_dependent_gate() -> None:
+    """The push inside `_phase_prepublish` must set every documented
+    `FIFTY_SKIP_*=1` env var whose input is snap evidence that this
+    phase hasn't produced yet. Missing any one of them stalls the
+    push with a 3-retry pre-push-hook failure.
+
+    Previously-observed regressions:
+      * Missing FIFTY_SKIP_BOOT_SMOKE=1 → .githooks/pre-push spins up
+        Playground against the not-yet-pushed branch, Playground
+        fetches content from `main` (which has no new-theme content),
+        boot aborts with "W&O CSV looked malformed: fewer than 2 lines
+        after trim.", the hook retries 3 times, and the push exits 1
+        after ~120s of wasted work (logged in the 2026-04-27 reship).
+      * Missing FIFTY_SKIP_VISUAL_PUSH=1 → `bin/snap.py check --changed`
+        runs on a theme with zero snap evidence; false fail.
+      * Missing FIFTY_SKIP_EVIDENCE_FRESHNESS=1 → `bin/check.py`'s
+        "snap evidence is fresh" gate fails trivially (no snap has
+        been produced yet; evidence is stale by definition).
+
+    Every one is a first-class documented escape hatch; using them
+    here is NOT a bypass, it's honoring the phase contract (these
+    gates have no meaningful input at this point in the pipeline).
+    NEVER replace them with `--no-verify` (rule #19).
+    """
+    required_env_keys = (
+        "FIFTY_SKIP_VISUAL_PUSH",
+        "FIFTY_SKIP_EVIDENCE_FRESHNESS",
+        "FIFTY_SKIP_BOOT_SMOKE",
+    )
+    src = DESIGN_PY.read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    prepublish_fn: ast.FunctionDef | None = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "_phase_prepublish":
+            prepublish_fn = node
+            break
+    assert prepublish_fn is not None, (
+        "bin/design.py no longer defines `_phase_prepublish`. If the "
+        "phase was renamed, update this test; if it was deleted, "
+        "PR #70's fix for the 2026-04-27 snap failure has been "
+        "reverted and every new-theme batch will regress."
+    )
+    # Collect every string-constant subscript assignment
+    # `env["<key>"] = "1"` inside the function body.
+    assigned_keys: set[str] = set()
+    for inner in ast.walk(prepublish_fn):
+        if (
+            isinstance(inner, ast.Assign)
+            and len(inner.targets) == 1
+            and isinstance(inner.targets[0], ast.Subscript)
+            and isinstance(inner.targets[0].value, ast.Name)
+            and inner.targets[0].value.id == "env"
+            and isinstance(inner.targets[0].slice, ast.Constant)
+            and isinstance(inner.targets[0].slice.value, str)
+        ):
+            assigned_keys.add(inner.targets[0].slice.value)
+    for key in required_env_keys:
+        assert key in assigned_keys, (
+            f"_phase_prepublish's push env no longer sets {key!r}. "
+            "The pre-push hook chain runs every snap-dependent gate "
+            "unless the matching skip-env is set; a missing skip-env "
+            "stalls the push for ~40s/retry × 3 retries per theme "
+            f"and the batch reports 'failed' with `git push exited 1`. "
+            f'Re-add `env[{key!r}] = "1"` alongside the other two.'
+        )
+
+
 def test_skip_commit_drops_prepublish_too() -> None:
     """`--skip-commit` must filter out `prepublish` in addition to
     `commit` and `publish`. prepublish IS a commit; leaving it in the
