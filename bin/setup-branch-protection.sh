@@ -9,11 +9,33 @@
 #      (theme-gate, drift-check, playground-sync-drift,
 #       brand-assets-drift, tooling-tests, validator-smoke,
 #       lint-format) to pass before a PR can be merged.
-#   2. Require branches to be up to date with main before merge.
+#   2. DO NOT require branches to be up to date with main before merge
+#      (`strict: false`). See the block below for the rationale.
 #   3. Require at least 1 approving review.
 #   4. Enforce linear history (no merge commits).
 #   5. Disallow force pushes and branch deletion on main.
 #   6. Require CODEOWNERS sign-off when the PR touches a CODEOWNERS path.
+#
+# ---- Why strict: false --------------------------------------------
+# With `strict: true`, GitHub requires every PR branch to be current
+# with main before it can merge. When one PR lands, every OTHER open
+# PR goes BEHIND, and either (a) GitHub's auto-merge queue rebases
+# each one, or (b) the author runs `gh pr update-branch`. Each rebase
+# creates a new head SHA -> `synchronize` event -> every workflow
+# re-runs. With 5 active PRs open, merging one cascades 4 full CI
+# fleets; with 20 it cascades 19. The 2026-04-27 first-5 batch hit
+# this hard -- each merge in a 5-PR queue triggered ~100 runner-
+# minutes of redundant re-runs that we already knew were green.
+#
+# This monorepo is structured to make `strict: false` safe: each
+# theme lives in its own directory, so cross-PR conflicts on
+# theme-only PRs are impossible. The only place PRs can conflict is
+# shared framework code in `bin/`, `.github/`, `playground/`, and
+# top-level config -- a small surface that the CI's static gates
+# (check.py, ruff, pytest, blocks-validator) catch on push-to-main
+# even without a pre-merge rebase. The single-PR-at-a-time exception
+# for framework work is an operational convention, not a branch-
+# protection constraint.
 #
 # The `visual.yml` workflow is DELIBERATELY NOT in the required list —
 # it is still warm-up / warn-only, and only runs on theme-path PRs
@@ -65,7 +87,7 @@ payload=$(jq -n \
   --argjson contexts "$(printf '%s\n' "${REQUIRED_CHECKS[@]}" | jq -R . | jq -s .)" \
   '{
     required_status_checks: {
-      strict: true,
+      strict: false,
       contexts: $contexts
     },
     enforce_admins: null,
