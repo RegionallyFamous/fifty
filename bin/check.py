@@ -1709,6 +1709,236 @@ def check_bordered_group_text_has_explicit_color() -> Result:
     return r
 
 
+def check_block_text_contrast() -> Result:
+    """Fail if any block (or the effective (text, bg) pair inherited
+    from an ancestor) would paint text below the WCAG AA floor against
+    its resolved background.
+
+    Why this exists
+    ---------------
+    `check_bordered_group_text_has_explicit_color` catches the case
+    where a decorated group has children with NO explicit textColor
+    (the paragraph silently inherits). But the opposite failure mode
+    — every child DECLARES a textColor, but the palette pair itself
+    is simply illegible — is not caught anywhere upstream.
+
+    Canonical case (the 2026-04-27 agave regression):
+
+        <!-- wp:group {"backgroundColor":"accent","textColor":"base"} -->
+          <!-- wp:paragraph {"className":"agave-wordmark-band__ledger"} -->
+            <p class="agave-wordmark-band__ledger">...</p>
+          <!-- /wp:paragraph -->
+        <!-- /wp:group -->
+
+    The group explicitly declares both textColor AND backgroundColor,
+    so `check_bordered_group_text_has_explicit_color` passes (nothing
+    inherits silently). But `base` (#f5efe6) on `accent` (#d87e3a) is
+    only 2.64:1 — below even the 3:1 AA-Large floor, well below AA
+    Normal's 4.5:1 — and the agave front-page ships with the whole
+    ledger strap effectively invisible.
+
+    Scope
+    -----
+    * Runs on `templates/`, `parts/`, and `patterns/` `.html` files.
+    * We maintain a stack of `(textColor, backgroundColor)` inherited
+      from ancestors. When a block declares a `textColor` and the
+      ancestor stack supplies a `backgroundColor` (or the block itself
+      declares one), we compute the contrast between the two.
+    * A block is also checked when it declares BOTH textColor and
+      backgroundColor on ITSELF — the parent doesn't need to supply
+      anything.
+    * We use `bin/_contrast.py` so the WCAG math matches
+      `check_hover_state_legibility` and the `autofix-contrast.py`
+      script that rewrites failing pairs.
+
+    Threshold
+    ---------
+    We use `4.5:1` (WCAG AA Normal) rather than `3:1` (AA Large)
+    because the blocks we're looking at (paragraph, list, quote) carry
+    body text, not huge display type. Headings that DO qualify as
+    "large" per WCAG are skipped — `core/heading` at h1/h2/h3 on a
+    theme.json that sets them to >=24px bold or >=18.66px is
+    AA-Large and only needs 3:1. We don't have cheap access to the
+    resolved font size here, so we take the conservative path: apply
+    AA Normal to every block and let `contrast-skip.json` (the
+    per-theme escape hatch used by `check-contrast.py`) opt specific
+    pairs out if the design legitimately needs a "large display" gap.
+    """
+    r = Result("Block textColor+backgroundColor pairs meet WCAG AA")
+
+    from _contrast import contrast_ratio, load_palette
+
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.skip("theme.json missing")
+        return r
+    palette = load_palette(theme_json)
+    if not palette:
+        r.skip("no palette")
+        return r
+
+    skip_dirs = {"templates/", "parts/", "patterns/"}
+    files: list[Path] = []
+    for path in iter_files((".html",)):
+        rel = path.relative_to(ROOT).as_posix()
+        if any(rel.startswith(d) for d in skip_dirs):
+            files.append(path)
+
+    block_open_re = re.compile(
+        r"<!--\s*wp:([a-z0-9][a-z0-9-]*(?:/[a-z0-9][a-z0-9-]*)?)"
+        r"(?:\s+(\{[^<>]*?\}))?\s*(/?)-->",
+    )
+    block_close_re = re.compile(
+        r"<!--\s*/wp:([a-z0-9][a-z0-9-]*(?:/[a-z0-9][a-z0-9-]*)?)\s*-->",
+    )
+
+    textcolor_re = re.compile(r'"textColor"\s*:\s*"([a-z0-9-]+)"')
+    bgcolor_re = re.compile(r'"backgroundColor"\s*:\s*"([a-z0-9-]+)"')
+
+    # AA Normal; see docstring for why we don't use 3:1.
+    MIN_RATIO = 4.5
+
+    # Per-theme allowlist of (textColor, backgroundColor) pairs that
+    # the designer has explicitly signed off as AA-Large-only or
+    # otherwise out-of-scope. Shares the file with check-contrast.py.
+    skip_path = ROOT / "contrast-skip.json"
+    skip_pairs: set[tuple[str, str]] = set()
+    if skip_path.exists():
+        try:
+            entries = json.loads(skip_path.read_text(encoding="utf-8"))
+            if isinstance(entries, list):
+                for e in entries:
+                    if isinstance(e, dict):
+                        fg = e.get("fg")
+                        bg = e.get("bg")
+                        if isinstance(fg, str) and isinstance(bg, str):
+                            skip_pairs.add((fg, bg))
+        except json.JSONDecodeError:
+            pass
+
+    # Blocks that shouldn't be contrast-checked as text blocks
+    # (spacers, image wrappers, etc.). Checking them fires false
+    # positives on backgrounded image containers where the "text
+    # color" is irrelevant (no text).
+    NON_TEXT_BLOCKS = {
+        "spacer",
+        "image",
+        "gallery",
+        "cover",       # cover has its own overlay mechanics
+        "embed",
+        "video",
+        "audio",
+        "separator",
+        "html",
+    }
+
+    failures_reported = 0
+    for path in files:
+        rel = path.relative_to(ROOT).as_posix()
+        text = path.read_text(encoding="utf-8", errors="replace")
+
+        # Stack of (text_slug, bg_slug) inherited from ancestors. When
+        # a block declares its own, we push a new frame; when the
+        # block closes, we pop. None entries mean "ancestor didn't
+        # change this slot", so the child's resolved slug is the
+        # nearest non-None entry in the stack.
+        stack: list[tuple[str | None, str | None]] = []
+        # Parallel stack tracking the block-name of each opener so
+        # we can pop correctly on close (blocks always balance in
+        # Gutenberg serialization, but defensive is cheap).
+        name_stack: list[str] = []
+
+        pos = 0
+        while True:
+            m_open = block_open_re.search(text, pos)
+            m_close = block_close_re.search(text, pos)
+            if m_open is None and m_close is None:
+                break
+            if m_open is not None and (m_close is None or m_open.start() < m_close.start()):
+                name = m_open.group(1)
+                block_json = m_open.group(2) or ""
+                self_closing = m_open.group(3) == "/"
+                short = name.split("/")[-1]
+
+                t_match = textcolor_re.search(block_json)
+                b_match = bgcolor_re.search(block_json)
+                local_text = t_match.group(1) if t_match else None
+                local_bg = b_match.group(1) if b_match else None
+
+                # Resolve effective (text, bg) from the block + stack.
+                eff_text = local_text
+                eff_bg = local_bg
+                if eff_text is None:
+                    for st, _ in reversed(stack):
+                        if st is not None:
+                            eff_text = st
+                            break
+                if eff_bg is None:
+                    for _, sb in reversed(stack):
+                        if sb is not None:
+                            eff_bg = sb
+                            break
+
+                # Only check blocks that are text-bearing AND have a
+                # resolved (text, bg) pair. NON_TEXT blocks like
+                # spacer/image are skipped.
+                should_check = (
+                    short not in NON_TEXT_BLOCKS
+                    and eff_text is not None
+                    and eff_bg is not None
+                    and eff_text in palette
+                    and eff_bg in palette
+                    and (eff_text, eff_bg) not in skip_pairs
+                )
+                if should_check:
+                    try:
+                        ratio = contrast_ratio(palette[eff_text], palette[eff_bg])
+                    except ValueError:
+                        ratio = 0.0
+                    if ratio < MIN_RATIO:
+                        # Only report the block that introduced the
+                        # failing pair (local_text or local_bg set) —
+                        # child blocks that just inherit the same bad
+                        # pair would spam the report.
+                        introduces_local = bool(local_text or local_bg)
+                        if introduces_local:
+                            lineno = text.count("\n", 0, m_open.start()) + 1
+                            failures_reported += 1
+                            r.fail(
+                                f"{rel}:{lineno}: block `{name}` resolves "
+                                f"`textColor:{eff_text}` on "
+                                f"`backgroundColor:{eff_bg}` = "
+                                f"{ratio:.2f}:1 (need ≥{MIN_RATIO}:1). "
+                                f"The block paints body text against a "
+                                f"background color it can't legibly sit "
+                                f"on. Run "
+                                f"`python3 bin/autofix-contrast.py {ROOT.name}` "
+                                f"to rewrite the offending textColor to "
+                                f"the best-contrast palette slug, or "
+                                f"pick a different backgroundColor."
+                            )
+
+                if not self_closing:
+                    stack.append((local_text, local_bg))
+                    name_stack.append(name)
+                pos = m_open.end()
+            else:
+                # Closing tag — pop the matching frame.
+                if stack and name_stack:
+                    stack.pop()
+                    name_stack.pop()
+                pos = m_close.end()  # type: ignore[union-attr]
+
+    if r.passed:
+        r.details.append(f"{len(files)} pattern/template/part file(s) checked")
+    elif failures_reported:
+        r.details.append(
+            f"{failures_reported} failing (textColor, backgroundColor) pair(s); "
+            f"autofix available: `python3 bin/autofix-contrast.py {ROOT.name}`"
+        )
+    return r
+
+
 def check_no_fake_forms() -> Result:
     """Fail if any pattern/template/part contains a 'form-shaped' block that
     cannot actually submit anywhere.
@@ -2680,8 +2910,17 @@ def check_hover_state_legibility() -> Result:
     DEFAULT_BG = palette["base"]
 
     state_re = re.compile(r":(hover|focus|focus-visible|active)\b")
-    color_re = re.compile(r"(?:^|[;{\s])color\s*:\s*var\(--wp--preset--color--([a-z0-9-]+)\)")
-    bg_re = re.compile(r"\bbackground(?:-color)?\s*:\s*var\(--wp--preset--color--([a-z0-9-]+)\)")
+    # The slug terminator is `[)\s,]` (not just `)`) so fallback syntax
+    # like `color:var(--wp--preset--color--accent,var(--wp--preset--color--contrast))`
+    # captures the primary slug (accent). The CSS cascade paints the
+    # first var in the chain that resolves; since every theme in this
+    # repo defines every palette slug, the first slug is what shows.
+    color_re = re.compile(
+        r"(?:^|[;{\s])color\s*:\s*var\(--wp--preset--color--([a-z0-9-]+)(?=[\s,)])"
+    )
+    bg_re = re.compile(
+        r"\bbackground(?:-color)?\s*:\s*var\(--wp--preset--color--([a-z0-9-]+)(?=[\s,)])"
+    )
     bg_unrecognised_re = re.compile(
         r"\bbackground(?:-color)?\s*:\s*(?!var\(--wp--preset--color--)([^;}]+)"
     )
@@ -8960,6 +9199,7 @@ def _build_results(offline: bool) -> list[Result]:
         check_block_markup_anti_patterns(),
         check_blocks_validator(),
         check_bordered_group_text_has_explicit_color(),
+        check_block_text_contrast(),
         check_no_fake_forms(),
         check_swatch_js_targets_real_select(),
         check_no_empty_cover_blocks(),
