@@ -54,6 +54,72 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- testimonials.php
 |   `-- value-props.php
 |-- playground/
+|   |-- content/
+|   |   |-- content.xml
+|   |   `-- products.csv
+|   |-- images/
+|   |   |-- imaginary-deed.pdf
+|   |   |-- imaginary-seal.png
+|   |   |-- lost-recipe.pdf
+|   |   |-- one-hand.wav
+|   |   |-- product-wo-borrowed-nostalgia.jpg
+|   |   |-- product-wo-bottled-morning.jpg
+|   |   |-- product-wo-chaos-seasoning.jpg
+|   |   |-- product-wo-cosmic-mystery-box.jpg
+|   |   |-- product-wo-deja-vu-session.jpg
+|   |   |-- product-wo-discount-gravity.jpg
+|   |   |-- product-wo-dread-repellent.jpg
+|   |   |-- product-wo-fog-in-bottle.jpg
+|   |   |-- product-wo-forbidden-honey.jpg
+|   |   |-- product-wo-gently-used-luck.jpg
+|   |   |-- product-wo-handcrafted-echo.jpg
+|   |   |-- product-wo-haunted-candle.jpg
+|   |   |-- product-wo-imaginary-deed.jpg
+|   |   |-- product-wo-interdim-bazaar.jpg
+|   |   |-- product-wo-invisible-umbrella.jpg
+|   |   |-- product-wo-left-sock.jpg
+|   |   |-- product-wo-lost-recipe-time.jpg
+|   |   |-- product-wo-memory-foam-memory.jpg
+|   |   |-- product-wo-monday-kit.jpg
+|   |   |-- product-wo-moon-dust.jpg
+|   |   |-- product-wo-one-hand-clapping.jpg
+|   |   |-- product-wo-pocket-thunder.jpg
+|   |   |-- product-wo-portable-hole.jpg
+|   |   |-- product-wo-sensory-starter.jpg
+|   |   |-- product-wo-silence-jar.jpg
+|   |   |-- product-wo-spare-key-nowhere.jpg
+|   |   |-- product-wo-spare-tuesday.jpg
+|   |   |-- product-wo-tangible-wifi.jpg
+|   |   |-- product-wo-void-sampler.jpg
+|   |   |-- product-wo-whispering-stone.jpg
+|   |   |-- wonders-page-about.png
+|   |   |-- wonders-page-contact.png
+|   |   |-- wonders-page-faq.png
+|   |   |-- wonders-page-home.png
+|   |   |-- wonders-page-journal.png
+|   |   |-- wonders-page-lookbook.png
+|   |   |-- wonders-page-privacy-policy.png
+|   |   |-- wonders-page-shipping-returns.png
+|   |   |-- wonders-post-behind-the-scenes-bottling-mondays.png
+|   |   |-- wonders-post-caring-for-your-portable-hole.png
+|   |   |-- wonders-post-carl-on-the-moon.png
+|   |   |-- wonders-post-chaos-seasoning-recipe-roundup.png
+|   |   |-- wonders-post-fog-season.png
+|   |   |-- wonders-post-forbidden-honey-what-does-forbidden-mean.png
+|   |   |-- wonders-post-hidden-gems-5-overlooked-products.png
+|   |   |-- wonders-post-how-to-apply-existential-dread-repellent.png
+|   |   |-- wonders-post-imaginary-ownership-beginners.png
+|   |   |-- wonders-post-interview-with-carl.png
+|   |   |-- wonders-post-invisible-umbrella-spotlight.png
+|   |   |-- wonders-post-memoirs-of-a-left-sock.png
+|   |   |-- wonders-post-mildly-haunted-candle-faq.png
+|   |   |-- wonders-post-philosophy-of-bottled-monday-morning.png
+|   |   |-- wonders-post-pocket-thunder-safety.png
+|   |   |-- wonders-post-spare-tuesday-field-guide.png
+|   |   |-- wonders-post-tangible-wifi-30-day-review.png
+|   |   |-- wonders-post-the-art-of-artisanal-silence.png
+|   |   |-- wonders-post-welcome-to-wonders-and-oddities.png
+|   |   `-- wonders-post-year-one-abridged.png
 |   |-- blueprint.json
 |   `-- generate-images.py
 |-- styles/
@@ -225,10 +291,10 @@ Read this file at the start of any LLM session to discover the project's structu
 ### `patterns/hero-split.php`
 
 - **Slug:** `foundry/hero-split`
-- **Title:** Hero — ornate apothecary card
+- **Title:** Hero — ornate studio card
 - **Categories:** foundry, featured
-- **Keywords:** hero, apothecary, ornate, boxed, shop card, victorian
-- **Description:** Victorian-apothecary hero: a cream card framed by hairline ornamental
+- **Keywords:** hero, studio, ornate, boxed, shop card, victorian
+- **Description:** Victorian-studio hero: a cream card framed by hairline ornamental
 
 ### `patterns/hero-text.php`
 
