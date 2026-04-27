@@ -256,10 +256,18 @@ jobs:
         # theme/route/viewport. The script writes the body to
         # `vision-comment.md` so the next step can read it without
         # quoting headaches in YAML.
-        run: python3 bin/render-vision-pr-comment.py \
-               --root tmp/snaps \
-               --out vision-comment.md \
-               --pr "${{ github.event.pull_request.number }}"
+        #
+        # NOTE: `run: |` (literal block scalar) is deliberate. A plain
+        # scalar with trailing `\` line continuations gets YAML-folded
+        # into a single line where `\<space>` survives as a literal
+        # backslash+space, which bash then parses as an escaped space
+        # INSIDE one argument — so argparse sees zero args and crashes.
+        # tests/tools/test_ci_yaml.py enforces this rule repo-wide.
+        run: |
+          python3 bin/render-vision-pr-comment.py \
+            --root tmp/snaps \
+            --out vision-comment.md \
+            --pr "${{ github.event.pull_request.number }}"
 
       - name: Upsert sticky comment
         # Sticky-comment pattern via marker line: the renderer prepends

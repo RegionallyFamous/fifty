@@ -8125,7 +8125,7 @@ def check_no_serious_axe_in_recent_snaps() -> Result:
 
 
 def check_visual_baseline_present() -> Result:
-    """Fail if the current theme has no committed visual baselines.
+    """Fail if a SHIPPING theme has no committed visual baselines.
 
     Why this exists:
       `tests/visual-baseline/<theme>/<viewport>/<route>.png` is the
@@ -8136,19 +8136,40 @@ def check_visual_baseline_present() -> Result:
       one layer up. Aero shipped without baselines for weeks and the
       gate never noticed.
 
-      This check enforces "every theme has at least one PNG under
-      tests/visual-baseline/<theme>/". The downstream `bin/snap.py
-      diff` is responsible for catching new routes that don't yet
-      have a baseline (it already does, via the "no baseline at this
-      path" row).
+      This check enforces "every SHIPPING theme has at least one PNG
+      under tests/visual-baseline/<theme>/". The downstream
+      `bin/snap.py diff` is responsible for catching new routes that
+      don't yet have a baseline (it already does, via the "no
+      baseline at this path" row).
+
+    Why only SHIPPING (not incubating):
+      An incubating theme is still being iterated on — microcopy, photo
+      pass, front-page restructure, etc. Generating baselines before
+      the theme is visually done is wasted work: the first committed
+      baseline would diverge from reality on the very next design
+      iteration. The `first-baseline.yml` workflow automatically
+      generates baselines AND promotes stage to "shipping" once a
+      theme is ready; until then, no baseline requirement.
 
     Skips gracefully when:
       * `FIFTY_SKIP_VISUAL_BASELINE_CHECK=1` is set (escape hatch
         for fixture-only test themes that don't ship baselines).
+      * The theme's `readiness.json` declares `stage != "shipping"`
+        (incubating / retired themes are exempt).
     """
     r = Result("Visual baseline directory exists for this theme")
     if os.environ.get("FIFTY_SKIP_VISUAL_BASELINE_CHECK") == "1":
         r.skip("FIFTY_SKIP_VISUAL_BASELINE_CHECK=1")
+        return r
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from _readiness import STAGE_SHIPPING, load_readiness
+
+    readiness = load_readiness(ROOT)
+    if readiness.stage != STAGE_SHIPPING:
+        r.skip(
+            f"stage={readiness.stage!r} — baselines only required for shipping themes "
+            "(see .github/workflows/first-baseline.yml for auto-promotion)"
+        )
         return r
     baseline_dir = MONOREPO_ROOT / "tests" / "visual-baseline" / ROOT.name
     if not baseline_dir.is_dir():

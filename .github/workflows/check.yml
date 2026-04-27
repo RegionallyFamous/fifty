@@ -43,6 +43,7 @@ jobs:
   theme-gate:
     name: bin/check.py --all --offline
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # FIFTY_ALLOW_BASELINE_FAILURES=1 on PRs (NOT on push-to-main) tells
     # bin/check.py to consult tests/check-baseline-failures.json and
     # demote any (theme, check-title) pair already failing on main from
@@ -242,6 +243,7 @@ jobs:
   drift-check:
     name: append-wc-overrides.py is a no-op
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -267,6 +269,7 @@ jobs:
   brand-assets-drift:
     name: build-brand-assets.py --check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -307,6 +310,7 @@ jobs:
   playground-sync-drift:
     name: sync-playground.py is a no-op
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -342,6 +346,7 @@ jobs:
   tooling-tests:
     name: pytest tests/
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -357,6 +362,7 @@ jobs:
   validator-smoke:
     name: node blocks-validator smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -379,6 +385,7 @@ jobs:
   lint-format:
     name: ruff + mypy
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -423,6 +430,7 @@ jobs:
     #   theme can't sneak in under a fresh PR that forgot to label.
     name: vision-reviewed required for new themes
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v6
@@ -478,6 +486,7 @@ jobs:
     # push-to-main auto-commit handles it. Both paths are fine.
     name: build docs/themes/index.html
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: theme-gate
     permissions:
       contents: write

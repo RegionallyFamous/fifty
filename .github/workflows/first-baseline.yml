@@ -1,0 +1,323 @@
+name: first-baseline
+
+# Closes the "new theme needs baselines before check.yml can pass" loop
+# WITHOUT any human baseline-generation step.
+#
+# Problem this solves:
+#   * `bin/clone.py` scaffolds new themes at `readiness.stage == "incubating"`
+#     (so `check_visual_baseline_present` skips them — see bin/check.py).
+#   * A theme can't graduate to `"shipping"` until it has committed
+#     baselines under `tests/visual-baseline/<slug>/`.
+#   * Generating those baselines requires ~10 minutes of Playwright +
+#     Playground work per theme, which is too expensive to run in
+#     `bin/design.py` and too tedious to ask the operator to trigger
+#     by hand ("why can't CI just do it?").
+#
+# Trigger:
+#   * `pull_request` with the `ready-for-baseline` label applied.
+#     Humans add this label AFTER the design pass is visually done
+#     (vision-review has run + been triaged), OR
+#   * Automatically: vision-review.yml adds `ready-for-baseline` at the
+#     same time it adds `vision-reviewed`, iff the critique surfaced
+#     zero `vision:*` findings of severity `error`. A design that still
+#     has red findings stays at `incubating` so humans can iterate
+#     before burning baseline runner minutes.
+#
+# What it does:
+#   1. Resolve which themes are (a) added by this PR AND (b) still at
+#      stage=incubating (skip already-shipping themes; they already
+#      have baselines or shouldn't be here).
+#   2. For each such theme: `bin/snap.py shoot <slug> && bin/snap.py
+#      baseline <slug>` using the PR head as FIFTY_CONTENT_REF so the
+#      new-theme's own playground files resolve from raw.githubusercontent.
+#   3. Update `<slug>/readiness.json`: stage -> "shipping",
+#      last_checked -> today's date, notes -> "Baselined by first-baseline.yml".
+#   4. Commit + push the new `tests/visual-baseline/<slug>/` tree AND
+#      the flipped `<slug>/readiness.json` back to the PR branch as a
+#      single `github-actions[bot]` commit, which re-triggers
+#      check.yml (now passes because stage=shipping + baselines exist).
+#
+# Why a separate workflow (not a mode of visual.yml):
+#   visual.yml's `rebaseline` mode is for REGENERATING existing
+#   baselines after intentional visual changes. It replaces what's in
+#   `tests/visual-baseline/<slug>/` wholesale. This workflow is for
+#   FIRST-time baseline creation on a theme that has no prior
+#   reference set. They overlap but the decision policy is
+#   different: first-baseline flips readiness.stage, rebaseline
+#   doesn't.
+#
+# Why label-gated:
+#   Vision-reviewers or humans need the chance to catch "this design
+#   isn't done yet" before CI locks the baseline. Without the label
+#   gate, every new-theme PR would auto-freeze whatever junk the
+#   theme happened to look like 30 seconds after scaffold.
+
+on:
+  pull_request:
+    types: [labeled, synchronize]
+
+concurrency:
+  group: first-baseline-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  setup:
+    # Gates label AND resolves matrix in one always-running job, so
+    # `shoot.strategy.matrix` always sees a valid JSON array (possibly
+    # empty). Splitting this across two jobs would race `matrix`
+    # resolution against the skip path and fail with `fromJSON(null)`.
+    name: resolve incubating new themes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      themes: ${{ steps.scope.outputs.themes }}
+      has_themes: ${{ steps.scope.outputs.has_themes }}
+    steps:
+      - id: label-gate
+        env:
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          if echo "$LABELS" | grep -q '"ready-for-baseline"'; then
+            echo "label present; resolving matrix."
+            echo "has_label=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "no 'ready-for-baseline' label; emitting empty matrix."
+            echo "has_label=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v6
+        if: steps.label-gate.outputs.has_label == 'true'
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-python@v6
+        if: steps.label-gate.outputs.has_label == 'true'
+        with:
+          python-version: '3.12'
+
+      - id: empty-matrix
+        if: steps.label-gate.outputs.has_label != 'true'
+        run: |
+          echo 'themes=[]' >> "$GITHUB_OUTPUT"
+          echo 'has_themes=false' >> "$GITHUB_OUTPUT"
+
+      - id: scope
+        if: steps.label-gate.outputs.has_label == 'true'
+        # Re-use visual-matrix.py's `_new_themes` helper (same logic
+        # vision-review-gate uses) to find themes that exist on HEAD
+        # but not origin/main, then filter down to incubating + no-
+        # baseline-yet. The scope list is a JSON array of slugs,
+        # suitable as a matrix input below.
+        env:
+          BASE_REF: origin/main
+        run: |
+          python3 <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          sys.path.insert(0, "bin")
+          from _readiness import STAGE_INCUBATING, load_readiness
+
+          base = os.environ.get("BASE_REF", "origin/main")
+          subprocess.run(
+              ["git", "fetch", "origin", "main", "--depth=0"], check=False
+          )
+          diff = subprocess.check_output(
+              ["git", "diff", "--name-only", f"{base}...HEAD"],
+              text=True,
+          )
+
+          # New theme: a theme.json appears in a new directory.
+          new_slugs: list[str] = []
+          for p in diff.splitlines():
+              parts = p.split("/")
+              if len(parts) < 2 or parts[-1] != "theme.json":
+                  continue
+              slug = parts[0]
+              # Only count it as new if the file didn't exist on base.
+              rc = subprocess.call(
+                  ["git", "cat-file", "-e", f"{base}:{p}"],
+                  stderr=subprocess.DEVNULL,
+              )
+              if rc != 0:
+                  new_slugs.append(slug)
+
+          # Keep only incubating themes that don't have baselines yet.
+          filtered: list[str] = []
+          for slug in sorted(set(new_slugs)):
+              theme_dir = Path(slug)
+              if not (theme_dir / "theme.json").is_file():
+                  continue
+              r = load_readiness(theme_dir)
+              if r.stage != STAGE_INCUBATING:
+                  continue
+              if (Path("tests/visual-baseline") / slug).is_dir():
+                  continue
+              filtered.append(slug)
+
+          out = os.environ["GITHUB_OUTPUT"]
+          Path(out).open("a").write(
+              f"themes={json.dumps(filtered)}\n"
+              f"has_themes={'true' if filtered else 'false'}\n"
+          )
+          print(f"incubating new themes to baseline: {filtered}")
+          PY
+
+  shoot:
+    name: shoot + baseline (${{ matrix.theme }})
+    needs: setup
+    if: needs.setup.outputs.has_themes == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        theme: ${{ fromJSON(needs.setup.outputs.themes) }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+          # Use GITHUB_TOKEN so the auto-commit in the commit step
+          # has write access (default PAT on a fork forbids this).
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install Python deps
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements-dev.txt playwright==1.58.0 Pillow
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-1.58.0
+
+      - name: Install Playwright Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: python3 -m playwright install --with-deps chromium
+
+      - name: Install Playwright deps (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: python3 -m playwright install-deps chromium
+
+      - name: Cache Playground state
+        uses: actions/cache@v5
+        with:
+          path: tmp/playground-state/${{ matrix.theme }}
+          key: pg-state-v1-${{ matrix.theme }}-${{ hashFiles(format('{0}/playground/**', matrix.theme), 'package.json', 'package-lock.json') }}
+          restore-keys: |
+            pg-state-v1-${{ matrix.theme }}-
+
+      - name: Shoot ${{ matrix.theme }}
+        env:
+          FIFTY_CONTENT_REF: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 bin/snap.py shoot "${{ matrix.theme }}" \
+            --cache-state \
+            --concurrency 1
+
+      - name: Promote snaps to baseline
+        # `baseline` moves tmp/snaps/<slug>/<viewport>/<route>.png to
+        # tests/visual-baseline/<slug>/<viewport>/<route>.png. Safe to
+        # run on a theme that already has no baseline dir — it creates
+        # the tree.
+        run: python3 bin/snap.py baseline "${{ matrix.theme }}" --missing-only
+
+      - name: Promote readiness.json to shipping
+        # Flip stage -> shipping, bump last_checked, record auto-promote
+        # note. Idempotent: re-running on an already-shipping theme is
+        # a no-op beyond bumping last_checked, which is harmless.
+        run: |
+          python3 <<'PY'
+          import json
+          import os
+          from datetime import UTC, datetime
+          from pathlib import Path
+
+          slug = "${{ matrix.theme }}"
+          p = Path(slug) / "readiness.json"
+          doc = json.loads(p.read_text()) if p.is_file() else {}
+          doc["stage"] = "shipping"
+          doc["last_checked"] = datetime.now(UTC).strftime("%Y-%m-%d")
+          prev_notes = (doc.get("notes") or "").strip()
+          auto_note = f"Auto-promoted to shipping by first-baseline.yml run {os.environ.get('GITHUB_RUN_ID', '?')}."
+          doc["notes"] = f"{prev_notes} {auto_note}".strip() if prev_notes else auto_note
+          p.write_text(json.dumps(doc, indent=2) + "\n")
+          print(f"promoted {p} -> stage=shipping")
+          PY
+
+      - name: Build theme screenshot
+        # `bin/check.py::check_theme_screenshots_distinct` fails if any
+        # two themes ship the same sha-256 screenshot.png. clone.py
+        # copied the source theme's screenshot byte-for-byte, so every
+        # freshly-cloned theme shares obel's sha until we regenerate.
+        run: python3 bin/build-theme-screenshots.py "${{ matrix.theme }}"
+
+      - name: Commit + push auto-baselines
+        # Atomic commit: baseline PNGs + readiness flip + regenerated
+        # screenshot land together. A partial commit (baselines but no
+        # readiness flip) would leave the theme in a broken state
+        # where check.py would now-fail on the baseline check AND the
+        # screenshot uniqueness check simultaneously.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add "tests/visual-baseline/${{ matrix.theme }}" \
+                  "${{ matrix.theme }}/readiness.json" \
+                  "${{ matrix.theme }}/screenshot.png"
+
+          if git diff --cached --quiet; then
+            echo "No staged changes; nothing to commit."
+            exit 0
+          fi
+
+          git commit -m "$(cat <<'EOF'
+          ci(baseline): first-baseline ${{ matrix.theme }} + promote to shipping
+
+          Auto-generated by .github/workflows/first-baseline.yml.
+          Seeds tests/visual-baseline/${{ matrix.theme }}/ from the current
+          snap, flips readiness.stage to "shipping", and rebuilds
+          screenshot.png so check_theme_screenshots_distinct passes.
+
+          [skip first-baseline]
+          EOF
+          )"
+
+          git push origin HEAD:"${{ github.event.pull_request.head.ref }}"
+
+  summary:
+    # Always runs so "no incubating themes needed baselining" is
+    # visible as a green check rather than silent.
+    name: first-baseline summary
+    needs: [setup, shoot]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Report
+        run: |
+          if [ "${{ needs.setup.outputs.has_themes }}" != "true" ]; then
+            echo "::notice::No incubating new themes to baseline."
+            exit 0
+          fi
+          echo "::notice::Baselined themes: ${{ needs.setup.outputs.themes }}"

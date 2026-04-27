@@ -59,7 +59,15 @@ jobs:
   quick-shoot:
     name: quick snap (changed themes + routes only)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Timeout sized for the worst case this single-runner gate currently
+    # tolerates: a PR that touches `bin/snap.py` / `bin/_lib.py` /
+    # `playground/**` (any SNAP_AFFECTING_FRAMEWORK_FILE) widens
+    # `_changed_themes()` to ALL themes. Each cold Playground boot
+    # takes ~2.5min, so 6 themes ≈ 15min. Going above 25min is a
+    # signal to matrix-ize this workflow (P2 in the CI-hardening plan).
+    # Batch-PRs that ship 5+ new themes hit the cap reliably and should
+    # be decomposed per theme via `bin/design-batch.py --split-prs`.
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v6

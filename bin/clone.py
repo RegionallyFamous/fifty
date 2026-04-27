@@ -34,6 +34,7 @@ Requires Python 3.8+ (standard library only).
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import shutil
 import subprocess
@@ -165,6 +166,42 @@ def main() -> int:
             continue
         if replace_in_file(path, "obel", new_lower, "Obel", new_title):
             changed += 1
+
+    # Reset readiness.json to "incubating" so the new theme doesn't
+    # claim shipping status before it has been iterated on, photographed,
+    # baselined, and vision-reviewed. `.github/workflows/first-baseline.yml`
+    # automatically generates baselines AND promotes stage to "shipping"
+    # once a theme is ready; until then, check_visual_baseline_present
+    # skips the theme (gated on readiness.stage == "shipping").
+    readiness_path = dest / "readiness.json"
+    if readiness_path.is_file():
+        readiness_doc = {
+            "stage": "incubating",
+            "summary": (
+                f"{new_title}: WIP (cloned from {source.name}). "
+                "Edit this summary with the theme's brand voice once the "
+                "design pass is complete."
+            ),
+            "owner": "",
+            "last_checked": "",
+            "notes": (
+                f"Scaffolded by bin/clone.py from {source.name}. Promoted to "
+                "`stage: shipping` by .github/workflows/first-baseline.yml "
+                "once baselines are committed, or manually after the final "
+                "design review."
+            ),
+        }
+        readiness_path.write_text(
+            json.dumps(readiness_doc, indent=2) + "\n", encoding="utf-8"
+        )
+        try:
+            display = readiness_path.relative_to(MONOREPO_ROOT)
+        except ValueError:
+            # Custom --target outside the monorepo root (hermetic tests,
+            # dry-run checkouts). Fall back to an absolute-relative path
+            # rooted at the clone destination.
+            display = readiness_path.relative_to(dest.parent)
+        print(f"  Reset {display} to stage=incubating")
 
     print(f"Done. {changed} files updated.")
     print("\nNext steps:")
