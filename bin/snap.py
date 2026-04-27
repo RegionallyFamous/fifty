@@ -4636,6 +4636,229 @@ def cmd_baseline(args: argparse.Namespace) -> int:
     return 0
 
 
+# ---------------------------------------------------------------------------
+# `rebaseline` subcommand: targeted bulk re-baselining (Tier 1.4 of the
+# pre-100-themes hardening plan).
+# ---------------------------------------------------------------------------
+#
+# Motivation: once we have 50+ themes, "WordPress shipped a new default
+# style, re-snap everything" turns into a 3 hour job. `cmd_baseline` is
+# fine for a known-intentional change to one theme, but for a fleet-
+# wide sweep you want a safer, staged flow:
+#
+#   1. Spot-check WHICH cells actually drifted (not every theme will have
+#      changed -- the change might be scoped to WC blocks used only by 3
+#      themes).
+#   2. Optionally filter to baselines older than X days (trust recent
+#      baselines; revisit stale ones).
+#   3. Dry-run first so the operator can eyeball the scope before writing
+#      any file under `tests/visual-baseline/`.
+#   4. Then commit the narrow promotion in one go.
+#
+# That's exactly `rebaseline`. It shares the bulk of `cmd_baseline`'s
+# file-copy path (including the Phase 2 sidecar promotion) but gates
+# every cell on a drift predicate.
+#
+# Flags:
+#   --drifted           only cells whose diff > threshold
+#   --since <when>      only cells whose current baseline is older than
+#                       the given time spec (ISO date, "7d", "2h", etc.)
+#   --dry-run           don't copy, print what WOULD be touched
+#   --threshold <pct>   the drift gate for --drifted (default 0.5%)
+#   --all / <theme>     scope to every discoverable theme / one theme
+#
+# Exit code: 0 if everything that matched the filter was promoted
+# (or would have been, in dry-run); 1 on any I/O failure or if an
+# inconsistent filter combination is passed.
+
+_DURATION_RE = _re.compile(r"^(\d+(?:\.\d+)?)\s*([smhdw])$", _re.IGNORECASE)
+
+
+def _parse_since(spec: str) -> float | None:
+    """Turn `--since` value into a POSIX timestamp threshold.
+
+    Accepts:
+      * ISO-ish dates (`2026-04-01`, `2026-04-01T12:00:00`)
+      * Relative durations: `7d`, `24h`, `2w`, `30s`.
+
+    Returns the unix timestamp such that a baseline mtime <= threshold
+    is "stale". `None` => do not apply a time filter.
+    """
+    if not spec:
+        return None
+    m = _DURATION_RE.match(spec)
+    if m:
+        n = float(m.group(1))
+        unit = m.group(2).lower()
+        mult = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 7 * 86400}[unit]
+        return time.time() - n * mult
+    # Try ISO parse. datetime.fromisoformat covers the common cases;
+    # trailing 'Z' gets normalized because fromisoformat doesn't accept
+    # it on <3.11.
+    norm = spec.strip().rstrip("Z")
+    try:
+        dt_obj = datetime.datetime.fromisoformat(norm)
+    except ValueError as e:
+        raise SystemExit(
+            f"--since: unparseable time spec {spec!r}; "
+            "use `7d`, `24h`, or ISO like `2026-04-01`."
+        ) from e
+    if dt_obj.tzinfo is None:
+        # snap.py's import block is already non-compliant on main for
+        # `datetime` (`datetime.timezone.utc` vs `datetime.UTC`); staying
+        # on the older idiom keeps this diff additive.
+        dt_obj = dt_obj.replace(tzinfo=datetime.timezone.utc)  # noqa: UP017
+    return dt_obj.timestamp()
+
+
+def cmd_rebaseline(args: argparse.Namespace) -> int:
+    """Targeted bulk re-baselining (see module-level docstring above).
+
+    Flow per theme:
+      1. Walk `tmp/snaps/<theme>/<vp>/*.png` (latest shoot).
+      2. For each cell, compute the drift vs the current baseline (if
+         any), plus the baseline's mtime.
+      3. Filter: cell must match `--drifted` (if set) AND/OR be older
+         than `--since` (if set). No filters = every cell is eligible,
+         which is just `cmd_baseline --all` and we nudge the operator
+         toward that instead of silently doing it.
+      4. In `--dry-run`, print what would change. Otherwise copy the PNG
+         + sidecar files (same list cmd_baseline uses) into
+         `tests/visual-baseline/` and increment a counter.
+    """
+    if not SNAPS_DIR.exists():
+        raise SystemExit(
+            f"No snaps to rebaseline at {SNAPS_DIR}. Run "
+            "`bin/snap.py shoot --all` first."
+        )
+
+    drifted = bool(getattr(args, "drifted", False))
+    since_ts = _parse_since(getattr(args, "since", "") or "")
+    if not drifted and since_ts is None:
+        raise SystemExit(
+            "rebaseline: pass at least one of --drifted or --since. "
+            "For a no-filter bulk promotion, use `bin/snap.py baseline --all` "
+            "(that path exists on purpose -- rebaseline is the *filtered* "
+            "version)."
+        )
+
+    dry_run = bool(getattr(args, "dry_run", False))
+    threshold = float(getattr(args, "threshold", 0.5))
+    channel_tolerance = int(getattr(args, "channel_tolerance", 8))
+
+    themes: list[str]
+    if getattr(args, "theme", None):
+        themes = [args.theme]
+    else:
+        themes = discover_themes()
+    if not themes:
+        raise SystemExit("rebaseline: no themes found.")
+
+    promoted = 0
+    would_promote = 0
+    inspected = 0
+    missing_baseline = 0
+    matched_drift: list[tuple[str, str, str, float]] = []
+    matched_stale: list[tuple[str, str, str, float]] = []
+
+    for theme in themes:
+        src_root = SNAPS_DIR / theme
+        if not src_root.exists():
+            continue
+        for vp_dir in sorted(src_root.iterdir()):
+            if not vp_dir.is_dir():
+                continue
+            if getattr(args, "viewport", None) and vp_dir.name != args.viewport:
+                continue
+            for png in sorted(vp_dir.glob("*.png")):
+                if getattr(args, "route", None) and png.stem != args.route:
+                    continue
+                inspected += 1
+                rel = png.relative_to(SNAPS_DIR)
+                dst = BASELINE_DIR / rel
+
+                age_ok = True
+                if since_ts is not None:
+                    if not dst.exists():
+                        # A missing baseline is the ultimate "stale"
+                        # case -- it counts as a stale match so the
+                        # operator can backfill brand-new cells with
+                        # the same flag.
+                        age_ok = True
+                    else:
+                        age_ok = dst.stat().st_mtime <= since_ts
+                drift_ok = True
+                drift_pct: float | None = None
+                if drifted:
+                    if not dst.exists():
+                        drift_ok = True
+                        drift_pct = None
+                        missing_baseline += 1
+                    else:
+                        result = diff_images(
+                            dst, png, DIFFS_DIR / rel,
+                            channel_tolerance=channel_tolerance,
+                        )
+                        drift_pct = float(result.get("changed_pct", 0.0))
+                        drift_ok = drift_pct > threshold
+
+                matches = True
+                if drifted and not drift_ok:
+                    matches = False
+                if since_ts is not None and not age_ok:
+                    matches = False
+                if not matches:
+                    continue
+
+                if drifted and drift_pct is not None:
+                    matched_drift.append((theme, vp_dir.name, png.stem, drift_pct))
+                if since_ts is not None and age_ok:
+                    matched_stale.append(
+                        (theme, vp_dir.name, png.stem,
+                         dst.stat().st_mtime if dst.exists() else 0.0)
+                    )
+
+                if dry_run:
+                    would_promote += 1
+                    tag = (
+                        f"drift={drift_pct:.3f}%" if drift_pct is not None
+                        else "new" if not dst.exists()
+                        else "stale"
+                    )
+                    print(f"  [dry-run] {tag:<16s} {rel}")
+                    continue
+
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(png, dst)
+                promoted += 1
+                print(f"  rebaselined: {rel}")
+                # Sidecar promotion (mirrors cmd_baseline behaviour so
+                # Phase 2 signature skips still trigger on the next run).
+                stem = png.stem
+                for side in (
+                    f"{stem}.sig.json",
+                    f"{stem}.findings.json",
+                    f"{stem}.a11y.json",
+                    f"{stem}.html",
+                ):
+                    src_side = vp_dir / side
+                    if src_side.is_file():
+                        shutil.copy2(src_side, dst.parent / side)
+
+    summary_lines = [
+        "",
+        f"rebaseline summary ({'dry-run' if dry_run else 'live'}):",
+        f"  inspected:       {inspected}",
+        f"  drift matches:   {len(matched_drift)}",
+        f"  stale matches:   {len(matched_stale)}",
+        f"  missing base:    {missing_baseline}",
+        f"  { 'would promote' if dry_run else 'promoted' }:  "
+        f"{would_promote if dry_run else promoted}",
+    ]
+    print("\n".join(summary_lines))
+    return 0
+
+
 def cmd_diff(args: argparse.Namespace) -> int:
     """Compare latest snaps to baselines; print a summary table."""
     threshold = args.threshold
@@ -6291,6 +6514,65 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     s_baseline.set_defaults(func=cmd_baseline)
+
+    s_rebaseline = sub.add_parser(
+        "rebaseline",
+        help=(
+            "Targeted bulk re-baselining: promote drifted and/or stale "
+            "baselines only. See module docstring for motivation."
+        ),
+    )
+    s_rebaseline.add_argument(
+        "theme", nargs="?", default=None,
+        help="Scope to a single theme (default: every discoverable theme).",
+    )
+    s_rebaseline.add_argument(
+        "--route", default=None,
+        help="Scope to a single route slug within the theme.",
+    )
+    s_rebaseline.add_argument(
+        "--viewport", default=None,
+        help="Scope to a single viewport (e.g. m|t|d|w).",
+    )
+    s_rebaseline.add_argument(
+        "--drifted", action="store_true",
+        help=(
+            "Only promote cells whose current diff vs baseline is above "
+            "--threshold (default 0.5%%). Combined with --since, the cell "
+            "must satisfy BOTH filters."
+        ),
+    )
+    s_rebaseline.add_argument(
+        "--since", default="",
+        help=(
+            "Only promote cells whose baseline mtime is older than the "
+            "given time. Accepts relative durations (`7d`, `24h`, `2w`) "
+            "or ISO timestamps (`2026-04-01`)."
+        ),
+    )
+    s_rebaseline.add_argument(
+        "--threshold", type=float, default=0.5,
+        help=(
+            "Drift threshold for --drifted; cells above this %% of "
+            "changed pixels are promoted. Default: 0.5%%."
+        ),
+    )
+    s_rebaseline.add_argument(
+        "--channel-tolerance", type=int, default=8,
+        help=(
+            "Per-channel delta below which pixels are ignored (matches "
+            "`snap.py diff`)."
+        ),
+    )
+    s_rebaseline.add_argument(
+        "--dry-run", action="store_true",
+        help=(
+            "List every cell that WOULD be promoted (with its drift %% or "
+            "baseline age tag) without copying any files. Safe to run in "
+            "CI to surface suspected drift."
+        ),
+    )
+    s_rebaseline.set_defaults(func=cmd_rebaseline)
 
     s_diff = sub.add_parser(
         "diff",

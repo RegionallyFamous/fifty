@@ -52,6 +52,25 @@ on:
         description: 'Skip issue creation on drift (artifact-only)'
         type: boolean
         default: false
+      rebaseline_mode:
+        # Tier 1.4 of pre-100-themes hardening: surface which cells
+        # WOULD be promoted by `bin/snap.py rebaseline` against the
+        # current shoot, without writing anything. The operator can
+        # click this from the Actions UI after a drift issue lands to
+        # preview the scope of the rebaseline PR before they open it.
+        description: 'Extra rebaseline preview to run after diff.'
+        type: choice
+        required: false
+        default: 'none'
+        options:
+          - none
+          - drifted
+          - stale-7d
+          - stale-30d
+      rebaseline_threshold:
+        description: 'Drift %% threshold for rebaseline preview'
+        required: false
+        default: '0.5'
 
 concurrency:
   group: nightly-snap-sweep
@@ -159,6 +178,52 @@ jobs:
         continue-on-error: true
         run: python3 bin/snap.py report
 
+      - name: Rebaseline preview (workflow_dispatch only)
+        # Runs `bin/snap.py rebaseline ... --dry-run` to surface the
+        # cells that a follow-up rebaseline PR would touch. Written to
+        # tmp/rebaseline-preview.txt so the file lands in the artifact
+        # upload below. Never modifies tests/visual-baseline/ here --
+        # the actual promotion happens in a human-opened PR.
+        if: >-
+          github.event_name == 'workflow_dispatch'
+          && github.event.inputs.rebaseline_mode != 'none'
+          && github.event.inputs.rebaseline_mode != ''
+        continue-on-error: true
+        run: |
+          mode="${{ github.event.inputs.rebaseline_mode }}"
+          threshold="${{ github.event.inputs.rebaseline_threshold }}"
+          args=""
+          case "$mode" in
+            drifted)
+              args="--drifted --threshold ${threshold:-0.5}"
+              ;;
+            stale-7d)
+              args="--since 7d"
+              ;;
+            stale-30d)
+              args="--since 30d"
+              ;;
+            *)
+              echo "unknown rebaseline_mode: $mode"
+              exit 1
+              ;;
+          esac
+          themes_input="${{ github.event.inputs.themes }}"
+          mkdir -p tmp
+          if [ -n "$themes_input" ]; then
+            for t in $themes_input; do
+              echo "== rebaseline preview: $t ($mode) ==" \
+                | tee -a tmp/rebaseline-preview.txt
+              python3 bin/snap.py rebaseline "$t" $args --dry-run \
+                2>&1 | tee -a tmp/rebaseline-preview.txt || true
+            done
+          else
+            echo "== rebaseline preview: --all ($mode) ==" \
+              | tee tmp/rebaseline-preview.txt
+            python3 bin/snap.py rebaseline $args --dry-run \
+              2>&1 | tee -a tmp/rebaseline-preview.txt || true
+          fi
+
       - name: Upload sweep artifacts
         if: always()
         uses: actions/upload-artifact@v7
@@ -170,6 +235,7 @@ jobs:
             tmp/snaps/**/review.md
             tmp/snaps/**/review.json
             tmp/snaps/**/diffs/
+            tmp/rebaseline-preview.txt
           if-no-files-found: warn
           retention-days: 30
 
