@@ -32,6 +32,15 @@ on:
     # required check would stay red until the next push.
     types: [opened, synchronize, reopened, labeled]
 
+# Design note: most jobs in this workflow are code-only — they don't
+# depend on PR labels at all. Re-running them on every label change
+# is pure waste (and the primary driver of the "CI keeps looping"
+# symptom the user called out). The job-level `if:` below on every
+# non-label-dependent job skips label-only events so those jobs
+# report "skipped" — which branch protection treats as pass — and
+# only `vision-review-gate` re-evaluates when `vision-reviewed` is
+# added. See the repo's closed-loop dispatch notes / PR #53..#63 for
+# the history that led here.
 concurrency:
   # Cancel older runs on the same branch so pushing a fix twice in a
   # row doesn't queue up two 10-minute pipelines. `main` is never
@@ -44,6 +53,9 @@ jobs:
     name: bin/check.py --all --offline
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    if: >
+      github.event_name != 'pull_request' ||
+      github.event.action != 'labeled'
     # FIFTY_ALLOW_BASELINE_FAILURES=1 on PRs (NOT on push-to-main) tells
     # bin/check.py to consult tests/check-baseline-failures.json and
     # demote any (theme, check-title) pair already failing on main from
@@ -85,6 +97,9 @@ jobs:
     name: bin/check.py --offline (snap evidence required)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    if: >
+      github.event_name != 'pull_request' ||
+      github.event.action != 'labeled'
     steps:
       - uses: actions/checkout@v6
         with:
@@ -244,6 +259,9 @@ jobs:
     name: append-wc-overrides.py is a no-op
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    if: >
+      github.event_name != 'pull_request' ||
+      github.event.action != 'labeled'
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -270,6 +288,9 @@ jobs:
     name: build-brand-assets.py --check
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    if: >
+      github.event_name != 'pull_request' ||
+      github.event.action != 'labeled'
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -311,6 +332,9 @@ jobs:
     name: sync-playground.py is a no-op
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    if: >
+      github.event_name != 'pull_request' ||
+      github.event.action != 'labeled'
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -347,6 +371,9 @@ jobs:
     name: pytest tests/
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    if: >
+      github.event_name != 'pull_request' ||
+      github.event.action != 'labeled'
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -363,6 +390,9 @@ jobs:
     name: node blocks-validator smoke
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    if: >
+      github.event_name != 'pull_request' ||
+      github.event.action != 'labeled'
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -386,6 +416,9 @@ jobs:
     name: ruff + mypy
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    if: >
+      github.event_name != 'pull_request' ||
+      github.event.action != 'labeled'
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
