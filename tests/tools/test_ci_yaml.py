@@ -305,9 +305,7 @@ PAT_PUSHING_WORKFLOWS = [
     PAT_PUSHING_WORKFLOWS,
     ids=[w for w, _ in PAT_PUSHING_WORKFLOWS],
 )
-def test_auto_commit_workflows_use_pat_with_fallback(
-    wf_name: str, purpose: str
-) -> None:
+def test_auto_commit_workflows_use_pat_with_fallback(wf_name: str, purpose: str) -> None:
     """Workflows that push auto-commits to a PR branch MUST use the
     `FIFTY_AUTO_PAT || GITHUB_TOKEN` pattern on their
     `actions/checkout@v6` step's `token:` input.
@@ -359,8 +357,7 @@ def test_auto_commit_workflows_use_pat_with_fallback(
     # (e.g. visual.yml's shoot job uses GITHUB_TOKEN; only the
     # aggregator pushes). We just need the pushing one to be right.
     has_pat_pattern = any(
-        "secrets.FIFTY_AUTO_PAT" in expr and "secrets.GITHUB_TOKEN" in expr
-        for expr in token_exprs
+        "secrets.FIFTY_AUTO_PAT" in expr and "secrets.GITHUB_TOKEN" in expr for expr in token_exprs
     )
     assert has_pat_pattern, (
         f"{wf_name} has `token:` assignments but none use the "
