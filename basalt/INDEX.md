@@ -242,11 +242,11 @@ Read this file at the start of any LLM session to discover the project's structu
 
 ### `patterns/cart-page.php`
 
-- **Slug:** `foundry/cart-page`
+- **Slug:** `basalt/cart-page`
 - **Title:** Cart page
-- **Categories:** foundry, woo-commerce
+- **Categories:** basalt, woo-commerce
 - **Keywords:** cart, basket, woocommerce, empty-cart, checkout
-- **Description:** Controlled WC Cart block tree for the storefront Cart page. Removes the default "Customers also bought" cross-sells inner block (a hard generic-WC tell that does not match an editorial storefront), keeps the cart-totals + accepted-payment-methods sidebar, and replaces the default empty-cart-block content with a branded eyebrow + display heading + 2 CTAs in Foundry's quiet-editorial voice. Targets `woocommerce/cart` so the Cart block placeholder picker offers it; also drives the seeded Cart page in `playground/wo-configure.php` so the demo and a real install (Proprietor inserts the pattern in the editor) render the same chrome.
+- **Description:** Controlled WC Cart block tree for the storefront Cart page. Removes the default "Customers also bought" cross-sells inner block (a hard generic-WC tell that does not match an editorial storefront), keeps the cart-totals + accepted-payment-methods sidebar, and replaces the default empty-cart-block content with a branded eyebrow + display heading + 2 CTAs in Basalt's quiet-editorial voice. Targets `woocommerce/cart` so the Cart block placeholder picker offers it; also drives the seeded Cart page in `playground/wo-configure.php` so the demo and a real install (Proprietor inserts the pattern in the editor) render the same chrome.
 
 ### `patterns/category-tiles.php`
 
