@@ -189,7 +189,7 @@ def test_changed_themes_picks_up_theme_dir_edits(snap_mod, monkeypatch):
     monkeypatch.setattr(
         snap_mod,
         "discover_themes",
-        lambda: ["aero", "obel", "selvedge"],
+        lambda **_kw: ["aero", "obel", "selvedge"],
     )
     monkeypatch.setattr(
         snap_mod.subprocess,
@@ -199,6 +199,37 @@ def test_changed_themes_picks_up_theme_dir_edits(snap_mod, monkeypatch):
     assert snap_mod._changed_themes("origin/main") == ["aero"]
 
 
+def test_changed_themes_sees_incubating_themes(snap_mod, monkeypatch):
+    """`_changed_themes` must include incubating themes in its `known`
+    set, not just shipping ones.
+
+    Rationale: a brand-new theme cloned via `bin/clone.py` lands at
+    `readiness.stage = "incubating"`. `discover_themes()` (stages=None)
+    excludes incubating themes by design so `--all` fan-outs don't
+    rope them in. But every per-PR gate (quick-visual, vision-review)
+    uses `_changed_themes()` to populate its matrix — and if that
+    function filters through the shipping-only set, a PR that adds
+    a new incubating theme ends up with an empty matrix → review
+    jobs skip → `vision-reviewed` label never auto-applies →
+    check.yml's vision-review-gate blocks the PR forever (chicken-
+    and-egg). This test locks in the `stages=("shipping",
+    "incubating")` override in `_changed_themes`.
+    """
+
+    def _discover(stages=None):
+        if stages and "incubating" in stages:
+            return ["aero", "obel", "selvedge", "apiary"]
+        return ["aero", "obel", "selvedge"]
+
+    monkeypatch.setattr(snap_mod, "discover_themes", _discover)
+    monkeypatch.setattr(
+        snap_mod.subprocess,
+        "run",
+        _FakeRun(["apiary/templates/single-product.html"]),
+    )
+    assert snap_mod._changed_themes("origin/main") == ["apiary"]
+
+
 def test_changed_themes_picks_up_baseline_dir_edits(snap_mod, monkeypatch):
     # tests/visual-baseline/<theme>/** counts as an edit to that theme
     # because it's the canonical "expected pixels" that snap diff
@@ -206,7 +237,7 @@ def test_changed_themes_picks_up_baseline_dir_edits(snap_mod, monkeypatch):
     monkeypatch.setattr(
         snap_mod,
         "discover_themes",
-        lambda: ["aero", "obel"],
+        lambda **_kw: ["aero", "obel"],
     )
     monkeypatch.setattr(
         snap_mod.subprocess,
@@ -220,7 +251,7 @@ def test_changed_themes_falls_back_to_all_on_framework_file(snap_mod, monkeypatc
     monkeypatch.setattr(
         snap_mod,
         "discover_themes",
-        lambda: ["aero", "obel"],
+        lambda **_kw: ["aero", "obel"],
     )
     monkeypatch.setattr(
         snap_mod.subprocess,
@@ -238,7 +269,7 @@ def test_changed_themes_ignores_non_framework_bin_edits(snap_mod, monkeypatch):
     monkeypatch.setattr(
         snap_mod,
         "discover_themes",
-        lambda: ["aero", "obel"],
+        lambda **_kw: ["aero", "obel"],
     )
     monkeypatch.setattr(
         snap_mod.subprocess,
@@ -253,7 +284,7 @@ def test_changed_themes_mixed_theme_plus_nonframework_bin(snap_mod, monkeypatch)
     monkeypatch.setattr(
         snap_mod,
         "discover_themes",
-        lambda: ["aero", "obel"],
+        lambda **_kw: ["aero", "obel"],
     )
     monkeypatch.setattr(
         snap_mod.subprocess,
@@ -272,7 +303,7 @@ def test_changed_themes_empty_diff(snap_mod, monkeypatch):
     monkeypatch.setattr(
         snap_mod,
         "discover_themes",
-        lambda: ["aero", "obel"],
+        lambda **_kw: ["aero", "obel"],
     )
     monkeypatch.setattr(
         snap_mod.subprocess,
@@ -289,7 +320,7 @@ def test_changed_themes_playground_dir_is_framework(snap_mod, monkeypatch):
     monkeypatch.setattr(
         snap_mod,
         "discover_themes",
-        lambda: ["aero", "obel"],
+        lambda **_kw: ["aero", "obel"],
     )
     monkeypatch.setattr(
         snap_mod.subprocess,
