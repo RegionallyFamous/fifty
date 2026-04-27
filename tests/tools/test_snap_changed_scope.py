@@ -313,9 +313,7 @@ def test_changed_themes_empty_diff(snap_mod, monkeypatch):
     assert snap_mod._changed_themes("origin/main") == []
 
 
-def test_cmd_report_default_theme_discovery_sees_incubating(
-    snap_mod, monkeypatch, tmp_path
-):
+def test_cmd_report_default_theme_discovery_sees_incubating(snap_mod, monkeypatch, tmp_path):
     """`cmd_report` with no `--theme`/`--all`/`--changed` must include
     incubating themes when enumerating what was last shot.
 
