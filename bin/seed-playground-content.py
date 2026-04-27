@@ -171,7 +171,7 @@ def rewrite_image_urls(text: str, theme_slug: str) -> str:
     )
 
 
-_WONDERS_PNG_RE = re.compile(r'wonders-([a-z0-9-]+)\.png')
+_WONDERS_PNG_RE = re.compile(r"wonders-([a-z0-9-]+)\.png")
 
 
 def upgrade_product_image_refs(text: str, available_images: set[str]) -> tuple[str, int]:
@@ -377,7 +377,15 @@ def main() -> int:
 
     source_dir = ensure_source_cache(args.source)
 
-    themes = list(iter_themes())
+    # Iterate across every stage (including `incubating`/`design`) so
+    # that freshly-cloned themes — which `bin/clone.py` writes as
+    # `stage: incubating` — are visible to the seeder as well. Without
+    # this, `iter_themes()`'s default shipping-only filter drops the
+    # brand-new theme and the chicken-and-egg failure mode is
+    # `bin/design.py` reporting `theme '<slug>' not found` on a theme
+    # it just created two phases earlier (see the design-batch.py
+    # reship failure of 2026-04-27 for the worked example).
+    themes = list(iter_themes(stages=()))
     if args.theme:
         themes = [t for t in themes if t.name == args.theme]
         if not themes:
