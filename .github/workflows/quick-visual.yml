@@ -159,6 +159,16 @@ jobs:
         # positives from the signature-skip path. Until then a red
         # quick-visual is a strong hint that visual.yml (the required
         # gate) will also fail, but doesn't block merge on its own.
+        #
+        # The `if:` guards the "PR only touched tooling / workflows
+        # with no theme-file fallout" case. When `shoot --changed`
+        # finds no themes to shoot and the signature cache is empty,
+        # there's nothing to report on and the step would otherwise
+        # exit non-zero on "No snaps to report on." — a perfectly
+        # legal no-op shouldn't fail a PR. The hashFiles check reads
+        # the exact artifact `report` would consume, so false
+        # positives are impossible.
+        if: hashFiles('tmp/snaps/**/*.findings.json') != ''
         env:
           FIFTY_REQUIRE_SNAP_EVIDENCE: '0'
         run: python3 bin/snap.py report --strict
