@@ -718,14 +718,34 @@ def _phase_prepublish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace)
             raise PhaseError("prepublish", f"git commit exited {rc}")
         print(f"  [prepublish] committed: {msg}")
 
-    # Push. Skip the pre-push visual gate AND the evidence-freshness
-    # gate: this phase runs BEFORE snap, so by definition the theme
-    # has no snap evidence or baselines yet, and both gates can't
-    # apply. Neither `--no-verify` nor anything dodgy — both env
-    # vars are documented first-class escape hatches.
+    # Push. Skip every pre-push gate whose input is snap evidence we
+    # haven't produced yet. Each is a documented first-class escape
+    # hatch — NEVER `--no-verify` (rule #19 forbids that).
+    #
+    #   FIFTY_SKIP_VISUAL_PUSH=1
+    #     Skips `bin/snap.py check --changed`. We have zero snap
+    #     evidence at this point; nothing to diff.
+    #
+    #   FIFTY_SKIP_EVIDENCE_FRESHNESS=1
+    #     Skips the "snap evidence is fresh vs uncommitted source
+    #     edits" gate. Nothing has been snapped yet; trivially stale.
+    #
+    #   FIFTY_SKIP_BOOT_SMOKE=1
+    #     Skips `.githooks/pre-push`'s Playground-boot smoke. The
+    #     whole POINT of this phase is to make the branch reachable
+    #     from raw.githubusercontent so Playground CAN boot — but
+    #     the smoke fires BEFORE the push completes, so it reads the
+    #     not-yet-pushed branch, the boot fetches from main, and
+    #     dies with "W&O CSV looked malformed: fewer than 2 lines
+    #     after trim." The next phase (snap) runs the same boot
+    #     against the now-pushed branch and catches real regressions
+    #     there; Phase O's final push re-runs boot smoke against the
+    #     populated branch and passes. Skipping here is redundant,
+    #     not unsafe.
     env = os.environ.copy()
     env["FIFTY_SKIP_VISUAL_PUSH"] = "1"
     env["FIFTY_SKIP_EVIDENCE_FRESHNESS"] = "1"
+    env["FIFTY_SKIP_BOOT_SMOKE"] = "1"
     print(f"  [prepublish] git push -u {remote} {branch}")
     rc = subprocess.call(
         [*git, "push", "-u", remote, "HEAD"],
