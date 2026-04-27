@@ -386,7 +386,11 @@ A11Y_SUPPRESSIONS: tuple[A11ySuppression, ...] = (
             "target (no surrounding wc-block-* class in the targeted "
             "element's own classlist)."
         ),
-        routes=("checkout-filled", "checkout-filled.field-focus"),
+        routes=(
+            "checkout-filled",
+            "checkout-filled.field-focus",
+            "checkout-filled.return-to-cart-visible",
+        ),
     ),
     A11ySuppression(
         rule="aria-prohibited-attr",
