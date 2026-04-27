@@ -199,10 +199,46 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
-          # Use GITHUB_TOKEN so the auto-commit in the commit step
-          # has write access (default PAT on a fork forbids this).
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Prefer `FIFTY_AUTO_PAT` (a repo-scoped classic PAT stored as
+          # a secret) over the default `GITHUB_TOKEN`. This matters for
+          # the auto-commit below — GitHub deliberately suppresses
+          # follow-up `pull_request` workflow runs on pushes attributed
+          # to `GITHUB_TOKEN` (infinite-loop protection), so without a
+          # PAT the loop stalls at "baselines committed, but check.yml
+          # never sees them, so the PR never auto-merges". A classic PAT
+          # is attributed to a real user, so its push fires synchronize
+          # and the downstream gates re-run. Falls back to GITHUB_TOKEN
+          # when the secret isn't configured — the commit still lands
+          # and the PR still gets its baselines, but a human has to
+          # kick CI by closing+reopening the PR (or pushing an empty
+          # commit) to re-evaluate with the new state. See
+          # docs/ci-pat-setup.md for the one-time setup.
+          token: ${{ secrets.FIFTY_AUTO_PAT || secrets.GITHUB_TOKEN }}
           persist-credentials: true
+
+      - name: Report push-token mode
+        # Surfaces (as a GitHub Actions notice) whether the auto-commit
+        # below will retrigger downstream workflows. A loud notice is
+        # cheaper than silently stalling the merge loop for a PR whose
+        # baselines did commit but whose check.yml never re-ran. The
+        # PAT secret is not printed; we only test for its presence.
+        env:
+          HAS_PAT: ${{ secrets.FIFTY_AUTO_PAT != '' }}
+        run: |
+          if [ "$HAS_PAT" = "true" ]; then
+            echo "::notice::first-baseline push will be attributed to \
+          the FIFTY_AUTO_PAT user → pull_request.synchronize WILL fire \
+          on the PR, so check.yml/visual.yml re-run automatically and \
+          auto-merge can land once they're green."
+          else
+            echo "::warning::FIFTY_AUTO_PAT secret not set. The \
+          auto-commit below uses GITHUB_TOKEN, which GitHub suppresses \
+          from retriggering pull_request workflows (infinite-loop \
+          protection). After first-baseline commits the baselines, a \
+          human will need to kick CI by closing+reopening the PR (or \
+          pushing an empty commit). See docs/ci-pat-setup.md for \
+          one-time setup to close this loop automatically."
+          fi
 
       - uses: actions/setup-python@v6
         with:

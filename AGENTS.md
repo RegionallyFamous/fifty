@@ -104,6 +104,17 @@ python3 bin/lint.py                     # ruff + mypy + JS syntax check
 python3 bin/snap.py check --changed     # visual regression (slow; optional)
 ```
 
+**Maintainers only — set up `FIFTY_AUTO_PAT`.** The automation in
+`.github/workflows/first-baseline.yml` and the rebaseline path in
+`.github/workflows/visual.yml` auto-commits baselines into the PR
+branch. Without a repo-scoped classic PAT stored as the
+`FIFTY_AUTO_PAT` secret, those pushes are attributed to `GITHUB_TOKEN`
+and GitHub intentionally suppresses the follow-up workflow runs that
+would re-gate the PR — so the PR stalls at "baselines present but
+un-gated". The workflows fall back to `GITHUB_TOKEN` when the secret
+isn't set and print a loud `::warning::`, so no one silently stalls,
+but close the loop once via [`docs/ci-pat-setup.md`](docs/ci-pat-setup.md).
+
 If you're an agent operating in this repo and hooks aren't installed yet, stop and run `python3 bin/install-hooks.py` before your first `git commit`. See root-rule #19 for the full story.
 
 ## Working on a theme

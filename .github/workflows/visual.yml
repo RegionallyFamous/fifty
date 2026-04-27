@@ -360,9 +360,37 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          # Prefer `FIFTY_AUTO_PAT` (repo-scoped classic PAT) so the
+          # rebaseline auto-commit below retriggers this same visual.yml
+          # via the `pull_request.synchronize` event — the comment at
+          # the `Commit rebaselined snaps + screenshots` step depends on
+          # exactly that retrigger to gate the new baselines. With only
+          # GITHUB_TOKEN the push lands but the follow-up visual.yml
+          # check-changed never fires, so nobody gates the new PNGs.
+          # Falls back to GITHUB_TOKEN when the secret isn't set.
+          # See docs/ci-pat-setup.md.
+          token: ${{ secrets.FIFTY_AUTO_PAT || secrets.GITHUB_TOKEN }}
           # Need write credentials persisted for the auto-commit at the
           # end of regenerate-gallery / rebaseline modes.
           persist-credentials: true
+
+      - name: Report push-token mode
+        # Companion to the equivalent step in first-baseline.yml. A loud
+        # notice when PAT is missing lets the operator know baselines
+        # committed here won't be gated by a follow-up visual.yml run
+        # until a human kicks CI — cheaper than silently shipping an
+        # ungated baseline.
+        env:
+          HAS_PAT: ${{ secrets.FIFTY_AUTO_PAT != '' }}
+        run: |
+          if [ "$HAS_PAT" = "true" ]; then
+            echo "::notice::visual.yml aggregator push will retrigger \
+          downstream workflows via FIFTY_AUTO_PAT."
+          else
+            echo "::warning::FIFTY_AUTO_PAT secret not set — \
+          visual.yml rebaseline push won't retrigger the gating run. \
+          See docs/ci-pat-setup.md."
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v6
