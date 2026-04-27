@@ -127,6 +127,20 @@ PHASES = (
     "validate",
     "clone",
     "apply",
+    # D½. contrast — after palette + cloned markup are in place, rewrite
+    #                any block whose resolved (textColor, backgroundColor)
+    #                pair fails WCAG AA against the new palette. The
+    #                canonical example is an Obel block with
+    #                `{"backgroundColor":"accent","textColor":"base"}` —
+    #                safe on Obel (dark ink, cream paper) but catastrophic
+    #                on a theme whose accent happens to be a mid-tone
+    #                yellow/tan/terracotta (1.1-2.6:1 vs base). Without
+    #                this phase the failure surfaces much later — in
+    #                `check` as a `check_block_text_contrast` fail, or
+    #                worse, in CI's axe-core pass as a `color-contrast`
+    #                violation. Autofix is idempotent: a clean re-run on
+    #                a green tree is a no-op.
+    "contrast",
     "index",
     "seed",
     "sync",
@@ -465,6 +479,34 @@ def _phase_apply(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> N
     brief_path = dest / "BRIEF.md"
     brief_path.write_text(make_brief(spec, dest), encoding="utf-8")
     print(f"  [apply] wrote {brief_path.relative_to(MONOREPO_ROOT)}")
+
+
+def _phase_contrast(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
+    """Run `bin/autofix-contrast.py <slug>` to rewrite any block whose
+    resolved (textColor, backgroundColor) pair fails WCAG AA against
+    the freshly-applied palette.
+
+    The autofix is idempotent — a clean pass reports "nothing to fix"
+    and exits 0. When it does make rewrites, it prints one line per
+    change so the build log captures the repair decisions.
+
+    Hard-fails on a non-zero exit code when `--strict` is set. In
+    --no-strict we log and continue so the operator can inspect the
+    failing files by hand; the downstream `check` phase then fires
+    `check_block_text_contrast` which will re-report the same issues
+    as a gate-blocking failure.
+    """
+    script = ROOT / "bin" / "autofix-contrast.py"
+    if not script.is_file():
+        print("  [contrast] WARN: bin/autofix-contrast.py missing; skipping.")
+        return
+    cmd = [sys.executable, str(script), spec.slug]
+    print(f"  [contrast] {' '.join(cmd[1:])}")
+    rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
+    if rc != 0:
+        if args.strict:
+            raise PhaseError("contrast", f"bin/autofix-contrast.py exited {rc}")
+        print(f"  [contrast] WARN: bin/autofix-contrast.py exited {rc}; continuing (--no-strict).")
 
 
 def _phase_index(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
@@ -868,6 +910,7 @@ _PHASE_HANDLERS = {
     "validate": _phase_validate,
     "clone": _phase_clone,
     "apply": _phase_apply,
+    "contrast": _phase_contrast,
     "index": _phase_index,
     "seed": _phase_seed,
     "sync": _phase_sync,

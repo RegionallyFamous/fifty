@@ -1,4 +1,24 @@
 {
+  "*:desktop:checkout-filled.return-to-cart-visible": {
+    "a11y-autocomplete-valid": [
+      "*"
+    ]
+  },
+  "*:wide:checkout-filled.return-to-cart-visible": {
+    "a11y-autocomplete-valid": [
+      "*"
+    ]
+  },
+  "*:mobile:checkout-filled.return-to-cart-visible": {
+    "a11y-autocomplete-valid": [
+      "*"
+    ]
+  },
+  "*:tablet:checkout-filled.return-to-cart-visible": {
+    "a11y-autocomplete-valid": [
+      "*"
+    ]
+  },
   "aero:desktop:cart-filled": {
     "narrow-wc-block": [
       ".wc-block-cart-items"
