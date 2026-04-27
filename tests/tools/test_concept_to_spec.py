@@ -289,6 +289,145 @@ def test_concept_to_spec_llm_dry_run_equals_deterministic(c2s, concepts):
     assert got == expected
 
 
+def test_concept_to_spec_llm_parses_valid_json_response(c2s, concepts, monkeypatch):
+    """The fixed LLM path calls `_vision_lib.vision_completion` (not
+    `review_image`) and parses its raw text as a spec JSON. Regression
+    guard for the bug where the findings-rubric prompt forced the
+    model to emit `{"findings": []}` and fail spec validation.
+    """
+    sys.path.insert(0, str(REPO_ROOT / "bin"))
+    import _vision_lib as vl
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-fake")
+
+    agave = next(c for c in concepts if c["slug"] == "agave")
+    # Use the deterministic spec as a plausible "model response" so we
+    # know it validates; the test is about the wiring, not the prompt.
+    canned = json.dumps(c2s.concept_to_spec(agave))
+
+    captured: dict = {}
+
+    def fake_vc(**kwargs):
+        captured.update(kwargs)
+        return vl.VisionResponse(
+            findings=[],
+            raw_text=canned,
+            model=kwargs.get("model", "m"),
+            input_tokens=100,
+            output_tokens=50,
+            cost_usd=0.0,
+            elapsed_s=0.1,
+            dry_run=False,
+        )
+
+    monkeypatch.setattr(vl, "vision_completion", fake_vc)
+
+    mockup = REPO_ROOT / "docs" / "mockups" / "agave.png"
+    got = c2s.concept_to_spec_llm(agave, mockup, dry_run=False)
+    assert got["slug"] == "agave"
+    assert "palette" in got
+    # The fix: the system prompt must be concept-to-spec, NOT the
+    # visual-regression findings rubric. If someone reinstates the
+    # old `review_image` call, the system prompt starts with "You are
+    # a senior product designer" and this assertion fires.
+    assert captured["system_prompt"].startswith("You are a design translator")
+    assert "findings" not in captured["system_prompt"].lower()
+
+
+def test_concept_to_spec_llm_retries_once_on_validation_failure(c2s, concepts, monkeypatch):
+    """If the first response fails validation, the LLM is re-prompted
+    once with the errors spelled out. If the second response validates,
+    we return it; otherwise we raise `ConceptToSpecError` rather than
+    burn budget on further retries.
+    """
+    sys.path.insert(0, str(REPO_ROOT / "bin"))
+    import _vision_lib as vl
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-fake")
+
+    agave = next(c for c in concepts if c["slug"] == "agave")
+    good = c2s.concept_to_spec(agave)
+    bad_first_response = json.dumps({"findings": []})
+    good_second_response = json.dumps(good)
+
+    call_count = {"n": 0}
+    captured_prompts: list[str] = []
+
+    def fake_vc(**kwargs):
+        call_count["n"] += 1
+        captured_prompts.append(kwargs["user_prompt"])
+        text = bad_first_response if call_count["n"] == 1 else good_second_response
+        return vl.VisionResponse(
+            findings=[], raw_text=text, model="m",
+            input_tokens=100, output_tokens=50, cost_usd=0.0,
+            elapsed_s=0.1, dry_run=False,
+        )
+
+    monkeypatch.setattr(vl, "vision_completion", fake_vc)
+
+    mockup = REPO_ROOT / "docs" / "mockups" / "agave.png"
+    got = c2s.concept_to_spec_llm(agave, mockup, dry_run=False)
+    assert got == good
+    assert call_count["n"] == 2
+    # The retry prompt must mention the validator's errors -- that's
+    # the whole point of the self-correct pass. Concrete contract: the
+    # word "failed spec validation" plus at least one `$.<path>:`
+    # error line.
+    retry_prompt = captured_prompts[1]
+    assert "failed spec validation" in retry_prompt
+    assert "$." in retry_prompt
+
+
+def test_concept_to_spec_llm_raises_after_second_validation_failure(c2s, concepts, monkeypatch):
+    """Two validation failures in a row => raise, don't loop forever."""
+    sys.path.insert(0, str(REPO_ROOT / "bin"))
+    import _vision_lib as vl
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-fake")
+
+    agave = next(c for c in concepts if c["slug"] == "agave")
+    bad = json.dumps({"findings": []})
+
+    def fake_vc(**kwargs):
+        return vl.VisionResponse(
+            findings=[], raw_text=bad, model="m",
+            input_tokens=100, output_tokens=50, cost_usd=0.0,
+            elapsed_s=0.1, dry_run=False,
+        )
+
+    monkeypatch.setattr(vl, "vision_completion", fake_vc)
+
+    mockup = REPO_ROOT / "docs" / "mockups" / "agave.png"
+    with pytest.raises(c2s.ConceptToSpecError, match="self-correction"):
+        c2s.concept_to_spec_llm(agave, mockup, dry_run=False)
+
+
+def test_concept_to_spec_llm_tolerates_code_fence(c2s, concepts, monkeypatch):
+    """Models occasionally wrap their JSON in ```json ... ``` despite
+    being told not to. The parser strips a single wrapping fence."""
+    sys.path.insert(0, str(REPO_ROOT / "bin"))
+    import _vision_lib as vl
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-fake")
+
+    agave = next(c for c in concepts if c["slug"] == "agave")
+    good = c2s.concept_to_spec(agave)
+    wrapped = "```json\n" + json.dumps(good) + "\n```"
+
+    def fake_vc(**kwargs):
+        return vl.VisionResponse(
+            findings=[], raw_text=wrapped, model="m",
+            input_tokens=100, output_tokens=50, cost_usd=0.0,
+            elapsed_s=0.1, dry_run=False,
+        )
+
+    monkeypatch.setattr(vl, "vision_completion", fake_vc)
+
+    mockup = REPO_ROOT / "docs" / "mockups" / "agave.png"
+    got = c2s.concept_to_spec_llm(agave, mockup, dry_run=False)
+    assert got == good
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------

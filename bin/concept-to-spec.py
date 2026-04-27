@@ -28,12 +28,14 @@ So the script is really a *structured translator* with two modes:
           known-good baseline spec before iterating with the LLM.
 
   `--llm` (default when ANTHROPIC_API_KEY is set)
-      Re-uses `bin/_vision_lib.review_image` to send the concept
-      mockup + its metadata to Claude, then parses the returned
-      JSON into a spec. The prompt specifically asks for a spec dict
-      shaped like `_design_lib.example_spec()`, and on validation
-      failure we re-prompt once with the validator's errors appended
-      so the model can self-correct.
+      Calls `bin/_vision_lib.vision_completion` (the generic
+      image+text primitive that shares HTTP/retry/ledger plumbing
+      with the visual-regression reviewer) with a concept-to-spec
+      system prompt. Sends the mockup + concept metadata to Claude
+      and parses the returned JSON into a spec shaped like
+      `_design_lib.example_spec()`. On validation failure the model
+      is re-prompted once with the validator's per-field errors so
+      it can self-correct; a second failure surfaces to the caller.
 
 Both modes run `bin/_design_lib.validate_spec` on the result and exit
 non-zero if the spec fails. The caller (`bin/design.py` or
@@ -589,6 +591,53 @@ def build_llm_user_prompt(concept: dict) -> str:
     )
 
 
+def _parse_spec_json(raw_text: str) -> dict:
+    """Extract a spec dict from the model's raw text response.
+
+    Tolerates a stray ```json fence or prose prefix/suffix -- the
+    system prompt says "no code fences" but models occasionally emit
+    them anyway and the cost of one `str.strip()` here is lower than
+    the cost of rerunning the call.
+    """
+    raw = (raw_text or "").strip()
+    if not raw:
+        raise ConceptToSpecError("LLM returned empty text; cannot parse spec")
+    if raw.startswith("```"):
+        raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise ConceptToSpecError(
+            f"LLM response was not valid JSON: {e}. Raw: {raw[:200]!r}"
+        ) from e
+    if not isinstance(data, dict):
+        raise ConceptToSpecError("LLM response was not a JSON object")
+    return data
+
+
+def _validation_retry_prompt(concept: dict, previous: dict, errors: list) -> str:
+    """Second-attempt prompt that feeds the validator's per-field errors
+    back to the model so it can self-correct.
+
+    Kept as a module-level helper so the test suite can assert its
+    shape without monkey-patching the whole LLM path.
+    """
+    err_lines = "\n".join(f"  {e.path}: {e.message}" for e in errors)
+    return (
+        f"Your previous response for concept `{concept.get('slug')}` "
+        f"failed spec validation. Here is the response you returned:\n\n"
+        "```json\n"
+        f"{json.dumps(previous, indent=2, ensure_ascii=False)}\n"
+        "```\n\n"
+        "The validator reported these errors (format is `$.field.path: "
+        "reason`):\n\n"
+        f"{err_lines}\n\n"
+        "Return a corrected JSON object that fixes every listed error "
+        "while keeping the rest of your design decisions intact. Output "
+        "the JSON object ONLY. No code fences, no commentary."
+    )
+
+
 def concept_to_spec_llm(
     concept: dict,
     mockup_png: Path,
@@ -596,16 +645,27 @@ def concept_to_spec_llm(
     dry_run: bool = False,
     model: str | None = None,
 ) -> dict:
-    """LLM-assisted spec: calls `_vision_lib` with the mockup + concept.
+    """LLM-assisted spec: sends the mockup + concept metadata to Claude
+    and parses the returned JSON into a validated spec.
 
     In `dry_run` mode we short-circuit to the deterministic
     `concept_to_spec` so a caller can smoke-test the wiring without
     an API key. That keeps the test surface sane (tests never hit
     the network) while still exercising the `--llm` code path.
 
-    The actual vision / JSON parse dance lives in `_vision_lib`; this
-    function is the thin adapter that builds the right prompt and
-    flattens the Anthropic response into a spec dict.
+    On validation failure after the first call, the model is
+    re-prompted once with the validator's per-field errors so it can
+    self-correct. A second failure surfaces the errors to the caller
+    (who then either edits the spec by hand, switches to `--no-llm`,
+    or opens a prompt issue).
+
+    This function was previously a thin adapter over
+    `_vision_lib.review_image`, but that helper hard-codes a
+    findings-rubric system prompt; the model dutifully returned
+    `{"findings": []}` instead of a spec. The fix is to call
+    `_vision_lib.vision_completion` (the generic primitive that takes
+    caller-supplied system + user prompts) with the concept-to-spec
+    system prompt.
     """
     if dry_run:
         return concept_to_spec(concept)
@@ -615,7 +675,7 @@ def concept_to_spec_llm(
     from _vision_lib import (
         DEFAULT_MODEL,
         ApiKeyMissingError,
-        review_image,
+        vision_completion,
     )
 
     if not mockup_png.is_file():
@@ -624,36 +684,45 @@ def concept_to_spec_llm(
             f"{concept.get('slug')}` first, or pass --no-llm for the "
             "deterministic fallback."
         )
-    user_prompt = build_llm_user_prompt(concept)
-    try:
-        resp = review_image(
-            png_path=mockup_png,
-            intent_md=user_prompt,
-            theme=concept.get("slug", ""),
-            route="concept-to-spec",
-            viewport="mockup",
-            route_purpose="concept-to-spec conversion",
-            model=(model or DEFAULT_MODEL),
-            dry_run=False,
-        )
-    except ApiKeyMissingError as e:
-        raise ConceptToSpecError(str(e)) from e
 
-    raw = (resp.raw_text or "").strip()
-    if not raw:
-        raise ConceptToSpecError("LLM returned empty text; cannot parse spec")
-    # Tolerate a stray code-fence or prose prefix (the prompt says "no
-    # code fences" but models occasionally emit them anyway).
-    if raw.startswith("```"):
-        raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0]
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError as e:
+    slug = concept.get("slug", "")
+    chosen_model = model or DEFAULT_MODEL
+    user_prompt = build_llm_user_prompt(concept)
+
+    def _call(prompt: str) -> dict:
+        try:
+            resp = vision_completion(
+                png_path=mockup_png,
+                system_prompt=LLM_SYSTEM_PROMPT,
+                user_prompt=prompt,
+                theme=slug,
+                route="concept-to-spec",
+                viewport="mockup",
+                model=chosen_model,
+                dry_run=False,
+            )
+        except ApiKeyMissingError as e:
+            raise ConceptToSpecError(str(e)) from e
+        return _parse_spec_json(resp.raw_text)
+
+    data = _call(user_prompt)
+    errors, _ = validate_spec(data)
+    if not errors:
+        return data
+
+    # Self-correct once. If the model can't fix its own JSON with the
+    # errors spelled out, a second attempt almost never helps -- surface
+    # to the caller instead of burning more budget.
+    retry_prompt = _validation_retry_prompt(concept, data, errors)
+    data = _call(retry_prompt)
+    errors, _ = validate_spec(data)
+    if errors:
+        joined = "; ".join(f"{e.path}: {e.message}" for e in errors)
         raise ConceptToSpecError(
-            f"LLM response was not valid JSON: {e}. Raw: {raw[:200]!r}"
-        ) from e
-    if not isinstance(data, dict):
-        raise ConceptToSpecError("LLM response was not a JSON object")
+            f"LLM spec still failed validation after one self-correction "
+            f"pass: {joined}. Re-run with --no-llm for the deterministic "
+            f"fallback, or author tmp/specs/{slug}.json by hand."
+        )
     return data
 
 

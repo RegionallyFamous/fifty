@@ -717,49 +717,54 @@ def _post_with_retry(payload: dict, headers: dict, *, timeout_s: float = 90.0) -
 # ---------------------------------------------------------------------------
 
 
-def review_image(
+def vision_completion(
     *,
     png_path: Path,
-    intent_md: str,
+    system_prompt: str,
+    user_prompt: str,
     theme: str = "",
     route: str = "",
     viewport: str = "",
-    route_purpose: str = "",
     model: str = DEFAULT_MODEL,
     api_key: str | None = None,
     dry_run: bool = False,
+    dry_run_text: str = "",
     max_output_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
     ledger_path: Path = DEFAULT_LEDGER_PATH,
     daily_budget_usd: float = DEFAULT_DAILY_BUDGET_USD,
 ) -> VisionResponse:
-    """Send one screenshot to the vision model and return parsed findings.
+    """Generic PNG + prompt -> text completion against Anthropic's vision API.
+
+    This is the low-level primitive shared by every vision caller in the
+    repo. Callers supply their own `system_prompt` and `user_prompt` and
+    get back the model's raw text in `VisionResponse.raw_text`; parsing
+    the text into task-specific JSON (findings, a design spec, anything
+    else) is the caller's job.
+
+    Re-uses every piece of the original `review_image` plumbing --
+    image downscaling, retry loop, spend ledger, daily budget cap,
+    model pin, pricing constants -- so the project has exactly one
+    place that knows how to talk to Anthropic for vision calls and one
+    ledger that records their spend.
+
+    `VisionResponse.findings` is always an empty list when called
+    through this primitive; only `review_image` populates it, because
+    findings parsing is specific to the screenshot-review rubric.
 
     Raises:
       ApiKeyMissingError if not dry_run and ANTHROPIC_API_KEY is unset.
       BudgetExceededError if today's spend + this call > daily cap.
       ApiCallFailedError on persistent HTTP failures.
 
-    In dry_run mode: returns a synthetic VisionResponse with empty
-    findings, prints the prompt to stdout, and does not call the API or
-    touch the ledger. Useful for prompt iteration and CI smoke tests.
+    In dry_run mode returns a synthetic VisionResponse carrying
+    `dry_run_text` (or a placeholder) without touching the network or
+    the ledger -- useful for prompt iteration and CI smoke tests on
+    branches without secrets.
     """
-    png_bytes = Path(png_path).read_bytes()
-    include_functional = should_flag_functional_breakage(route, viewport)
-    system_prompt = build_system_prompt(
-        include_functional_breakage=include_functional,
-    )
-    user_prompt = build_user_prompt(
-        theme=theme,
-        route=route,
-        viewport=viewport,
-        intent_md=intent_md,
-        route_purpose=route_purpose,
-    )
-
     if dry_run:
         return VisionResponse(
             findings=[],
-            raw_text="(dry-run; no API call)",
+            raw_text=dry_run_text or "(dry-run; no API call)",
             model=model,
             input_tokens=0,
             output_tokens=0,
@@ -774,6 +779,8 @@ def review_image(
             "ANTHROPIC_API_KEY not set and not running with dry_run=True. "
             "Either export an API key or pass --dry-run."
         )
+
+    png_bytes = Path(png_path).read_bytes()
 
     # Approximate floor cost: 1500 image tokens + ~800 prompt tokens.
     estimated = estimate_cost_usd(2300, max_output_tokens // 2)
@@ -814,8 +821,6 @@ def review_image(
     resp = _post_with_retry(payload, headers)
     elapsed = time.monotonic() - started
 
-    # Anthropic response shape:
-    #   {"content": [{"type":"text","text": "..."}, ...], "usage": {...}}
     raw_text = ""
     for block in resp.get("content") or []:
         if isinstance(block, dict) and block.get("type") == "text":
@@ -824,8 +829,6 @@ def review_image(
     in_tokens = int(usage.get("input_tokens", 0))
     out_tokens = int(usage.get("output_tokens", 0))
     cost = estimate_cost_usd(in_tokens, out_tokens)
-
-    findings = parse_findings_response(raw_text)
 
     append_ledger(
         LedgerEntry(
@@ -843,7 +846,7 @@ def review_image(
     )
 
     return VisionResponse(
-        findings=findings,
+        findings=[],
         raw_text=raw_text,
         model=model,
         input_tokens=in_tokens,
@@ -851,6 +854,78 @@ def review_image(
         cost_usd=cost,
         elapsed_s=elapsed,
         dry_run=False,
+    )
+
+
+def review_image(
+    *,
+    png_path: Path,
+    intent_md: str,
+    theme: str = "",
+    route: str = "",
+    viewport: str = "",
+    route_purpose: str = "",
+    model: str = DEFAULT_MODEL,
+    api_key: str | None = None,
+    dry_run: bool = False,
+    max_output_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
+    ledger_path: Path = DEFAULT_LEDGER_PATH,
+    daily_budget_usd: float = DEFAULT_DAILY_BUDGET_USD,
+) -> VisionResponse:
+    """Send one screenshot to the vision model and return parsed findings.
+
+    Thin wrapper over `vision_completion`: builds the findings-rubric
+    system + user prompts, delegates the HTTP/ledger/retry work, then
+    runs `parse_findings_response` on the model's raw text. Callers
+    that want a different response shape (e.g. a design spec) should
+    call `vision_completion` directly with their own prompts.
+
+    Raises:
+      ApiKeyMissingError if not dry_run and ANTHROPIC_API_KEY is unset.
+      BudgetExceededError if today's spend + this call > daily cap.
+      ApiCallFailedError on persistent HTTP failures.
+
+    In dry_run mode: returns a synthetic VisionResponse with empty
+    findings; does not call the API or touch the ledger.
+    """
+    include_functional = should_flag_functional_breakage(route, viewport)
+    system_prompt = build_system_prompt(
+        include_functional_breakage=include_functional,
+    )
+    user_prompt = build_user_prompt(
+        theme=theme,
+        route=route,
+        viewport=viewport,
+        intent_md=intent_md,
+        route_purpose=route_purpose,
+    )
+
+    resp = vision_completion(
+        png_path=png_path,
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        theme=theme,
+        route=route,
+        viewport=viewport,
+        model=model,
+        api_key=api_key,
+        dry_run=dry_run,
+        max_output_tokens=max_output_tokens,
+        ledger_path=ledger_path,
+        daily_budget_usd=daily_budget_usd,
+    )
+
+    findings = [] if resp.dry_run else parse_findings_response(resp.raw_text)
+
+    return VisionResponse(
+        findings=findings,
+        raw_text=resp.raw_text,
+        model=resp.model,
+        input_tokens=resp.input_tokens,
+        output_tokens=resp.output_tokens,
+        cost_usd=resp.cost_usd,
+        elapsed_s=resp.elapsed_s,
+        dry_run=resp.dry_run,
     )
 
 

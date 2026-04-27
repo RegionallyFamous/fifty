@@ -301,6 +301,116 @@ def test_review_image_raises_when_no_api_key(tmp_path, monkeypatch):
         )
 
 
+def test_vision_completion_dry_run_returns_caller_text(tmp_path, monkeypatch):
+    """`vision_completion(dry_run=True)` must never touch the network and
+    should return `dry_run_text` verbatim in `raw_text` so callers (like
+    `concept-to-spec.py`) can feed synthetic fixtures through the same
+    parse path they use in prod."""
+    import _vision_lib as vl
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    def boom(*a, **kw):
+        raise AssertionError("urlopen should never be called in dry-run")
+
+    monkeypatch.setattr(vl.urllib.request, "urlopen", boom)
+    png = list(FIXTURES.glob("*.png"))[0]
+    resp = vl.vision_completion(
+        png_path=png,
+        system_prompt="you are a spec translator",
+        user_prompt="translate this concept",
+        theme="agave",
+        route="concept-to-spec",
+        viewport="mockup",
+        dry_run=True,
+        dry_run_text='{"slug": "agave", "name": "Agave"}',
+        ledger_path=tmp_path / "spend.jsonl",
+    )
+    assert resp.dry_run is True
+    assert resp.findings == []
+    assert resp.raw_text == '{"slug": "agave", "name": "Agave"}'
+    assert resp.cost_usd == 0.0
+
+
+def test_vision_completion_raises_when_no_api_key(tmp_path, monkeypatch):
+    import _vision_lib as vl
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    png = list(FIXTURES.glob("*.png"))[0]
+    with pytest.raises(vl.ApiKeyMissingError):
+        vl.vision_completion(
+            png_path=png,
+            system_prompt="sys",
+            user_prompt="user",
+            dry_run=False,
+            ledger_path=tmp_path / "spend.jsonl",
+        )
+
+
+def test_review_image_delegates_to_vision_completion(tmp_path, monkeypatch):
+    """`review_image` is now a thin wrapper over `vision_completion`.
+    This test locks that delegation in: we patch `vision_completion` to
+    return canned raw_text shaped like a findings response and assert
+    that `review_image` parses it through `parse_findings_response` and
+    surfaces the findings list -- without any HTTP call.
+    """
+    import _vision_lib as vl
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-fake")
+
+    canned_raw = json.dumps({
+        "findings": [
+            {
+                "kind": "vision:typography-overpowered",
+                "severity": "warn",
+                "message": "title is too loud for this hero",
+                "bbox": None,
+                "rationale": "overwhelms the product imagery per rubric",
+                "remedy_hint": "reduce display weight one step",
+            }
+        ]
+    })
+
+    captured: dict = {}
+
+    def fake_vc(**kwargs):
+        captured.update(kwargs)
+        return vl.VisionResponse(
+            findings=[],
+            raw_text=canned_raw,
+            model=kwargs.get("model", "m"),
+            input_tokens=1234,
+            output_tokens=56,
+            cost_usd=0.01,
+            elapsed_s=0.5,
+            dry_run=False,
+        )
+
+    monkeypatch.setattr(vl, "vision_completion", fake_vc)
+
+    png = list(FIXTURES.glob("*.png"))[0]
+    resp = vl.review_image(
+        png_path=png,
+        intent_md="theme rubric",
+        theme="obel",
+        route="home",
+        viewport="desktop",
+        dry_run=False,
+        ledger_path=tmp_path / "spend.jsonl",
+    )
+    assert len(resp.findings) == 1
+    assert resp.findings[0]["kind"] == "vision:typography-overpowered"
+    assert resp.findings[0]["severity"] == "warn"
+    assert resp.raw_text == canned_raw
+    assert resp.dry_run is False
+    # Delegation contract: review_image must hand the system + user
+    # prompts it built to `vision_completion`. If someone edits
+    # review_image to call the API directly again, this assertion
+    # breaks loudly instead of silently regressing the refactor.
+    assert "system_prompt" in captured and "findings" in captured["system_prompt"].lower()
+    assert "user_prompt" in captured and captured["user_prompt"].startswith("## Theme")
+
+
 def test_budget_assertion_blocks_when_already_over(tmp_path, monkeypatch):
     import _vision_lib as vl
 
