@@ -54,6 +54,73 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- testimonials.php
 |   `-- value-props.php
 |-- playground/
+|   |-- content/
+|   |   |-- content.xml
+|   |   `-- products.csv
+|   |-- images/
+|   |   |-- atomic-hero-starburst.png
+|   |   |-- imaginary-deed.pdf
+|   |   |-- imaginary-seal.png
+|   |   |-- lost-recipe.pdf
+|   |   |-- one-hand.wav
+|   |   |-- product-wo-borrowed-nostalgia.jpg
+|   |   |-- product-wo-bottled-morning.jpg
+|   |   |-- product-wo-chaos-seasoning.jpg
+|   |   |-- product-wo-cosmic-mystery-box.jpg
+|   |   |-- product-wo-deja-vu-session.jpg
+|   |   |-- product-wo-discount-gravity.jpg
+|   |   |-- product-wo-dread-repellent.jpg
+|   |   |-- product-wo-fog-in-bottle.jpg
+|   |   |-- product-wo-forbidden-honey.jpg
+|   |   |-- product-wo-gently-used-luck.jpg
+|   |   |-- product-wo-handcrafted-echo.jpg
+|   |   |-- product-wo-haunted-candle.jpg
+|   |   |-- product-wo-imaginary-deed.jpg
+|   |   |-- product-wo-interdim-bazaar.jpg
+|   |   |-- product-wo-invisible-umbrella.jpg
+|   |   |-- product-wo-left-sock.jpg
+|   |   |-- product-wo-lost-recipe-time.jpg
+|   |   |-- product-wo-memory-foam-memory.jpg
+|   |   |-- product-wo-monday-kit.jpg
+|   |   |-- product-wo-moon-dust.jpg
+|   |   |-- product-wo-one-hand-clapping.jpg
+|   |   |-- product-wo-pocket-thunder.jpg
+|   |   |-- product-wo-portable-hole.jpg
+|   |   |-- product-wo-sensory-starter.jpg
+|   |   |-- product-wo-silence-jar.jpg
+|   |   |-- product-wo-spare-key-nowhere.jpg
+|   |   |-- product-wo-spare-tuesday.jpg
+|   |   |-- product-wo-tangible-wifi.jpg
+|   |   |-- product-wo-void-sampler.jpg
+|   |   |-- product-wo-whispering-stone.jpg
+|   |   |-- wonders-page-about.png
+|   |   |-- wonders-page-contact.png
+|   |   |-- wonders-page-faq.png
+|   |   |-- wonders-page-home.png
+|   |   |-- wonders-page-journal.png
+|   |   |-- wonders-page-lookbook.png
+|   |   |-- wonders-page-privacy-policy.png
+|   |   |-- wonders-page-shipping-returns.png
+|   |   |-- wonders-post-behind-the-scenes-bottling-mondays.png
+|   |   |-- wonders-post-caring-for-your-portable-hole.png
+|   |   |-- wonders-post-carl-on-the-moon.png
+|   |   |-- wonders-post-chaos-seasoning-recipe-roundup.png
+|   |   |-- wonders-post-fog-season.png
+|   |   |-- wonders-post-forbidden-honey-what-does-forbidden-mean.png
+|   |   |-- wonders-post-hidden-gems-5-overlooked-products.png
+|   |   |-- wonders-post-how-to-apply-existential-dread-repellent.png
+|   |   |-- wonders-post-imaginary-ownership-beginners.png
+|   |   |-- wonders-post-interview-with-carl.png
+|   |   |-- wonders-post-invisible-umbrella-spotlight.png
+|   |   |-- wonders-post-memoirs-of-a-left-sock.png
+|   |   |-- wonders-post-mildly-haunted-candle-faq.png
+|   |   |-- wonders-post-philosophy-of-bottled-monday-morning.png
+|   |   |-- wonders-post-pocket-thunder-safety.png
+|   |   |-- wonders-post-spare-tuesday-field-guide.png
+|   |   |-- wonders-post-tangible-wifi-30-day-review.png
+|   |   |-- wonders-post-the-art-of-artisanal-silence.png
+|   |   |-- wonders-post-welcome-to-wonders-and-oddities.png
+|   |   `-- wonders-post-year-one-abridged.png
 |   |-- blueprint.json
 |   `-- generate-images.py
 |-- styles/
@@ -152,105 +219,105 @@ Read this file at the start of any LLM session to discover the project's structu
 
 ### `patterns/account-cta.php`
 
-- **Slug:** `foundry/account-cta`
+- **Slug:** `atomic/account-cta`
 - **Title:** Account call-to-action
-- **Categories:** foundry, call-to-action
+- **Categories:** atomic, call-to-action
 - **Keywords:** account, login, register, sign in
 - **Description:** Quiet sign-in / register prompt that uses the real woocommerce/customer-account block. Renders the account icon for logged-in shoppers and a sign-in link for everyone else — no fake fields, no third-party form provider needed.
 
 ### `patterns/brand-story.php`
 
-- **Slug:** `foundry/brand-story`
+- **Slug:** `atomic/brand-story`
 - **Title:** Brand story, image and text
-- **Categories:** foundry
+- **Categories:** atomic
 - **Keywords:** about, brand, story, two-column, media-text
 - **Description:** Two-column section pairing a brand photo with a short story. Replace the image and text.
 
 ### `patterns/cart-page.php`
 
-- **Slug:** `foundry/cart-page`
+- **Slug:** `atomic/cart-page`
 - **Title:** Cart page
-- **Categories:** foundry, woo-commerce
+- **Categories:** atomic, woo-commerce
 - **Keywords:** cart, basket, woocommerce, empty-cart, checkout
 - **Description:** Controlled WC Cart block tree for the storefront Cart page. Removes the default "Customers also bought" cross-sells inner block (a hard generic-WC tell that does not match an editorial storefront), keeps the cart-totals + accepted-payment-methods sidebar, and replaces the default empty-cart-block content with a branded eyebrow + display heading + 2 CTAs in Foundry's quiet-editorial voice. Targets `woocommerce/cart` so the Cart block placeholder picker offers it; also drives the seeded Cart page in `playground/wo-configure.php` so the demo and a real install (Proprietor inserts the pattern in the editor) render the same chrome.
 
 ### `patterns/category-tiles.php`
 
-- **Slug:** `foundry/category-tiles`
+- **Slug:** `atomic/category-tiles`
 - **Title:** Shop-by-category tiles
-- **Categories:** foundry, woo-commerce
+- **Categories:** atomic, woo-commerce
 - **Keywords:** categories, browse, shop, tiles, grid
 - **Description:** Three image tiles linking to top product categories. Replace images and labels with your own categories.
 
 ### `patterns/cta-banner.php`
 
-- **Slug:** `foundry/cta-banner`
+- **Slug:** `atomic/cta-banner`
 - **Title:** Call-to-action banner
-- **Categories:** foundry, call-to-action
+- **Categories:** atomic, call-to-action
 - **Keywords:** cta, banner, conversion, button
 - **Description:** Full-width banner with a single headline and primary CTA. Use to push toward a single conversion goal.
 
 ### `patterns/faq-accordion.php`
 
-- **Slug:** `foundry/faq-accordion`
+- **Slug:** `atomic/faq-accordion`
 - **Title:** FAQ accordion
-- **Categories:** foundry
+- **Categories:** atomic
 - **Keywords:** faq, questions, accordion, support
 - **Description:** Five-item FAQ section using the core Accordion block. Replace the questions and answers.
 
 ### `patterns/featured-products.php`
 
-- **Slug:** `foundry/featured-products`
+- **Slug:** `atomic/featured-products`
 - **Title:** Featured products grid
-- **Categories:** foundry, woo-commerce
+- **Categories:** atomic, woo-commerce
 - **Keywords:** products, collection, grid, shop, featured
 - **Description:** 3-column grid of featured products using the Product Collection block. Adjust the query attributes for your needs.
 
 ### `patterns/footer-columns.php`
 
-- **Slug:** `foundry/footer-columns`
+- **Slug:** `atomic/footer-columns`
 - **Title:** Four-column footer with site map
-- **Categories:** foundry, footer
+- **Categories:** atomic, footer
 - **Keywords:** footer, columns, sitemap
 - **Description:** Replacement footer with shop, support, about, and legal columns. Drop into the footer template part.
 
 ### `patterns/hero-image.php`
 
-- **Slug:** `foundry/hero-image`
+- **Slug:** `atomic/hero-image`
 - **Title:** Hero with image background
-- **Categories:** foundry, featured
+- **Categories:** atomic, featured
 - **Keywords:** hero, banner, header, cover
 - **Description:** Full-width cover image with headline, subhead, and primary CTA. Replace the placeholder image.
 
 ### `patterns/hero-split.php`
 
-- **Slug:** `foundry/hero-split`
+- **Slug:** `atomic/hero-split`
 - **Title:** Hero — ornate apothecary card
-- **Categories:** foundry, featured
+- **Categories:** atomic, featured
 - **Keywords:** hero, apothecary, ornate, boxed, shop card, victorian
 - **Description:** Victorian-apothecary hero: a cream card framed by hairline ornamental
 
 ### `patterns/hero-text.php`
 
-- **Slug:** `foundry/hero-text`
+- **Slug:** `atomic/hero-text`
 - **Title:** Hero, text only
-- **Categories:** foundry, featured
+- **Categories:** atomic, featured
 - **Keywords:** hero, banner, header
 - **Description:** Centered text-only hero with headline, subhead, and CTA. Use when imagery would distract.
 
 ### `patterns/testimonials.php`
 
-- **Slug:** `foundry/testimonials`
+- **Slug:** `atomic/testimonials`
 - **Title:** Customer testimonials
-- **Categories:** foundry, testimonials
+- **Categories:** atomic, testimonials
 - **Keywords:** testimonials, reviews, social proof, quotes
 - **Description:** Three short customer quotes with attribution. Replace with your own.
 
 ### `patterns/value-props.php`
 
-- **Slug:** `foundry/value-props`
+- **Slug:** `atomic/value-props`
 - **Title:** Value propositions, three columns
-- **Categories:** foundry
+- **Categories:** atomic
 - **Keywords:** value, USP, benefits, features, columns
 - **Description:** Three-column row of short value statements. Replace the headlines with your shop's shipping, returns, and guarantee promises.
 
