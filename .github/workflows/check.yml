@@ -25,6 +25,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    # Default pull_request activity is opened/synchronize/reopened only.
+    # The vision-review-gate job below keys off the `vision-reviewed`
+    # label; without `labeled`, adding that label (manually or from
+    # vision-review.yml) would never re-run this workflow and the
+    # required check would stay red until the next push.
+    types: [opened, synchronize, reopened, labeled]
 
 concurrency:
   # Cancel older runs on the same branch so pushing a fix twice in a
