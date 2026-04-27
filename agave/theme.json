@@ -792,10 +792,12 @@
 						},
 						":hover": {
 							"color": {
-								"text": "var(--wp--preset--color--accent)"
+								"text": "var(--wp--preset--color--contrast)"
 							},
 							"typography": {
-								"textDecoration": "none"
+								"textDecoration": "underline",
+								"textDecorationColor": "var(--wp--preset--color--accent)",
+								"textDecorationThickness": "2px"
 							}
 						}
 					}

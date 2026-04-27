@@ -4,17 +4,17 @@
       "*"
     ]
   },
-  "*:wide:checkout-filled.return-to-cart-visible": {
-    "a11y-autocomplete-valid": [
-      "*"
-    ]
-  },
   "*:mobile:checkout-filled.return-to-cart-visible": {
     "a11y-autocomplete-valid": [
       "*"
     ]
   },
   "*:tablet:checkout-filled.return-to-cart-visible": {
+    "a11y-autocomplete-valid": [
+      "*"
+    ]
+  },
+  "*:wide:checkout-filled.return-to-cart-visible": {
     "a11y-autocomplete-valid": [
       "*"
     ]
@@ -69,6 +69,14 @@
     ],
     "narrow-wc-block": [
       ".wo-account-login-grid"
+    ]
+  },
+  "agave:wide:journal": {
+    "a11y-document-title": [
+      "*"
+    ],
+    "a11y-html-has-lang": [
+      "*"
     ]
   },
   "chonk:desktop:cart-filled": {
