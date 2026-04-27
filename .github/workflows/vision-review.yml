@@ -308,23 +308,16 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          shopt -s nullglob
-          dirs=(tmp/snaps/vision-*/)
-          if [ ${#dirs[@]} -eq 0 ]; then
-            echo "No vision-* artifacts downloaded; skipping label."
+          mapfile -t exits < <(find tmp/snaps -name vision-review.exit -type f 2>/dev/null || true)
+          if [ ${#exits[@]} -eq 0 ]; then
+            echo "No vision-review.exit files under tmp/snaps; skipping label."
             exit 0
           fi
           bad=0
-          for d in "${dirs[@]}"; do
-            ex="${d}vision-review.exit"
-            if [ ! -f "$ex" ]; then
-              echo "::warning::missing ${ex}"
-              bad=1
-              continue
-            fi
+          for ex in "${exits[@]}"; do
             code="$(tr -d ' \n\r\t' < "$ex")"
             if [ "$code" != "0" ]; then
-              echo "::notice::vision-review exited ${code} in ${d} — not auto-labeling."
+              echo "::notice::vision-review exited ${code} at ${ex} — not auto-labeling."
               bad=1
             fi
           done
