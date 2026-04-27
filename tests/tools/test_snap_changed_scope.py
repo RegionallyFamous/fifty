@@ -313,6 +313,58 @@ def test_changed_themes_empty_diff(snap_mod, monkeypatch):
     assert snap_mod._changed_themes("origin/main") == []
 
 
+def test_cmd_report_default_theme_discovery_sees_incubating(snap_mod, monkeypatch, tmp_path):
+    """`cmd_report` with no `--theme`/`--all`/`--changed` must include
+    incubating themes when enumerating what was last shot.
+
+    Sibling to `test_changed_themes_sees_incubating_themes`: the same
+    chicken-and-egg pattern hit a second surface. The default
+    ("report whatever is in SNAPS_DIR") branch filters
+    ``p.name in discover_themes()`` — and since
+    ``discover_themes()`` with ``stages=None`` excludes incubating
+    themes, a PR that only touched an incubating theme shoots the
+    theme, writes `tmp/snaps/<slug>/**/findings.json`, then gets
+    "No snaps to report on." from `report` because the filter drops
+    the only theme on disk. The workflow step's `if: hashFiles(...)`
+    guard is passed (findings DO exist), so we reach report and
+    crash. The fix mirrors `_changed_themes`: pass
+    ``stages=("shipping", "incubating")`` in the PR-workflow path.
+    """
+    # Build a fake SNAPS_DIR tree with one incubating theme that's been
+    # shot, and make discover_themes() lie about shipping vs shipping+incubating
+    # so the filter expression is the thing under test.
+    fake_snaps = tmp_path / "tmp" / "snaps"
+    fake_snaps.mkdir(parents=True)
+    (fake_snaps / "apiary").mkdir()  # shot incubating theme
+
+    monkeypatch.setattr(snap_mod, "SNAPS_DIR", fake_snaps)
+
+    def _discover(stages=None):
+        if stages and "incubating" in stages:
+            return ["aero", "obel", "apiary"]
+        return ["aero", "obel"]
+
+    monkeypatch.setattr(snap_mod, "discover_themes", _discover)
+    # Also stub the downstream findings loader so cmd_report early-exits
+    # past the empty-theme crash we're protecting against and can't
+    # reach the parts of the function that need a real findings.json.
+    monkeypatch.setattr(snap_mod, "_gather_findings", lambda _themes: [])
+    monkeypatch.setattr(snap_mod, "_cross_theme_parity", lambda _p: [])
+
+    class _Args:
+        theme = None
+        all = False
+        changed = False
+        format = "json"
+        strict = False
+
+    # Before the fix this raised SystemExit("No snaps to report on.").
+    # After the fix it exits cleanly with 0 (nothing to report AFTER the
+    # filter, but not the false "never ran" exit).
+    rc = snap_mod.cmd_report(_Args())
+    assert rc == 0
+
+
 def test_changed_themes_playground_dir_is_framework(snap_mod, monkeypatch):
     # playground/*.php at the REPO ROOT is shared across every theme's
     # blueprint. Theme-specific `<theme>/playground/**` edits are

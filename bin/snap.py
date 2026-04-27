@@ -5451,9 +5451,17 @@ def cmd_report(args: argparse.Namespace) -> int:
     elif args.all:
         themes = discover_themes()
     else:
-        # Default: report on whatever was last shot.
+        # Default: report on whatever was last shot. Include incubating
+        # themes in the "known" set — `bin/snap.py shoot` (called from
+        # quick-visual.yml with `--changed`) already writes snaps under
+        # `tmp/snaps/<incubating-theme>/` before this report step runs,
+        # and filtering them out here reproduces the same chicken-and-
+        # egg cycle that `_changed_themes` had to fix (shipping-only
+        # default makes new-theme PRs invisible to every PR gate). Same
+        # rationale, same fix: PR workflows MUST see both stages.
+        known = set(discover_themes(stages=("shipping", "incubating")))
         themes = sorted(p.name for p in SNAPS_DIR.iterdir()
-                        if p.is_dir() and p.name in discover_themes()) \
+                        if p.is_dir() and p.name in known) \
             if SNAPS_DIR.exists() else []
     if not themes:
         raise SystemExit(
