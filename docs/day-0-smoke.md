@@ -1,8 +1,11 @@
 # Day-0 smoke batch
 
 > **Status:** template. Fill in the timings + findings below before starting
-> Tier 1 infrastructure work (see
-> `.cursor/plans/pre-100-themes_hardening_eaa4ba54.plan.md`).
+> Tier 1 infrastructure work. Context: this doc was drafted alongside
+> the pre-100-themes hardening plan (Cursor-local, not checked in);
+> the tier conclusions now live in
+> [`docs/shipping-a-theme.md`](shipping-a-theme.md) and
+> [`docs/batch-playbook.md`](batch-playbook.md).
 >
 > **Why this exists:** the hardening plan assumes certain steps are slow
 > (design-spec authoring, manual microcopy, front-page restructure) and

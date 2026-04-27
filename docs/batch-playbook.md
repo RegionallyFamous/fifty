@@ -160,5 +160,8 @@ debt that was fine with fewer themes. Treat as either:
 - [docs/tier-3-deferrals.md](tier-3-deferrals.md) -- shared patterns
   / functions.d / perf budgets are deferred until a batch
   concretely demonstrates their pain. Log evidence there.
-- [pre-100-themes_hardening plan](../.cursor/plans/pre-100-themes_hardening_eaa4ba54.plan.md)
-  -- authoritative source.
+- The pre-100-themes hardening plan (Cursor-local, not checked in)
+  was the authoring context for the tier work these docs describe.
+  The plan's conclusions now live in this doc, `shipping-a-theme.md`,
+  `blindspot-decisions.md`, `day-0-smoke.md`, and
+  `tier-3-deferrals.md` -- treat those as the source of truth.

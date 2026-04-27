@@ -5,7 +5,10 @@ rule has a single home and is discoverable alongside the other Tier docs.
 It is meant to be edited *by the operator who runs the Tier-0 smoke
 batch and the first full Tier-1 batches*, not by the bot.
 
-The rule, restated from [pre-100-themes hardening plan] §Tier 3:
+The rule, restated from the pre-100-themes hardening plan's §Tier 3
+(the plan lived in Cursor's local `.cursor/plans/` and is not checked
+in; this doc, along with `shipping-a-theme.md` and `batch-playbook.md`,
+is the committed source of truth):
 
 > Infrastructure without evidence is waste. Nothing in Tier 3 ships
 > until we've seen the specific pain it addresses in a real batch.
@@ -59,16 +62,18 @@ The rule, restated from [pre-100-themes hardening plan] §Tier 3:
 1. Add an evidence entry under the item above (slug, date, what
    happened, link to PR / shoot).
 2. Once the evidence meets the trigger ("3+ themes", "2+ incidents",
-   etc.), open a new plan in `.cursor/plans/` for that item --
-   **don't inline-ship it**, the plan doc is the contract.
+   etc.), author a scoped plan (either a Cursor-local
+   `.cursor/plans/<slug>.plan.md` for a short run, or a committed
+   issue / PR description for a larger one) — **don't inline-ship
+   it**, the plan is the contract.
 3. Delete the item from this file once it lands on main, so this doc
    only ever lists what is *still* deferred.
 
 ## See also
 
-- [pre-100-themes_hardening plan](../../.cursor/plans/pre-100-themes_hardening_eaa4ba54.plan.md)
-  — the authoritative source of these tiers and their rationale. Do
-  not duplicate the rationale here; link to it.
 - [docs/shipping-a-theme.md](shipping-a-theme.md) — operator checklist,
   where "hit Tier 3 pain" would typically surface first.
 - [docs/batch-playbook.md](batch-playbook.md) — batch runner guide.
+- [docs/blindspot-decisions.md](blindspot-decisions.md) — the companion
+  doc for the six §B-items that, unlike Tier 3 deferrals, already
+  have a landed decision.

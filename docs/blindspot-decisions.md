@@ -1,12 +1,13 @@
 # Blind-spot decisions -- pre-100-themes hardening
 
-This is the "answers for §Blind spots B.1-B.6" companion to the
-[pre-100-themes hardening plan](../.cursor/plans/pre-100-themes_hardening_eaa4ba54.plan.md).
+This is the "answers for §Blind spots B.1-B.6" companion to the pre-100-themes hardening plan
+(authored in Cursor's local `.cursor/plans/`, not checked into git).
 The plan lists six gaps that need a decision before N=100, each
 framed as a 10-minute conversation rather than a project. This doc
 records the landed-on decision and points to the code that implements
 it (or the line of code where implementation would land when pain
-arises).
+arises). Once a blind spot is landed here, this doc -- not the plan
+-- is the source of truth.
 
 Updating rules:
 
@@ -45,7 +46,7 @@ Updating rules:
 
 - **Decision:** **defer**. Add only when the next batch's wall-time
   exceeds 2 hours for 10 themes (the plan's threshold).
-- **Why:** at N≤20 a human can still eyeball slow steps from the
+- **Why:** at N?20 a human can still eyeball slow steps from the
   existing CI logs. The Tier 2.2 dashboard
   (`bin/build-theme-status.py` -> `docs/themes/index.html`) surfaces
   per-theme PASS/FAIL state, which covers the "which theme is
@@ -146,8 +147,10 @@ Updating rules:
 
 ## See also
 
-- [pre-100-themes_hardening plan](../.cursor/plans/pre-100-themes_hardening_eaa4ba54.plan.md)
-  §Blind spots -- the authoritative framing for each B-item.
+- The pre-100-themes hardening plan's §Blind spots section was the
+  original framing for each B-item. The plan is Cursor-local and
+  not checked in; this file is now the source of truth for each
+  landed decision.
 - [docs/shipping-a-theme.md](shipping-a-theme.md) -- the operator
   checklist, which links back to this doc wherever a B-decision
   shows up (§Retirement from B.1, §Product imagery from B.4).
