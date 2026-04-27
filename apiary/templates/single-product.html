@@ -1,0 +1,123 @@
+<!-- wp:template-part {"slug":"header","tagName":"div"} /-->
+
+<!-- wp:group {"tagName":"main","style":{"spacing":{"padding":{"top":"var:preset|spacing|lg","bottom":"var:preset|spacing|3-xl"},"blockGap":"var:preset|spacing|2-xl"}},"layout":{"type":"constrained"}} -->
+<main class="wp-block-group" style="padding-top:var(--wp--preset--spacing--lg);padding-bottom:var(--wp--preset--spacing--3-xl)">
+	<!-- wp:group {"align":"wide","layout":{"type":"constrained"}} -->
+	<div class="wp-block-group alignwide">
+		<!-- wp:woocommerce/breadcrumbs /-->
+
+		<!-- wp:woocommerce/store-notices /-->
+	</div>
+	<!-- /wp:group -->
+
+	<!-- wp:woocommerce/single-product {"align":"wide"} -->
+	<div class="wp-block-woocommerce-single-product alignwide">
+		<!-- wp:columns {"align":"wide","verticalAlignment":"top","style":{"spacing":{"blockGap":{"top":"var:preset|spacing|xl","left":"var:preset|spacing|2-xl"}}}} -->
+		<div class="wp-block-columns alignwide are-vertically-aligned-top">
+			<!-- wp:column {"verticalAlignment":"top","width":"55%"} -->
+			<div class="wp-block-column is-vertically-aligned-top" style="flex-basis:55%">
+				<!-- wp:post-featured-image {"isLink":false,"sizeSlug":"large"} /-->
+			</div>
+			<!-- /wp:column -->
+
+			<!-- wp:column {"verticalAlignment":"top"} -->
+			<div class="wp-block-column is-vertically-aligned-top">
+				<!-- wp:group {"style":{"spacing":{"blockGap":"var:preset|spacing|md"}}} -->
+				<div class="wp-block-group">
+					<!-- wp:woocommerce/product-sale-badge /-->
+
+					<!-- wp:group {"style":{"spacing":{"blockGap":"var:preset|spacing|2-xs"}}} -->
+					<div class="wp-block-group">
+						<!-- wp:post-title {"level":1,"__woocommerceNamespace":"woocommerce/product-query/product-title","style":{"typography":{"fontSize":"var(--wp--preset--font-size--3-xl)"},"spacing":{"margin":{"top":"0","bottom":"0"}}}} /-->
+
+						<!-- wp:woocommerce/product-rating /-->
+					</div>
+					<!-- /wp:group -->
+
+					<!-- wp:woocommerce/product-price {"isDescendentOfSingleProductTemplate":true,"style":{"typography":{"fontSize":"var(--wp--preset--font-size--xl)","fontWeight":"500"}}} /-->
+
+					<!-- wp:post-excerpt {"__woocommerceNamespace":"woocommerce/product-query/product-summary","excerptLength":100,"style":{"typography":{"fontSize":"var(--wp--preset--font-size--base)","lineHeight":"var(--wp--custom--line-height--relaxed)"},"color":{"text":"var(--wp--preset--color--secondary)"},"spacing":{"margin":{"top":"var:preset|spacing|sm","bottom":"var:preset|spacing|sm"}}}} /-->
+
+					<!-- wp:woocommerce/product-stock-indicator {"style":{"typography":{"fontSize":"var(--wp--preset--font-size--xs)","textTransform":"uppercase","letterSpacing":"var(--wp--custom--letter-spacing--wider)"}}} /-->
+
+					<!-- wp:group {"style":{"spacing":{"padding":{"top":"var:preset|spacing|md"},"blockGap":"var:preset|spacing|md"},"border":{"top":{"color":"var:preset|color|border","width":"1px","style":"solid"}}}} -->
+					<div class="wp-block-group" style="border-top-color:var(--wp--preset--color--border);border-top-style:solid;border-top-width:1px;padding-top:var(--wp--preset--spacing--md)">
+						<!-- wp:woocommerce/add-to-cart-form /-->
+					</div>
+					<!-- /wp:group -->
+
+					<!-- wp:template-part {"slug":"product-meta"} /-->
+				</div>
+				<!-- /wp:group -->
+			</div>
+			<!-- /wp:column -->
+		</div>
+		<!-- /wp:columns -->
+
+		<!-- wp:group {"align":"wide","layout":{"type":"constrained"},"style":{"spacing":{"blockGap":"var:preset|spacing|md","margin":{"top":"var:preset|spacing|3-xl"}}}} -->
+		<div class="wp-block-group alignwide" style="margin-top:var(--wp--preset--spacing--3-xl)">
+			<!-- wp:heading {"level":2,"style":{"typography":{"fontSize":"var(--wp--preset--font-size--2-xl)"},"spacing":{"margin":{"bottom":"var:preset|spacing|md"}}}} -->
+			<h2 class="wp-block-heading" style="margin-bottom:var(--wp--preset--spacing--md);font-size:var(--wp--preset--font-size--2-xl)">Description</h2>
+			<!-- /wp:heading -->
+
+			<!-- wp:woocommerce/product-description /-->
+
+			<!-- wp:details {"summary":"Reviews"} -->
+			<details class="wp-block-details"><summary>Reviews</summary>
+				<!-- wp:woocommerce/product-reviews -->
+				<div class="wp-block-woocommerce-product-reviews">
+					<!-- wp:woocommerce/product-reviews-title /-->
+
+					<!-- wp:woocommerce/product-review-template -->
+					<!-- wp:columns -->
+					<div class="wp-block-columns"><!-- wp:column {"width":"40px"} -->
+					<div class="wp-block-column" style="flex-basis:40px"><!-- wp:avatar {"size":40,"style":{"border":{"radius":"20px"}}} /--></div>
+					<!-- /wp:column -->
+
+					<!-- wp:column -->
+					<div class="wp-block-column"><!-- wp:group {"layout":{"type":"flex","flexWrap":"nowrap","justifyContent":"space-between"}} -->
+					<div class="wp-block-group"><!-- wp:woocommerce/product-review-author-name {"fontSize":"small"} /-->
+
+					<!-- wp:woocommerce/product-review-rating /--></div>
+					<!-- /wp:group -->
+
+					<!-- wp:group {"layout":{"type":"flex"}} -->
+					<div class="wp-block-group"><!-- wp:woocommerce/product-review-date {"fontSize":"small"} /--></div>
+					<!-- /wp:group -->
+
+					<!-- wp:woocommerce/product-review-content /--></div>
+					<!-- /wp:column --></div>
+					<!-- /wp:columns -->
+					<!-- /wp:woocommerce/product-review-template -->
+
+					<!-- wp:woocommerce/product-reviews-pagination /-->
+
+					<!-- wp:woocommerce/product-review-form /-->
+				</div>
+				<!-- /wp:woocommerce/product-reviews -->
+			</details>
+			<!-- /wp:details -->
+
+			<!-- wp:details {"summary":"Shipping and returns"} -->
+			<details class="wp-block-details"><summary>Shipping and returns</summary>
+				<!-- wp:paragraph -->
+				<p>Shipping on the house on batches over $50, sent within 1–2 working days from the kitchen at the back of the barn. Faster courier available at the counter.</p>
+				<!-- /wp:paragraph -->
+			</details>
+			<!-- /wp:details -->
+
+			<!-- wp:details {"summary":"Materials and care"} -->
+			<details class="wp-block-details"><summary>Materials and care</summary>
+				<!-- wp:paragraph -->
+				<p>Drawn from hives at the edge of one wildflower meadow, forage-logged by day and hand-jarred at the bench. Keep the jar out of direct sun; a soft cloth around the rim keeps the paper label crisp.</p>
+				<!-- /wp:paragraph -->
+			</details>
+			<!-- /wp:details -->
+		</div>
+		<!-- /wp:group -->
+	</div>
+	<!-- /wp:woocommerce/single-product -->
+</main>
+<!-- /wp:group -->
+
+<!-- wp:template-part {"slug":"footer","tagName":"div"} /-->
