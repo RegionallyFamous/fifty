@@ -53,6 +53,24 @@ Covered bug classes:
    symmetric failure that blocked basalt for the first batch. Both
    labels must land atomically.
 
+5. **`GITHUB_TOKEN` push doesn't retrigger `pull_request`
+   workflows.** Both `.github/workflows/first-baseline.yml` and
+   `.github/workflows/visual.yml` (rebaseline mode) auto-commit into
+   the PR branch. GitHub deliberately suppresses follow-up workflow
+   runs on pushes attributed to the default `GITHUB_TOKEN`
+   (infinite-loop protection). The symptom is exactly the 2026-04-27
+   canary stall: `first-baseline.yml` commits baselines + flips
+   `readiness.stage` to `shipping`, the bot push lands, but
+   `check.yml` / `visual.yml` never see the new state and the PR
+   stays `BLOCKED` forever. The fix is to use a PAT
+   (`FIFTY_AUTO_PAT` secret) with a `GITHUB_TOKEN` fallback on the
+   `actions/checkout@v6` step's `token:` input — pushes from a PAT
+   are attributed to a real user and DO fire synchronize. The
+   fallback keeps the workflow working (commit still lands) when
+   the PAT isn't configured, but the adjacent `Report push-token
+   mode` step prints a `::warning::` so the operator knows to kick
+   CI manually. See `docs/ci-pat-setup.md` for the one-time setup.
+
 Add new bug classes here as we find them. Each one is one ~10-line
 test that runs in ~50ms and is impossible for a human to forget
 (unlike a convention documented only in a PR description).
@@ -267,4 +285,102 @@ def test_vision_review_adds_both_labels_atomically() -> None:
         "vision-review.yml must gate labelling on `vision-review.exit` "
         "files (zero exit = clean critique). A blanket label on every "
         "run would freeze broken designs into the baseline tree."
+    )
+
+
+# Workflows whose auto-commit pushes MUST retrigger downstream
+# pull_request workflows. Each entry: (workflow file, a phrase that
+# uniquely identifies the push step for an error message). Add a new
+# entry here the moment a workflow grows an auto-commit step that
+# pushes to a PR branch — the test below will immediately enforce the
+# PAT pattern on it.
+PAT_PUSHING_WORKFLOWS = [
+    ("first-baseline.yml", "first-baseline.yml auto-commits baselines"),
+    ("visual.yml", "visual.yml rebaseline auto-commits new baselines"),
+]
+
+
+@pytest.mark.parametrize(
+    ("wf_name", "purpose"),
+    PAT_PUSHING_WORKFLOWS,
+    ids=[w for w, _ in PAT_PUSHING_WORKFLOWS],
+)
+def test_auto_commit_workflows_use_pat_with_fallback(
+    wf_name: str, purpose: str
+) -> None:
+    """Workflows that push auto-commits to a PR branch MUST use the
+    `FIFTY_AUTO_PAT || GITHUB_TOKEN` pattern on their
+    `actions/checkout@v6` step's `token:` input.
+
+    The purely-`GITHUB_TOKEN` path is the 2026-04-27 canary stall:
+    the commit lands but GitHub suppresses the follow-up
+    `pull_request.synchronize` run (infinite-loop protection), so
+    `check.yml` / `visual.yml` never see the new baselines and the PR
+    never clears. Using a classic PAT attributes the push to a real
+    user and fires synchronize normally; the fallback to GITHUB_TOKEN
+    keeps the workflow working (with a `::warning::`) on a clone where
+    the secret isn't yet configured.
+
+    We assert two things:
+
+      1. The exact string `secrets.FIFTY_AUTO_PAT` appears at least
+         once in the checkout step's `token:` expression.
+
+      2. `secrets.GITHUB_TOKEN` ALSO appears in the same expression
+         (the fallback), so the workflow doesn't hard-fail on a
+         vanilla fork without the secret. We do NOT want the
+         workflow to silently refuse to commit; the fallback +
+         ::warning:: surface is the right failure mode.
+    """
+    wf = REPO_ROOT / ".github" / "workflows" / wf_name
+    raw = wf.read_text()
+
+    # Find every `token:` expression on a line. We parse textually
+    # rather than via PyYAML because PyYAML collapses `${{ … }}` to a
+    # string and we want to verify the exact source-level expression.
+    token_exprs: list[str] = []
+    for line in raw.splitlines():
+        stripped = line.strip()
+        # Match YAML lines like `token: ${{ secrets.X || secrets.Y }}`.
+        m = re.match(r"^token:\s*(.+)$", stripped)
+        if m:
+            token_exprs.append(m.group(1))
+
+    assert token_exprs, (
+        f"{wf_name} has no `token:` assignment on any step. The "
+        f"{purpose} push step MUST set `token:` on its "
+        f"`actions/checkout@v6` so the push is attributable — without "
+        f"it, the default GITHUB_TOKEN is implied and the push won't "
+        f"retrigger downstream workflows. See docs/ci-pat-setup.md."
+    )
+
+    # At least ONE of the token: assignments must carry the PAT-with-
+    # fallback pattern. Workflows sometimes have multiple checkouts
+    # (e.g. visual.yml's shoot job uses GITHUB_TOKEN; only the
+    # aggregator pushes). We just need the pushing one to be right.
+    has_pat_pattern = any(
+        "secrets.FIFTY_AUTO_PAT" in expr and "secrets.GITHUB_TOKEN" in expr
+        for expr in token_exprs
+    )
+    assert has_pat_pattern, (
+        f"{wf_name} has `token:` assignments but none use the "
+        f"`FIFTY_AUTO_PAT || GITHUB_TOKEN` pattern. "
+        f"{purpose}, and GitHub suppresses follow-up pull_request "
+        f"workflow runs on GITHUB_TOKEN pushes — the PR will stall at "
+        f"BLOCKED forever without the PAT. "
+        f"Observed token expressions: {token_exprs!r}. "
+        f"See docs/ci-pat-setup.md."
+    )
+
+    # The companion diagnostic step must exist so a missing secret is
+    # visible as a ::warning:: rather than a silent stall. If somebody
+    # refactors the warning step away "to clean up", the test fires
+    # and prompts them to keep it.
+    assert "Report push-token mode" in raw, (
+        f"{wf_name} has the PAT pattern but is missing the 'Report "
+        f"push-token mode' step that prints ::notice::/::warning:: "
+        f"depending on whether FIFTY_AUTO_PAT is set. Without this the "
+        f"fallback path (GITHUB_TOKEN, no retrigger) is invisible and "
+        f"stalled PRs look like automation bugs rather than missing "
+        f"secrets."
     )
