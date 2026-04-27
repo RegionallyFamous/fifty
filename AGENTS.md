@@ -421,7 +421,8 @@ Key shared scripts introduced by the tier work (all run from the repo root):
 | `bin/concept-to-spec.py <slug>` | Generate a `bin/design.py` spec from a concept seed. Default is LLM-assisted; `--no-llm` is a deterministic fallback. Output lands at `tmp/specs/<slug>.json`. |
 | `bin/design.py tmp/specs/<slug>.json` | Clone Obel, apply palette + typography tokens, seed products, sync patterns, run first snap + check pass. Idempotent. |
 | `bin/design-batch.py --from-concepts` | Wrap the single-theme flow for 5–20 concepts in one run, with logging + recovery. |
-| `bin/snap.py boot <slug>` | Fast (~30s) boot smoke: catches PHP fatals + broken templates. Runs in `.githooks/pre-commit` and as the first step of `check.yml`. |
+| `bin/snap.py boot <slug>` | Fast (~30s) boot smoke: catches PHP fatals + broken templates. Runs in `.githooks/pre-push` (with 3-attempt retry to tolerate transient Playground download flakes) and as the first step of `check.yml`. Moved out of `.githooks/pre-commit` in April 2026 — the cold-cache cost (~2-3 min/theme) made the pre-commit loop unusable for PHP-touching diffs and the transient-flake rate pushed agents toward reflex `--no-verify`. |
+| `bin/verify-theme.py <slug> --strict` | Reproduces CI's theme gate locally against a pushed branch. Reports `branch-ready` / `static-check` / `snap-shoot` / `evidence-check` phases as JSON or markdown. `bin/design-batch.py` runs this automatically after pushing each theme branch and embeds the verdict in the PR body so the batch report shows red/green before CI even starts. |
 | `bin/visual-matrix.py` | Detects brand-new themes on a PR (used by the vision-review gate in `check.yml`). |
 | `bin/build-theme-status.py` | Rebuilds `docs/themes/index.html` (the shipping dashboard) from every theme's `readiness.json`. |
 | `bin/audit-concepts.py` | Cross-checks `mockups/` against `bin/concept_seed.py::CONCEPTS` and the GH Pages concept queue. |

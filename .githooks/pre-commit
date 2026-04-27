@@ -67,60 +67,35 @@ fi
 echo "✓ pre-commit: all themes pass."
 
 # ---------------------------------------------------------------------------
-# Boot-fatal smoke gate (Tier 1.1, pre-100-themes hardening)
+# Boot-fatal smoke gate MOVED to pre-push
 # ---------------------------------------------------------------------------
-# When a commit touches a theme's PHP or template layer we run
-# `bin/snap.py boot <theme> --cache-state` to catch the "my functions.php
-# has a syntax error" / "template-loader fatals on every request" class
-# of bug BEFORE it reaches CI. The smoke probes four public URLs and
-# scans both the response bodies and the server log for PHP fatals /
-# parse errors / uncaught critical errors.
+# Previously this hook ran `bin/snap.py boot <theme> --cache-state` for
+# every theme whose PHP/template/part/patterns file was staged. Reality
+# check, based on the `agent/batch-20260427-4d9c9b-basalt` merge-prep
+# session in late April 2026:
 #
-# Cost: ~20-30s per theme on a warm --cache-state dir, ~2-3 min cold.
-# We ONLY fire when the diff actually touches PHP or template sources
-# (functions.php, template files, pattern PHP, plugin shims), so a
-# CSS-only or theme.json-only commit keeps the fast ~15s pre-commit
-# round-trip. Setting FIFTY_SKIP_BOOT_SMOKE=1 bypasses the gate for
-# the cases where the cold-cache penalty is genuinely unaffordable
-# (rebase-heavy sessions, offline commits). Like --no-verify the
-# bypass is visible to CI, where the smoke still runs.
-if [ "${FIFTY_SKIP_BOOT_SMOKE:-0}" != "1" ]; then
-  # Staged files that can crash the theme at runtime. We intentionally
-  # do NOT include theme.json, style.css, or *.json blueprints because
-  # those don't execute PHP and won't produce the kind of fatal the
-  # gate is designed to catch. Block pattern PHP (patterns/*.php) +
-  # block template parts (parts/*.html) + functions.php + templates/
-  # because all of them can syntax-error the theme or trip a call to
-  # undefined function.
-  php_changed_themes="$(
-    git diff --cached --name-only --diff-filter=ACMR \
-      -- '*/functions.php' '*/patterns/*.php' '*/templates/*.html' \
-         '*/parts/*.html' '*/inc/*.php' '*/playground/*.php' 2>/dev/null \
-    | awk -F/ '{print $1}' | sort -u
-  )"
-  if [ -n "$php_changed_themes" ]; then
-    echo
-    echo "▸ pre-commit: PHP/template diffs detected; running boot smoke"
-    echo "             on: $(echo "$php_changed_themes" | tr '\n' ' ')"
-    echo "             (set FIFTY_SKIP_BOOT_SMOKE=1 to bypass)"
-    for t in $php_changed_themes; do
-      # Safety filter: skip slugs that aren't real themes (e.g. the diff
-      # touched bin/ or tests/). `snap.py boot` would 404 on the
-      # blueprint anyway but the error message is clearer here.
-      if [ ! -f "$t/theme.json" ]; then
-        continue
-      fi
-      if ! python3 bin/snap.py boot "$t" --cache-state; then
-        echo
-        echo "✘ pre-commit blocked: boot smoke failed for $t."
-        echo "  See tmp/$t-boot.json for the probe + log scan verdict."
-        echo "  Bypass with FIFTY_SKIP_BOOT_SMOKE=1 (CI still runs it)."
-        exit 1
-      fi
-    done
-    echo "✓ pre-commit: boot smoke green for all touched themes."
-  fi
-fi
+#   1. The smoke's cold-cache cost (~2-3 min/theme) dominated the
+#      pre-commit loop for any diff that touched PHP. An agent fixing a
+#      contrast issue would edit functions.php, ship a commit, wait 3
+#      minutes for the smoke to pass, find one more string to touch,
+#      wait another 3 minutes, repeat. The fast inner-loop signal this
+#      hook is supposed to provide evaporated.
+#   2. The smoke was a false-positive magnet for transient flakes
+#      (download timeouts, stale Playground cache, WC CSV parse hiccup
+#      on boot). Humans learned to reach for FIFTY_SKIP_BOOT_SMOKE=1
+#      on reflex and the gate's actual defect-detection value fell off
+#      a cliff.
+#   3. The same boot happens, transitively, inside pre-push's
+#      `bin/snap.py check --changed` visual+axe gate -- so the only
+#      class of bug pre-commit's boot smoke caught that pre-push's
+#      visual gate didn't was "theme fatals on / before any page
+#      renders". That's a real but tiny failure surface, and it's
+#      better handled once at push time with retry logic.
+#
+# The boot smoke now runs inside pre-push with up to 3 retries (see
+# .githooks/pre-push) so a one-off network flake doesn't trigger
+# reflex --no-verify. Pre-commit stays under 20s even on PHP-touching
+# commits, which keeps the agent loop fast.
 
 # Soft warning (rule #20): if we're committing from the shared root
 # while agent worktrees are active, surface a heads-up. Always exits

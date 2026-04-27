@@ -1457,6 +1457,258 @@ def check_blocks_validator() -> Result:
     return r
 
 
+def check_bordered_group_text_has_explicit_color() -> Result:
+    """Fail when a `wp:group` declares a border/background via block attrs
+    AND contains immediate text children (paragraph/list/heading) that
+    DON'T declare a `textColor` attribute.
+
+    Why this bites in practice
+    --------------------------
+    A `wp:group` with
+        {
+          "style": {
+            "border": { "top": { "color": "var:preset|color|contrast", "width": "1px" } },
+            "spacing": { ... }
+          },
+          "backgroundColor": "surface"
+        }
+    serializes to
+        <div class="wp-block-group has-surface-background-color
+                    has-background has-border-color"
+             style="border-top-color:var(--wp--preset--color--contrast);
+                    border-top-width:1px;">
+    WordPress's block-library CSS emits a `.has-border-color { color:
+    inherit }` fallback, and the theme's ambient paragraph `color`
+    inherits down into the group. When the designer meant the paragraph
+    to sit on `surface` in `secondary` (a mid-tone), but the theme's
+    ambient color is `contrast` (the darkest token), the paragraph
+    paints in `contrast` — and for small/thin serif copy that slides
+    below the 4.5:1 AA floor on a surface-colored card. This is the
+    EXACT pattern the Basalt merge-prep session spent three hours
+    fixing by adding `textColor:"secondary"` to every child paragraph
+    and list in the materials row and the footer stamp.
+
+    The static fix is equally cheap and deterministic: when a `wp:group`
+    carries a border/background decoration AND its immediate text
+    children lack an explicit `textColor`, fail the gate. Authors
+    either set `textColor` explicitly (which also makes the intent
+    legible in the editor) or move the border into `theme.json`
+    `styles.css` where the cascade risk is scoped and testable.
+
+    Scope
+    -----
+    * Runs on `templates/`, `parts/`, and `patterns/` `.html` files.
+    * "Text children" = `wp:paragraph`, `wp:heading`, `wp:list` that
+      appear as direct descendants of the bordered/backgrounded
+      `wp:group` (not nested inside an inner group — the inner group
+      owns its own decoration and contrast story).
+    * A child is considered safe if its JSON contains ANY of:
+        - `textColor` (top-level attribute)
+        - `style.color.text` (inline custom color)
+        - a `className` starting with `has-` that ends in `-color`
+          (e.g. `has-secondary-color` placed manually).
+    * A child is also considered safe if `textColor: contrast` or
+      `textColor: secondary` (or any preset) is set explicitly — the
+      presence of the attribute is the proof that the author thought
+      about the cascade.
+
+    False-positive surface
+    ----------------------
+    Groups that carry a border/background decoration but whose ONLY
+    text children are inside further `wp:group`/`wp:columns` wrappers
+    (which own their own paint) are fine — we only flag direct text
+    children, not transitively. That matches how the cascade bites in
+    practice: the inner wrapper interposes a new `color` stacking
+    context and the designer is then forced to declare textColor on
+    it anyway.
+    """
+    r = Result(
+        "Bordered/backgrounded wp:group children declare an explicit textColor"
+    )
+
+    skip_dirs = {"templates/", "parts/", "patterns/"}
+    files: list[Path] = []
+    for path in iter_files((".html",)):
+        rel = path.relative_to(ROOT).as_posix()
+        if any(rel.startswith(d) for d in skip_dirs):
+            files.append(path)
+
+    # --- Shape detectors ---
+    # We parse block-by-block using a tiny, line-numbered walker so we
+    # can emit precise error messages and avoid the hairy nested-block
+    # gymnastics a pure regex would require.
+    block_open_re = re.compile(
+        r"<!--\s*wp:([a-z0-9][a-z0-9-]*(?:/[a-z0-9][a-z0-9-]*)?)"
+        r"(?:\s+(\{[^<>]*?\}))?\s*(/?)-->",
+    )
+    block_close_re = re.compile(
+        r"<!--\s*/wp:([a-z0-9][a-z0-9-]*(?:/[a-z0-9][a-z0-9-]*)?)\s*-->",
+    )
+
+    # backgroundColor values that equal the theme's ambient page
+    # background. Children of such groups inherit text color from the
+    # page normally and the contrast math is unchanged. Don't flag.
+    AMBIENT_BG_TOKENS = {"base"}
+
+    def _has_decoration(json_text: str) -> tuple[bool, str]:
+        """Return (decorated?, reason). A group is 'decorated' for the
+        purposes of THIS check only when it changes the text-contrast
+        context for its children -- i.e. it paints a non-ambient
+        background, a gradient, or a background image. A border alone
+        doesn't change the contrast context (children still render on
+        the page's ambient background), so border-only groups are NOT
+        flagged; that was the false-positive pattern observed on
+        obel/templates/order-confirmation.html (a hairline-bordered
+        "next steps" section with no backgroundColor).
+
+        Returns the first reason hit so the error message names the
+        attr that triggered the check.
+        """
+        bg = re.search(r'"backgroundColor"\s*:\s*"([^"]+)"', json_text)
+        if bg and bg.group(1) not in AMBIENT_BG_TOKENS:
+            return True, f"backgroundColor:{bg.group(1)}"
+        if re.search(r'"gradient"\s*:\s*"', json_text):
+            return True, "gradient"
+        # A `style.background` object only counts when it sets an image
+        # or gradient -- raw `style.background.backgroundColor` is the
+        # same story as the top-level `backgroundColor` above, already
+        # handled.
+        if re.search(
+            r'"background"\s*:\s*\{[^{}]*?"backgroundImage"\s*:', json_text
+        ):
+            return True, "style.background.backgroundImage"
+        if re.search(
+            r'"background"\s*:\s*\{[^{}]*?"gradient"\s*:', json_text
+        ):
+            return True, "style.background.gradient"
+        return False, ""
+
+    _SAFE_TEXT_COLOR_RE = re.compile(
+        r'("textColor"\s*:\s*"[^"]+"'
+        r'|"color"\s*:\s*\{[^{}]*?"text"\s*:\s*"[^"]+"\}'
+        r'|"className"\s*:\s*"[^"]*\bhas-[a-z0-9-]+-color\b[^"]*")'
+    )
+
+    TEXT_BLOCK_NAMES = {"paragraph", "heading", "list", "list-item", "quote"}
+
+    def _scan_children(
+        text: str,
+        outer_end: int,
+        outer_close: int,
+        outer_json: str,
+    ) -> list[tuple[int, str, str]]:
+        """Return list of (lineno, block_name, reason) for every
+        DIRECT text-block child of the outer group that lacks an
+        explicit textColor. `outer_end` is the byte offset of the
+        group's opening `-->`; `outer_close` is the offset of its
+        closing `<!-- /wp:group -->`.
+        """
+        findings: list[tuple[int, str, str]] = []
+        pos = outer_end
+        depth = 0  # depth of nested block openings below the outer group
+        while pos < outer_close:
+            m_open = block_open_re.search(text, pos, outer_close)
+            m_close = block_close_re.search(text, pos, outer_close)
+            if m_open is None and m_close is None:
+                break
+            # Pick whichever comes first
+            if m_open is not None and (m_close is None or m_open.start() < m_close.start()):
+                name = m_open.group(1)
+                block_json = m_open.group(2) or ""
+                self_closing = m_open.group(3) == "/"
+                is_direct_child = depth == 0
+                # Short-names: "core/paragraph" -> "paragraph"
+                short = name.split("/")[-1]
+                if (
+                    is_direct_child
+                    and short in TEXT_BLOCK_NAMES
+                    and not _SAFE_TEXT_COLOR_RE.search(block_json)
+                ):
+                    lineno = text.count("\n", 0, m_open.start()) + 1
+                    findings.append((lineno, name, "no textColor"))
+                if not self_closing:
+                    depth += 1
+                pos = m_open.end()
+            else:
+                depth -= 1
+                pos = m_close.end()  # type: ignore[union-attr]
+                if depth < 0:
+                    # Shouldn't happen -- defensive against mismatched
+                    # block comments. Bail.
+                    break
+        return findings
+
+    for path in files:
+        rel = path.relative_to(ROOT).as_posix()
+        text = path.read_text(encoding="utf-8", errors="replace")
+        # Walk every wp:group opener; match its closing tag; if the
+        # opener is decorated and has plain text children, emit a
+        # failure per child.
+        pos = 0
+        while True:
+            m = block_open_re.search(text, pos)
+            if m is None:
+                break
+            pos = m.end()
+            name = m.group(1)
+            block_json = m.group(2) or ""
+            if m.group(3) == "/":
+                continue  # self-closing (impossible for group, but safe)
+            if name != "core/group" and name != "group":
+                continue
+            decorated, reason = _has_decoration(block_json)
+            if not decorated:
+                continue
+            # If the DECORATED group itself declares a textColor (or a
+            # custom style.color.text), children inherit that known
+            # color via CSS cascade -- they don't need to declare their
+            # own. That's the chonk/announcement-bar pattern
+            # (`backgroundColor:contrast` + `textColor:accent`) which
+            # is safe because `accent` inherits to the paragraph.
+            if _SAFE_TEXT_COLOR_RE.search(block_json):
+                continue
+            # Find the matching closing tag. Depth counts only wp:group
+            # opens/closes so nested non-group children don't confuse
+            # the match.
+            depth = 1
+            scan = pos
+            close_at: int | None = None
+            while depth > 0:
+                inner_open = re.search(
+                    r"<!--\s*wp:group(?:\s+\{[^<>]*?\})?\s*-->", text[scan:]
+                )
+                inner_close = re.search(r"<!--\s*/wp:group\s*-->", text[scan:])
+                if inner_close is None:
+                    break
+                if inner_open is not None and inner_open.start() < inner_close.start():
+                    depth += 1
+                    scan += inner_open.end()
+                else:
+                    depth -= 1
+                    if depth == 0:
+                        close_at = scan + inner_close.start()
+                        break
+                    scan += inner_close.end()
+            if close_at is None:
+                continue
+            findings = _scan_children(text, pos, close_at, block_json)
+            for lineno, child_name, why in findings:
+                r.fail(
+                    f"{rel}:{lineno}: {child_name} inside decorated "
+                    f"wp:group (reason: {reason}) but has no `textColor` — "
+                    f"paragraphs silently inherit the page's ambient color, "
+                    f"which often produces a contrast failure on the "
+                    f"group's new background. Add `textColor:\"<preset>\"` "
+                    f"to the {child_name} block attrs, or move the "
+                    f"decoration into `theme.json` styles.css where it "
+                    f"can be tested against the cascade. "
+                    f"({why})"
+                )
+    if r.passed:
+        r.details.append(f"{len(files)} pattern/template/part file(s) checked")
+    return r
+
+
 def check_no_fake_forms() -> Result:
     """Fail if any pattern/template/part contains a 'form-shaped' block that
     cannot actually submit anywhere.
@@ -8707,6 +8959,7 @@ def _build_results(offline: bool) -> list[Result]:
         check_block_attrs_use_tokens(),
         check_block_markup_anti_patterns(),
         check_blocks_validator(),
+        check_bordered_group_text_has_explicit_color(),
         check_no_fake_forms(),
         check_swatch_js_targets_real_select(),
         check_no_empty_cover_blocks(),

@@ -117,6 +117,94 @@ if echo "$DRIFT_OUTPUT" | grep -qE '^\+|FAIL'; then
   exit 1
 fi
 
+# ---------------------------------------------------------------------------
+# Boot-fatal smoke gate (moved here from pre-commit, 2026-04-27)
+# ---------------------------------------------------------------------------
+# We run `bin/snap.py boot <theme> --cache-state` for any theme whose
+# PHP / template / parts / patterns / playground layer was touched by
+# commits on this push. The point is to catch "functions.php parse
+# error" / "fatals on first render" bugs BEFORE the ~127s visual gate
+# burns time on them -- a boot fail makes the visual gate meaningless
+# anyway.
+#
+# Why pre-push and not pre-commit: see .githooks/pre-commit for the
+# long version. Short version: pre-commit needs to stay under 20s, and
+# the boot smoke is a transient-flake magnet that historically drove
+# agents to `FIFTY_SKIP_BOOT_SMOKE=1`-on-reflex. Pre-push absorbs the
+# smoke with 3-attempt retry logic so a one-off network blip doesn't
+# strand a green commit.
+#
+# Cost: one Playground boot per touched theme (~20-30s warm /
+# ~2-3min cold) × up to 3 retries. On a typical single-theme push
+# that's a worst case ~9min; on a steady-state push where the cache
+# is warm it's ~30s. The pre-push hook is already willing to spend
+# ~127s/theme on the visual gate, so the boot gate is a strict
+# prefix.
+#
+# Escape hatch: FIFTY_SKIP_BOOT_SMOKE=1 git push   (CI still runs it).
+if [ "${FIFTY_SKIP_BOOT_SMOKE:-0}" = "1" ]; then
+  echo "▸ pre-push: boot smoke SKIPPED (FIFTY_SKIP_BOOT_SMOKE=1)."
+else
+  # Which themes got PHP/template/part/pattern changes in the commits
+  # being pushed? We compare against `origin/main` so a two-commit
+  # stack both get checked, not just the tip commit.
+  #
+  # Fallback: if `origin/main` isn't known (new clone, never fetched),
+  # fall back to HEAD~1..HEAD so we at least check the tip commit.
+  if git rev-parse --verify --quiet origin/main >/dev/null 2>&1; then
+    range="origin/main..HEAD"
+  else
+    range="HEAD~1..HEAD"
+  fi
+  php_changed_themes="$(
+    git diff --name-only --diff-filter=ACMR "$range" \
+      -- '*/functions.php' '*/patterns/*.php' '*/templates/*.html' \
+         '*/parts/*.html' '*/inc/*.php' '*/playground/*.php' 2>/dev/null \
+    | awk -F/ '{print $1}' | sort -u
+  )"
+  if [ -n "$php_changed_themes" ]; then
+    echo "▸ pre-push: PHP/template diffs detected; running boot smoke"
+    echo "            on: $(echo "$php_changed_themes" | tr '\n' ' ')"
+    echo "            (3 retries per theme; set FIFTY_SKIP_BOOT_SMOKE=1 to bypass)"
+    for t in $php_changed_themes; do
+      if [ ! -f "$t/theme.json" ]; then
+        # The diff touched something that LOOKS like a theme dir but
+        # isn't real (e.g. stale worktree, renamed slug). Skip with a
+        # one-line note rather than hard-failing, so the push isn't
+        # held hostage by a no-longer-existing theme.
+        echo "  skip $t (no theme.json; not a real theme)"
+        continue
+      fi
+      attempt=1
+      max_attempts=3
+      passed=0
+      while [ $attempt -le $max_attempts ]; do
+        if python3 bin/snap.py boot "$t" --cache-state; then
+          passed=1
+          break
+        fi
+        if [ $attempt -lt $max_attempts ]; then
+          sleep_s=$(( attempt * 10 ))
+          echo "  boot smoke attempt $attempt/$max_attempts for $t failed; retrying in ${sleep_s}s…"
+          sleep "$sleep_s"
+        fi
+        attempt=$(( attempt + 1 ))
+      done
+      if [ "$passed" != "1" ]; then
+        echo
+        echo "✘ pre-push blocked: boot smoke for $t failed $max_attempts times in a row."
+        echo "  This is usually a real bug (PHP parse error, call to"
+        echo "  undefined function, bad blueprint, unseeded playground"
+        echo "  content). See tmp/$t-boot.json for the latest verdict."
+        echo "  If you're convinced it's a transient network flake and"
+        echo "  want CI to decide: FIFTY_SKIP_BOOT_SMOKE=1 git push"
+        exit 1
+      fi
+    done
+    echo "✓ pre-push: boot smoke green for all touched themes."
+  fi
+fi
+
 echo "▸ pre-push: bin/snap.py check --changed (visual + axe gate)"
 # Phase 1 (`phase1-prepush-visual`) of the closed-loop plan: pre-push
 # now boots Playground for any theme touched by the diff and runs
