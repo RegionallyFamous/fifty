@@ -185,3 +185,213 @@ def test_save_baseline_failures_disables_env_var_during_scrape(monkeypatch):
     # And it must have been restored afterwards (so unrelated callers
     # downstream keep the same environment they had).
     assert os.environ.get("FIFTY_ALLOW_BASELINE_FAILURES") == "1"
+
+
+# ----------------------------------------------------------------------------
+# Tier 2.4 of the pre-100-themes hardening plan: baseline-decay scan.
+# ----------------------------------------------------------------------------
+
+
+def _write_baseline(path: Path, failures: list[dict[str, str]]) -> None:
+    path.write_text(
+        json.dumps({"recorded_against": "origin/main", "failures": failures}) + "\n",
+        encoding="utf-8",
+    )
+
+
+def test_baseline_decay_clean_passes(tmp_path: Path, monkeypatch, capsys):
+    """Fresh entries with owner + justification stay silent and exit 0."""
+    baseline = tmp_path / "check-baseline-failures.json"
+    _write_baseline(
+        baseline,
+        [
+            {
+                "theme": "obel",
+                "check": "known-debt",
+                "added_at": "2026-04-10",
+                "owner": "alice@example.com",
+                "justification": "tracked in LINEAR-123; safe to ignore",
+            }
+        ],
+    )
+    monkeypatch.setattr(check, "BASELINE_FAILURES_PATH", baseline)
+
+    # The scan uses "today" from `datetime.now(timezone.utc)`; as long
+    # as `added_at` is recent enough it won't trip the 30-day rule. We
+    # keep the date close to "now" by always writing a recent ISO date
+    # in tests and re-reading with a big max_age when we need to
+    # isolate the justification/owner paths. Here 9999 disables the
+    # stale rule so we only assert on the happy path.
+    assert check._baseline_decay(max_age_days=9999) == 0
+    out = capsys.readouterr().out
+    assert "ok" in out
+
+
+def test_baseline_decay_no_file_is_ok(tmp_path: Path, monkeypatch, capsys):
+    """Missing allow list is not an error -- a repo with zero debt is
+    a valid state and the nightly scan should not file issues for it."""
+    monkeypatch.setattr(check, "BASELINE_FAILURES_PATH", tmp_path / "missing.json")
+    assert check._baseline_decay() == 0
+    assert "not present" in capsys.readouterr().out
+
+
+def test_baseline_decay_flags_missing_justification(tmp_path: Path, monkeypatch, capsys):
+    """Any entry with an empty justification must trip the scan."""
+    baseline = tmp_path / "check-baseline-failures.json"
+    _write_baseline(
+        baseline,
+        [
+            {
+                "theme": "obel",
+                "check": "known-debt",
+                "added_at": "2026-04-10",
+                "owner": "alice@example.com",
+                "justification": "",
+            }
+        ],
+    )
+    monkeypatch.setattr(check, "BASELINE_FAILURES_PATH", baseline)
+
+    assert check._baseline_decay(max_age_days=9999) == 1
+    out = capsys.readouterr().out
+    assert "missing justification" in out
+    assert "obel / known-debt" in out
+
+
+def test_baseline_decay_flags_missing_owner(tmp_path: Path, monkeypatch, capsys):
+    baseline = tmp_path / "check-baseline-failures.json"
+    _write_baseline(
+        baseline,
+        [
+            {
+                "theme": "obel",
+                "check": "known-debt",
+                "added_at": "2026-04-10",
+                "owner": "",
+                "justification": "tracked in LINEAR-123",
+            }
+        ],
+    )
+    monkeypatch.setattr(check, "BASELINE_FAILURES_PATH", baseline)
+
+    assert check._baseline_decay(max_age_days=9999) == 1
+    assert "missing owner" in capsys.readouterr().out
+
+
+def test_baseline_decay_flags_stale_added_at(tmp_path: Path, monkeypatch, capsys):
+    """Entries older than max_age_days must trip, independent of
+    whether they have a justification."""
+    baseline = tmp_path / "check-baseline-failures.json"
+    _write_baseline(
+        baseline,
+        [
+            {
+                "theme": "obel",
+                "check": "known-debt",
+                "added_at": "1999-01-01",
+                "owner": "alice@example.com",
+                "justification": "tracked",
+            }
+        ],
+    )
+    monkeypatch.setattr(check, "BASELINE_FAILURES_PATH", baseline)
+
+    assert check._baseline_decay(max_age_days=30) == 1
+    out = capsys.readouterr().out
+    assert "stale" in out
+
+
+def test_baseline_decay_flags_malformed_added_at(tmp_path: Path, monkeypatch, capsys):
+    baseline = tmp_path / "check-baseline-failures.json"
+    _write_baseline(
+        baseline,
+        [
+            {
+                "theme": "obel",
+                "check": "known-debt",
+                "added_at": "whenever",
+                "owner": "alice@example.com",
+                "justification": "tracked",
+            }
+        ],
+    )
+    monkeypatch.setattr(check, "BASELINE_FAILURES_PATH", baseline)
+
+    assert check._baseline_decay() == 1
+    assert "malformed" in capsys.readouterr().out
+
+
+def test_save_baseline_failures_preserves_added_at(tmp_path: Path, monkeypatch):
+    """On regeneration, an existing (theme, check) pair's added_at +
+    owner + justification must be preserved. This is the whole reason
+    the scan can fire a decay warning at all -- if a routine re-save
+    reset these fields the clock would never run out."""
+    monkeypatch.setattr(check, "MONOREPO_ROOT", tmp_path)
+    baseline = tmp_path / "check-baseline-failures.json"
+    _write_baseline(
+        baseline,
+        [
+            {
+                "theme": "obel",
+                "check": "known-debt",
+                "added_at": "2026-04-10",
+                "owner": "alice@example.com",
+                "justification": "LINEAR-123; fixing in Q3",
+            }
+        ],
+    )
+    monkeypatch.setattr(check, "BASELINE_FAILURES_PATH", baseline)
+    monkeypatch.delenv("FIFTY_ALLOW_BASELINE_FAILURES", raising=False)
+
+    class _Theme:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    monkeypatch.setattr(check, "iter_themes", lambda: [_Theme("obel")])
+
+    def fake_build(offline: bool):
+        return [_make_fail("known-debt")]
+
+    monkeypatch.setattr(check, "_build_results", fake_build)
+
+    assert check._save_baseline_failures(offline=True) == 0
+
+    saved = json.loads(baseline.read_text(encoding="utf-8"))
+    entries = saved["failures"]
+    assert len(entries) == 1
+    assert entries[0]["theme"] == "obel"
+    assert entries[0]["check"] == "known-debt"
+    # These three fields were preserved verbatim from the prior file.
+    assert entries[0]["added_at"] == "2026-04-10"
+    assert entries[0]["owner"] == "alice@example.com"
+    assert entries[0]["justification"] == "LINEAR-123; fixing in Q3"
+
+
+def test_save_baseline_failures_stamps_new_entries(tmp_path: Path, monkeypatch):
+    """A newly-discovered failure pair gets stamped with today's date,
+    the current git committer email (best-effort), and an empty
+    justification that the operator is expected to fill in."""
+    monkeypatch.setattr(check, "MONOREPO_ROOT", tmp_path)
+    baseline = tmp_path / "check-baseline-failures.json"
+    monkeypatch.setattr(check, "BASELINE_FAILURES_PATH", baseline)
+    monkeypatch.delenv("FIFTY_ALLOW_BASELINE_FAILURES", raising=False)
+
+    class _Theme:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    monkeypatch.setattr(check, "iter_themes", lambda: [_Theme("obel")])
+    monkeypatch.setattr(check, "_build_results", lambda offline: [_make_fail("brand-new")])
+    monkeypatch.setattr(check, "_git_committer_email", lambda: "bot@example.com")
+
+    assert check._save_baseline_failures(offline=True) == 0
+
+    saved = json.loads(baseline.read_text(encoding="utf-8"))
+    entries = saved["failures"]
+    assert len(entries) == 1
+    assert entries[0]["theme"] == "obel"
+    assert entries[0]["check"] == "brand-new"
+    # YYYY-MM-DD shape, not empty.
+    assert len(entries[0]["added_at"]) == 10 and entries[0]["added_at"][4] == "-"
+    assert entries[0]["owner"] == "bot@example.com"
+    assert entries[0]["justification"] == ""

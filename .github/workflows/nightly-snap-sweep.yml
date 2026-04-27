@@ -277,3 +277,72 @@ jobs:
             --title "$title" \
             --body "$body" \
             --label snap-drift
+
+  baseline-decay:
+    # Tier 2.4 of the pre-100-themes hardening plan: keep the baseline
+    # allowlist (tests/check-baseline-failures.json) from quietly
+    # accumulating permanent debt. Runs nightly, completely
+    # independent of the snap sweep (cheap Python scan), and opens a
+    # single issue whenever any entry is older than 30 days or is
+    # missing a justification / owner. Intentionally no auto-prune:
+    # the allow list is a safety net, not a to-do list the bot gets
+    # to edit.
+    name: baseline allow-list decay check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Run baseline decay scan
+        id: decay
+        continue-on-error: true
+        run: |
+          python3 bin/check.py --baseline-decay \
+            --baseline-decay-days 30 \
+            2>&1 | tee tmp-baseline-decay.log
+          echo "exit=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+      - name: Upload decay log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: baseline-decay-${{ github.run_id }}
+          path: tmp-baseline-decay.log
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: File baseline-decay issue
+        # Only runs on scheduled invocations (the cron) so manual
+        # dispatches used for debugging don't spam the issue tracker.
+        # Matches the snap-drift gate above.
+        if: >-
+          steps.decay.outputs.exit != '0'
+          && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="baseline-decay: stale / undocumented entries ($(date -u +%Y-%m-%d))"
+          {
+            echo "\`tests/check-baseline-failures.json\` has entries that need"
+            echo "attention. See the attached \`baseline-decay-<run_id>\` artifact,"
+            echo "or scroll the job log, for the full list."
+            echo ""
+            echo "For each entry listed below, the owner is expected to either:"
+            echo ""
+            echo "  1. Fix the underlying check and re-run"
+            echo "     \`python3 bin/check.py --save-baseline-failures\` from"
+            echo "     origin/main to drop the entry; or"
+            echo "  2. Hand-edit \`tests/check-baseline-failures.json\` to add a"
+            echo "     real \`justification\` explaining why this debt is staying"
+            echo "     in the allow list."
+            echo ""
+            echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } > issue-body.md
+          gh issue create \
+            --title "$title" \
+            --body-file issue-body.md \
+            --label baseline-decay

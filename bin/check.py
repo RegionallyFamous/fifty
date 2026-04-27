@@ -8387,12 +8387,153 @@ def check_no_unpushed_commits() -> Result:
     return r
 
 
+def _baseline_decay(max_age_days: int = 30) -> int:
+    """Scan `tests/check-baseline-failures.json` and print which
+    entries are decayed -- older than `max_age_days` (default 30) or
+    missing the `justification` / `owner` fields. Exits 0 if nothing
+    is decayed, 1 if any entry needs attention.
+
+    Wired from `.github/workflows/nightly-snap-sweep.yml` (Tier 2.4
+    of the pre-100-themes hardening plan) so the baseline doesn't
+    quietly accrete permanent debt: any entry that's been on main
+    for more than 30 days without a justification opens a visible
+    workflow failure, which the owner is expected to resolve by
+    either fixing the underlying check or writing a real
+    justification.
+
+    We intentionally DO NOT auto-delete decayed entries. The allow
+    list is a safety net for feature branches, not a to-do list the
+    bot can prune. Humans pay the owner-notification cost on purpose.
+    """
+    from datetime import datetime, timezone
+
+    if not BASELINE_FAILURES_PATH.exists():
+        print(f"{GREEN}ok{RESET}: {BASELINE_FAILURES_PATH.name} not present; nothing to decay")
+        return 0
+    try:
+        data = json.loads(BASELINE_FAILURES_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        print(f"{RED}error{RESET}: cannot parse {BASELINE_FAILURES_PATH.name}: {exc}")
+        return 1
+
+    entries = data.get("failures", []) or []
+    if not entries:
+        print(f"{GREEN}ok{RESET}: no baseline failures recorded")
+        return 0
+
+    today = datetime.now(timezone.utc).date()  # noqa: UP017
+
+    stale: list[tuple[dict[str, str], int]] = []
+    missing_justification: list[dict[str, str]] = []
+    missing_owner: list[dict[str, str]] = []
+    malformed: list[dict[str, str]] = []
+
+    for entry in entries:
+        added_at = entry.get("added_at", "")
+        justification = (entry.get("justification") or "").strip()
+        owner = (entry.get("owner") or "").strip()
+
+        if not added_at:
+            malformed.append(entry)
+        else:
+            try:
+                added_date = datetime.strptime(added_at, "%Y-%m-%d").date()
+                age = (today - added_date).days
+                if age > max_age_days:
+                    stale.append((entry, age))
+            except ValueError:
+                malformed.append(entry)
+
+        if not justification:
+            missing_justification.append(entry)
+        if not owner:
+            missing_owner.append(entry)
+
+    def _fmt(entry: dict[str, str]) -> str:
+        return f"{entry.get('theme', '?')} / {entry.get('check', '?')}"
+
+    total_issues = len(stale) + len(missing_justification) + len(missing_owner) + len(malformed)
+    if total_issues == 0:
+        print(
+            f"{GREEN}ok{RESET}: {len(entries)} baseline entries, all within "
+            f"{max_age_days} days and fully documented"
+        )
+        return 0
+
+    print(
+        f"{YELLOW}baseline-decay{RESET}: {total_issues} issue"
+        f"{'s' if total_issues != 1 else ''} across {len(entries)} entries"
+    )
+    if stale:
+        print(f"\n{RED}stale ({len(stale)}, >{max_age_days}d old):{RESET}")
+        for entry, age in sorted(stale, key=lambda pair: -pair[1]):
+            print(f"  [{age}d] {_fmt(entry)}  (added_at={entry.get('added_at', '?')})")
+    if missing_justification:
+        print(f"\n{RED}missing justification ({len(missing_justification)}):{RESET}")
+        for entry in missing_justification:
+            print(f"  {_fmt(entry)}")
+    if missing_owner:
+        print(f"\n{YELLOW}missing owner ({len(missing_owner)}):{RESET}")
+        for entry in missing_owner:
+            print(f"  {_fmt(entry)}")
+    if malformed:
+        print(f"\n{RED}malformed or missing added_at ({len(malformed)}):{RESET}")
+        for entry in malformed:
+            print(f"  {_fmt(entry)}  (added_at={entry.get('added_at', '<missing>')!r})")
+    print(
+        "\nFix: edit tests/check-baseline-failures.json by hand -- add a real "
+        "justification, or fix the underlying check and re-run "
+        "`python3 bin/check.py --save-baseline-failures` from origin/main to "
+        "drop the entry."
+    )
+    return 1
+
+
+def _git_committer_email() -> str:
+    """Return `git log -1 --format=%ae` or '' on failure.
+
+    Used to auto-populate the `owner` field on newly-discovered baseline
+    entries so operators don't have to hand-type an email address when
+    first writing the file. When the tree is not a git checkout (or the
+    bot doesn't have an identity, like in ephemeral CI runners) we fall
+    back to '' and let `--baseline-decay` warn about the empty field
+    separately.
+    """
+    try:
+        r = subprocess.run(
+            ["git", "log", "-1", "--format=%ae"],
+            cwd=str(MONOREPO_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        return r.stdout.strip()
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return ""
+
+
 def _save_baseline_failures(offline: bool) -> int:
     """Rebuild `tests/check-baseline-failures.json` from the CURRENT
     working tree. Runs every check silently across every theme in the
     monorepo (via iter_themes), collects the names of every failure,
     and writes them back as `(theme, check)` pairs alongside the
     origin/main SHA the tree matches (if any).
+
+    Each entry carries three Tier 2.4 fields (pre-100-themes hardening):
+
+      * `added_at`      ISO date (YYYY-MM-DD) the pair was first seen.
+                        Preserved across regenerations so the decay
+                        rule (>30 days => nightly baseline-stale issue)
+                        isn't reset by a routine refresh.
+      * `owner`         Populated from `git log -1 --format=%ae` when
+                        the entry is first added. Re-runs keep the
+                        existing owner; a missing owner stays empty
+                        and is flagged by --baseline-decay.
+      * `justification` Short free-text explanation. Starts empty on
+                        first write; operators fill it in by hand
+                        when the entry lands. --baseline-decay flags
+                        empty justifications just like stale ones.
 
     Callers are expected to run this from a tree that REPRESENTS the
     canonical baseline -- either a clean checkout of `origin/main`, or
@@ -8404,12 +8545,30 @@ def _save_baseline_failures(offline: bool) -> int:
 
     Returns 0 on successful write, 1 on any unexpected error.
     """
+    from datetime import datetime, timezone
+
     global ROOT
+
+    # Preserve `added_at` / `owner` / `justification` across
+    # regenerations: a re-run that re-discovers an existing
+    # (theme, check) pair must NOT reset its first-seen date or the
+    # operator will never see the decay warning fire.
+    existing_by_key: dict[tuple[str, str], dict[str, str]] = {}
+    if BASELINE_FAILURES_PATH.exists():
+        try:
+            prior = json.loads(BASELINE_FAILURES_PATH.read_text(encoding="utf-8"))
+            for entry in prior.get("failures", []) or []:
+                theme = entry.get("theme")
+                check = entry.get("check")
+                if isinstance(theme, str) and isinstance(check, str):
+                    existing_by_key[(theme, check)] = entry
+        except (json.JSONDecodeError, OSError):
+            existing_by_key = {}
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")  # noqa: UP017
+    owner = _git_committer_email()
+
     pairs: list[dict[str, str]] = []
-    # Run silently -- no per-check rendering, no per-theme summaries.
-    # This is a scraping pass, not a user-facing gate. Temporarily
-    # disable the baseline-demote env var so a previously-generated
-    # baseline doesn't mask its own contents on a regeneration run.
     prev_allow = os.environ.pop("FIFTY_ALLOW_BASELINE_FAILURES", None)
     try:
         for theme in iter_themes():
@@ -8417,7 +8576,27 @@ def _save_baseline_failures(offline: bool) -> int:
             results = _build_results(offline=offline)
             for r in results:
                 if not r.passed and not r.skipped:
-                    pairs.append({"theme": theme.name, "check": r.name})
+                    key = (theme.name, r.name)
+                    prior_entry = existing_by_key.get(key)
+                    if prior_entry is not None:
+                        # Preserve every prior metadata field verbatim;
+                        # only `theme` and `check` are authoritative
+                        # from this run.
+                        entry = dict(prior_entry)
+                        entry["theme"] = theme.name
+                        entry["check"] = r.name
+                        entry.setdefault("added_at", today)
+                        entry.setdefault("owner", owner)
+                        entry.setdefault("justification", "")
+                    else:
+                        entry = {
+                            "theme": theme.name,
+                            "check": r.name,
+                            "added_at": today,
+                            "owner": owner,
+                            "justification": "",
+                        }
+                    pairs.append(entry)
     finally:
         if prev_allow is not None:
             os.environ["FIFTY_ALLOW_BASELINE_FAILURES"] = prev_allow
@@ -8451,13 +8630,6 @@ def _save_baseline_failures(offline: bool) -> int:
         except subprocess.TimeoutExpired:
             sha = "UNKNOWN"
 
-    # Importing here (not at module scope) keeps the cold-start cost of
-    # bin/check.py low for the 99% of invocations that don't regenerate
-    # the baseline. `timezone.utc` is used instead of `datetime.UTC`
-    # so the script stays Python 3.9-compatible (`datetime.UTC` is
-    # 3.11+).
-    from datetime import datetime, timezone
-
     payload = {
         "_doc": [
             "Snapshot of which (theme, check-title) pairs are already failing on",
@@ -8466,6 +8638,13 @@ def _save_baseline_failures(offline: bool) -> int:
             "these as WARN-BASELINE in yellow and does NOT count them toward its",
             "exit code -- only NEW failures, introduced by the current branch,",
             "can block a commit/push/PR.",
+            "",
+            "Each entry carries added_at (YYYY-MM-DD, preserved across refreshes),",
+            "owner (git committer email), and justification (operator-supplied).",
+            "Entries older than 30 days or missing a justification are surfaced",
+            "by `python3 bin/check.py --baseline-decay` (also run nightly via",
+            ".github/workflows/nightly-snap-sweep.yml) so the baseline doesn't",
+            "quietly accrete permanent debt.",
             "",
             "Regenerate: `python3 bin/check.py --save-baseline-failures`, ideally",
             "from a detached `git worktree` at origin/main so the snapshot",
@@ -8720,12 +8899,38 @@ def main() -> int:
             "baseline reflects main's reality, not your branch's."
         ),
     )
+    parser.add_argument(
+        "--baseline-decay",
+        action="store_true",
+        help=(
+            "Scan tests/check-baseline-failures.json and exit 1 if any "
+            "entry is older than --baseline-decay-days (default 30) or "
+            "is missing a justification / owner. Wired from "
+            ".github/workflows/nightly-snap-sweep.yml (Tier 2.4 of the "
+            "pre-100-themes hardening plan) so the allow list doesn't "
+            "quietly accrete permanent debt. Intentionally does NOT "
+            "auto-delete decayed entries -- humans pay the owner-"
+            "notification cost on purpose."
+        ),
+    )
+    parser.add_argument(
+        "--baseline-decay-days",
+        type=int,
+        default=30,
+        help=(
+            "Max age (in days) for a baseline entry before "
+            "--baseline-decay flags it as stale. Default 30."
+        ),
+    )
     args = parser.parse_args()
 
     offline = args.offline or args.quick
 
     if args.save_baseline_failures:
         return _save_baseline_failures(offline=offline)
+
+    if args.baseline_decay:
+        return _baseline_decay(max_age_days=args.baseline_decay_days)
 
     if args.all:
         exit_codes = []
