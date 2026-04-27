@@ -11,7 +11,15 @@
 #       lint-format) to pass before a PR can be merged.
 #   2. DO NOT require branches to be up to date with main before merge
 #      (`strict: false`). See the block below for the rationale.
-#   3. Require at least 1 approving review.
+#   3. Do NOT require an approving review. CODEOWNERS still routes
+#      review requests to the Proprietor, and the seven required
+#      status checks below enforce every hard rule in AGENTS.md, but
+#      a solo-maintainer repo can't satisfy "1 approving review" on
+#      PRs opened by that same maintainer (GitHub forbids self-
+#      approval) -- required_approving_review_count: 1 would stall
+#      every PR at REVIEW_REQUIRED forever. If this ever becomes a
+#      multi-maintainer repo, raise this back to 1 in the payload
+#      below (search for `required_approving_review_count`).
 #   4. Enforce linear history (no merge commits).
 #   5. Disallow force pushes and branch deletion on main.
 #   6. Require CODEOWNERS sign-off when the PR touches a CODEOWNERS path.
@@ -94,7 +102,7 @@ payload=$(jq -n \
     required_pull_request_reviews: {
       dismiss_stale_reviews: true,
       require_code_owner_reviews: true,
-      required_approving_review_count: 1
+      required_approving_review_count: 0
     },
     restrictions: null,
     required_linear_history: true,
