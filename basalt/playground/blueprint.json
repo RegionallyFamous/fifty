@@ -1,8 +1,8 @@
 {
   "$schema": "https://playground.wordpress.net/blueprint-schema.json",
   "meta": {
-    "title": "Foundry \u2014 WooCommerce demo (Wonders & Oddities)",
-    "description": "WordPress + WooCommerce + Foundry, pre-loaded with the Wonders & Oddities sample shop and blog.",
+    "title": "Basalt \u2014 WooCommerce demo (Wonders & Oddities)",
+    "description": "WordPress + WooCommerce + Basalt, pre-loaded with the Wonders & Oddities sample shop and blog.",
     "author": "RegionallyFamous"
   },
   "preferredVersions": {
@@ -26,17 +26,17 @@
         "url": "https://github.com/RegionallyFamous/fifty",
         "ref": "main",
         "refType": "branch",
-        "path": "foundry"
+        "path": "basalt"
       },
       "options": {
         "activate": true,
-        "targetFolderName": "foundry"
+        "targetFolderName": "basalt"
       }
     },
     {
       "step": "setSiteOptions",
       "options": {
-        "blogname": "Foundry",
+        "blogname": "Basalt",
         "WPLANG": "en_US"
       }
     },
