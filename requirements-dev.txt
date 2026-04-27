@@ -16,3 +16,9 @@ mypy>=1.19,<2
 # version Playwright + visual.yml install separately so the lockstep is
 # obvious.
 Pillow>=10,<12
+# PyYAML is consumed by `tests/tools/test_ci_yaml.py` (the static guard
+# that parses every `.github/workflows/*.yml` to catch the scalar
+# `run: ... \<newline>` line-continuation bug and to enforce that every
+# job declares `timeout-minutes`). Keeping the parsing faithful means
+# a real YAML parser — regex scans miss every escape-sequence edge case.
+PyYAML>=6,<7

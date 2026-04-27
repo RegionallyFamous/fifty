@@ -50,6 +50,23 @@ def sample_source(tmp_path: Path, make_theme) -> Path:
         '{"$schema":"x","version":3,"title":"Warm"}\n',
         encoding="utf-8",
     )
+    # Source's readiness.json is shipping — clone.py must rewrite this
+    # to incubating on the destination so new themes don't fraudulently
+    # claim shipping status before they've been reviewed + baselined.
+    (src / "readiness.json").write_text(
+        json.dumps(
+            {
+                "stage": "shipping",
+                "summary": "Obel summary.",
+                "owner": "nick",
+                "last_checked": "2026-04-26",
+                "notes": "Original shipping theme.",
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     return src
 
 
@@ -111,6 +128,63 @@ def test_clone_creates_new_theme_with_renamed_slug(
     )
     # Non-skipped style variation IS copied.
     assert (clone / "styles" / "warm.json").is_file()
+
+
+def test_clone_writes_incubating_readiness(
+    tmp_path: Path,
+    sample_source: Path,
+) -> None:
+    """A freshly-cloned theme MUST land at ``stage: "incubating"``.
+
+    Without this, clone.py byte-for-byte inherits the source theme's
+    ``readiness.json`` — which always says ``stage: "shipping"`` on
+    the six originals — and ``check_visual_baseline_present`` then
+    fails on the new theme with "no baselines" because shipping
+    themes are required to have a visual-baseline tree. The fix is
+    to scope baseline requirements to shipping themes AND to land
+    new themes at incubating; the ``.github/workflows/first-baseline.yml``
+    workflow auto-promotes them to shipping after baselines are
+    generated.
+
+    This test pins the clone-side half of the contract.
+    """
+    import os
+    import subprocess
+
+    target_parent = tmp_path / "mono"
+    target_parent.mkdir()
+
+    cmd = [
+        sys.executable,
+        str(BIN_DIR / "clone.py"),
+        "acme",
+        "--source",
+        str(sample_source),
+        "--target",
+        str(target_parent),
+    ]
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PYTHONPATH": str(BIN_DIR)},
+    )
+    assert result.returncode == 0, (
+        f"clone.py failed:\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+
+    readiness_path = target_parent / "acme" / "readiness.json"
+    assert readiness_path.is_file(), "clone did not produce a readiness.json on the new theme"
+    payload = json.loads(readiness_path.read_text())
+    assert payload["stage"] == "incubating", (
+        f"freshly-cloned theme must start at stage=incubating; got "
+        f"{payload['stage']!r}. Fix: bin/clone.py must overwrite the "
+        "source readiness.json rather than byte-copy it."
+    )
+    # The summary/notes should mention the new slug AND indicate WIP
+    # state, so a human reading the file knows it's a scaffold.
+    assert "Acme" in payload["summary"]
+    assert "WIP" in payload["summary"] or "wip" in payload["summary"].lower()
 
 
 def test_clone_refuses_invalid_slug(sample_source: Path, tmp_path: Path) -> None:
