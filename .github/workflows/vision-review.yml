@@ -334,4 +334,21 @@ jobs:
             exit 0
           fi
           echo "All vision-review.exit files are 0 — adding vision-reviewed label."
+          # Self-heal: create the label on-demand if a prior `gh label
+          # delete` or a fresh-fork workflow leaves the repo without
+          # it. `gh label create` is idempotent for conflict errors
+          # (returns 422 we can ignore) but not for "already exists"
+          # via the REST API; running `view` first avoids the noisy
+          # 422. Without this the step used to fail with
+          #   'vision-reviewed' not found
+          # and the gate in check.yml stayed red forever even after
+          # the critique finished cleanly — exactly the shape that
+          # blocked PR #53 (basalt) for the first batch of themes.
+          if ! gh label list --repo "$REPO" --json name \
+                --jq '.[].name' | grep -qx 'vision-reviewed'; then
+            gh label create vision-reviewed \
+              --color "0e8a16" \
+              --description "Vision review completed cleanly by .github/workflows/vision-review.yml" \
+              --repo "$REPO" || true
+          fi
           gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label vision-reviewed
