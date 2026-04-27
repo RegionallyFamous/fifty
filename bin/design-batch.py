@@ -97,6 +97,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import importlib.util
 import json
 import os
 import re
@@ -554,9 +555,62 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--manifest",
-        required=True,
+        required=False,
         type=Path,
-        help="Path to manifest JSON listing themes to design.",
+        default=None,
+        help=(
+            "Path to manifest JSON listing themes to design. Mutually "
+            "exclusive with --from-concepts: one source of entries is "
+            "required."
+        ),
+    )
+    p.add_argument(
+        "--from-concepts",
+        action="store_true",
+        help=(
+            "Synthesize a manifest from bin/concept_seed.CONCEPTS -- every "
+            "concept that has a mockup PNG under docs/mockups/ but no theme "
+            "directory yet. Uses bin/concept-to-spec.py to generate one "
+            "spec JSON per concept into tmp/specs/<slug>.json before "
+            "handing off to the normal worktree-per-theme loop. "
+            "Combine with --limit to batch N at a time, or "
+            "--concept-slugs a,b,c to scope to specific concepts."
+        ),
+    )
+    p.add_argument(
+        "--concept-slugs",
+        default=None,
+        help=(
+            "Comma-separated concept slugs to include (overrides "
+            "--from-concepts's default of 'all concepts without a theme "
+            "dir'). Slugs MUST exist in bin/concept_seed.CONCEPTS. "
+            "Useful for re-driving a specific set after a failed batch."
+        ),
+    )
+    p.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help=(
+            "When used with --from-concepts, cap the number of themes "
+            "attempted this run. Ignored when --manifest is used (the "
+            "manifest size is the cap). Recommended for first runs: "
+            "--limit 5 matches the Day-0 smoke-batch shape."
+        ),
+    )
+    p.add_argument(
+        "--concept-spec-mode",
+        choices=("llm", "no-llm"),
+        default="no-llm",
+        help=(
+            "How --from-concepts should build each spec. 'no-llm' "
+            "(default) uses the deterministic controlled-vocab mapping "
+            "from bin/concept-to-spec.py -- free, offline-safe, "
+            "reproducible. 'llm' sends the mockup PNG + concept metadata "
+            "to the vision model for a polished spec. Use 'no-llm' for "
+            "first rehearsal runs so the batch halt condition is 'spec "
+            "failed to validate', not 'ran out of vision budget'."
+        ),
     )
     p.add_argument(
         "--run-id",
@@ -705,11 +759,128 @@ def _load_existing_report(path: Path) -> RunReport | None:
     )
 
 
+def _synthesize_from_concepts(
+    *,
+    concept_slugs: str | None,
+    limit: int | None,
+    spec_mode: str,
+) -> tuple[list[ManifestEntry], dict[str, Any]]:
+    """Build a manifest's worth of ManifestEntry rows from concept_seed.
+
+    Produces one `tmp/specs/<slug>.json` per selected concept via
+    `bin/concept-to-spec.py`'s in-process entry points, then returns
+    the list of `ManifestEntry(spec_path=...)`. This keeps the rest
+    of the batch machinery (worktrees, resumability, PR opening)
+    identical whether the batch came from a manifest or from concepts.
+
+    Selection rules:
+      * If `concept_slugs` is set, use that comma-separated list.
+      * Otherwise, pick every concept that:
+          (a) has an entry in `concept_seed.CONCEPTS`,
+          (b) has a mockup PNG at `docs/mockups/<slug>.png`, AND
+          (c) does NOT yet have a theme directory `./<slug>/theme.json`.
+      * Then apply `limit` (if set).
+
+    The function exits with a non-zero SystemExit on bad input (unknown
+    slug, missing mockup, spec fails validation). The caller does not
+    swallow these: a broken concept list should halt the batch before
+    any worktree is created.
+    """
+    # Lazy imports so `design-batch.py --manifest ...` (the legacy
+    # path) doesn't pay the concept-to-spec import cost when it's not
+    # needed. And so `--help` still works if concept_seed is broken.
+    spec = importlib.util.spec_from_file_location(
+        "concept_to_spec", ROOT / "bin" / "concept-to-spec.py"
+    )
+    if spec is None or spec.loader is None:
+        raise SystemExit("error: could not load bin/concept-to-spec.py")
+    c2s = importlib.util.module_from_spec(spec)
+    sys.modules.setdefault("concept_to_spec", c2s)
+    spec.loader.exec_module(c2s)
+
+    from concept_seed import CONCEPTS
+
+    by_slug = {c["slug"]: c for c in CONCEPTS}
+
+    if concept_slugs:
+        wanted = [s.strip() for s in concept_slugs.split(",") if s.strip()]
+        unknown = [s for s in wanted if s not in by_slug]
+        if unknown:
+            raise SystemExit(
+                f"error: --concept-slugs references unknown concepts: {unknown}. "
+                "All slugs must exist in bin/concept_seed.CONCEPTS."
+            )
+        picked = wanted
+    else:
+        picked = []
+        for s, c in by_slug.items():
+            mockup = ROOT / "docs" / "mockups" / f"{s}.png"
+            theme_dir = ROOT / s / "theme.json"
+            if mockup.is_file() and not theme_dir.exists():
+                picked.append(s)
+        # Stable sort so `--limit N` is reproducible across runs.
+        picked.sort()
+
+    if limit is not None:
+        picked = picked[: max(0, limit)]
+
+    if not picked:
+        raise SystemExit(
+            "error: --from-concepts found no candidates. Every concept "
+            "with a mockup already has a theme directory, or the mockup "
+            "PNGs are missing. Use --concept-slugs to force a specific set."
+        )
+
+    specs_dir = ROOT / "tmp" / "specs"
+    entries: list[ManifestEntry] = []
+    for slug in picked:
+        out = specs_dir / f"{slug}.json"
+        concept = by_slug[slug]
+        mockup = ROOT / "docs" / "mockups" / f"{slug}.png"
+        try:
+            if spec_mode == "no-llm":
+                payload = c2s.concept_to_spec(concept)
+            else:
+                payload = c2s.concept_to_spec_llm(concept, mockup, dry_run=False)
+            c2s.write_spec(payload, out)
+        except c2s.ConceptToSpecError as e:
+            raise SystemExit(f"error: concept {slug!r}: {e}") from e
+        entries.append(
+            ManifestEntry(
+                prompt=None,
+                spec_path=out.resolve(),
+                slug_hint=slug,
+            )
+        )
+        print(f"[batch] concept-to-spec wrote {out}", file=sys.stderr)
+    return entries, {}
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
-    entries, manifest_opts = load_manifest(args.manifest)
+    if args.from_concepts and args.manifest is not None:
+        print(
+            "error: --from-concepts and --manifest are mutually exclusive; "
+            "pick one source of entries.",
+            file=sys.stderr,
+        )
+        return 2
+    if not args.from_concepts and args.manifest is None:
+        print(
+            "error: exactly one of --manifest or --from-concepts is required.",
+            file=sys.stderr,
+        )
+        return 2
+    if args.from_concepts:
+        entries, manifest_opts = _synthesize_from_concepts(
+            concept_slugs=args.concept_slugs,
+            limit=args.limit,
+            spec_mode=args.concept_spec_mode,
+        )
+    else:
+        entries, manifest_opts = load_manifest(args.manifest)
     if not entries:
-        print("error: manifest has no themes", file=sys.stderr)
+        print("error: no themes to run", file=sys.stderr)
         return 2
 
     run_id = _resolve_run_id(args.run_id)
