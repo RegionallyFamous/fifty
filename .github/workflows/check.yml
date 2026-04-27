@@ -384,3 +384,76 @@ jobs:
         run: python3 -m pip install -r requirements-dev.txt
       - name: Run lint gate
         run: python3 bin/lint.py
+
+  vision-review-gate:
+    # Tier 2.3 of the pre-100-themes hardening plan: require the
+    # `vision-reviewed` label on any PR that adds a brand-new theme to
+    # main. "Brand-new" is derived from git: a theme is new iff
+    # `<slug>/theme.json` exists on HEAD but not on origin/main
+    # (detected by bin/visual-matrix.py's _new_themes helper).
+    #
+    # Why this gate exists:
+    #   The existing .github/workflows/vision-review.yml is label-
+    #   triggered and advisory -- opening a PR without the `design`
+    #   label means no vision critique runs at all. At six themes
+    #   that's fine; at 100 themes it's a recipe for an ugly theme
+    #   to ship because nobody remembered to ask for the critique.
+    #   This job encodes "new themes MUST get a human (or automated)
+    #   vision pass before first merge" as a required check.
+    #
+    # What it does:
+    #   * On pull_request, resolve `new_themes` via visual-matrix.py
+    #     (empty list for a PR that doesn't add a theme).
+    #   * If the list is empty, pass immediately -- existing themes
+    #     keep their old advisory flow.
+    #   * If the list is non-empty, require the `vision-reviewed`
+    #     label on the PR. Present => green; absent => red with a
+    #     message that explains how to get the label.
+    #
+    # Why not reuse vision-review.yml:
+    #   That workflow is `pull_request.types: [labeled, ...]` and
+    #   does a ~12-min shoot+critique. This gate must be fast (~30s)
+    #   and must fire on every PR, label or no label, so a new
+    #   theme can't sneak in under a fresh PR that forgot to label.
+    name: vision-reviewed required for new themes
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Resolve new themes on this PR
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_MODE: check-changed
+          BASE_REF: origin/main
+        run: python3 bin/visual-matrix.py
+      - name: Enforce vision-reviewed label on new-theme PRs
+        env:
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          IS_NEW_THEME: ${{ steps.scope.outputs.is_new_theme }}
+          NEW_THEMES: ${{ steps.scope.outputs.new_themes }}
+        run: |
+          if [ "$IS_NEW_THEME" != "true" ]; then
+            echo "No brand-new themes in this PR; vision gate is a no-op."
+            exit 0
+          fi
+          echo "This PR introduces brand-new theme(s): $NEW_THEMES"
+          # `LABELS` is a JSON array of strings like ["design","vision-reviewed"].
+          # grep the raw string to stay dependency-free, same shape as
+          # the gate in .github/workflows/vision-review.yml.
+          if echo "$LABELS" | grep -q '"vision-reviewed"'; then
+            echo "`vision-reviewed` label present -- gate passes."
+            exit 0
+          fi
+          echo "::error::This PR adds a brand-new theme but is missing the"
+          echo "         'vision-reviewed' label. Apply the 'design' label"
+          echo "         to trigger .github/workflows/vision-review.yml, or"
+          echo "         ask a human reviewer to add 'vision-reviewed'"
+          echo "         manually after a design pass. Existing themes"
+          echo "         stay on the advisory path and are not affected."
+          exit 1
