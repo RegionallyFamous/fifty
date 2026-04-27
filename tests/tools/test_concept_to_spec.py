@@ -358,9 +358,14 @@ def test_concept_to_spec_llm_retries_once_on_validation_failure(c2s, concepts, m
         captured_prompts.append(kwargs["user_prompt"])
         text = bad_first_response if call_count["n"] == 1 else good_second_response
         return vl.VisionResponse(
-            findings=[], raw_text=text, model="m",
-            input_tokens=100, output_tokens=50, cost_usd=0.0,
-            elapsed_s=0.1, dry_run=False,
+            findings=[],
+            raw_text=text,
+            model="m",
+            input_tokens=100,
+            output_tokens=50,
+            cost_usd=0.0,
+            elapsed_s=0.1,
+            dry_run=False,
         )
 
     monkeypatch.setattr(vl, "vision_completion", fake_vc)
@@ -390,9 +395,14 @@ def test_concept_to_spec_llm_raises_after_second_validation_failure(c2s, concept
 
     def fake_vc(**kwargs):
         return vl.VisionResponse(
-            findings=[], raw_text=bad, model="m",
-            input_tokens=100, output_tokens=50, cost_usd=0.0,
-            elapsed_s=0.1, dry_run=False,
+            findings=[],
+            raw_text=bad,
+            model="m",
+            input_tokens=100,
+            output_tokens=50,
+            cost_usd=0.0,
+            elapsed_s=0.1,
+            dry_run=False,
         )
 
     monkeypatch.setattr(vl, "vision_completion", fake_vc)
@@ -416,9 +426,14 @@ def test_concept_to_spec_llm_tolerates_code_fence(c2s, concepts, monkeypatch):
 
     def fake_vc(**kwargs):
         return vl.VisionResponse(
-            findings=[], raw_text=wrapped, model="m",
-            input_tokens=100, output_tokens=50, cost_usd=0.0,
-            elapsed_s=0.1, dry_run=False,
+            findings=[],
+            raw_text=wrapped,
+            model="m",
+            input_tokens=100,
+            output_tokens=50,
+            cost_usd=0.0,
+            elapsed_s=0.1,
+            dry_run=False,
         )
 
     monkeypatch.setattr(vl, "vision_completion", fake_vc)

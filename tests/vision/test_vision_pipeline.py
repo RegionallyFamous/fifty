@@ -358,18 +358,20 @@ def test_review_image_delegates_to_vision_completion(tmp_path, monkeypatch):
 
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-fake")
 
-    canned_raw = json.dumps({
-        "findings": [
-            {
-                "kind": "vision:typography-overpowered",
-                "severity": "warn",
-                "message": "title is too loud for this hero",
-                "bbox": None,
-                "rationale": "overwhelms the product imagery per rubric",
-                "remedy_hint": "reduce display weight one step",
-            }
-        ]
-    })
+    canned_raw = json.dumps(
+        {
+            "findings": [
+                {
+                    "kind": "vision:typography-overpowered",
+                    "severity": "warn",
+                    "message": "title is too loud for this hero",
+                    "bbox": None,
+                    "rationale": "overwhelms the product imagery per rubric",
+                    "remedy_hint": "reduce display weight one step",
+                }
+            ]
+        }
+    )
 
     captured: dict = {}
 
