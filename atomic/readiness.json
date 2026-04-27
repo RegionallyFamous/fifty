@@ -1,7 +1,7 @@
 {
-  "stage": "shipping",
-  "summary": "Editorial WooCommerce block theme with hairline borders, generous whitespace, and a warm cream palette; a sibling register to Atomic.",
+  "stage": "incubating",
+  "summary": "atomic: WIP (first-5 batch retrofit). Edit this summary with the theme's brand voice once the design pass is complete.",
   "owner": "nick",
-  "last_checked": "2026-04-26",
-  "notes": "Sixth theme, shipped alongside the original batch."
+  "last_checked": "",
+  "notes": "First-5 batch retrofit: stage flipped to incubating so check.py skips baseline checks until .github/workflows/first-baseline.yml auto-generates baselines (triggered by applying the ready-for-baseline label on PR)."
 }
