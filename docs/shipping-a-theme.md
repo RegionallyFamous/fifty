@@ -90,9 +90,9 @@ themes end up with the same "Add to cart" variant, one will fail.
 ### 5b. Product imagery
 
 5-20 distinct hero / product / category images per theme. The sourcing
-decision (generated / licensed / manual) is an open blind spot
-([pre-100-themes hardening plan §B.4](../.cursor/plans/pre-100-themes_hardening_eaa4ba54.plan.md)
--- update when decided). Gate:
+decision (generated / licensed / manual) is an open blind spot -- see
+[`docs/blindspot-decisions.md` §B.4](blindspot-decisions.md#b4-imagery--content-variety)
+for the current stance. Gate:
 `check_product_images_unique_across_themes` + `check_hero_images_unique_across_themes`.
 
 ### 5c. Front-page restructure
@@ -192,5 +192,8 @@ retirement script is needed.
   runner.
 - [docs/tier-3-deferrals.md](tier-3-deferrals.md) -- what is
   intentionally NOT shipped yet and under what trigger to build it.
-- [pre-100-themes_hardening plan](../.cursor/plans/pre-100-themes_hardening_eaa4ba54.plan.md)
-  -- authoritative source for the tiers referenced above.
+- [docs/blindspot-decisions.md](blindspot-decisions.md) -- landed
+  decisions for the six open §B-items.
+- The pre-100-themes hardening plan (Cursor-local, not checked in)
+  was the original framing for the tier work; the checked-in docs
+  above are now the source of truth.

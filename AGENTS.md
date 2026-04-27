@@ -1,6 +1,6 @@
 # AGENTS.md — Fifty monorepo
 
-This is the agent guide for the **Fifty monorepo**. Each theme inside this repo (`obel/`, `chonk/`, `selvedge/`, `lysholm/`, `aero/`, plus any future variants you scaffold via `bin/clone.py`) has its own `AGENTS.md` with theme-specific rules. Read this file first to understand the layout, then read the theme-specific `AGENTS.md` for the theme you are editing.
+This is the agent guide for the **Fifty monorepo**. Each theme inside this repo (`obel/`, `chonk/`, `selvedge/`, `lysholm/`, `aero/`, `foundry/`, plus any future variants you scaffold via `bin/clone.py`) has its own `AGENTS.md`, `INDEX.md`, and `readiness.json` with theme-specific rules and shipping state. Read this file first to understand the layout, then read the theme-specific `AGENTS.md` for the theme you are editing. If you're shipping a brand-new theme (not just editing an existing one), also read [`docs/shipping-a-theme.md`](docs/shipping-a-theme.md) and for N-at-a-time runs [`docs/batch-playbook.md`](docs/batch-playbook.md).
 
 Agent voice and manner are defined separately in [`AGENT-PERSONA.md`](./AGENT-PERSONA.md): the agent operating in this repo is **Woo-drow**, a fussy Victorian shopdresser. That file governs how the agent speaks in chat (cadence, vocabulary, how it addresses the user as "the Proprietor"). This file (`AGENTS.md`) governs what it does. When they disagree — if cadence ever gets in the way of a rule — this file wins.
 
@@ -10,24 +10,31 @@ Agent voice and manner are defined separately in [`AGENT-PERSONA.md`](./AGENT-PE
 fifty/
 ├── obel/                 # base theme (canonical reference) — editorial, soft, restrained
 │   ├── AGENTS.md         ← read this when editing obel
-│   ├── INDEX.md
+│   ├── INDEX.md          # auto-generated surface map (bin/build-index.py)
+│   ├── readiness.json    # shipping-stage manifest + gate claims (see below)
 │   ├── theme.json
 │   └── …
 ├── chonk/                # neo-brutalist variant
 │   ├── AGENTS.md         ← read this when editing chonk
 │   ├── INDEX.md
+│   ├── readiness.json
 │   └── …
 ├── selvedge/             # workwear / indigo variant
 │   └── (same shape)
 ├── lysholm/              # Nordic home goods variant
 │   └── (same shape)
-├── aero/                 # iridescent dark / glass variant
+├── aero/                 # Y2K iridescent / glass variant
+│   └── (same shape)
+├── foundry/              # editorial sibling of obel (warm cream, hairline)
 │   └── (same shape)
 ├── bin/                  # shared CLI tooling (theme-aware)
 ├── playground/           # shared Playground PHP scaffolding + mu-plugins (read playground/AGENTS.md)
+├── specs/                # canonical bin/design.py specs for every theme (checked-in JSON)
+├── mockups/              # concept-queue source (1 PNG + 1 <slug>.meta.json per concept; read mockups/README.md)
 ├── tests/                # committed visual-baseline PNGs (read tests/visual-baseline/README.md)
-├── docs/                 # generated GH Pages site of short URLs (read bin/build-redirects.py)
-├── .claude/skills/       # in-repo agent skills (e.g. build-block-theme-variant)
+├── docs/                 # generated GH Pages site + the tier-infra prose (shipping-a-theme.md, batch-playbook.md, blindspot-decisions.md, day-0-smoke.md, tier-3-deferrals.md)
+├── .claude/skills/       # in-repo agent skills (build-block-theme-variant, design-theme)
+├── .cursor/rules/        # Cursor-style per-area agent rules (.mdc)
 ├── README.md             # human-facing project intro
 ├── AGENTS.md             # you are here (rules, gotchas, tooling)
 ├── AGENT-PERSONA.md      # agent voice (Woo-drow) — how, not what
@@ -363,13 +370,19 @@ This repo ships its own agent skills under `.claude/skills/` so any LLM working 
 
 | Skill | Use when |
 |---|---|
-| `.claude/skills/build-block-theme-variant/SKILL.md` | Building a new visual variant of Obel (e.g. Chonk-style flow): mockup → tokens → templates → dynamic data → verification. Encodes the surface checklist, structural defect scan, WC-integration gotchas, and the hard rules (modern blocks only, nothing static, self-hosted Google Fonts only). |
+| `.claude/skills/design-theme/SKILL.md` | Shipping a brand-new theme *from a prompt* (no mockup yet). Owns the deterministic spine: prompt → `spec.json` → `bin/design.py` (clone + token swap + seed + sync + check). Short; hands off to `build-block-theme-variant` for the judgment-heavy passes. Pair with `docs/shipping-a-theme.md`. |
+| `.claude/skills/build-block-theme-variant/SKILL.md` | Building a new visual variant of Obel *from a mockup or explicit visual reference*: mockup → tokens → templates → dynamic data → verification. Encodes the surface checklist, structural defect scan, WC-integration gotchas, and the hard rules (modern blocks only, nothing static, self-hosted Google Fonts only). |
 
 If you add a new skill, drop it under `.claude/skills/<name>/SKILL.md` with the standard frontmatter (`name`, `description`) so every agent host can discover it.
 
 ## Adding a new theme variant
 
-Use the agent skill `build-block-theme-variant` (in `.claude/skills/build-block-theme-variant/SKILL.md`) — it codifies the entire workflow including up-front design intent capture, token planning, comprehensive surface coverage, contrast/responsiveness verification, and final self-checks.
+Two skills cover this depending on what you have in hand:
+
+- **Prompt only, no mockup** → `.claude/skills/design-theme/SKILL.md`. Drives `bin/design.py` end-to-end: prompt → `spec.json` (via `bin/concept-to-spec.py`) → clone → token swap → seed → sync → check. Fast path; one orchestrator pass produces a runnable theme.
+- **Mockup or explicit visual reference** → `.claude/skills/build-block-theme-variant/SKILL.md`. Long-form judgment-heavy flow: mockup → tokens → templates → dynamic data → verification. Encodes the surface checklist, structural defect scan, WC-integration gotchas, and the hard rules (modern blocks only, nothing static, self-hosted Google Fonts only).
+
+Either skill hands off to the same per-theme checklist in [`docs/shipping-a-theme.md`](docs/shipping-a-theme.md) for the final manual passes (microcopy, product imagery, front-page restructure), the promotion to `readiness.json.stage = "shipping"`, and PR-time gates. For N-at-a-time runs the wrapper is [`docs/batch-playbook.md`](docs/batch-playbook.md) (uses `bin/design-batch.py --from-concepts`).
 
 The short version:
 
@@ -386,6 +399,42 @@ The short version:
 11. `python3 bin/check.py <new_name>`
 12. `python3 bin/build-redirects.py` — regenerates `docs/<new_name>/<page>/index.html` so the theme is reachable at `https://demo.regionallyfamous.com/<new_name>/` once the change is pushed and GH Pages picks it up. Re-run any time you add a theme or change the `PAGES` list inside the script. See "GitHub Pages short URLs" below.
 13. Open the new theme's short URL (`https://demo.regionallyfamous.com/<new_name>/`, which redirects to the canonical `playground.wordpress.net/?blueprint-url=…` deeplink) and walk the surface checklist before declaring done. The blueprint AND the short-URL redirector are part of the deliverable — see "WordPress Playground blueprints" and "GitHub Pages short URLs" below.
+
+## Readiness manifest and the tier infrastructure
+
+Every theme ships a `<slug>/readiness.json` that declares its pipeline stage (`concept` → `design` → `shipping` → `retired`) and the boolean gate claims behind that stage (`boots`, `visual_baseline`, `microcopy_distinct`, `images_unique`, `vision_review_passed`). The three discovery sites — `bin/_lib.iter_themes`, `bin/snap.discover_themes`, `bin/append-wc-overrides.discover_themes` — filter on `stage`, so flipping a theme to `retired` drops it out of snap / gallery / check fan-outs without touching the source (this is the B.1 retirement decision in [`docs/blindspot-decisions.md`](docs/blindspot-decisions.md)). Lying in `readiness.json` is caught by `check_theme_readiness` in `bin/check.py`, which cross-checks the claimed gate booleans against the real artifacts (the dashboard would look foolish if a theme could self-declare `vision_review_passed` without the label). The live dashboard is rebuilt by `bin/build-theme-status.py` into `docs/themes/index.html` on every merge.
+
+The pre-100-themes hardening plan (tiers 0 → 4) is what introduced the scripts and docs that make shipping at volume tractable. The tier prose lives in `docs/`:
+
+| File | What's in it |
+|---|---|
+| [`docs/shipping-a-theme.md`](docs/shipping-a-theme.md) | Per-theme operator checklist (concept pick → spec → `bin/design.py` → boot smoke → manual passes → `check.py` → visual baseline → vision review → promote to `shipping` → open PR). Every gating step is called out. |
+| [`docs/batch-playbook.md`](docs/batch-playbook.md) | N-themes-at-once wrapper around the same checklist, driven by `bin/design-batch.py --from-concepts`. Start here when shipping 5+ themes in one pass. |
+| [`docs/day-0-smoke.md`](docs/day-0-smoke.md) | Honest per-phase timings from hand-shipping 3–5 themes through the pipeline. Used as the calibration baseline for every batch overrun. |
+| [`docs/blindspot-decisions.md`](docs/blindspot-decisions.md) | Landed-on decisions for the six §B blind spots (retirement flow, image sourcing, microcopy voice bank, baseline decay, uniqueness cache invalidation, vision-review spend). Updated in place, not appended — always reads as the current stance. |
+| [`docs/tier-3-deferrals.md`](docs/tier-3-deferrals.md) | What was intentionally NOT shipped yet and under what trigger to build it. "Infrastructure without evidence is waste." |
+
+Key shared scripts introduced by the tier work (all run from the repo root):
+
+| Script | Use when |
+|---|---|
+| `bin/concept-to-spec.py <slug>` | Generate a `bin/design.py` spec from a concept seed. Default is LLM-assisted; `--no-llm` is a deterministic fallback. Output lands at `tmp/specs/<slug>.json`. |
+| `bin/design.py tmp/specs/<slug>.json` | Clone Obel, apply palette + typography tokens, seed products, sync patterns, run first snap + check pass. Idempotent. |
+| `bin/design-batch.py --from-concepts` | Wrap the single-theme flow for 5–20 concepts in one run, with logging + recovery. |
+| `bin/snap.py boot <slug>` | Fast (~30s) boot smoke: catches PHP fatals + broken templates. Runs in `.githooks/pre-commit` and as the first step of `check.yml`. |
+| `bin/visual-matrix.py` | Detects brand-new themes on a PR (used by the vision-review gate in `check.yml`). |
+| `bin/build-theme-status.py` | Rebuilds `docs/themes/index.html` (the shipping dashboard) from every theme's `readiness.json`. |
+| `bin/audit-concepts.py` | Cross-checks `mockups/` against `bin/concept_seed.py::CONCEPTS` and the GH Pages concept queue. |
+| `bin/check-concept-similarity.py` | Flags near-duplicate concepts via the `bin/concept-similarity-allowlist.json` allowlist (same pattern as the heuristics allowlist). |
+| `bin/build-concept-meta.py` | Builds `<slug>.meta.json` sidecars for every concept from the concept seed. |
+
+Baseline allowlists that the tier work introduced (defence-in-depth against pre-existing debt blocking unrelated PRs):
+
+- **`tests/check-baseline-failures.json`** — `bin/check.py` failures that pre-exist on `origin/main`; demoted to `WARN-BASELINE` on branch CI via `FIFTY_ALLOW_BASELINE_FAILURES=1` (the env is set automatically by the hooks and the PR-side of `check.yml`). Push-to-main CI keeps the strict gate. Regenerate with `python3 bin/check.py --save-baseline-failures`.
+- **`tests/visual-baseline/heuristics-allowlist.json`** — `bin/snap.py`'s `error`-tier heuristic-finding allowlist. Same pattern Stylelint / ESLint / Knip use.
+- **`bin/concept-similarity-allowlist.json`** — human-approved concept pairs that the similarity check would otherwise flag.
+
+None of these are to-do lists — they're safety nets. The default path is always "fix the new finding, don't add it to the allowlist."
 
 ## Concept queue mockups (the public bench)
 
@@ -543,7 +592,7 @@ Playground's `wp-cli` step has **no shell**. The command string is parsed into a
 
 ## View Transitions (cross-document)
 
-**Every theme in this monorepo MUST opt into cross-document View Transitions** with the same four-piece contract Obel ships. It is part of the visual baseline, not an enhancement — clones inherit it by default, the migration script (`bin/migrate-view-transitions.py`) keeps the four shipped themes (`aero`, `chonk`, `lysholm`, `selvedge`) in lockstep with `obel/`, and you should not strip any piece out.
+**Every theme in this monorepo MUST opt into cross-document View Transitions** with the same four-piece contract Obel ships. It is part of the visual baseline, not an enhancement — clones inherit it by default, the migration script (`bin/migrate-view-transitions.py`) keeps the five shipped non-obel themes (`aero`, `chonk`, `foundry`, `lysholm`, `selvedge`) in lockstep with `obel/`, and you should not strip any piece out. When you add a new non-obel theme, extend `TARGETS` in `bin/migrate-view-transitions.py` so future obel VT changes propagate.
 
 The contract has FOUR pieces, all between the sentinels `// === BEGIN view-transitions === … // === END view-transitions ===` (in `functions.php`) and `/* === BEGIN view-transitions === */ … /* === END view-transitions === */` (in `theme.json` styles.css):
 
@@ -585,7 +634,7 @@ Why all four pieces are required:
 
 **JavaScript policy.** Cross-document VT is mostly CSS-only; the only allowed JS is the documented inline `pageswap`/`pagereveal` handler in piece 3 and the `<script type="speculationrules">` JSON block in piece 4. Both ship as inline `<script>` tags in `<theme>/functions.php`. **No external `.js` file, no module, no bundle, no `defer`/`async`.** Adding any other `<script>` for VT (or moving these into an external file) is a hard-rule violation.
 
-When cloning a theme via `bin/clone.py`, all four pieces come along automatically (the CSS lives in `theme.json`, the filter / handler / speculation rules live in `functions.php`). When the obel source-of-truth changes, run `python3 bin/migrate-view-transitions.py` from the repo root to roll the change to the four shipped themes — it's idempotent, so re-running it after a no-op edit is safe. Do not delete any piece during a restyle.
+When cloning a theme via `bin/clone.py`, all four pieces come along automatically (the CSS lives in `theme.json`, the filter / handler / speculation rules live in `functions.php`). When the obel source-of-truth changes, run `python3 bin/migrate-view-transitions.py` from the repo root to roll the change to every shipped non-obel theme — it's idempotent, so re-running it after a no-op edit is safe. Do not delete any piece during a restyle.
 
 ## GitHub Pages short URLs
 

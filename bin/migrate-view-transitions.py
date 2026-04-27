@@ -3,11 +3,11 @@
 contract from `obel/` to every other theme.
 
 Why this exists: `bin/clone.py` mirrors `obel/` verbatim when creating a
-NEW theme, but the four shipped themes (`aero`, `chonk`, `lysholm`,
-`selvedge`) already have hand-tuned `theme.json` styling and per-theme
-template tweaks that re-cloning would clobber. So instead of re-cloning
-we surgically replace the VT block in each theme's `theme.json` styles
-prelude + `functions.php`.
+NEW theme, but the five shipped non-obel themes (`aero`, `chonk`,
+`foundry`, `lysholm`, `selvedge`) already have hand-tuned `theme.json`
+styling and per-theme template tweaks that re-cloning would clobber.
+So instead of re-cloning we surgically replace the VT block in each
+theme's `theme.json` styles prelude + `functions.php`.
 
 Idempotent: re-running is a no-op once every theme is up to date. Safe
 to run repeatedly (the script reports "no change" rather than diffing).
@@ -30,7 +30,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "obel"
-TARGETS = ("aero", "chonk", "lysholm", "selvedge")
+TARGETS = ("aero", "chonk", "foundry", "lysholm", "selvedge")
 
 # Sentinels used in BOTH source and target files. Anything between
 # (and including) these markers is the migration unit.
