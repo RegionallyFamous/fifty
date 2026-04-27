@@ -36,17 +36,17 @@
 		<!-- wp:column {"verticalAlignment":"center","width":"50%"} -->
 		<div class="wp-block-column is-vertically-aligned-center" style="flex-basis:50%">
 			<!-- wp:heading {"level":1,"fontSize":"5xl"} -->
-			<h1 class="wp-block-heading has-5-xl-font-size"><?php esc_html_e( 'Designed for commerce.', 'atomic' ); ?></h1>
+			<h1 class="wp-block-heading has-5-xl-font-size"><?php esc_html_e( 'Made for the shelf.', 'atomic' ); ?></h1>
 			<!-- /wp:heading -->
 
 			<!-- wp:paragraph {"fontSize":"md","textColor":"secondary"} -->
-			<p class="has-secondary-color has-text-color has-md-font-size"><?php esc_html_e( 'A block-only WooCommerce theme. Composed entirely of core blocks, styled entirely from one design file.', 'atomic' ); ?></p>
+			<p class="has-secondary-color has-text-color has-md-font-size"><?php esc_html_e( 'A curated collection of mid-century objects, sourced and sold with care. Free shipping over $50.', 'atomic' ); ?></p>
 			<!-- /wp:paragraph -->
 
 			<!-- wp:buttons {"style":{"spacing":{"margin":{"top":"var:preset|spacing|md"}}}} -->
 			<div class="wp-block-buttons" style="margin-top:var(--wp--preset--spacing--md)">
 				<!-- wp:button -->
-				<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop"><?php esc_html_e( 'Shop the collection', 'atomic' ); ?></a></div>
+				<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop"><?php esc_html_e( 'Shop the range', 'atomic' ); ?></a></div>
 				<!-- /wp:button -->
 
 				<!-- wp:button {"className":"is-style-outline"} -->
@@ -60,7 +60,7 @@
 		<!-- wp:column {"verticalAlignment":"center"} -->
 		<div class="wp-block-column is-vertically-aligned-center">
 			<!-- wp:image {"sizeSlug":"large"} -->
-			<figure class="wp-block-image size-large"><img src="<?php echo esc_url( get_theme_file_uri( 'playground/images/product-wo-bottled-morning.jpg' ) ); ?>" alt="<?php esc_attr_e( 'Bottled Morning — a cork-stoppered glass bottle of warm light, tagged in coral linen on a soft natural backdrop. The flagship product of the Wonders & Oddities demo catalogue.', 'atomic' ); ?>"/></figure>
+			<figure class="wp-block-image size-large"><img src="<?php echo esc_url( get_theme_file_uri( 'playground/images/product-wo-bottled-morning.jpg' ) ); ?>" alt="<?php esc_attr_e( 'Bottled Morning — a hand-stoppered glass bottle in mustard and teal, tagged on a warm cream backdrop. The flagship object from our Wonders & Oddities collection.', 'atomic' ); ?>"/></figure>
 			<!-- /wp:image -->
 		</div>
 		<!-- /wp:column -->

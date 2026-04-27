@@ -12,7 +12,7 @@
 <!-- wp:group {"align":"full","style":{"spacing":{"padding":{"top":"var:preset|spacing|2-xl","bottom":"var:preset|spacing|2-xl","left":"var:preset|spacing|lg","right":"var:preset|spacing|lg"}}},"layout":{"type":"constrained"}} -->
 <div class="wp-block-group alignfull" style="padding-top:var(--wp--preset--spacing--2-xl);padding-right:var(--wp--preset--spacing--lg);padding-bottom:var(--wp--preset--spacing--2-xl);padding-left:var(--wp--preset--spacing--lg)">
 	<!-- wp:heading {"textAlign":"center"} -->
-	<h2 class="wp-block-heading has-text-align-center"><?php esc_html_e( 'What customers say', 'atomic' ); ?></h2>
+	<h2 class="wp-block-heading has-text-align-center"><?php esc_html_e( 'From our customers', 'atomic' ); ?></h2>
 	<!-- /wp:heading -->
 
 	<!-- wp:columns {"align":"wide","style":{"spacing":{"margin":{"top":"var:preset|spacing|xl"}}}} -->
@@ -24,7 +24,7 @@
 				<!-- wp:quote -->
 				<blockquote class="wp-block-quote">
 					<!-- wp:paragraph -->
-					<p><?php esc_html_e( 'Quality is exactly what they advertised. Will be back.', 'atomic' ); ?></p>
+					<p><?php esc_html_e( 'Exactly the quality I was hoping for. Ordered a second one already.', 'atomic' ); ?></p>
 					<!-- /wp:paragraph -->
 					<cite><?php esc_html_e( 'Alex M.', 'atomic' ); ?></cite>
 				</blockquote>
@@ -41,7 +41,7 @@
 				<!-- wp:quote -->
 				<blockquote class="wp-block-quote">
 					<!-- wp:paragraph -->
-					<p><?php esc_html_e( 'Shipping was fast and the packaging was beautiful.', 'atomic' ); ?></p>
+					<p><?php esc_html_e( 'Arrived well-packed and faster than expected. Very happy with it.', 'atomic' ); ?></p>
 					<!-- /wp:paragraph -->
 					<cite><?php esc_html_e( 'Sam P.', 'atomic' ); ?></cite>
 				</blockquote>
@@ -58,7 +58,7 @@
 				<!-- wp:quote -->
 				<blockquote class="wp-block-quote">
 					<!-- wp:paragraph -->
-					<p><?php esc_html_e( 'I have had it for a year and it still looks brand new.', 'atomic' ); ?></p>
+					<p><?php esc_html_e( 'Mine has been on the desk for two years and looks just as good as when it arrived.', 'atomic' ); ?></p>
 					<!-- /wp:paragraph -->
 					<cite><?php esc_html_e( 'Jordan K.', 'atomic' ); ?></cite>
 				</blockquote>

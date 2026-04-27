@@ -24,7 +24,7 @@
 			<!-- /wp:heading -->
 
 			<!-- wp:paragraph {"textColor":"secondary","fontSize":"md"} -->
-			<p class="has-secondary-color has-text-color has-md-font-size"><?php esc_html_e( 'Two or three sentences explaining why your brand exists, what it makes, and who it makes it for. Keep it concrete.', 'atomic' ); ?></p>
+			<p class="has-secondary-color has-text-color has-md-font-size"><?php esc_html_e( 'Mid-century inspired objects made for keeping. Each piece is chosen for the shelf, the table, the windowsill — and designed to stay there.', 'atomic' ); ?></p>
 			<!-- /wp:paragraph -->
 
 			<!-- wp:buttons -->

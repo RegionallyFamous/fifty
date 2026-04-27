@@ -19,7 +19,7 @@
 			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Free delivery', 'atomic' ); ?></h3>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph {"textColor":"secondary"} -->
-			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'On every order over $50, anywhere in the country.', 'atomic' ); ?></p>
+			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Free shipping on all domestic orders over $50.', 'atomic' ); ?></p>
 			<!-- /wp:paragraph -->
 		</div>
 		<!-- /wp:column -->
@@ -30,7 +30,7 @@
 			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( '30-day send-backs', 'atomic' ); ?></h3>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph {"textColor":"secondary"} -->
-			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Not what you expected? Send it back, no questions asked.', 'atomic' ); ?></p>
+			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Not right for you? Send it back within 30 days.', 'atomic' ); ?></p>
 			<!-- /wp:paragraph -->
 		</div>
 		<!-- /wp:column -->
@@ -41,7 +41,7 @@
 			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Built to the decade', 'atomic' ); ?></h3>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph {"textColor":"secondary"} -->
-			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Materials sourced for longevity, not the next replacement cycle.', 'atomic' ); ?></p>
+			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Made from materials chosen to last.', 'atomic' ); ?></p>
 			<!-- /wp:paragraph -->
 		</div>
 		<!-- /wp:column -->

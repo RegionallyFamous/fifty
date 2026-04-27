@@ -12,7 +12,7 @@
 <!-- wp:group {"style":{"spacing":{"padding":{"top":"var:preset|spacing|2-xl","bottom":"var:preset|spacing|2-xl"},"blockGap":"var:preset|spacing|xl"}},"layout":{"type":"constrained"}} -->
 <div class="wp-block-group" style="padding-top:var(--wp--preset--spacing--2-xl);padding-bottom:var(--wp--preset--spacing--2-xl)">
 	<!-- wp:heading {"textAlign":"center"} -->
-	<h2 class="wp-block-heading has-text-align-center"><?php esc_html_e( 'Frequently asked', 'atomic' ); ?></h2>
+	<h2 class="wp-block-heading has-text-align-center"><?php esc_html_e( 'Common questions', 'atomic' ); ?></h2>
 	<!-- /wp:heading -->
 
 	<!-- wp:accordion -->
@@ -20,13 +20,13 @@
 		<!-- wp:accordion-item -->
 		<div class="wp-block-accordion-item">
 			<!-- wp:accordion-heading -->
-			<h3 class="wp-block-accordion-heading"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"><?php esc_html_e( 'How long does shipping take?', 'atomic' ); ?></span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
+			<h3 class="wp-block-accordion-heading"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"><?php esc_html_e( 'How soon will my order arrive?', 'atomic' ); ?></span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
 			<!-- /wp:accordion-heading -->
 
 			<!-- wp:accordion-panel -->
 			<div role="region" class="wp-block-accordion-panel">
 				<!-- wp:paragraph -->
-				<p><?php esc_html_e( 'Most orders ship within 1-2 business days and arrive within a week.', 'atomic' ); ?></p>
+				<p><?php esc_html_e( 'Most orders leave our shelves within 1–2 working days and arrive within a week.', 'atomic' ); ?></p>
 				<!-- /wp:paragraph -->
 			</div>
 			<!-- /wp:accordion-panel -->
@@ -36,13 +36,13 @@
 		<!-- wp:accordion-item -->
 		<div class="wp-block-accordion-item">
 			<!-- wp:accordion-heading -->
-			<h3 class="wp-block-accordion-heading"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"><?php esc_html_e( 'What is your return policy?', 'atomic' ); ?></span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
+			<h3 class="wp-block-accordion-heading"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"><?php esc_html_e( 'Can I return something?', 'atomic' ); ?></span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
 			<!-- /wp:accordion-heading -->
 
 			<!-- wp:accordion-panel -->
 			<div role="region" class="wp-block-accordion-panel">
 				<!-- wp:paragraph -->
-				<p><?php esc_html_e( 'Returns are free within 30 days of delivery.', 'atomic' ); ?></p>
+				<p><?php esc_html_e( 'Yes. Send it back within 30 days and we will sort it out.', 'atomic' ); ?></p>
 				<!-- /wp:paragraph -->
 			</div>
 			<!-- /wp:accordion-panel -->
@@ -58,7 +58,7 @@
 			<!-- wp:accordion-panel -->
 			<div role="region" class="wp-block-accordion-panel">
 				<!-- wp:paragraph -->
-				<p><?php esc_html_e( 'Yes. International shipping rates are calculated at checkout.', 'atomic' ); ?></p>
+				<p><?php esc_html_e( 'Yes. International delivery rates show at checkout.', 'atomic' ); ?></p>
 				<!-- /wp:paragraph -->
 			</div>
 			<!-- /wp:accordion-panel -->
@@ -84,7 +84,7 @@
 		<!-- wp:accordion-item -->
 		<div class="wp-block-accordion-item">
 			<!-- wp:accordion-heading -->
-			<h3 class="wp-block-accordion-heading"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"><?php esc_html_e( 'How do I contact support?', 'atomic' ); ?></span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
+			<h3 class="wp-block-accordion-heading"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"><?php esc_html_e( 'How do I get in touch?', 'atomic' ); ?></span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
 			<!-- /wp:accordion-heading -->
 
 			<!-- wp:accordion-panel -->

@@ -12,7 +12,7 @@
 <!-- wp:group {"align":"full","backgroundColor":"contrast","textColor":"base","style":{"spacing":{"padding":{"top":"var:preset|spacing|2-xl","bottom":"var:preset|spacing|2-xl","left":"var:preset|spacing|lg","right":"var:preset|spacing|lg"},"blockGap":"var:preset|spacing|sm"}},"layout":{"type":"constrained","contentSize":"var(--wp--custom--layout--comfortable)"}} -->
 <div class="wp-block-group alignfull has-base-color has-contrast-background-color has-text-color has-background" style="padding-top:var(--wp--preset--spacing--2-xl);padding-right:var(--wp--preset--spacing--lg);padding-bottom:var(--wp--preset--spacing--2-xl);padding-left:var(--wp--preset--spacing--lg)">
 	<!-- wp:heading {"textAlign":"center","level":2,"textColor":"base","style":{"spacing":{"margin":{"top":"0","bottom":"0"}}}} -->
-	<h2 class="wp-block-heading has-text-align-center has-base-color has-text-color" style="margin-top:0;margin-bottom:0"><?php esc_html_e( 'Track your orders.', 'atomic' ); ?></h2>
+	<h2 class="wp-block-heading has-text-align-center has-base-color has-text-color" style="margin-top:0;margin-bottom:0"><?php esc_html_e( 'View your orders.', 'atomic' ); ?></h2>
 	<!-- /wp:heading -->
 
 	<!-- wp:paragraph {"align":"center","textColor":"base","style":{"spacing":{"margin":{"top":"0","bottom":"var:preset|spacing|md"}}}} -->
@@ -26,7 +26,7 @@
 		<!-- /wp:button -->
 
 		<!-- wp:button {"textColor":"base","className":"is-style-outline","style":{"border":{"radius":"0"}}} -->
-		<div class="wp-block-button is-style-outline"><a class="wp-block-button__link has-base-color has-text-color wp-element-button" href="/my-account/" style="border-radius:0"><?php esc_html_e( 'Create an account', 'atomic' ); ?></a></div>
+		<div class="wp-block-button is-style-outline"><a class="wp-block-button__link has-base-color has-text-color wp-element-button" href="/my-account/" style="border-radius:0"><?php esc_html_e( 'Sign up', 'atomic' ); ?></a></div>
 		<!-- /wp:button -->
 	</div>
 	<!-- /wp:buttons -->
