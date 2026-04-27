@@ -302,6 +302,13 @@ class RunnerOptions:
     # before we wait on CI. --no-verify disables it for agents doing
     # quick turns where the extra ~5-15s/theme isn't worth it.
     run_verify: bool = True
+    # Arm GitHub auto-merge (squash) immediately after `gh pr create`
+    # so a green PR lands on main without a human click. When False,
+    # the PR opens with auto-merge OFF and a human must enable it.
+    # Default True because the whole point of this runner is
+    # hands-off batch shipping; disable it when you want to eyeball
+    # each PR before letting it merge.
+    arm_auto_merge: bool = True
 
 
 def _git(*args: str, cwd: Path | None = None, check: bool = True) -> subprocess.CompletedProcess:
@@ -484,6 +491,33 @@ def _commit_and_push(
             f"gh pr create failed (rc={pr.returncode}): {pr.stderr.strip()}"
         )
     pr_url = pr.stdout.strip().splitlines()[-1] if pr.stdout.strip() else None
+
+    # Arm auto-merge so the PR lands the moment all required checks
+    # pass -- without this, the batch produces N open PRs that each
+    # need a human click even when the static gate + vision review +
+    # first-baseline all go green. We squash-merge to keep main's
+    # history linear (setup-branch-protection.sh enforces
+    # required_linear_history: true). The call is best-effort: a
+    # transient gh failure, auto-merge being disabled at the repo
+    # level, or a missing pr_url just prints a warning and returns
+    # the PR URL anyway -- the PR itself is still valid; only the
+    # auto-merge arming is degraded.
+    if opts.arm_auto_merge and pr_url:
+        arm = subprocess.run(
+            ["gh", "pr", "merge", pr_url, "--auto", "--squash"],
+            cwd=str(worktree),
+            capture_output=True,
+            text=True,
+        )
+        if arm.returncode != 0:
+            sys.stderr.write(
+                f"[batch] WARN: failed to arm auto-merge on {pr_url} "
+                f"(rc={arm.returncode}): {arm.stderr.strip()}. "
+                f"The PR is open; a human will need to enable "
+                f"auto-merge (or merge manually) once checks are "
+                f"green.\n"
+            )
+
     return _CommitAndPushResult(
         pr_url=pr_url,
         pushed=True,
@@ -828,6 +862,17 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--no-auto-merge",
+        action="store_true",
+        help=(
+            "Open each PR without arming GitHub auto-merge. Default is "
+            "to arm `--auto --squash` immediately after `gh pr create` "
+            "so a green PR lands hands-off. Use this when you want to "
+            "eyeball each PR before it merges (e.g. when debugging the "
+            "pipeline, or on a one-off batch you plan to hand-review)."
+        ),
+    )
+    p.add_argument(
         "--retry-failed",
         action="store_true",
         help=(
@@ -1081,6 +1126,7 @@ def main(argv: list[str] | None = None) -> int:
         port_base=args.port_base,
         label_run_id=True,
         run_verify=not args.no_verify,
+        arm_auto_merge=not args.no_auto_merge,
     )
 
     print(
