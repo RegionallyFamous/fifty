@@ -1,0 +1,7 @@
+{
+  "stage": "incubating",
+  "summary": "Apiary: WIP (cloned from lysholm). Edit this summary with the theme's brand voice once the design pass is complete.",
+  "owner": "",
+  "last_checked": "",
+  "notes": "Scaffolded by bin/clone.py from lysholm. Promoted to `stage: shipping` by .github/workflows/first-baseline.yml once baselines are committed, or manually after the final design review."
+}
