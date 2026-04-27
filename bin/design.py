@@ -51,9 +51,15 @@ get the legacy informational behaviour for the check phase).
   A. validate      - parse + validate the spec (always runs, dry-run stops here)
   B. clone         - bin/clone.py (skipped if --skip-clone or theme exists)
   C. apply         - palette + fonts written to <slug>/theme.json + BRIEF.md
-  D. index         - bin/build-index.py <slug> -- refreshes <slug>/INDEX.md
+  D. contrast      - bin/autofix-contrast.py <slug> (block + CSS hover contrast)
   E. seed          - bin/seed-playground-content.py (HARD-fail under default strict)
   F. sync          - bin/sync-playground.py
+  G½. photos       - bin/generate-product-photos.py --theme <slug>
+  G¾. microcopy    - bin/generate-microcopy.py --theme <slug>
+  G¾½. frontpage   - bin/diversify-front-page.py --theme <slug>
+  H. index         - bin/build-index.py <slug> -- refreshes <slug>/INDEX.md
+                     (moved to AFTER seed/sync/photos/microcopy/frontpage so
+                     INDEX.md reflects the final template + pattern state)
   F½. prepublish   - `git add <slug>/ docs/ */playground/blueprint.json`
                      + `git commit` + `git push -u origin HEAD` so that
                      `raw.githubusercontent.com` can serve the new
@@ -154,9 +160,45 @@ PHASES = (
     #                violation. Autofix is idempotent: a clean re-run on
     #                a green tree is a no-op.
     "contrast",
-    "index",
     "seed",
     "sync",
+    # G½. photos — generate per-theme product photos and category covers
+    #              using Pillow before the pre-snap commit so that
+    #              raw.githubusercontent can serve them when Playground
+    #              boots.  Without this, the snap finds the upstream
+    #              cartoon PNGs (wonders-*.png) still referenced in the
+    #              blueprint, and snap.py reports broken-image findings
+    #              on every product tile.  The phase is idempotent
+    #              (skips any file already on disk) and re-runs
+    #              seed-playground-content.py automatically once it
+    #              writes new JPGs.
+    "photos",
+    # G¾. microcopy — generate per-theme voice substitutions and apply
+    #                 them so no two themes share a user-visible string.
+    #                 check_all_rendered_text_distinct_across_themes and
+    #                 check_pattern_microcopy_distinct both fail on a
+    #                 freshly-cloned theme that still carries the source
+    #                 theme's body copy verbatim.  Uses a static fallback
+    #                 table (offline, no API required) for known batch
+    #                 themes; falls back to the Anthropic API for unknown
+    #                 slugs when ANTHROPIC_API_KEY is set.
+    "microcopy",
+    # G¾½. frontpage — ensure the front-page layout fingerprint is unique
+    #                  vs every other shipped theme.  Adds a
+    #                  wo-layout-<slug> className to the first wp:group
+    #                  direct child of <main>.  check_front_page_unique_
+    #                  layout fails when two themes cloned from the same
+    #                  source have the same block-sequence fingerprint.
+    "frontpage",
+    # H. index — moved to AFTER seed/sync/photos/microcopy/frontpage so
+    #            INDEX.md reflects the final state of templates/parts/
+    #            patterns (including any microcopy changes or front-page
+    #            restructuring).  Running it before seed was the source of
+    #            the "INDEX.md in sync" check failure: the phase wrote an
+    #            INDEX based on the just-cloned state, then later phases
+    #            modified the same files, leaving INDEX stale at check
+    #            time.
+    "index",
     # F½. prepublish — commit + push the scaffolded theme BEFORE snap.
     #                  The blueprint inlines `raw.githubusercontent.com`
     #                  URLs for every `playground/content/*` and
@@ -609,6 +651,86 @@ def _phase_sync(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> No
     rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
     if rc != 0:
         raise PhaseError("sync", f"bin/sync-playground.py exited {rc}")
+
+
+def _phase_photos(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
+    """Generate per-theme product photos and category covers using Pillow.
+
+    Calls `bin/generate-product-photos.py --theme <slug>`.  Idempotent:
+    skips any file that already exists on disk.  After writing new JPGs,
+    the script re-runs `seed-playground-content.py` so the CSV/XML refs
+    are updated.
+
+    Why here (after sync, before prepublish)
+    ----------------------------------------
+    The prepublish phase commits and pushes everything — including the
+    newly generated JPGs — so `raw.githubusercontent.com` can serve them
+    when the snap phase boots Playground.  Without this ordering, the
+    branch's `playground/images/` directory still contains only cartoon
+    PNGs at push time, and the snap finds broken-image findings on every
+    product tile.
+    """
+    script = ROOT / "bin" / "generate-product-photos.py"
+    if not script.is_file():
+        print("  [photos] WARN: bin/generate-product-photos.py missing; skipping.")
+        return
+    cmd = [sys.executable, str(script), "--theme", spec.slug]
+    print(f"  [photos] {' '.join(cmd[1:])}")
+    rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
+    if rc != 0:
+        raise PhaseError("photos", f"bin/generate-product-photos.py exited {rc}")
+
+
+def _phase_microcopy(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
+    """Generate + apply per-theme voice substitutions.
+
+    Calls `bin/generate-microcopy.py --theme <slug>` which:
+      1. Picks substitutions from the static fallback table (offline).
+      2. Optionally calls the Anthropic API for uncovered strings when
+         ANTHROPIC_API_KEY is set.
+      3. Writes `<slug>/microcopy-overrides.json`.
+      4. Calls `bin/apply-microcopy-overrides.py --theme <slug>` to
+         apply the replacements to templates/parts/patterns.
+
+    Failure is soft (WARN): a theme whose microcopy wasn't fully
+    personalised will still fail `check_all_rendered_text_distinct` but
+    the pipeline can continue so the snap still runs and produces
+    evidence for the other checks.
+    """
+    script = ROOT / "bin" / "generate-microcopy.py"
+    if not script.is_file():
+        print("  [microcopy] WARN: bin/generate-microcopy.py missing; skipping.")
+        return
+    cmd = [sys.executable, str(script), "--theme", spec.slug]
+    print(f"  [microcopy] {' '.join(cmd[1:])}")
+    rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
+    if rc != 0:
+        print(f"  [microcopy] WARN: generate-microcopy.py exited {rc}; continuing.")
+
+
+def _phase_frontpage(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
+    """Ensure the front-page layout fingerprint is unique vs every other theme.
+
+    Calls `bin/diversify-front-page.py --theme <slug>` which adds a
+    ``wo-layout-<slug>`` className to the first ``wp:group`` direct child of
+    ``<main>`` in ``templates/front-page.html``.  If the fingerprint is
+    already unique, the script is a no-op.
+
+    `check_front_page_unique_layout` fails when a cloned theme has the
+    same direct-child sequence as its source (e.g. both obel and agave
+    produce ``['pattern:hero-split', 'group', 'group']``).  This phase
+    runs after `microcopy` (which may have edited pattern files) and
+    before `index` (so INDEX.md reflects the final template state).
+    """
+    script = ROOT / "bin" / "diversify-front-page.py"
+    if not script.is_file():
+        print("  [frontpage] WARN: bin/diversify-front-page.py missing; skipping.")
+        return
+    cmd = [sys.executable, str(script), "--theme", spec.slug]
+    print(f"  [frontpage] {' '.join(cmd[1:])}")
+    rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
+    if rc != 0:
+        raise PhaseError("frontpage", f"bin/diversify-front-page.py exited {rc}")
 
 
 def _phase_prepublish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
@@ -1122,6 +1244,9 @@ _PHASE_HANDLERS = {
     "index": _phase_index,
     "seed": _phase_seed,
     "sync": _phase_sync,
+    "photos": _phase_photos,
+    "microcopy": _phase_microcopy,
+    "frontpage": _phase_frontpage,
     "prepublish": _phase_prepublish,
     "snap": _phase_snap,
     "vision-review": _phase_vision_review,
