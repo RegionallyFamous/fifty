@@ -65,12 +65,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 1
     # Bail fast when the trigger was the workflow labelling itself with
-    # `vision-reviewed` (or any other non-`design` label change). Without
-    # this filter, vision-review.yml retriggers after every successful
-    # run: the label it adds fires a `labeled` event, the gate passes
-    # on `design`-still-present, and the full ~12-min critique runs a
-    # second time on the same SHA. See bin/snap.py PR #62 / #63 notes
-    # for the cycle history.
+    # `vision-reviewed` / `ready-for-baseline` (or any other non-`design`
+    # label change). Without this filter, vision-review.yml retriggers
+    # after every successful run: each label it adds fires a `labeled`
+    # event, the gate passes on `design`-still-present, and the full
+    # ~12-min critique runs again on the same SHA — twice now that we
+    # add both labels. See bin/snap.py PR #62 / #63 / #64 for the
+    # cycle history.
     if: >
       github.event.action != 'labeled' ||
       github.event.label.name == 'design'
@@ -311,15 +312,40 @@ jobs:
             gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY"
           fi
 
-      - name: Add vision-reviewed label when critique exited cleanly
-        # check.yml's vision-review-gate requires this label on any PR
-        # that introduces a brand-new theme. The gate used to be
-        # impossible to satisfy from automation alone: this workflow
-        # never added the label, and check.yml did not re-run on
-        # `labeled` events. We add the label here only when every
-        # per-theme vision-review subprocess exited 0 (API key present,
-        # budget OK, reviewer did not hard-fail). Humans can still
-        # add/remove the label manually; duplicate adds are harmless.
+      - name: Add vision-reviewed + ready-for-baseline labels when critique exited cleanly
+        # Two labels land together on a clean critique:
+        #
+        #   * `vision-reviewed` — check.yml's vision-review-gate requires
+        #     this label on any PR that introduces a brand-new theme.
+        #     The gate used to be impossible to satisfy from automation
+        #     alone: this workflow never added the label, and check.yml
+        #     did not re-run on `labeled` events. Adding it here closes
+        #     that half of the loop.
+        #
+        #   * `ready-for-baseline` — first-baseline.yml listens on the
+        #     same label-added event and is what actually generates
+        #     `tests/visual-baseline/<theme>/` + flips
+        #     `<theme>/readiness.json` to `stage: "shipping"`. Without
+        #     this the workflow waits on a human to add the label by
+        #     hand and the end-to-end automation stalls at "vision pass
+        #     is green but baselines still missing".
+        #
+        # The pairing is conditional on BOTH sides: we only label when
+        # every per-theme vision-review subprocess exited 0 (API key
+        # present, budget OK, reviewer did not hard-fail). A reviewer
+        # that flagged `vision:*` findings of severity `error` is not
+        # covered here — those still require a human triage pass
+        # before labelling, because baselining a design that a vision
+        # reviewer already said is broken would freeze the broken
+        # render into the reference set. `bin/snap-vision-review.py`
+        # returns non-zero on severity-error findings specifically to
+        # drive that gate.
+        #
+        # Humans can still add/remove either label manually; duplicate
+        # adds are harmless (gh pr edit is idempotent). The self-heal
+        # step re-creates either missing label on demand -- a fresh
+        # fork with no labels configured would otherwise fail this
+        # step and leave the automation hanging.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -328,7 +354,7 @@ jobs:
           set -euo pipefail
           mapfile -t exits < <(find tmp/snaps -name vision-review.exit -type f 2>/dev/null || true)
           if [ ${#exits[@]} -eq 0 ]; then
-            echo "No vision-review.exit files under tmp/snaps; skipping label."
+            echo "No vision-review.exit files under tmp/snaps; skipping labels."
             exit 0
           fi
           bad=0
@@ -340,25 +366,38 @@ jobs:
             fi
           done
           if [ "$bad" -ne 0 ]; then
-            echo "Critique did not complete cleanly; add \`vision-reviewed\` manually after triage."
+            echo "Critique did not complete cleanly; add \`vision-reviewed\` and \`ready-for-baseline\` manually after triage."
             exit 0
           fi
-          echo "All vision-review.exit files are 0 — adding vision-reviewed label."
-          # Self-heal: create the label on-demand if a prior `gh label
+          echo "All vision-review.exit files are 0 — adding vision-reviewed + ready-for-baseline labels."
+          # Self-heal: create each label on-demand if a prior `gh label
           # delete` or a fresh-fork workflow leaves the repo without
-          # it. `gh label create` is idempotent for conflict errors
-          # (returns 422 we can ignore) but not for "already exists"
-          # via the REST API; running `view` first avoids the noisy
-          # 422. Without this the step used to fail with
+          # it. Without this the step used to fail with
           #   'vision-reviewed' not found
           # and the gate in check.yml stayed red forever even after
           # the critique finished cleanly — exactly the shape that
           # blocked PR #53 (basalt) for the first batch of themes.
-          if ! gh label list --repo "$REPO" --json name \
-                --jq '.[].name' | grep -qx 'vision-reviewed'; then
-            gh label create vision-reviewed \
-              --color "0e8a16" \
-              --description "Vision review completed cleanly by .github/workflows/vision-review.yml" \
-              --repo "$REPO" || true
-          fi
-          gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label vision-reviewed
+          ensure_label() {
+            local name="$1" color="$2" desc="$3"
+            if ! gh label list --repo "$REPO" --json name \
+                  --jq '.[].name' | grep -qx "$name"; then
+              gh label create "$name" \
+                --color "$color" \
+                --description "$desc" \
+                --repo "$REPO" || true
+            fi
+          }
+          ensure_label vision-reviewed 0e8a16 \
+            "Vision review completed cleanly by .github/workflows/vision-review.yml"
+          ensure_label ready-for-baseline 1d76db \
+            "Design pass is visually done; first-baseline.yml may generate tests/visual-baseline/"
+          # Single `gh pr edit` call so both labels land atomically
+          # and only one `labeled` webhook fires per label (two total).
+          # The vision-review.yml gate-job `if:` filter already skips
+          # self-retriggers on `vision-reviewed`; we add the symmetric
+          # filter on first-baseline.yml's setup job so the
+          # `vision-reviewed`-only labeling event doesn't spin up an
+          # empty baseline matrix.
+          gh pr edit "$PR_NUMBER" --repo "$REPO" \
+            --add-label vision-reviewed \
+            --add-label ready-for-baseline

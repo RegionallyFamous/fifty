@@ -73,6 +73,19 @@ jobs:
     name: resolve incubating new themes
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # Skip the matrix-resolution runner minutes when the labelling that
+    # fired this event was NOT `ready-for-baseline`. vision-review.yml
+    # adds `vision-reviewed` + `ready-for-baseline` together; without
+    # this filter, every add of `vision-reviewed` also spins up a
+    # first-baseline run that reads the label list, finds
+    # ready-for-baseline NOT yet applied at that instant, and exits
+    # "empty matrix" — ~30s of runner minutes per spurious trigger.
+    # On `synchronize` we always run: a new commit on the branch may
+    # have introduced a new incubating theme whose baselines are now
+    # needed and the label is already sitting on the PR.
+    if: >
+      github.event.action != 'labeled' ||
+      github.event.label.name == 'ready-for-baseline'
     outputs:
       themes: ${{ steps.scope.outputs.themes }}
       has_themes: ${{ steps.scope.outputs.has_themes }}
