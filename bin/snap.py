@@ -5772,6 +5772,303 @@ def cmd_check(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# `boot` subcommand: boot-fatal smoke gate (Tier 1.1, pre-100-themes plan)
+# ---------------------------------------------------------------------------
+#
+# Purpose: give ~30s feedback that a theme's Playground even comes up --
+# no PHP fatal, no parse error, no template-layer crash -- without paying
+# the cost of a full (route × viewport) snap matrix. A snap shoot that
+# ALSO hits a PHP fatal gives the same signal, but ~3-10 minutes later.
+#
+# Design choices:
+#   * No Playwright. Boot smoke uses urllib + substring-scan to check
+#     response bodies, so it adds zero dependency weight on top of
+#     boot_and_wait.
+#   * Probes a short, hard-coded route list (`BOOT_PROBE_ROUTES`) that
+#     covers the four public surfaces every WC theme must render:
+#     home, shop (archive-product), cart, my-account. Checkout is
+#     deliberately NOT probed in boot smoke -- WC's checkout block
+#     occasionally hydrates async validation errors on empty sessions
+#     and those are out of scope for a boot gate.
+#   * Writes `tmp/<theme>-boot.json` for CI / agents to consume; human
+#     operators get a compact stdout summary.
+#   * Exit code: 0 if every probe returned <500 and no fatal pattern
+#     hit, 1 otherwise. Non-fatal warnings (Notice/Deprecated) are
+#     recorded but don't fail the gate -- they're normal on a fresh
+#     WP+WC boot.
+BOOT_PROBE_ROUTES = ("/", "/shop/", "/cart/", "/my-account/")
+BOOT_PROBE_TIMEOUT_S = 15.0
+# Patterns below come from the WP/PHP error surface seen in real fatals
+# across `tmp/<theme>-server.log`. Kept deliberately narrow (NO generic
+# "Warning:"/"Notice:") because those fire on every fresh WP boot for
+# deprecated filter hooks and would make the gate useless. `check.py`
+# already has a "php-debug-output" rule that catches noise in-page;
+# boot smoke just catches the unrecoverable stuff.
+BOOT_FATAL_PATTERNS = (
+    "Fatal error:",
+    "Parse error:",
+    "PHP Fatal",
+    "PHP Parse",
+    "Call to undefined function",
+    "Call to undefined method",
+    "Uncaught Error:",
+    "Uncaught TypeError",
+    "Uncaught ValueError",
+    "WordPress database error",
+    "There has been a critical error on this website",
+    "There has been a critical error on your website",
+    # WP's default renderer for a PHP fatal (wp_die-style) prints a
+    # <title> that's unique enough to catch even if the stack trace is
+    # display-disabled in the blueprint.
+    "<title>WordPress &rsaquo; Error</title>",
+)
+# Softer signals: surfaced in the verdict JSON but NOT failing the gate.
+# Matched case-insensitively against response body + log.
+BOOT_WARNING_PATTERNS = (
+    "Deprecated:",
+    "Warning:",
+    "Notice:",
+)
+
+
+def _boot_fatal_hits(text: str) -> list[str]:
+    """Return the list of fatal patterns present in `text`.
+
+    Case-insensitive. Deduped, order-preserving so the first hit (most
+    likely the most informative) shows up first in the verdict JSON.
+    Pure function: unit-testable without booting Playground.
+    """
+    if not text:
+        return []
+    lower = text.lower()
+    hits: list[str] = []
+    for pat in BOOT_FATAL_PATTERNS:
+        if pat.lower() in lower and pat not in hits:
+            hits.append(pat)
+    return hits
+
+
+def _boot_warning_hits(text: str) -> list[str]:
+    """Return the list of soft-warning patterns present in `text`.
+
+    See `_boot_fatal_hits`. Separate list so the verdict JSON can
+    distinguish "fails the gate" from "informational".
+    """
+    if not text:
+        return []
+    lower = text.lower()
+    hits: list[str] = []
+    for pat in BOOT_WARNING_PATTERNS:
+        if pat.lower() in lower and pat not in hits:
+            hits.append(pat)
+    return hits
+
+
+def _probe_body(url: str, timeout_s: float = BOOT_PROBE_TIMEOUT_S) -> dict:
+    """GET `url`, return a verdict dict with status + body fatal scan.
+
+    Keys:
+      status: HTTP status (int) or None on connection error
+      error:  exception class name, populated on network failure
+      fatals: list of BOOT_FATAL_PATTERNS matched in the response body
+      warns:  list of BOOT_WARNING_PATTERNS matched in the response body
+      bytes:  content-length we read (capped at 256 KiB)
+
+    We deliberately do NOT follow redirects via the default opener --
+    `Server` already serves 302s for logged-out access to some
+    protected routes (/my-account/ -> login redirect) and a 3xx without
+    a fatal is fine for boot smoke.
+    """
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": "fifty-boot-smoke/1"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+            status = resp.status
+            data = resp.read(262144)
+    except urllib.error.HTTPError as e:
+        status = e.code
+        try:
+            data = e.read(262144)
+        except Exception:
+            data = b""
+    except (
+        TimeoutError,
+        urllib.error.URLError,
+        ConnectionError,
+        OSError,
+    ) as e:
+        return {
+            "status": None,
+            "error": type(e).__name__,
+            "fatals": [],
+            "warns": [],
+            "bytes": 0,
+        }
+    text = data.decode("utf-8", errors="replace") if data else ""
+    return {
+        "status": status,
+        "error": None,
+        "fatals": _boot_fatal_hits(text),
+        "warns": _boot_warning_hits(text),
+        "bytes": len(data),
+    }
+
+
+def _scan_log_for_fatals(log_path: Path, tail_kb: int = 256) -> dict:
+    """Scan the last `tail_kb` kilobytes of the server log for fatals.
+
+    Why tail: cold boots emit tens of MB of blueprint chatter; fatals
+    that matter for boot smoke show up near the end (post-blueprint,
+    serving our probe requests). Reading the whole file on a fleet of
+    100 themes would dominate smoke wall-time.
+    """
+    if not log_path.exists():
+        return {"fatals": [], "warns": [], "bytes": 0}
+    try:
+        size = log_path.stat().st_size
+        start = max(0, size - tail_kb * 1024)
+        with log_path.open("rb") as fh:
+            fh.seek(start)
+            data = fh.read()
+    except OSError:
+        return {"fatals": [], "warns": [], "bytes": 0}
+    text = data.decode("utf-8", errors="replace") if data else ""
+    return {
+        "fatals": _boot_fatal_hits(text),
+        "warns": _boot_warning_hits(text),
+        "bytes": len(data),
+    }
+
+
+def boot_smoke(
+    theme: str,
+    *,
+    routes: Iterable[str] = BOOT_PROBE_ROUTES,
+    cache_state: bool = False,
+    port: int | None = None,
+) -> dict:
+    """Boot Playground, probe each route, tear down, return verdict dict.
+
+    This is the CLI entry point's pure-ish core, broken out so tests
+    and CI scripts (nightly-snap-sweep, check.yml pre-shoot gate) can
+    call it without re-parsing argv. `cmd_boot` is the thin argparse
+    adapter.
+    """
+    start = time.time()
+    probes: list[dict] = []
+    log_fatals: list[str] = []
+    log_warns: list[str] = []
+    boot_error: str | None = None
+    log_path: Path | None = None
+    try:
+        with running_server(
+            theme,
+            port=port,
+            verbosity="normal",
+            login=False,
+            cache_state=cache_state,
+        ) as server:
+            log_path = server.log_path
+            for route in routes:
+                url = f"{server.url}{route}"
+                probes.append({"route": route, **_probe_body(url)})
+    except SystemExit as e:
+        boot_error = f"boot failed: {e}"
+    except Exception as e:  # pragma: no cover -- defensive
+        boot_error = f"{type(e).__name__}: {e}"
+
+    if log_path is not None:
+        scan = _scan_log_for_fatals(log_path)
+        log_fatals = scan["fatals"]
+        log_warns = scan["warns"]
+
+    # Compose verdict. A probe that returned None (status unreachable)
+    # is treated as a fail; >=500 is a fail; any fatal-pattern hit in
+    # body or log is a fail. Everything else is pass.
+    reasons: list[str] = []
+    if boot_error:
+        reasons.append(boot_error)
+    for p in probes:
+        if p["status"] is None:
+            reasons.append(f"{p['route']}: no response ({p.get('error')})")
+        elif p["status"] >= 500:
+            reasons.append(f"{p['route']}: HTTP {p['status']}")
+        if p["fatals"]:
+            reasons.append(f"{p['route']}: body contains {p['fatals'][0]!r}")
+    if log_fatals:
+        reasons.append(f"server log contains {log_fatals[0]!r}")
+
+    verdict = {
+        "theme": theme,
+        "elapsed_s": round(time.time() - start, 2),
+        "cache_state": bool(cache_state),
+        "probes": probes,
+        "log_fatals": log_fatals,
+        "log_warns": log_warns,
+        "boot_error": boot_error,
+        "ok": not reasons,
+        "reasons": reasons,
+    }
+    return verdict
+
+
+def _write_boot_verdict(theme: str, verdict: dict) -> Path:
+    TMP_DIR.mkdir(parents=True, exist_ok=True)
+    out = TMP_DIR / f"{theme}-boot.json"
+    out.write_text(json.dumps(verdict, indent=2), encoding="utf-8")
+    return out
+
+
+def cmd_boot(args: argparse.Namespace) -> int:
+    """snap boot <theme>: fast boot-fatal smoke gate.
+
+    Boots the theme's Playground, probes a handful of public routes,
+    scans both HTTP responses and the server log for PHP fatals, and
+    writes `tmp/<theme>-boot.json`. Returns 0 on green, 1 on any
+    fatal/unreachable probe. Warnings (Deprecated/Notice) are recorded
+    but do NOT fail the gate.
+
+    Cost target: ~30s warm (cache-state), ~2-3min cold on a fresh
+    theme (same as any boot_and_wait, since the WP install itself is
+    the long pole). The value proposition is that a blown-up theme
+    fails HERE instead of 10 minutes into a 44-cell shoot.
+    """
+    themes: list[str]
+    if getattr(args, "all", False):
+        themes = discover_themes()
+    elif args.theme:
+        themes = [args.theme]
+    else:
+        print("usage: snap.py boot <theme> [--all]", file=sys.stderr)
+        return 2
+
+    any_fail = False
+    for theme in themes:
+        print(f"\n=== boot smoke: {theme} ===")
+        verdict = boot_smoke(
+            theme,
+            cache_state=bool(getattr(args, "cache_state", False)),
+            port=getattr(args, "port", None),
+        )
+        out_path = _write_boot_verdict(theme, verdict)
+        if verdict["ok"]:
+            print(
+                f"  {GREEN}PASS{RESET} {theme} in {verdict['elapsed_s']}s "
+                f"({len(verdict['probes'])} probes; "
+                f"{len(verdict['log_warns'])} log warns)"
+            )
+        else:
+            any_fail = True
+            print(f"  {RED}FAIL{RESET} {theme} in {verdict['elapsed_s']}s")
+            for reason in verdict["reasons"]:
+                print(f"    - {reason}")
+        print(f"  verdict -> {out_path}")
+    return 1 if any_fail else 0
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 def build_parser() -> argparse.ArgumentParser:
@@ -6036,6 +6333,39 @@ def build_parser() -> argparse.ArgumentParser:
         "(macOS only; on other platforms this is a no-op).",
     )
     s_report.set_defaults(func=cmd_report)
+
+    s_boot = sub.add_parser(
+        "boot",
+        help=(
+            "Boot-fatal smoke gate: boot Playground, probe /, /shop/, "
+            "/cart/, /my-account/, scan body + log for PHP fatals. "
+            "Writes tmp/<theme>-boot.json. Exits 1 on any unreachable "
+            "probe, HTTP 5xx, or fatal-pattern hit. ~30s warm, ~2-3min "
+            "cold. Use as a pre-shoot gate so a broken theme fails in "
+            "seconds instead of minutes-into-a-matrix."
+        ),
+    )
+    s_boot.add_argument(
+        "theme", nargs="?", default=None,
+        help="Theme slug, or omit and use --all.",
+    )
+    s_boot.add_argument(
+        "--all", action="store_true",
+        help="Smoke every discoverable theme serially.",
+    )
+    s_boot.add_argument(
+        "--port", type=int, default=None,
+        help="Pin the playground port (default: auto-pick).",
+    )
+    s_boot.add_argument(
+        "--cache-state", action="store_true",
+        help=(
+            "Reuse tmp/playground-state/<theme>/wordpress. First boot "
+            "still pays cold-boot cost; subsequent invocations drop "
+            "to ~20-30s. See `snap.py shoot --cache-state --help`."
+        ),
+    )
+    s_boot.set_defaults(func=cmd_boot)
 
     s_doctor = sub.add_parser(
         "doctor",

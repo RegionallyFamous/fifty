@@ -152,6 +152,47 @@ jobs:
           restore-keys: |
             pg-state-v1-changed-
 
+      - name: Pre-shoot boot smoke
+        # Tier 1.1 pre-100-themes hardening: run `snap.py boot <theme>`
+        # against every changed theme BEFORE the full `snap.py shoot`
+        # matrix. A PHP fatal, a template parse error, or a plugin-
+        # activation crash shows up here in ~30-60s per theme instead
+        # of deep into a 10-minute cell-by-cell fan-out.
+        #
+        # Shares the `--cache-state` dir with the shoot step below,
+        # so the boot-smoke pass primes the cache: the shoot's own
+        # Playground boot reuses the populated /wordpress dir and
+        # only re-runs the blueprint's content-seeding step (~20-30s
+        # warm) instead of the full WP + plugin install (~127s cold).
+        # Net overhead on a green PR is small; on a red PR we save
+        # the entire shoot's wall time.
+        #
+        # Boot-smoke verdict JSON lands at tmp/<theme>-boot.json and
+        # is uploaded below on any failure so the PR author sees the
+        # exact fatal without hunting through server logs.
+        if: steps.changed.outputs.has_themes == 'true'
+        env:
+          FIFTY_CONTENT_REF: ${{ github.event.pull_request.head.sha || '' }}
+        run: |
+          fail=0
+          for t in ${{ steps.changed.outputs.themes }}; do
+            echo "::group::boot smoke: $t"
+            if ! python3 bin/snap.py boot "$t" --cache-state; then
+              fail=1
+              echo "::error title=Boot smoke failed for $t::See tmp/$t-boot.json artifact"
+            fi
+            echo "::endgroup::"
+          done
+          exit $fail
+      - name: Upload boot-smoke verdicts on failure
+        if: failure() && steps.changed.outputs.has_themes == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-smoke-verdicts
+          path: tmp/*-boot.json
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Shoot changed themes (quick subset)
         if: steps.changed.outputs.has_themes == 'true'
         # Pass `--changed-base origin/main` so brand-new themes (present on
