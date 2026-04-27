@@ -55,9 +55,17 @@ Read this file at the start of any LLM session to discover the project's structu
 |   `-- value-props.php
 |-- playground/
 |   |-- content/
+|   |   |-- category-images.json
 |   |   |-- content.xml
+|   |   |-- product-images.json
 |   |   `-- products.csv
 |   |-- images/
+|   |   |-- cat-curated-bundles.jpg
+|   |   |-- cat-curiosities.jpg
+|   |   |-- cat-digital-oddments.jpg
+|   |   |-- cat-forbidden-snacks.jpg
+|   |   |-- cat-impossibilities.jpg
+|   |   |-- cat-moods-feelings.jpg
 |   |   |-- imaginary-deed.pdf
 |   |   |-- imaginary-seal.png
 |   |   |-- lost-recipe.pdf
