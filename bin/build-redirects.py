@@ -1277,7 +1277,15 @@ def copy_binary(src: Path, dst: Path, *, dry_run: bool, written: list[Path]) -> 
 
 
 def build(*, dry_run: bool = False) -> int:
-    themes = list(iter_themes())
+    # Include every stage (not just `shipping`) so freshly-cloned
+    # themes still at `stage: incubating` get short-URL redirectors
+    # written on the first design pass. Without this, a new theme
+    # would have no `docs/<slug>/index.html` until promotion —
+    # breaking the `_phase_redirects` step `bin/design.py` runs for
+    # every freshly-cloned theme. The shipping dashboard and gallery
+    # remain stage-filtered because those have their own readiness
+    # criteria (`bin/build-theme-status.py`, `bin/build-snap-gallery.py`).
+    themes = list(iter_themes(stages=()))
     if not themes:
         print("error: no themes found in monorepo", file=sys.stderr)
         return 1

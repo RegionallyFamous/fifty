@@ -69,12 +69,11 @@ from _lib import MONOREPO_ROOT, iter_themes, theme_content_base_url
 
 # Map each blueprint writeFile target path -> source file path (relative to ROOT).
 MAPPINGS: dict[str, Path] = {
-    "/wordpress/wo-import.php":
-        MONOREPO_ROOT / "playground" / "wo-import.php",
-    "/wordpress/wo-configure.php":
-        MONOREPO_ROOT / "playground" / "wo-configure.php",
-    "/wordpress/wp-content/mu-plugins/wo-cart-mu.php":
-        MONOREPO_ROOT / "playground" / "wo-cart-mu.php",
+    "/wordpress/wo-import.php": MONOREPO_ROOT / "playground" / "wo-import.php",
+    "/wordpress/wo-configure.php": MONOREPO_ROOT / "playground" / "wo-configure.php",
+    "/wordpress/wp-content/mu-plugins/wo-cart-mu.php": MONOREPO_ROOT
+    / "playground"
+    / "wo-cart-mu.php",
     # NOTE: wo-microcopy-mu.php, wo-swatches-mu.php, wo-payment-icons-mu.php,
     # and wo-pages-mu.php were all deleted as part of the theme-shipped
     # brand refactor. Every shopper-facing WC override they once registered
@@ -98,6 +97,7 @@ TARGETS_NEEDING_CONSTANTS = {
     "/wordpress/wo-import.php",
     "/wordpress/wo-configure.php",
 }
+
 
 def theme_display_name(theme_dir: Path) -> str:
     """Return the human-readable theme name from theme.json `title`,
@@ -250,7 +250,15 @@ def main() -> int:
             print(f"error: source file not found: {p}", file=sys.stderr)
         return 1
 
-    themes = list(iter_themes())
+    # Iterate across every stage (including `incubating`/`design`) so
+    # that freshly-cloned themes — written by `bin/clone.py` as
+    # `stage: incubating` — get their blueprints re-inlined too. The
+    # shared `wo-*.php` bodies must be baked into EVERY theme's
+    # blueprint or the Playground boot step loads stale inlined code
+    # once the theme is promoted. The shipping-only default filter
+    # silently skipped incubating themes, so a batch run would leave
+    # the new theme's blueprint pointing at a fictional URL.
+    themes = list(iter_themes(stages=()))
     if not themes:
         print("error: no themes found in monorepo", file=sys.stderr)
         return 1
@@ -276,9 +284,7 @@ def main() -> int:
         snap_path = Path(__file__).resolve().parent / "snap.py"
         cmd = [sys.executable, str(snap_path), "check", "--changed"]
         print(f"\n>> {' '.join(cmd[1:])}")
-        rc = subprocess.call(
-            cmd, cwd=str(Path(__file__).resolve().parent.parent)
-        )
+        rc = subprocess.call(cmd, cwd=str(Path(__file__).resolve().parent.parent))
         if rc != 0:
             return rc
     return 0
