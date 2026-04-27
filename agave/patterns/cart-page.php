@@ -43,20 +43,20 @@
 <!-- /wp:paragraph -->
 
 <!-- wp:heading {"textAlign":"center","level":1,"className":"wo-empty__title","fontSize":"3xl","style":{"typography":{"letterSpacing":"var:custom|letter-spacing|tight"},"spacing":{"margin":{"top":"0","bottom":"0"}}}} -->
-<h1 class="wp-block-heading has-text-align-center has-3-xl-font-size wo-empty__title" style="margin-top:0;margin-bottom:0;letter-spacing:var(--wp--custom--letter-spacing--tight)"><?php esc_html_e( 'Your cart is rather empty.', 'agave' ); ?></h1>
+<h1 class="wp-block-heading has-text-align-center has-3-xl-font-size wo-empty__title" style="margin-top:0;margin-bottom:0;letter-spacing:var(--wp--custom--letter-spacing--tight)"><?php esc_html_e( 'Your cart is waiting.', 'agave' ); ?></h1>
 <!-- /wp:heading -->
 
 <!-- wp:paragraph {"align":"center","className":"wo-empty__lede","textColor":"secondary"} -->
-<p class="has-text-align-center has-secondary-color has-text-color wo-empty__lede"><?php esc_html_e( 'Browse the shop, or pick up a thread you left in the journal.', 'agave' ); ?></p>
+<p class="has-text-align-center has-secondary-color has-text-color wo-empty__lede"><?php esc_html_e( 'Browse the shop, or follow a thread from the journal.', 'agave' ); ?></p>
 <!-- /wp:paragraph -->
 
 <!-- wp:buttons {"layout":{"type":"flex","justifyContent":"center"},"style":{"spacing":{"margin":{"top":"var:preset|spacing|md"}}}} -->
 <div class="wp-block-buttons" style="margin-top:var(--wp--preset--spacing--md)"><!-- wp:button -->
-<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop/"><?php esc_html_e( 'Continue browsing', 'agave' ); ?></a></div>
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop/"><?php esc_html_e( 'Keep browsing', 'agave' ); ?></a></div>
 <!-- /wp:button -->
 
 <!-- wp:button {"className":"is-style-outline"} -->
-<div class="wp-block-button is-style-outline"><a class="wp-block-button__link wp-element-button" href="/journal/"><?php esc_html_e( 'Visit the journal', 'agave' ); ?></a></div>
+<div class="wp-block-button is-style-outline"><a class="wp-block-button__link wp-element-button" href="/journal/"><?php esc_html_e( 'Visit the field notes', 'agave' ); ?></a></div>
 <!-- /wp:button --></div>
 <!-- /wp:buttons --></div>
 <!-- /wp:woocommerce/empty-cart-block --></div>

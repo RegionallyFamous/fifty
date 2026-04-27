@@ -12,7 +12,7 @@
 <!-- wp:group {"align":"full","style":{"spacing":{"padding":{"top":"var:preset|spacing|2-xl","bottom":"var:preset|spacing|2-xl","left":"var:preset|spacing|lg","right":"var:preset|spacing|lg"}}},"layout":{"type":"constrained"}} -->
 <div class="wp-block-group alignfull" style="padding-top:var(--wp--preset--spacing--2-xl);padding-right:var(--wp--preset--spacing--lg);padding-bottom:var(--wp--preset--spacing--2-xl);padding-left:var(--wp--preset--spacing--lg)">
 	<!-- wp:heading {"textAlign":"center"} -->
-	<h2 class="wp-block-heading has-text-align-center"><?php esc_html_e( 'What customers say', 'agave' ); ?></h2>
+	<h2 class="wp-block-heading has-text-align-center"><?php esc_html_e( 'What people say', 'agave' ); ?></h2>
 	<!-- /wp:heading -->
 
 	<!-- wp:columns {"align":"wide","style":{"spacing":{"margin":{"top":"var:preset|spacing|xl"}}}} -->
@@ -24,7 +24,7 @@
 				<!-- wp:quote -->
 				<blockquote class="wp-block-quote">
 					<!-- wp:paragraph -->
-					<p><?php esc_html_e( 'Quality is exactly what they advertised. Will be back.', 'agave' ); ?></p>
+					<p><?php esc_html_e( 'Exactly what I hoped for. Already back for more.', 'agave' ); ?></p>
 					<!-- /wp:paragraph -->
 					<cite><?php esc_html_e( 'Alex M.', 'agave' ); ?></cite>
 				</blockquote>
@@ -41,7 +41,7 @@
 				<!-- wp:quote -->
 				<blockquote class="wp-block-quote">
 					<!-- wp:paragraph -->
-					<p><?php esc_html_e( 'Shipping was fast and the packaging was beautiful.', 'agave' ); ?></p>
+					<p><?php esc_html_e( 'Arrived quickly and packed with genuine care.', 'agave' ); ?></p>
 					<!-- /wp:paragraph -->
 					<cite><?php esc_html_e( 'Sam P.', 'agave' ); ?></cite>
 				</blockquote>
@@ -58,7 +58,7 @@
 				<!-- wp:quote -->
 				<blockquote class="wp-block-quote">
 					<!-- wp:paragraph -->
-					<p><?php esc_html_e( 'I have had it for a year and it still looks brand new.', 'agave' ); ?></p>
+					<p><?php esc_html_e( 'A year in and it still looks as good as the day it arrived.', 'agave' ); ?></p>
 					<!-- /wp:paragraph -->
 					<cite><?php esc_html_e( 'Jordan K.', 'agave' ); ?></cite>
 				</blockquote>

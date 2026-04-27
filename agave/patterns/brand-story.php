@@ -20,11 +20,11 @@
 			<!-- /wp:paragraph -->
 
 			<!-- wp:heading {"level":2} -->
-			<h2 class="wp-block-heading"><?php esc_html_e( 'A short statement of intent.', 'agave' ); ?></h2>
+			<h2 class="wp-block-heading"><?php esc_html_e( 'A considered statement of purpose.', 'agave' ); ?></h2>
 			<!-- /wp:heading -->
 
 			<!-- wp:paragraph {"textColor":"secondary","fontSize":"md"} -->
-			<p class="has-secondary-color has-text-color has-md-font-size"><?php esc_html_e( 'Two or three sentences explaining why your brand exists, what it makes, and who it makes it for. Keep it concrete.', 'agave' ); ?></p>
+			<p class="has-secondary-color has-text-color has-md-font-size"><?php esc_html_e( 'Two or three sentences about the desert terrain that shapes our work, why we build slowly, and what honest craft looks like.', 'agave' ); ?></p>
 			<!-- /wp:paragraph -->
 
 			<!-- wp:buttons -->

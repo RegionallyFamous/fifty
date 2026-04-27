@@ -14,13 +14,13 @@
 	<!-- wp:group {"align":"wide","layout":{"type":"flex","flexWrap":"wrap","justifyContent":"space-between","verticalAlignment":"center"}} -->
 	<div class="wp-block-group alignwide">
 		<!-- wp:heading {"level":3,"fontSize":"xl"} -->
-		<h3 class="wp-block-heading has-xl-font-size"><?php esc_html_e( 'Ready to make it yours?', 'agave' ); ?></h3>
+		<h3 class="wp-block-heading has-xl-font-size"><?php esc_html_e( 'Ready to take it home?', 'agave' ); ?></h3>
 		<!-- /wp:heading -->
 
 		<!-- wp:buttons -->
 		<div class="wp-block-buttons">
 			<!-- wp:button -->
-			<div class="wp-block-button"><a class="wp-block-button__link wp-element-button"><?php esc_html_e( 'Shop the catalog', 'agave' ); ?></a></div>
+			<div class="wp-block-button"><a class="wp-block-button__link wp-element-button"><?php esc_html_e( 'Visit the catalog', 'agave' ); ?></a></div>
 			<!-- /wp:button -->
 		</div>
 		<!-- /wp:buttons -->

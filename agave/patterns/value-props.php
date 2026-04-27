@@ -16,10 +16,10 @@
 		<!-- wp:column -->
 		<div class="wp-block-column">
 			<!-- wp:heading {"level":3,"fontSize":"lg"} -->
-			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Free shipping', 'agave' ); ?></h3>
+			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Postage included', 'agave' ); ?></h3>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph {"textColor":"secondary"} -->
-			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'On every order over $50, anywhere in the country.', 'agave' ); ?></p>
+			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Included on all orders over $50, anywhere in the country.', 'agave' ); ?></p>
 			<!-- /wp:paragraph -->
 		</div>
 		<!-- /wp:column -->
@@ -27,10 +27,10 @@
 		<!-- wp:column -->
 		<div class="wp-block-column">
 			<!-- wp:heading {"level":3,"fontSize":"lg"} -->
-			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( '30-day returns', 'agave' ); ?></h3>
+			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( '30-day exchanges', 'agave' ); ?></h3>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph {"textColor":"secondary"} -->
-			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Not what you expected? Send it back, no questions asked.', 'agave' ); ?></p>
+			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Not quite right? Return it within 30 days, free.', 'agave' ); ?></p>
 			<!-- /wp:paragraph -->
 		</div>
 		<!-- /wp:column -->
@@ -38,10 +38,10 @@
 		<!-- wp:column -->
 		<div class="wp-block-column">
 			<!-- wp:heading {"level":3,"fontSize":"lg"} -->
-			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Made to last', 'agave' ); ?></h3>
+			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Made to endure', 'agave' ); ?></h3>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph {"textColor":"secondary"} -->
-			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Materials sourced for longevity, not the next replacement cycle.', 'agave' ); ?></p>
+			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Materials chosen to outlast trends, not feed them.', 'agave' ); ?></p>
 			<!-- /wp:paragraph -->
 		</div>
 		<!-- /wp:column -->
