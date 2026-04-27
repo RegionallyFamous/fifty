@@ -1,0 +1,42 @@
+<!-- wp:template-part {"slug":"header","tagName":"div"} /-->
+
+<!-- wp:group {"tagName":"main","style":{"spacing":{"padding":{"top":"var:preset|spacing|3-xl","bottom":"var:preset|spacing|3-xl"},"blockGap":"var:preset|spacing|lg"}},"layout":{"type":"constrained"}} -->
+<main class="wp-block-group wo-empty wo-empty--404" style="padding-top:var(--wp--preset--spacing--3-xl);padding-bottom:var(--wp--preset--spacing--3-xl)">
+	<!-- wp:html -->
+	<svg class="wo-empty__art" viewBox="0 0 240 160" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+		<rect x="20" y="40" width="200" height="100" rx="6" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 6"/>
+		<circle cx="80" cy="80" r="6" fill="currentColor"/>
+		<circle cx="160" cy="80" r="6" fill="currentColor"/>
+		<path d="M85 115c10-10 60-10 70 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+	</svg>
+	<!-- /wp:html -->
+
+	<!-- wp:paragraph {"align":"center","fontSize":"xs","textColor":"secondary","style":{"typography":{"textTransform":"uppercase","letterSpacing":"var:custom|letter-spacing|wider"},"spacing":{"margin":{"bottom":"0"}}}} -->
+	<p class="has-text-align-center has-secondary-color has-text-color has-xs-font-size" style="margin-bottom:0;letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase">Error 404</p>
+	<!-- /wp:paragraph -->
+
+	<!-- wp:heading {"textAlign":"center","level":1,"content":"Page not found.","fontSize":"4xl","style":{"typography":{"letterSpacing":"var:custom|letter-spacing|tight"},"spacing":{"margin":{"top":"0","bottom":"0"}}}} -->
+	<h1 class="wp-block-heading has-text-align-center has-4-xl-font-size wo-empty__title" style="margin-top:0;margin-bottom:0;letter-spacing:var(--wp--custom--letter-spacing--tight)">Page not found.</h1>
+	<!-- /wp:heading -->
+
+	<!-- wp:paragraph {"align":"center","textColor":"secondary"} -->
+	<p class="has-text-align-center has-secondary-color has-text-color">The page you sought has moved, been pressed out, or never existed. Search below, or walk back toward the entry.</p>
+	<!-- /wp:paragraph -->
+
+	<!-- wp:search {"label":"Search","showLabel":false,"placeholder":"Search the site","buttonText":"Search","buttonPosition":"button-inside","buttonUseIcon":true,"align":"center"} /-->
+
+	<!-- wp:buttons {"layout":{"type":"flex","justifyContent":"center"},"style":{"spacing":{"margin":{"top":"var:preset|spacing|md"}}}} -->
+	<div class="wp-block-buttons" style="margin-top:var(--wp--preset--spacing--md)">
+		<!-- wp:button -->
+		<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop/">Open the catalog</a></div>
+		<!-- /wp:button -->
+
+		<!-- wp:button {"className":"is-style-outline"} -->
+		<div class="wp-block-button is-style-outline"><a class="wp-block-button__link wp-element-button" href="/">Back to the entry</a></div>
+		<!-- /wp:button -->
+	</div>
+	<!-- /wp:buttons -->
+</main>
+<!-- /wp:group -->
+
+<!-- wp:template-part {"slug":"footer","tagName":"div"} /-->
