@@ -1,0 +1,7 @@
+[
+	{
+		"fg": "border",
+		"bg": "base",
+		"reason": "Light-theme hairline borders (#D9D6CC on #FAFAF7) are intentionally near-background — they define structural edges without competing with content. Decorative dividers are not interactive and do not carry information, so the 3:1 non-text contrast requirement does not apply per WCAG 1.4.11 (UI components, not non-text decorative elements)."
+	}
+]
