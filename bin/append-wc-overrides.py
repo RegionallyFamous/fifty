@@ -1629,15 +1629,14 @@ button.show-password-input.show-password-input{{min-width:32px;min-height:32px;p
 # form at logged-out /my-account/, so this selector matches on every
 # theme without forking.
 #
-# Also widen cart/checkout content at very wide viewports (>=1600px)
-# so the demo's /cart/ and /checkout/ fill more of the screen instead
-# of centering a 1280px column inside a 1920px viewport (66% usage).
-# The cap at 1440px keeps line-length readable without sprawling.
+# Cart/checkout outer widening at >=1280px / >=1600px lives in phase-z
+# (same `body` specificity as the inner sidebar-layout rules) so it
+# reliably beats `.is-layout-constrained > .alignwide` without fighting
+# phase-y for cascade order.
 SENTINEL_OPEN_PHASE_Y = "/* wc-tells-phase-y-login-grid-desktop */"
 SENTINEL_CLOSE_PHASE_Y = "/* /wc-tells-phase-y-login-grid-desktop */"
 CSS_PHASE_Y = f"""{SENTINEL_OPEN_PHASE_Y}
 @media (min-width:782px){{.wo-account-login-grid.wo-account-login-grid.wo-account-login-grid{{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--wp--preset--spacing--2-xl);align-items:start;}}}}
-@media (min-width:1600px){{.wp-block-woocommerce-cart.alignwide,.wp-block-woocommerce-checkout.alignwide{{max-width:1440px;margin-left:auto;margin-right:auto;}}}}
 {SENTINEL_CLOSE_PHASE_Y}"""
 
 
@@ -1682,10 +1681,10 @@ CSS_PHASE_Y = f"""{SENTINEL_OPEN_PHASE_Y}
 #
 # FIX
 # ---
-# a. Widen .wp-block-woocommerce-cart / .wp-block-woocommerce-checkout
-#    at min-width:1280px regardless of .alignwide (max-width 1200px),
-#    bump to 1440px at min-width:1600px. This replaces phase-y's
-#    too-conservative trigger.
+# a. Widen the outer .wp-block-woocommerce-{cart,checkout}.alignwide
+#    shell (min-width:1280px -> 1360px, 1600px -> 1440px) AND the inner
+#    .wc-block-{cart,checkout}.wc-block-components-sidebar-layout grid
+#    so phase-y's login-grid-only scope does not fight cascade order.
 # b. Downgrade overflow-wrap from `anywhere` to `break-word` on the
 #    order-summary title / description / product-name cells so
 #    product names wrap at word boundaries, not mid-glyph. Phase-v's
@@ -1701,17 +1700,15 @@ SENTINEL_OPEN_PHASE_Z = "/* wc-tells-phase-z-desktop-wc-chrome-polish */"
 SENTINEL_CLOSE_PHASE_Z = "/* /wc-tells-phase-z-desktop-wc-chrome-polish */"
 # Phase Z widens the cart/checkout blocks BEYOND wideSize.
 #
-# Why the extra specificity acrobatics: WP's `is-layout-constrained`
-# parent caps every child at `var(--wp--style--global--wide-size)`
-# (1440px in every theme here) via
+# Why `body` + two classes: WP's `is-layout-constrained` parent caps
+# every child at `var(--wp--style--global--wide-size)` (1440px here) via
 #   .is-layout-constrained > .alignwide { max-width: wideSize; }
-# which has specificity (0,2,0). To override we set max-width on the
-# WC-block class itself with (0,3,0) specificity (the selector stacks
-# `.wc-block-checkout` three times). We also target `.wc-block-cart`
-# and `.wc-block-checkout` directly (rather than the wp-block-*
-# wrappers) because those are the classes WC actually sprays onto the
-# outer <div> at render time. The margin auto centres the widened
-# block inside its constrained-layout parent.
+# which is (0,2,0). WooCommerce 9.x+ renders the cart/checkout grid on
+# a single outer div that carries BOTH `wc-block-components-sidebar-layout`
+# AND `wc-block-cart` / `wc-block-checkout` (not three repeated
+# `.wc-block-cart` tokens). We target that pair under `body` for
+# (0,2,1) specificity so the max-width + grid-template-columns wins.
+# Margin auto centres the widened block inside its constrained parent.
 #
 # The sidebar min-width bump (minmax(300px,360px) -> minmax(340px,
 # 420px) at >=1280px, minmax(380px,480px) at >=1600px) is what
@@ -1723,10 +1720,12 @@ SENTINEL_CLOSE_PHASE_Z = "/* /wc-tells-phase-z-desktop-wc-chrome-polish */"
 # 160-200px, enough for ~18ch of product name per line, so the
 # break-word rule only fires on genuinely long single tokens.
 CSS_PHASE_Z = f"""{SENTINEL_OPEN_PHASE_Z}
-@media (min-width:1280px){{.wc-block-cart.wc-block-cart.wc-block-cart,.wc-block-checkout.wc-block-checkout.wc-block-checkout{{max-width:1360px;margin-left:auto;margin-right:auto;}}}}
-@media (min-width:1600px){{.wc-block-cart.wc-block-cart.wc-block-cart,.wc-block-checkout.wc-block-checkout.wc-block-checkout{{max-width:1520px;}}}}
-@media (min-width:1280px){{.wc-block-checkout.wc-block-checkout{{grid-template-columns:minmax(0,1fr) minmax(340px,420px);}} .wc-block-cart.wc-block-cart{{grid-template-columns:minmax(0,1fr) minmax(340px,420px);}}}}
-@media (min-width:1600px){{.wc-block-checkout.wc-block-checkout{{grid-template-columns:minmax(0,1fr) minmax(380px,480px);}} .wc-block-cart.wc-block-cart{{grid-template-columns:minmax(0,1fr) minmax(380px,480px);}}}}
+@media (min-width:1280px){{body .wp-block-woocommerce-cart.alignwide,body .wp-block-woocommerce-checkout.alignwide{{max-width:1360px;margin-left:auto;margin-right:auto;}}}}
+@media (min-width:1600px){{body .wp-block-woocommerce-cart.alignwide,body .wp-block-woocommerce-checkout.alignwide{{max-width:1440px;}}}}
+@media (min-width:1280px){{body .wc-block-cart.wc-block-components-sidebar-layout,body .wc-block-checkout.wc-block-components-sidebar-layout{{max-width:1360px;margin-left:auto;margin-right:auto;}}}}
+@media (min-width:1600px){{body .wc-block-cart.wc-block-components-sidebar-layout,body .wc-block-checkout.wc-block-components-sidebar-layout{{max-width:1520px;}}}}
+@media (min-width:1280px){{body .wc-block-checkout.wc-block-components-sidebar-layout{{grid-template-columns:minmax(0,1fr) minmax(340px,420px);}} body .wc-block-cart.wc-block-components-sidebar-layout{{grid-template-columns:minmax(0,1fr) minmax(340px,420px);}}}}
+@media (min-width:1600px){{body .wc-block-checkout.wc-block-components-sidebar-layout{{grid-template-columns:minmax(0,1fr) minmax(380px,480px);}} body .wc-block-cart.wc-block-components-sidebar-layout{{grid-template-columns:minmax(0,1fr) minmax(380px,480px);}}}}
 .wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description.wc-block-components-order-summary-item__description,.wc-block-components-order-summary-item__title.wc-block-components-order-summary-item__title.wc-block-components-order-summary-item__title.wc-block-components-order-summary-item__title.wc-block-components-order-summary-item__title,.wc-block-components-product-name.wc-block-components-product-name.wc-block-components-product-name.wc-block-components-product-name.wc-block-components-product-name.wc-block-components-product-name{{overflow-wrap:break-word;word-break:normal;hyphens:none;}}
 .wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar.wc-block-checkout__sidebar,.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar.wc-block-cart__sidebar{{overflow-wrap:break-word;word-break:normal;hyphens:none;}}
 .wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button,.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button.wc-block-components-checkout-return-to-cart-button:visited{{color:var(--wp--preset--color--contrast);text-decoration:none;border:0;background:transparent;font-weight:var(--wp--custom--font-weight--medium,500);}}

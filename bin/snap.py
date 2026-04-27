@@ -2763,8 +2763,15 @@ _HEURISTICS_JS = r"""
                 // (1280px wideSize minus ~360px sidebar minus gap).
                 // Anything narrower than 900 at >=1280 viewport means
                 // the wide layout did not engage.
-                const looksLikeWcMain = /wc-block-cart\b|wc-block-checkout\b|woocommerce-MyAccount-content\b|wo-account-login-grid\b/i.test(sel)
-                    && !/sidebar|summary/i.test(sel);
+                // Match only the cart/checkout *shell* selectors — not
+                // `.wc-block-cart-items` (the inner table matches
+                // `wc-block-cart\\b` because \\b falls between `t` and
+                // `-items`).
+                const looksLikeWcMain = (
+                    sel === ".wc-block-cart" ||
+                    sel === ".wc-block-checkout" ||
+                    /woocommerce-MyAccount-content\b|wo-account-login-grid\b/i.test(sel)
+                ) && !/sidebar|summary/i.test(sel);
                 if (looksLikeWcMain && inst.visible && inst.width > 0 && inst.width < 900 && vw >= 1280) {
                     push("error", "narrow-wc-block",
                          `\`${sel}\` rendered ${inst.width}px wide on a ${vw}px viewport (expected >= 900px at desktop+; the wide-layout CSS did not engage).`,
