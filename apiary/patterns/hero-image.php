@@ -14,21 +14,21 @@
 	<!-- wp:group {"layout":{"type":"constrained"}} -->
 	<div class="wp-block-group">
 		<!-- wp:heading {"level":1,"textAlign":"center","textColor":"base","fontSize":"5xl"} -->
-		<h1 class="wp-block-heading has-text-align-center has-base-color has-text-color has-5-xl-font-size"><?php esc_html_e( 'Slow goods for the room you live in.', 'lysholm' ); ?></h1>
+		<h1 class="wp-block-heading has-text-align-center has-base-color has-text-color has-5-xl-font-size"><?php esc_html_e( 'Small batches for the table you sit at.', 'apiary'); ?></h1>
 		<!-- /wp:heading -->
 
 		<!-- wp:paragraph {"align":"center","textColor":"base","fontSize":"md","style":{"spacing":{"margin":{"top":"var:preset|spacing|md","bottom":"var:preset|spacing|lg"}},"typography":{"lineHeight":"var(--wp--custom--line-height--normal)"}}} -->
-		<p class="has-text-align-center has-base-color has-text-color has-md-font-size" style="margin-top:var(--wp--preset--spacing--md);margin-bottom:var(--wp--preset--spacing--lg);line-height:var(--wp--custom--line-height--normal)"><?php esc_html_e( 'A small Nordic studio of ceramics, washed linen, and hand-shaped wood — chosen for the years they earn beside you.', 'lysholm' ); ?></p>
+		<p class="has-text-align-center has-base-color has-text-color has-md-font-size" style="margin-top:var(--wp--preset--spacing--md);margin-bottom:var(--wp--preset--spacing--lg);line-height:var(--wp--custom--line-height--normal)"><?php esc_html_e( 'A small British apiary of raw honey, beeswax goods, and foraged flavours — chosen for the mornings they earn beside you.', 'apiary'); ?></p>
 		<!-- /wp:paragraph -->
 
 		<!-- wp:buttons {"layout":{"type":"flex","justifyContent":"center"}} -->
 		<div class="wp-block-buttons">
 			<!-- wp:button -->
-			<div class="wp-block-button"><a class="wp-block-button__link wp-element-button"><?php esc_html_e( 'Browse the collection', 'lysholm' ); ?></a></div>
+			<div class="wp-block-button"><a class="wp-block-button__link wp-element-button"><?php esc_html_e( 'Browse the harvest', 'apiary'); ?></a></div>
 			<!-- /wp:button -->
 
 			<!-- wp:button {"className":"is-style-outline","textColor":"base"} -->
-			<div class="wp-block-button is-style-outline"><a class="wp-block-button__link has-base-color has-text-color wp-element-button"><?php esc_html_e( 'Learn more', 'lysholm' ); ?></a></div>
+			<div class="wp-block-button is-style-outline"><a class="wp-block-button__link has-base-color has-text-color wp-element-button"><?php esc_html_e( 'Learn more', 'apiary'); ?></a></div>
 			<!-- /wp:button -->
 		</div>
 		<!-- /wp:buttons -->

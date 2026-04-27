@@ -36,21 +36,21 @@
 		<!-- wp:column {"verticalAlignment":"center","width":"50%"} -->
 		<div class="wp-block-column is-vertically-aligned-center" style="flex-basis:50%">
 			<!-- wp:heading {"level":1,"fontSize":"5xl"} -->
-			<h1 class="wp-block-heading has-5-xl-font-size"><?php esc_html_e( 'Slow goods, gently kept.', 'lysholm' ); ?></h1>
+			<h1 class="wp-block-heading has-5-xl-font-size"><?php esc_html_e( 'Slow honey, gently kept.', 'apiary'); ?></h1>
 			<!-- /wp:heading -->
 
 			<!-- wp:paragraph {"fontSize":"md","textColor":"secondary"} -->
-			<p class="has-secondary-color has-text-color has-md-font-size"><?php esc_html_e( 'A small Nordic studio of pale ceramics, washed linen, and hand-shaped wood — chosen for the quiet years they earn beside you.', 'lysholm' ); ?></p>
+			<p class="has-secondary-color has-text-color has-md-font-size"><?php esc_html_e( 'A small British apiary of raw honey and beeswax goods — chosen for the quiet mornings they earn beside you.', 'apiary'); ?></p>
 			<!-- /wp:paragraph -->
 
 			<!-- wp:buttons {"style":{"spacing":{"margin":{"top":"var:preset|spacing|md"}}}} -->
 			<div class="wp-block-buttons" style="margin-top:var(--wp--preset--spacing--md)">
 				<!-- wp:button -->
-				<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop"><?php esc_html_e( 'Browse the collection', 'lysholm' ); ?></a></div>
+				<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop"><?php esc_html_e( 'Browse the harvest', 'apiary'); ?></a></div>
 				<!-- /wp:button -->
 
 				<!-- wp:button {"className":"is-style-outline"} -->
-				<div class="wp-block-button is-style-outline"><a class="wp-block-button__link wp-element-button" href="/journal"><?php esc_html_e( 'Read the journal', 'lysholm' ); ?></a></div>
+				<div class="wp-block-button is-style-outline"><a class="wp-block-button__link wp-element-button" href="/journal"><?php esc_html_e( 'Read the field notes', 'apiary'); ?></a></div>
 				<!-- /wp:button -->
 			</div>
 			<!-- /wp:buttons -->
@@ -60,7 +60,7 @@
 		<!-- wp:column {"verticalAlignment":"center"} -->
 		<div class="wp-block-column is-vertically-aligned-center">
 			<!-- wp:image {"sizeSlug":"large"} -->
-			<figure class="wp-block-image size-large"><img src="<?php echo esc_url( get_theme_file_uri( 'playground/images/product-wo-bottled-morning.jpg' ) ); ?>" alt="<?php esc_attr_e( 'Bottled Morning — a hand-stoppered glass bottle of soft Nordic light, tagged in pale linen on a bare cream backdrop. The flagship object of our quiet Wonders & Oddities catalogue.', 'lysholm' ); ?>"/></figure>
+			<figure class="wp-block-image size-large"><img src="<?php echo esc_url( get_theme_file_uri( 'playground/images/product-wo-bottled-morning.jpg' ) ); ?>" alt="<?php esc_attr_e( 'Bottled Morning — a hand-labelled jar of golden honey, tagged in warm linen on a cream backdrop. Our flagship product from the Wonders & Oddities catalogue.', 'apiary'); ?>"/></figure>
 			<!-- /wp:image -->
 		</div>
 		<!-- /wp:column -->

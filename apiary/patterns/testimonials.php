@@ -12,7 +12,7 @@
 <!-- wp:group {"align":"full","style":{"spacing":{"padding":{"top":"var:preset|spacing|2-xl","bottom":"var:preset|spacing|2-xl","left":"var:preset|spacing|lg","right":"var:preset|spacing|lg"}}},"layout":{"type":"constrained"}} -->
 <div class="wp-block-group alignfull" style="padding-top:var(--wp--preset--spacing--2-xl);padding-right:var(--wp--preset--spacing--lg);padding-bottom:var(--wp--preset--spacing--2-xl);padding-left:var(--wp--preset--spacing--lg)">
 	<!-- wp:heading {"textAlign":"center"} -->
-	<h2 class="wp-block-heading has-text-align-center"><?php esc_html_e( 'From quiet readers', 'lysholm' ); ?></h2>
+	<h2 class="wp-block-heading has-text-align-center"><?php esc_html_e( 'From our customers', 'apiary'); ?></h2>
 	<!-- /wp:heading -->
 
 	<!-- wp:columns {"align":"wide","style":{"spacing":{"margin":{"top":"var:preset|spacing|xl"}}}} -->
@@ -24,9 +24,9 @@
 				<!-- wp:quote -->
 				<blockquote class="wp-block-quote">
 					<!-- wp:paragraph -->
-					<p><?php esc_html_e( 'It\'s settled into the kitchen as if it had always been there. Quietly perfect.', 'lysholm' ); ?></p>
+					<p><?php esc_html_e( 'A jar that earned its shelf space from day one. Morning after morning.', 'apiary'); ?></p>
 					<!-- /wp:paragraph -->
-					<cite><?php esc_html_e( 'Alex M.', 'lysholm' ); ?></cite>
+					<cite><?php esc_html_e( 'Alex M.', 'apiary'); ?></cite>
 				</blockquote>
 				<!-- /wp:quote -->
 			</div>
@@ -41,9 +41,9 @@
 				<!-- wp:quote -->
 				<blockquote class="wp-block-quote">
 					<!-- wp:paragraph -->
-					<p><?php esc_html_e( 'Wrapped in tissue, tied with hemp twine. Opening it felt like a small ceremony.', 'lysholm' ); ?></p>
+					<p><?php esc_html_e( 'Packed with real care. Unwrapping it felt like receiving a gift from a friend.', 'apiary'); ?></p>
 					<!-- /wp:paragraph -->
-					<cite><?php esc_html_e( 'Sam P.', 'lysholm' ); ?></cite>
+					<cite><?php esc_html_e( 'Sam P.', 'apiary'); ?></cite>
 				</blockquote>
 				<!-- /wp:quote -->
 			</div>
@@ -58,9 +58,9 @@
 				<!-- wp:quote -->
 				<blockquote class="wp-block-quote">
 					<!-- wp:paragraph -->
-					<p><?php esc_html_e( 'A year of daily use and it\'s only grown more beautiful — the patina suits it.', 'lysholm' ); ?></p>
+					<p><?php esc_html_e( 'Six months of daily spooning and the jar is still beautiful to look at. Perfect gift.', 'apiary'); ?></p>
 					<!-- /wp:paragraph -->
-					<cite><?php esc_html_e( 'Jordan K.', 'lysholm' ); ?></cite>
+					<cite><?php esc_html_e( 'Jordan K.', 'apiary'); ?></cite>
 				</blockquote>
 				<!-- /wp:quote -->
 			</div>

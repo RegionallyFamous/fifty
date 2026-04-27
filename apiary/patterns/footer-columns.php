@@ -23,7 +23,7 @@
 		<!-- wp:column -->
 		<div class="wp-block-column">
 			<!-- wp:heading {"level":4,"fontSize":"sm","style":{"typography":{"letterSpacing":"var:custom|letter-spacing|wider","textTransform":"uppercase"}}} -->
-			<h4 class="wp-block-heading has-sm-font-size" style="letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase"><?php esc_html_e( 'Shop', 'lysholm' ); ?></h4>
+			<h4 class="wp-block-heading has-sm-font-size" style="letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase"><?php esc_html_e( 'Shop', 'apiary'); ?></h4>
 			<!-- /wp:heading -->
 			<!-- wp:page-list {"isNavigationChild":false,"openSubmenusOnClick":false,"showSubmenuIcon":false} /-->
 		</div>
@@ -32,16 +32,16 @@
 		<!-- wp:column -->
 		<div class="wp-block-column">
 			<!-- wp:heading {"level":4,"fontSize":"sm","style":{"typography":{"letterSpacing":"var:custom|letter-spacing|wider","textTransform":"uppercase"}}} -->
-			<h4 class="wp-block-heading has-sm-font-size" style="letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase"><?php esc_html_e( 'Support', 'lysholm' ); ?></h4>
+			<h4 class="wp-block-heading has-sm-font-size" style="letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase"><?php esc_html_e( 'Support', 'apiary'); ?></h4>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph -->
-			<p><a href="#"><?php esc_html_e( 'Contact', 'lysholm' ); ?></a></p>
+			<p><a href="#"><?php esc_html_e( 'Contact', 'apiary'); ?></a></p>
 			<!-- /wp:paragraph -->
 			<!-- wp:paragraph -->
-			<p><a href="#"><?php esc_html_e( 'Shipping', 'lysholm' ); ?></a></p>
+			<p><a href="#"><?php esc_html_e( 'Shipping', 'apiary'); ?></a></p>
 			<!-- /wp:paragraph -->
 			<!-- wp:paragraph -->
-			<p><a href="#"><?php esc_html_e( 'Returns', 'lysholm' ); ?></a></p>
+			<p><a href="#"><?php esc_html_e( 'Returns', 'apiary'); ?></a></p>
 			<!-- /wp:paragraph -->
 		</div>
 		<!-- /wp:column -->
@@ -49,13 +49,13 @@
 		<!-- wp:column -->
 		<div class="wp-block-column">
 			<!-- wp:heading {"level":4,"fontSize":"sm","style":{"typography":{"letterSpacing":"var:custom|letter-spacing|wider","textTransform":"uppercase"}}} -->
-			<h4 class="wp-block-heading has-sm-font-size" style="letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase"><?php esc_html_e( 'Legal', 'lysholm' ); ?></h4>
+			<h4 class="wp-block-heading has-sm-font-size" style="letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase"><?php esc_html_e( 'Legal', 'apiary'); ?></h4>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph -->
-			<p><a href="#"><?php esc_html_e( 'Privacy', 'lysholm' ); ?></a></p>
+			<p><a href="#"><?php esc_html_e( 'Privacy', 'apiary'); ?></a></p>
 			<!-- /wp:paragraph -->
 			<!-- wp:paragraph -->
-			<p><a href="#"><?php esc_html_e( 'Terms', 'lysholm' ); ?></a></p>
+			<p><a href="#"><?php esc_html_e( 'Terms', 'apiary'); ?></a></p>
 			<!-- /wp:paragraph -->
 		</div>
 		<!-- /wp:column -->

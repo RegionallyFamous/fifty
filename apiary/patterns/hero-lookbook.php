@@ -22,15 +22,15 @@
 		<!-- wp:group {"layout":{"type":"constrained","justifyContent":"left"}} -->
 		<div class="wp-block-group">
 			<!-- wp:paragraph {"fontSize":"xs","textColor":"base","style":{"typography":{"letterSpacing":"var(--wp--custom--letter-spacing--widest)","textTransform":"uppercase"}}} -->
-			<p class="has-base-color has-text-color has-xs-font-size" style="letter-spacing:var(--wp--custom--letter-spacing--widest);text-transform:uppercase"><?php esc_html_e( 'Spring lookbook · Vol. 01', 'lysholm' ); ?></p>
+			<p class="has-base-color has-text-color has-xs-font-size" style="letter-spacing:var(--wp--custom--letter-spacing--widest);text-transform:uppercase"><?php esc_html_e( 'Spring harvest · Vol. 01', 'apiary'); ?></p>
 			<!-- /wp:paragraph -->
 
 			<!-- wp:heading {"level":1,"textColor":"base","style":{"spacing":{"margin":{"top":"var:preset|spacing|md","bottom":"var:preset|spacing|lg"}},"typography":{"fontWeight":"var(--wp--custom--font-weight--thin)","lineHeight":"1.05","fontSize":"var(--wp--preset--font-size--6xl)"}}} -->
-			<h1 class="wp-block-heading has-base-color has-text-color" style="margin-top:var(--wp--preset--spacing--md);margin-bottom:var(--wp--preset--spacing--lg);font-size:var(--wp--preset--font-size--6xl);font-weight:var(--wp--custom--font-weight--thin);line-height:1.05"><?php esc_html_e( 'Quiet objects, slow days.', 'lysholm' ); ?></h1>
+			<h1 class="wp-block-heading has-base-color has-text-color" style="margin-top:var(--wp--preset--spacing--md);margin-bottom:var(--wp--preset--spacing--lg);font-size:var(--wp--preset--font-size--6xl);font-weight:var(--wp--custom--font-weight--thin);line-height:1.05"><?php esc_html_e( 'Slow work, small batches.', 'apiary'); ?></h1>
 			<!-- /wp:heading -->
 
 			<!-- wp:paragraph {"fontSize":"md","textColor":"base","style":{"typography":{"lineHeight":"var(--wp--custom--line-height--relaxed)"}}} -->
-			<p class="has-base-color has-text-color has-md-font-size" style="line-height:var(--wp--custom--line-height--relaxed)"><?php esc_html_e( 'A small collection of home goods made for the long hours between morning and dusk — blonde wood, soft linen, oat-toned light.', 'lysholm' ); ?></p>
+			<p class="has-base-color has-text-color has-md-font-size" style="line-height:var(--wp--custom--line-height--relaxed)"><?php esc_html_e( 'A small collection of honey and beeswax goods made for the long hours between harvest and table — golden amber, soft wax, morning light.', 'apiary'); ?></p>
 			<!-- /wp:paragraph -->
 		</div>
 		<!-- /wp:group -->

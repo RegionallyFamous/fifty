@@ -16,21 +16,21 @@
 		<figure class="wp-block-media-text__media"></figure>
 		<div class="wp-block-media-text__content">
 			<!-- wp:paragraph {"fontSize":"xs","style":{"typography":{"letterSpacing":"var:custom|letter-spacing|wider","textTransform":"uppercase"}},"textColor":"tertiary"} -->
-			<p class="has-tertiary-color has-text-color has-xs-font-size" style="letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase"><?php esc_html_e( 'Our story', 'lysholm' ); ?></p>
+			<p class="has-tertiary-color has-text-color has-xs-font-size" style="letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase"><?php esc_html_e( 'Our story', 'apiary'); ?></p>
 			<!-- /wp:paragraph -->
 
 			<!-- wp:heading {"level":2} -->
-			<h2 class="wp-block-heading"><?php esc_html_e( 'Quiet objects for an unhurried home.', 'lysholm' ); ?></h2>
+			<h2 class="wp-block-heading"><?php esc_html_e( 'Small batches for an unhurried kitchen.', 'apiary'); ?></h2>
 			<!-- /wp:heading -->
 
 			<!-- wp:paragraph {"textColor":"secondary","fontSize":"md"} -->
-			<p class="has-secondary-color has-text-color has-md-font-size"><?php esc_html_e( 'We curate slow, considered objects for the room you sit in most — pale ceramics, washed linen, hand-shaped wood. Each piece chosen because it earns its place across decades, not seasons.', 'lysholm' ); ?></p>
+			<p class="has-secondary-color has-text-color has-md-font-size"><?php esc_html_e( 'We harvest slow, considered goods for the kitchen and table — raw honey, beeswax candles, foraged spreads. Each jar chosen because it earns its place across seasons, not trends.', 'apiary'); ?></p>
 			<!-- /wp:paragraph -->
 
 			<!-- wp:buttons -->
 			<div class="wp-block-buttons">
 				<!-- wp:button {"className":"is-style-outline"} -->
-				<div class="wp-block-button is-style-outline"><a class="wp-block-button__link wp-element-button"><?php esc_html_e( 'Read more', 'lysholm' ); ?></a></div>
+				<div class="wp-block-button is-style-outline"><a class="wp-block-button__link wp-element-button"><?php esc_html_e( 'Read more', 'apiary'); ?></a></div>
 				<!-- /wp:button -->
 			</div>
 			<!-- /wp:buttons -->

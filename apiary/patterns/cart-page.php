@@ -39,24 +39,24 @@
 
 <!-- wp:woocommerce/empty-cart-block -->
 <div class="wp-block-woocommerce-empty-cart-block wo-empty wo-empty--cart"><!-- wp:paragraph {"align":"center","className":"wo-empty__eyebrow","fontSize":"xs","textColor":"secondary","style":{"typography":{"textTransform":"uppercase","letterSpacing":"var:custom|letter-spacing|wider"},"spacing":{"margin":{"bottom":"0"}}}} -->
-<p class="has-text-align-center has-secondary-color has-text-color has-xs-font-size wo-empty__eyebrow" style="text-transform:uppercase;letter-spacing:var(--wp--custom--letter-spacing--wider);margin-bottom:0"><?php esc_html_e( 'Basket', 'lysholm' ); ?></p>
+<p class="has-text-align-center has-secondary-color has-text-color has-xs-font-size wo-empty__eyebrow" style="text-transform:uppercase;letter-spacing:var(--wp--custom--letter-spacing--wider);margin-bottom:0"><?php esc_html_e( 'Basket', 'apiary'); ?></p>
 <!-- /wp:paragraph -->
 
 <!-- wp:heading {"textAlign":"center","level":1,"className":"wo-empty__title","fontSize":"3xl","style":{"typography":{"letterSpacing":"var:custom|letter-spacing|tight"},"spacing":{"margin":{"top":"0","bottom":"0"}}}} -->
-<h1 class="wp-block-heading has-text-align-center has-3-xl-font-size wo-empty__title" style="margin-top:0;margin-bottom:0;letter-spacing:var(--wp--custom--letter-spacing--tight)"><?php esc_html_e( 'Your basket is empty.', 'lysholm' ); ?></h1>
+<h1 class="wp-block-heading has-text-align-center has-3-xl-font-size wo-empty__title" style="margin-top:0;margin-bottom:0;letter-spacing:var(--wp--custom--letter-spacing--tight)"><?php esc_html_e( 'Your hive basket is empty.', 'apiary'); ?></h1>
 <!-- /wp:heading -->
 
 <!-- wp:paragraph {"align":"center","className":"wo-empty__lede","textColor":"secondary"} -->
-<p class="has-text-align-center has-secondary-color has-text-color wo-empty__lede"><?php esc_html_e( 'Browse the catalogue, or settle into a piece from the journal.', 'lysholm' ); ?></p>
+<p class="has-text-align-center has-secondary-color has-text-color wo-empty__lede"><?php esc_html_e( 'Browse the larder, or follow a line from the field notes.', 'apiary'); ?></p>
 <!-- /wp:paragraph -->
 
 <!-- wp:buttons {"layout":{"type":"flex","justifyContent":"center"},"style":{"spacing":{"margin":{"top":"var:preset|spacing|md"}}}} -->
 <div class="wp-block-buttons" style="margin-top:var(--wp--preset--spacing--md)"><!-- wp:button -->
-<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop/"><?php esc_html_e( 'Back to the catalogue', 'lysholm' ); ?></a></div>
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop/"><?php esc_html_e( 'Back to the larder', 'apiary'); ?></a></div>
 <!-- /wp:button -->
 
 <!-- wp:button {"className":"is-style-outline"} -->
-<div class="wp-block-button is-style-outline"><a class="wp-block-button__link wp-element-button" href="/journal/"><?php esc_html_e( 'Read a notebook entry', 'lysholm' ); ?></a></div>
+<div class="wp-block-button is-style-outline"><a class="wp-block-button__link wp-element-button" href="/journal/"><?php esc_html_e( 'Read a field note', 'apiary'); ?></a></div>
 <!-- /wp:button --></div>
 <!-- /wp:buttons --></div>
 <!-- /wp:woocommerce/empty-cart-block --></div>
