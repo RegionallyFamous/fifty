@@ -349,6 +349,26 @@ add_action( 'wp_head', 'fifty_view_transitions_speculation_rules', 1 );
 
 // === END view-transitions ===
 
+// ASCII monogram on the front page is decorative; axe flags `color-contrast`
+// on all-Unicode box-drawing glyphs unless the block is exposed as an image.
+add_filter(
+	'render_block_core/preformatted',
+	static function ( string $block_content, array $block ): string {
+		if ( is_admin() || ! str_contains( $block_content, 'basalt-monogram' ) ) {
+			return $block_content;
+		}
+		$out = preg_replace(
+			'/<pre\\b/',
+			'<pre role="img" aria-label="' . esc_attr__( 'Basalt wordmark (ASCII monogram)', 'basalt' ) . '"',
+			$block_content,
+			1
+		);
+		return ( is_string( $out ) && '' !== $out ) ? $out : $block_content;
+	},
+	10,
+	2
+);
+
 // === BEGIN wc microcopy ===
 //
 // Shopper-facing WC microcopy in the Basalt voice.
