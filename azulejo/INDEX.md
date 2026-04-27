@@ -46,6 +46,91 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- testimonials.php
 |   `-- value-props.php
 |-- playground/
+|   |-- content/
+|   |   |-- content.xml
+|   |   `-- products.csv
+|   |-- images/
+|   |   |-- azulejo-hero-mosaic.png
+|   |   |-- imaginary-deed.pdf
+|   |   |-- imaginary-seal.png
+|   |   |-- lost-recipe.pdf
+|   |   |-- one-hand.wav
+|   |   |-- product-wo-borrowed-nostalgia.jpg
+|   |   |-- product-wo-bottled-morning.jpg
+|   |   |-- product-wo-chaos-seasoning.jpg
+|   |   |-- product-wo-cosmic-mystery-box.jpg
+|   |   |-- product-wo-deja-vu-session.jpg
+|   |   |-- product-wo-discount-gravity.jpg
+|   |   |-- product-wo-dread-repellent.jpg
+|   |   |-- product-wo-fog-in-bottle.jpg
+|   |   |-- product-wo-forbidden-honey.jpg
+|   |   |-- product-wo-gently-used-luck.jpg
+|   |   |-- product-wo-handcrafted-echo.jpg
+|   |   |-- product-wo-haunted-candle.jpg
+|   |   |-- product-wo-imaginary-deed.jpg
+|   |   |-- product-wo-interdim-bazaar.jpg
+|   |   |-- product-wo-invisible-umbrella.jpg
+|   |   |-- product-wo-left-sock.jpg
+|   |   |-- product-wo-lost-recipe-time.jpg
+|   |   |-- product-wo-memory-foam-memory.jpg
+|   |   |-- product-wo-monday-kit.jpg
+|   |   |-- product-wo-moon-dust.jpg
+|   |   |-- product-wo-one-hand-clapping.jpg
+|   |   |-- product-wo-pocket-thunder.jpg
+|   |   |-- product-wo-portable-hole.jpg
+|   |   |-- product-wo-sensory-starter.jpg
+|   |   |-- product-wo-silence-jar.jpg
+|   |   |-- product-wo-spare-key-nowhere.jpg
+|   |   |-- product-wo-spare-tuesday.jpg
+|   |   |-- product-wo-tangible-wifi.jpg
+|   |   |-- product-wo-void-sampler.jpg
+|   |   |-- product-wo-whispering-stone.jpg
+|   |   |-- wonders-borrowed-nostalgia.png
+|   |   |-- wonders-cosmic-mystery-box.png
+|   |   |-- wonders-deja-vu-session.png
+|   |   |-- wonders-gently-used-luck.png
+|   |   |-- wonders-handcrafted-echo.png
+|   |   |-- wonders-imaginary-deed.png
+|   |   |-- wonders-interdim-bazaar.png
+|   |   |-- wonders-invisible-umbrella.png
+|   |   |-- wonders-left-sock.png
+|   |   |-- wonders-lost-recipe-time.png
+|   |   |-- wonders-memory-foam-memory.png
+|   |   |-- wonders-monday-kit.png
+|   |   |-- wonders-one-hand-clapping.png
+|   |   |-- wonders-page-about.png
+|   |   |-- wonders-page-contact.png
+|   |   |-- wonders-page-faq.png
+|   |   |-- wonders-page-home.png
+|   |   |-- wonders-page-journal.png
+|   |   |-- wonders-page-lookbook.png
+|   |   |-- wonders-page-privacy-policy.png
+|   |   |-- wonders-page-shipping-returns.png
+|   |   |-- wonders-portable-hole.png
+|   |   |-- wonders-post-behind-the-scenes-bottling-mondays.png
+|   |   |-- wonders-post-caring-for-your-portable-hole.png
+|   |   |-- wonders-post-carl-on-the-moon.png
+|   |   |-- wonders-post-chaos-seasoning-recipe-roundup.png
+|   |   |-- wonders-post-fog-season.png
+|   |   |-- wonders-post-forbidden-honey-what-does-forbidden-mean.png
+|   |   |-- wonders-post-hidden-gems-5-overlooked-products.png
+|   |   |-- wonders-post-how-to-apply-existential-dread-repellent.png
+|   |   |-- wonders-post-imaginary-ownership-beginners.png
+|   |   |-- wonders-post-interview-with-carl.png
+|   |   |-- wonders-post-invisible-umbrella-spotlight.png
+|   |   |-- wonders-post-memoirs-of-a-left-sock.png
+|   |   |-- wonders-post-mildly-haunted-candle-faq.png
+|   |   |-- wonders-post-philosophy-of-bottled-monday-morning.png
+|   |   |-- wonders-post-pocket-thunder-safety.png
+|   |   |-- wonders-post-spare-tuesday-field-guide.png
+|   |   |-- wonders-post-tangible-wifi-30-day-review.png
+|   |   |-- wonders-post-the-art-of-artisanal-silence.png
+|   |   |-- wonders-post-welcome-to-wonders-and-oddities.png
+|   |   |-- wonders-post-year-one-abridged.png
+|   |   |-- wonders-sensory-starter.png
+|   |   |-- wonders-spare-key-nowhere.png
+|   |   |-- wonders-void-sampler.png
+|   |   `-- wonders-whispering-stone.png
 |   |-- blueprint.json
 |   `-- generate-images.py
 |-- styles/
@@ -144,121 +229,121 @@ Read this file at the start of any LLM session to discover the project's structu
 
 ### `patterns/brand-story.php`
 
-- **Slug:** `lysholm/brand-story`
+- **Slug:** `azulejo/brand-story`
 - **Title:** Brand story, image and text
-- **Categories:** lysholm
+- **Categories:** azulejo
 - **Keywords:** about, brand, story, two-column, media-text
 - **Description:** Two-column section pairing a brand photo with a short story. Replace the image and text.
 
 ### `patterns/cart-page.php`
 
-- **Slug:** `lysholm/cart-page`
+- **Slug:** `azulejo/cart-page`
 - **Title:** Cart page
-- **Categories:** lysholm, woo-commerce
+- **Categories:** azulejo, woo-commerce
 - **Keywords:** cart, basket, woocommerce, empty-cart, checkout
-- **Description:** Controlled WC Cart block tree for the storefront Cart page. Removes the default "Customers also bought" cross-sells inner block (a hard generic-WC tell that does not match a Nordic catalogue storefront), keeps the cart-totals + accepted-payment-methods sidebar, and replaces the default empty-cart-block content with a Nordic-cataloging eyebrow + display heading + 2 CTAs in Lysholm's voice. Targets `woocommerce/cart` so the Cart block placeholder picker offers it; also drives the seeded Cart page in `playground/wo-configure.php` so the demo and a real install (Proprietor inserts the pattern in the editor) render the same chrome.
+- **Description:** Controlled WC Cart block tree for the storefront Cart page. Removes the default "Customers also bought" cross-sells inner block (a hard generic-WC tell that does not match a Iberian heritage-craft storefront), keeps the cart-totals + accepted-payment-methods sidebar, and replaces the default empty-cart-block content with a heritage-craft eyebrow + display heading + 2 CTAs in Azulejo's voice. Targets `woocommerce/cart` so the Cart block placeholder picker offers it; also drives the seeded Cart page in `playground/wo-configure.php` so the demo and a real install (Proprietor inserts the pattern in the editor) render the same chrome.
 
 ### `patterns/category-tiles.php`
 
-- **Slug:** `lysholm/category-tiles`
-- **Title:** Shop-by-category tiles
-- **Categories:** lysholm, woo-commerce
+- **Slug:** `azulejo/category-tiles`
+- **Title:** The atelier-by-category tiles
+- **Categories:** azulejo, woo-commerce
 - **Keywords:** categories, browse, shop, tiles, grid
 - **Description:** Three image tiles linking to top product categories. Replace images and labels with your own categories.
 
 ### `patterns/cta-banner.php`
 
-- **Slug:** `lysholm/cta-banner`
+- **Slug:** `azulejo/cta-banner`
 - **Title:** Call-to-action banner
-- **Categories:** lysholm, call-to-action
+- **Categories:** azulejo, call-to-action
 - **Keywords:** cta, banner, conversion, button
 - **Description:** Full-width banner with a single headline and primary CTA. Use to push toward a single conversion goal.
 
 ### `patterns/faq-accordion.php`
 
-- **Slug:** `lysholm/faq-accordion`
+- **Slug:** `azulejo/faq-accordion`
 - **Title:** FAQ accordion
-- **Categories:** lysholm
+- **Categories:** azulejo
 - **Keywords:** faq, questions, accordion, support
 - **Description:** Five-item FAQ section using the core Accordion block. Replace the questions and answers.
 
 ### `patterns/featured-products.php`
 
-- **Slug:** `lysholm/featured-products`
-- **Title:** Featured products grid
-- **Categories:** lysholm, woo-commerce
+- **Slug:** `azulejo/featured-products`
+- **Title:** From the latest firing products grid
+- **Categories:** azulejo, woo-commerce
 - **Keywords:** products, collection, grid, shop, featured
 - **Description:** 3-column grid of featured products using the Product Collection block. Adjust the query attributes for your needs.
 
 ### `patterns/find-us-elsewhere.php`
 
-- **Slug:** `lysholm/find-us-elsewhere`
+- **Slug:** `azulejo/find-us-elsewhere`
 - **Title:** Find us elsewhere
-- **Categories:** lysholm, call-to-action
+- **Categories:** azulejo, call-to-action
 - **Keywords:** social, instagram, follow, contact
 - **Description:** A quiet social-icons cluster pointing at the studio's outside-the-shop spaces. All real outbound links via core/social-links — no inbox capture, nothing to integrate later.
 
 ### `patterns/footer-columns.php`
 
-- **Slug:** `lysholm/footer-columns`
+- **Slug:** `azulejo/footer-columns`
 - **Title:** Four-column footer with site map
-- **Categories:** lysholm, footer
+- **Categories:** azulejo, footer
 - **Keywords:** footer, columns, sitemap
 - **Description:** Replacement footer with shop, support, about, and legal columns. Drop into the footer template part.
 
 ### `patterns/front-feature.php`
 
-- **Slug:** `lysholm/front-feature`
-- **Title:** Front feature — Bottled Morning
-- **Categories:** lysholm, featured
+- **Slug:** `azulejo/front-feature`
+- **Title:** Front feature — Pattern no. I, Compass-Star
+- **Categories:** azulejo, featured
 - **Keywords:** feature, media-text, editorial
 - **Description:** Editorial 58/42 media-text feature block used on the front page.
 
 ### `patterns/hero-image.php`
 
-- **Slug:** `lysholm/hero-image`
+- **Slug:** `azulejo/hero-image`
 - **Title:** Hero with image background
-- **Categories:** lysholm, featured
+- **Categories:** azulejo, featured
 - **Keywords:** hero, banner, header, cover
 - **Description:** Full-width cover image with headline, subhead, and primary CTA. Replace the placeholder image.
 
 ### `patterns/hero-lookbook.php`
 
-- **Slug:** `lysholm/hero-lookbook`
+- **Slug:** `azulejo/hero-lookbook`
 - **Title:** Lookbook hero — Quiet objects, slow days
-- **Categories:** lysholm, featured
+- **Categories:** azulejo, featured
 - **Keywords:** hero, cover, lookbook, editorial
 - **Description:** Editorial lookbook cover used at the top of the front page.
 
 ### `patterns/hero-split.php`
 
-- **Slug:** `lysholm/hero-split`
+- **Slug:** `azulejo/hero-split`
 - **Title:** Hero — split (text + image)
-- **Categories:** lysholm, featured
+- **Categories:** azulejo, featured
 - **Keywords:** hero, split, columns, landing
 - **Description:** Editorial split hero — headline / subhead / dual CTA on the left,
 
 ### `patterns/hero-text.php`
 
-- **Slug:** `lysholm/hero-text`
+- **Slug:** `azulejo/hero-text`
 - **Title:** Hero, text only
-- **Categories:** lysholm, featured
+- **Categories:** azulejo, featured
 - **Keywords:** hero, banner, header
 - **Description:** Centered text-only hero with headline, subhead, and CTA. Use when imagery would distract.
 
 ### `patterns/testimonials.php`
 
-- **Slug:** `lysholm/testimonials`
+- **Slug:** `azulejo/testimonials`
 - **Title:** Customer testimonials
-- **Categories:** lysholm, testimonials
+- **Categories:** azulejo, testimonials
 - **Keywords:** testimonials, reviews, social proof, quotes
 - **Description:** Three short customer quotes with attribution. Replace with your own.
 
 ### `patterns/value-props.php`
 
-- **Slug:** `lysholm/value-props`
+- **Slug:** `azulejo/value-props`
 - **Title:** Value propositions, three columns
-- **Categories:** lysholm
+- **Categories:** azulejo
 - **Keywords:** value, USP, benefits, features, columns
 - **Description:** Three-column row of short value statements. Replace the headlines with your shop's shipping, returns, and guarantee promises.
 
