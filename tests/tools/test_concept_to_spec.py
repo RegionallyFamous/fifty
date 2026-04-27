@@ -51,9 +51,7 @@ SCRIPT = REPO_ROOT / "bin" / "concept-to-spec.py"
 def c2s():
     """Load bin/concept-to-spec.py as a live module."""
     sys.path.insert(0, str(REPO_ROOT / "bin"))
-    spec = importlib.util.spec_from_file_location(
-        "concept_to_spec", SCRIPT
-    )
+    spec = importlib.util.spec_from_file_location("concept_to_spec", SCRIPT)
     assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
     sys.modules["concept_to_spec"] = mod
@@ -105,9 +103,7 @@ def test_every_type_genre_has_fonts(c2s):
     from concept_seed import TYPE_GENRES
 
     missing = sorted(set(TYPE_GENRES) - set(c2s.TYPE_GENRE_FONTS))
-    assert not missing, (
-        f"type_genres missing from TYPE_GENRE_FONTS: {missing}"
-    )
+    assert not missing, f"type_genres missing from TYPE_GENRE_FONTS: {missing}"
 
 
 def test_every_hero_composition_has_hints(c2s):
@@ -115,9 +111,7 @@ def test_every_hero_composition_has_hints(c2s):
     from concept_seed import HERO_COMPOSITIONS
 
     missing = sorted(set(HERO_COMPOSITIONS) - set(c2s.HERO_COMPOSITION_HINTS))
-    assert not missing, (
-        f"hero_compositions missing from HERO_COMPOSITION_HINTS: {missing}"
-    )
+    assert not missing, f"hero_compositions missing from HERO_COMPOSITION_HINTS: {missing}"
 
 
 # ---------------------------------------------------------------------------

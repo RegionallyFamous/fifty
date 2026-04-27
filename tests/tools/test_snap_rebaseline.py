@@ -74,6 +74,7 @@ def _minimal_png(path: Path, seed: int = 0) -> None:
     """Write a tiny valid 1x1 PNG. snap.diff_images consumes bytes, so any
     valid PNG works; we vary the color via `seed` so tests can provoke
     or suppress drift."""
+
     def _chunk(kind: bytes, data: bytes) -> bytes:
         return (
             struct.pack(">I", len(data))
@@ -186,6 +187,7 @@ def test_rebaseline_dry_run_since_matches_stale(snap_mod, capsys):
     # Artificially age the baseline past our --since threshold.
     old = time.time() - 30 * 86400
     import os
+
     os.utime(base, (old, old))
 
     rc = mod.cmd_rebaseline(_mkargs(since="7d", dry_run=True))
@@ -254,9 +256,7 @@ def test_rebaseline_respects_route_and_viewport_scope(snap_mod, capsys):
     _minimal_png(snaps / "agave" / "desktop" / "shop.png")
     _minimal_png(snaps / "agave" / "mobile" / "home.png")
 
-    rc = mod.cmd_rebaseline(
-        _mkargs(route="home", viewport="desktop", since="1s", dry_run=True)
-    )
+    rc = mod.cmd_rebaseline(_mkargs(route="home", viewport="desktop", since="1s", dry_run=True))
     assert rc == 0
     out = capsys.readouterr().out
     assert "agave/desktop/home.png" in out

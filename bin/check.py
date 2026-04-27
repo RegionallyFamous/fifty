@@ -48,6 +48,10 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _check_uniqueness import (
+    collect_fleet,
+    find_value_overlaps,
+)
 from _lib import MONOREPO_ROOT, iter_themes, resolve_theme_root
 
 # ROOT is set per-theme in main() before any check runs.
@@ -4403,18 +4407,35 @@ def check_distinctive_chrome() -> Result:
     """
     r = Result("Visible chrome rules are theme-distinct (no shared 'standard' look)")
 
-    theme_css: dict[str, str] = {}
-    for slug in _KNOWN_THEME_SLUGS:
-        path = MONOREPO_ROOT / slug / "theme.json"
-        if not path.exists():
-            continue
+    def _chrome_inputs(theme: Path) -> list[Path]:
+        p = theme / "theme.json"
+        return [p] if p.exists() else []
+
+    def _chrome_fp(theme: Path) -> dict[str, str]:
+        p = theme / "theme.json"
+        if not p.exists():
+            return {}
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
+            data = json.loads(p.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
-            continue
+            return {}
         css = (data.get("styles", {}) or {}).get("css") or ""
-        if css.strip():
-            theme_css[slug] = css
+        return {"css": css} if css.strip() else {}
+
+    known_theme_dirs = [
+        MONOREPO_ROOT / slug for slug in _KNOWN_THEME_SLUGS if (MONOREPO_ROOT / slug / "theme.json").exists()
+    ]
+    cached_css = collect_fleet(
+        known_theme_dirs,
+        check_name="distinctive_chrome",
+        input_builder=_chrome_inputs,
+        compute_fn=_chrome_fp,
+    )
+    theme_css: dict[str, str] = {
+        slug: payload["css"]
+        for slug, payload in cached_css.items()
+        if payload and payload.get("css")
+    }
 
     if len(theme_css) < 2:
         r.skip(
@@ -5189,16 +5210,29 @@ def check_front_page_unique_layout() -> Result:
         )
         return r
 
+    def _inputs(theme: Path) -> list[Path]:
+        return [theme / "templates" / "front-page.html"]
+
+    def _compute(theme: Path) -> list[str]:
+        p = theme / "templates" / "front-page.html"
+        if not p.exists():
+            return []
+        return list(_front_page_fingerprint(p.read_text(encoding="utf-8")))
+
+    by_theme = collect_fleet(
+        list(iter_themes()),
+        check_name="front_page_unique_layout",
+        input_builder=_inputs,
+        compute_fn=_compute,
+    )
     conflicts: list[tuple[str, list[str]]] = []
-    for other in iter_themes():
-        if other.resolve() == ROOT.resolve():
+    for slug, other_fp in by_theme.items():
+        if not other_fp:
             continue
-        other_fp_path = other / "templates" / "front-page.html"
-        if not other_fp_path.exists():
+        if slug == ROOT.name:
             continue
-        other_fp = _front_page_fingerprint(other_fp_path.read_text(encoding="utf-8"))
-        if other_fp == my_fp:
-            conflicts.append((other.name, other_fp))
+        if other_fp == list(my_fp):
+            conflicts.append((slug, other_fp))
 
     if conflicts:
         names = ", ".join(name for name, _ in conflicts)
@@ -5798,12 +5832,47 @@ def check_pattern_microcopy_distinct() -> Result:
         r.skip("no patterns/*.php and no headings in templates/ or parts/")
         return r
 
+    def _pattern_inputs(theme: Path) -> list[Path]:
+        d = theme / "patterns"
+        return sorted(d.glob("*.php")) if d.is_dir() else []
+
+    def _compute_patterns(theme: Path) -> dict[str, list[str]]:
+        raw = _extract_pattern_microcopy(theme / "patterns")
+        return {k: sorted(v) for k, v in raw.items()}
+
+    def _headings_inputs(theme: Path) -> list[Path]:
+        out: list[Path] = []
+        for sub in ("templates", "parts", "patterns"):
+            d = theme / sub
+            if d.is_dir():
+                out.extend(sorted(d.rglob("*.html")))
+                out.extend(sorted(d.rglob("*.php")))
+        return out
+
+    def _compute_headings(theme: Path) -> dict[str, list[str]]:
+        raw = _extract_template_headings(theme)
+        return {k: sorted(v) for k, v in raw.items()}
+
+    cached_patterns = collect_fleet(
+        list(iter_themes()),
+        check_name="pattern_microcopy_distinct.patterns",
+        input_builder=_pattern_inputs,
+        compute_fn=_compute_patterns,
+    )
+    cached_headings = collect_fleet(
+        list(iter_themes()),
+        check_name="pattern_microcopy_distinct.headings",
+        input_builder=_headings_inputs,
+        compute_fn=_compute_headings,
+    )
+
     # PATTERN-vs-PATTERN: pairwise across every other theme.
     for other in iter_themes():
         other_slug = other.name
         if other_slug == theme_slug:
             continue
-        other_patterns = _extract_pattern_microcopy(other / "patterns")
+        other_patterns_raw = cached_patterns.get(other_slug) or {}
+        other_patterns = {k: set(v) for k, v in other_patterns_raw.items()}
         if not other_patterns:
             continue
         for fname, strings in sorted(theme_patterns.items()):
@@ -5829,7 +5898,8 @@ def check_pattern_microcopy_distinct() -> Result:
             other_slug = other.name
             if other_slug == theme_slug:
                 continue
-            other_headings = _extract_template_headings(other)
+            other_headings_raw = cached_headings.get(other_slug) or {}
+            other_headings = {k: set(v) for k, v in other_headings_raw.items()}
             if not other_headings:
                 continue
             other_all = set().union(*other_headings.values())
@@ -6142,16 +6212,32 @@ def check_all_rendered_text_distinct_across_themes() -> Result:
         r.skip("no templates/, parts/, or patterns/ with rendered text")
         return r
 
-    # Build other-theme index lazily — once per other theme, not once
-    # per fragment. Keys are normalised text; values are
-    # {theme_slug: {rel_paths}}.
+    def _text_inputs(theme: Path) -> list[Path]:
+        out: list[Path] = []
+        for sub in ("templates", "parts", "patterns"):
+            d = theme / sub
+            if d.is_dir():
+                out.extend(sorted(d.rglob("*.html")))
+                out.extend(sorted(d.rglob("*.php")))
+        return out
+
+    def _compute_text(theme: Path) -> dict[str, list[str]]:
+        # _extract_all_rendered_text returns {normalised: set(rel_paths)};
+        # serialize sets as sorted lists for JSON storage.
+        return {norm: sorted(rels) for norm, rels in _extract_all_rendered_text(theme).items()}
+
+    cached_text = collect_fleet(
+        list(iter_themes()),
+        check_name="all_rendered_text_distinct",
+        input_builder=_text_inputs,
+        compute_fn=_compute_text,
+    )
     other_index: dict[str, dict[str, set[str]]] = {}
-    for other in iter_themes():
-        other_slug = other.name
+    for other_slug, norm_map in cached_text.items():
         if other_slug == theme_slug:
             continue
-        for norm, rels in _extract_all_rendered_text(other).items():
-            other_index.setdefault(norm, {})[other_slug] = rels
+        for norm, rels in norm_map.items():
+            other_index.setdefault(norm, {})[other_slug] = set(rels)
 
     collisions = 0
     for norm in sorted(my_text):
@@ -6623,31 +6709,35 @@ def check_wc_microcopy_distinct_across_themes() -> Result:
         # PHP single-quoted strings: only \\ and \' are escaped.
         return literal.replace("\\'", "'").replace("\\\\", "\\")
 
-    # theme_slug -> { wc_default -> override }
-    per_theme: dict[str, dict[str, str]] = {}
-    for theme_dir in iter_themes():
-        fn_path = theme_dir / "functions.php"
+    def _inputs(theme: Path) -> list[Path]:
+        return [theme / "functions.php"]
+
+    def _parse_map(theme: Path) -> dict[str, str]:
+        fn_path = theme / "functions.php"
         if not fn_path.is_file():
-            continue
+            return {}
         src = fn_path.read_text(encoding="utf-8")
         if begin not in src or end not in src:
-            # check_no_default_wc_strings flags the missing block
-            # already; don't double-fail here, just skip the theme
-            # in the cross-theme comparison.
-            continue
+            return {}
         block = src[src.index(begin) : src.index(end) + len(end)]
-        # Narrow to the first `static $map = array(...)` so we don't
-        # accidentally pick up sort-label entries or other arrays.
         map_match = re.search(
             r"static\s+\$map\s*=\s*array\s*\(([\s\S]*?)\)\s*;",
             block,
         )
         if not map_match:
-            continue
+            return {}
         map_body = map_match.group(1)
-        per_theme[theme_dir.name] = {
+        return {
             php_unquote(k): php_unquote(v) for k, v in pair_re.findall(map_body)
         }
+
+    per_theme_raw = collect_fleet(
+        list(iter_themes()),
+        check_name="wc_microcopy_distinct",
+        input_builder=_inputs,
+        compute_fn=_parse_map,
+    )
+    per_theme: dict[str, dict[str, str]] = {k: v for k, v in per_theme_raw.items() if v}
 
     if len(per_theme) < 2:
         r.skip(
@@ -6980,29 +7070,36 @@ def check_product_images_unique_across_themes() -> Result:
 
     r = Result("Product photographs are unique across themes (no copy-paste leak)")
 
-    by_hash: dict[str, list[str]] = {}
-    total_photos = 0
-    for theme in iter_themes():
-        images_dir = theme / "playground" / "images"
-        if not images_dir.is_dir():
-            continue
-        for path in sorted(images_dir.glob("product-wo-*.jpg")):
+    def _inputs(theme: Path) -> list[Path]:
+        d = theme / "playground" / "images"
+        return sorted(d.glob("product-wo-*.jpg")) if d.is_dir() else []
+
+    def _fp(theme: Path) -> dict[str, str]:
+        out: dict[str, str] = {}
+        for p in _inputs(theme):
             try:
-                digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                out[p.name] = hashlib.sha256(p.read_bytes()).hexdigest()
             except OSError:
                 continue
-            total_photos += 1
-            by_hash.setdefault(digest, []).append(f"{theme.name}/{path.name}")
+        return out
 
+    by_theme = collect_fleet(
+        list(iter_themes()),
+        check_name="product_images_unique",
+        input_builder=_inputs,
+        compute_fn=_fp,
+    )
+    total_photos = sum(len(v) for v in by_theme.values())
     if not total_photos:
         r.skip("no product-wo-*.jpg photographs found in any theme")
         return r
 
-    leaks = [(h, files) for h, files in by_hash.items() if len(files) > 1]
-    if leaks:
+    overlaps = find_value_overlaps(by_theme)
+    if overlaps:
         themes_involved: dict[frozenset[str], list[tuple[str, list[str]]]] = {}
-        for digest, files in leaks:
-            theme_set = frozenset(f.split("/", 1)[0] for f in files)
+        for digest, sites in overlaps:
+            theme_set = frozenset(slug for slug, _ in sites)
+            files = [f"{slug}/{fname}" for slug, fname in sites]
             themes_involved.setdefault(theme_set, []).append((digest, files))
 
         for theme_set, group in sorted(themes_involved.items(), key=lambda kv: sorted(kv[0])):
@@ -7072,21 +7169,30 @@ def check_hero_images_unique_across_themes() -> Result:
         "(no copy-paste leak in wonders-page-*.png / wonders-post-*.png)"
     )
 
-    by_hash: dict[str, list[str]] = {}
-    total_heroes = 0
-    for theme in iter_themes():
-        images_dir = theme / "playground" / "images"
-        if not images_dir.is_dir():
-            continue
-        for pattern in ("wonders-page-*.png", "wonders-post-*.png"):
-            for path in sorted(images_dir.glob(pattern)):
-                try:
-                    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-                except OSError:
-                    continue
-                total_heroes += 1
-                by_hash.setdefault(digest, []).append(f"{theme.name}/{path.name}")
+    def _inputs(theme: Path) -> list[Path]:
+        d = theme / "playground" / "images"
+        if not d.is_dir():
+            return []
+        return sorted(
+            list(d.glob("wonders-page-*.png")) + list(d.glob("wonders-post-*.png"))
+        )
 
+    def _fp(theme: Path) -> dict[str, str]:
+        out: dict[str, str] = {}
+        for p in _inputs(theme):
+            try:
+                out[p.name] = hashlib.sha256(p.read_bytes()).hexdigest()
+            except OSError:
+                continue
+        return out
+
+    by_theme = collect_fleet(
+        list(iter_themes()),
+        check_name="hero_images_unique",
+        input_builder=_inputs,
+        compute_fn=_fp,
+    )
+    total_heroes = sum(len(v) for v in by_theme.values())
     if not total_heroes:
         r.skip(
             "no wonders-page-*.png / wonders-post-*.png placeholders "
@@ -7094,11 +7200,12 @@ def check_hero_images_unique_across_themes() -> Result:
         )
         return r
 
-    leaks = [(h, files) for h, files in by_hash.items() if len(files) > 1]
-    if leaks:
+    overlaps = find_value_overlaps(by_theme)
+    if overlaps:
         themes_involved: dict[frozenset[str], list[tuple[str, list[str]]]] = {}
-        for digest, files in leaks:
-            theme_set = frozenset(f.split("/", 1)[0] for f in files)
+        for digest, sites in overlaps:
+            theme_set = frozenset(slug for slug, _ in sites)
+            files = [f"{slug}/{fname}" for slug, fname in sites]
             themes_involved.setdefault(theme_set, []).append((digest, files))
 
         for theme_set, group in sorted(
@@ -7175,19 +7282,36 @@ def check_theme_screenshots_distinct() -> Result:
 
     r = Result("Theme screenshots distinct (no duplicate-bytes)")
 
-    by_hash: dict[str, list[str]] = {}
-    for theme in iter_themes():
-        path = theme / "screenshot.png"
-        if not path.exists():
-            r.fail(f"{theme.name}/: missing screenshot.png")
-            continue
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        by_hash.setdefault(digest, []).append(theme.name)
+    def _inputs(theme: Path) -> list[Path]:
+        return [theme / "screenshot.png"]
 
+    def _fp(theme: Path) -> dict[str, str]:
+        p = theme / "screenshot.png"
+        if not p.exists():
+            return {}
+        return {"screenshot.png": hashlib.sha256(p.read_bytes()).hexdigest()}
+
+    themes_list = list(iter_themes())
+    for theme in themes_list:
+        if not (theme / "screenshot.png").exists():
+            r.fail(f"{theme.name}/: missing screenshot.png")
+
+    by_theme = collect_fleet(
+        themes_list,
+        check_name="theme_screenshot_distinct",
+        input_builder=_inputs,
+        compute_fn=_fp,
+    )
+    # Flatten {slug: {filename: digest}} -> {digest: [slugs]} for the
+    # message shape this check has always emitted.
+    by_hash: dict[str, list[str]] = {}
+    for slug, fps in by_theme.items():
+        for digest in fps.values():
+            by_hash.setdefault(digest, []).append(slug)
     for digest, themes in by_hash.items():
         if len(themes) > 1:
             r.fail(
-                f"{', '.join(themes)} share identical screenshot.png "
+                f"{', '.join(sorted(themes))} share identical screenshot.png "
                 f"(sha256={digest[:12]}…). Re-run "
                 f"`python3 bin/build-theme-screenshots.py` to regenerate "
                 f"per-theme screenshots from each theme's home snap."
