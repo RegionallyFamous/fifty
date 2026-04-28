@@ -1121,7 +1121,11 @@ def _build_repair_prompt(plan: RepairPlan, prior_attempts: list[dict[str, Any]])
         "set `done: true` with `rationale` explaining what a human should do "
         "and leave `edits` empty.\n"
         "\n"
-        "Respond with EXACTLY ONE JSON object, no prose, no markdown:\n"
+        "Respond with EXACTLY ONE JSON object. Do NOT write any prose, "
+        "explanation, or markdown before or after the JSON. Do NOT wrap "
+        "the JSON in a code fence. Put all reasoning inside the "
+        "`rationale` field. Your response MUST start with `{` and end "
+        "with `}`.\n"
         "{\n"
         '  "rationale": "<short explanation of the diagnosis>",\n'
         '  "done": false,\n'
@@ -1184,15 +1188,57 @@ def _build_repair_prompt(plan: RepairPlan, prior_attempts: list[dict[str, Any]])
     return system, user
 
 
-def _parse_llm_edits(raw_text: str) -> dict[str, Any]:
-    """Parse the model response; tolerate markdown fencing."""
+_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
+
+
+def _extract_json_object(raw_text: str) -> str:
+    """Pull the largest balanced JSON object out of the model response.
+
+    The system prompt asks for JSON-only, but models routinely add
+    prose before/after or wrap the payload in a ```json fence. We try
+    three fallbacks in order:
+      1. A fenced ```json ... ``` block anywhere in the text.
+      2. The substring between the first `{` and its matching `}`.
+      3. The full text (may be already-clean JSON).
+    """
     text = raw_text.strip()
-    if text.startswith("```"):
-        # strip a leading ``` or ```json fence
-        text = re.sub(r"^```[a-zA-Z]*\s*", "", text)
-        text = re.sub(r"\s*```\s*$", "", text)
+    m = _JSON_FENCE_RE.search(text)
+    if m:
+        return m.group(1)
+    # Find first `{` and scan forward counting braces inside strings.
+    start = text.find("{")
+    if start == -1:
+        return text
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if escape:
+            escape = False
+            continue
+        if ch == "\\" and in_string:
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+    return text
+
+
+def _parse_llm_edits(raw_text: str) -> dict[str, Any]:
+    """Parse the model response; tolerate markdown fencing and prose."""
+    candidate = _extract_json_object(raw_text)
     try:
-        data = json.loads(text)
+        data = json.loads(candidate)
     except json.JSONDecodeError as exc:
         raise ValueError(f"model response was not valid JSON: {exc}") from exc
     if not isinstance(data, dict):
@@ -1352,6 +1398,7 @@ def agentic_repair(
                 model=model or os.environ.get("FIFTY_UNBLOCK_MODEL")
                 or "claude-sonnet-4-6",
                 label="design-unblock",
+                max_output_tokens=8000,
             )
         except ApiKeyMissingError as exc:
             print(f"refusing to --agentic: {exc}", file=sys.stderr)
