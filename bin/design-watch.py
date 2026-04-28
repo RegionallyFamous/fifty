@@ -125,6 +125,13 @@ class WatchState:
     last_stall_at: float = 0.0
     last_status_label: str = "Working"
     last_status_message: str = "Starting pipeline run."
+    repair_attempts: list[dict[str, Any]] = field(default_factory=list)
+    repair_active: bool = False
+    repair_round: int = 0
+    repair_last_decision: str = ""
+    repair_last_reason: str = ""
+    repair_last_touched: list[str] = field(default_factory=list)
+    repair_stop_reason: str = ""
 
 
 def format_elapsed(seconds: float) -> str:
@@ -413,7 +420,12 @@ def write_status(
         "",
         "## Next Action",
     ]
-    if state.check_failures:
+    if state.repair_stop_reason:
+        lines.append(
+            f"Auto-unblock stopped: {state.repair_stop_reason} "
+            "Open the Auto-Unblock section below, then fix the first blocker by hand."
+        )
+    elif state.check_failures:
         _, failures = grouped_failures(state.check_failures)[0]
         lines.append(failures[0].next_action)
     elif state.returncode is None:
@@ -435,6 +447,27 @@ def write_status(
     else:
         lines.append("- None reported yet.")
 
+    if state.repair_attempts or state.repair_active:
+        lines.extend(["", "## Auto-Unblock"])
+        lines.append(f"- Active: {'yes' if state.repair_active else 'no'}")
+        lines.append(f"- Rounds: {state.repair_round}")
+        if state.repair_last_decision:
+            lines.append(
+                f"- Last decision: {state.repair_last_decision} — {state.repair_last_reason}"
+            )
+        if state.repair_last_touched:
+            lines.append("- Files touched (most recent):")
+            for touched in state.repair_last_touched[:10]:
+                lines.append(f"  - {touched}")
+        if state.repair_stop_reason:
+            lines.append(f"- Stop reason: {state.repair_stop_reason}")
+        if state.repair_attempts:
+            lines.append("- History:")
+            for rec in state.repair_attempts[-5:]:
+                lines.append(
+                    f"  - attempt {rec.get('attempt')}: {rec.get('decision')} "
+                    f"({rec.get('reason', '')[:120]})"
+                )
     lines.extend(
         [
             "",
@@ -524,6 +557,31 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Parse an existing transcript instead of running design.py (for tests/debugging).",
+    )
+    parser.add_argument(
+        "--auto-unblock",
+        action="store_true",
+        help=(
+            "When the run blocks on a known-fixable category, invoke "
+            "`bin/design_unblock.py --apply --agentic` to let the LLM "
+            "edit toward green, then resume the pipeline from the "
+            "smallest safe phase. Bounded by --max-repair-rounds and "
+            "the unblocker's own attempt caps."
+        ),
+    )
+    parser.add_argument(
+        "--max-repair-rounds",
+        type=int,
+        default=3,
+        help="How many times --auto-unblock may re-enter the loop (default 3).",
+    )
+    parser.add_argument(
+        "--unblock-dry-run",
+        action="store_true",
+        help=(
+            "Run the unblocker in dry-run mode: emit the repair packet "
+            "into STATUS.md and stop, without calling the LLM."
+        ),
     )
     return parser
 
@@ -658,6 +716,90 @@ def run_subprocess(
     return int(proc.returncode or 0)
 
 
+def _resume_design_args(design_args: list[str], from_phase: str) -> list[str]:
+    """Return a copy of design_args with `--from <phase>` set.
+
+    Strips an existing --from / --only pair so the resume actually runs
+    from where the unblocker decided the pipeline should restart.
+    """
+    out: list[str] = []
+    skip_next = False
+    for tok in design_args:
+        if skip_next:
+            skip_next = False
+            continue
+        if tok == "--from" or tok == "--only":
+            skip_next = True
+            continue
+        if tok.startswith("--from=") or tok.startswith("--only="):
+            continue
+        out.append(tok)
+    out.extend(["--from", from_phase])
+    return out
+
+
+def _read_attempts(run_dir: Path) -> list[dict[str, Any]]:
+    path = run_dir / "repair-attempts.jsonl"
+    if not path.is_file():
+        return []
+    out: list[dict[str, Any]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            out.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return out
+
+
+def run_auto_unblock_round(
+    state: WatchState,
+    run_dir: Path,
+    *,
+    dry_run: bool = False,
+) -> tuple[int, str]:
+    """Invoke `bin/design_unblock.py --apply --agentic` once.
+
+    Returns (returncode, resume_phase). The caller decides whether to
+    re-enter `run_subprocess` with the resume phase.
+    """
+    state.repair_active = True
+    state.repair_round += 1
+    cmd = [
+        sys.executable,
+        "-u",
+        str(ROOT / "bin" / "design_unblock.py"),
+        "--run-id",
+        state.run_id,
+    ]
+    if dry_run:
+        cmd.extend(["--agentic", "--agentic-dry-run"])
+    else:
+        cmd.extend(["--apply", "--agentic"])
+    print(f"Working: Auto-unblock round {state.repair_round}: {' '.join(cmd)}", flush=True)
+    proc = subprocess.run(cmd, cwd=str(ROOT), check=False)
+    # Read the attempt record that was just appended.
+    attempts = _read_attempts(run_dir)
+    state.repair_attempts = attempts
+    resume_phase = "check"
+    if attempts:
+        last = attempts[-1]
+        state.repair_last_decision = str(last.get("decision") or "")
+        state.repair_last_reason = str(last.get("reason") or "")
+        state.repair_last_touched = list(last.get("touched_files") or [])
+        # Load the plan to learn the recommended resume phase.
+        plan_path = run_dir / "repair-plan.json"
+        if plan_path.is_file():
+            try:
+                plan = json.loads(plan_path.read_text(encoding="utf-8"))
+                resume_phase = str(plan.get("resume_phase") or "check") or "check"
+            except json.JSONDecodeError:
+                pass
+    state.repair_active = False
+    return proc.returncode, resume_phase
+
+
 def main(argv: list[str] | None = None) -> int:
     watch_args, design_args = parse_watch_args(argv or sys.argv[1:])
     run_id = watch_args.run_id or time.strftime("design-%Y%m%d-%H%M%S")
@@ -718,6 +860,96 @@ def main(argv: list[str] | None = None) -> int:
 
     state.returncode = rc
     write_event(event_path, {"type": "process_exit", "returncode": rc})
+    # Write summary first so the unblocker (which reads summary.json)
+    # has the final blocker list even if auto-unblock kicks in.
+    write_summary(summary_path, state)
+
+    if (
+        watch_args.auto_unblock
+        and classify_verdict(state) == "blocked"
+        and state.check_failures
+    ):
+        while state.repair_round < watch_args.max_repair_rounds:
+            rc_unblock, resume_phase = run_auto_unblock_round(
+                state,
+                run_dir,
+                dry_run=watch_args.unblock_dry_run,
+            )
+            write_status(
+                status_path, state, event_path=event_path, summary_path=summary_path
+            )
+            # Exit codes from design_unblock.py:
+            #   0 = fixed / improved, resume OK
+            #   3 = worse, stop
+            #   4 = stopped (cap or streak), stop
+            #   5 = dry-run / API missing, stop
+            #   2 = worktree dirty, stop
+            if rc_unblock in (2, 3, 4, 5) or watch_args.unblock_dry_run:
+                state.repair_stop_reason = {
+                    2: "Worktree has unrelated framework changes.",
+                    3: "Repair attempt made verification worse.",
+                    4: "Repair cap or non-improving streak reached.",
+                    5: "LLM unavailable or dry-run; handoff to a human.",
+                }.get(rc_unblock, "Repair halted.")
+                break
+
+            # Prepare a resume: reset per-run artifacts the next child run
+            # will repopulate, then re-enter run_subprocess.
+            state.check_failures = []
+            state.snap_error_cells = 0
+            state.snap_warn_cells = 0
+            state.completed_cells = 0
+            state.total_cells = 0
+            state.final_status = None
+            resume_args = _resume_design_args(design_args, resume_phase)
+            state.command = [
+                sys.executable,
+                "-u",
+                str(ROOT / "bin" / "design.py"),
+                *resume_args,
+            ]
+            state.current_phase = resume_phase
+            state.phase_started_at = time.time()
+            state.last_output_at = time.time()
+            print(
+                f"Working: Resuming pipeline at `{resume_phase}` "
+                f"(round {state.repair_round} cleared a repair).",
+                flush=True,
+            )
+            write_event(
+                event_path,
+                {
+                    "type": "auto_unblock_resume",
+                    "round": state.repair_round,
+                    "resume_phase": resume_phase,
+                },
+            )
+            try:
+                rc = run_subprocess(
+                    state,
+                    event_path,
+                    status_path,
+                    summary_path,
+                    watch_args.heartbeat_seconds,
+                    watch_args.stall_seconds,
+                    watch_args.verbose,
+                )
+            finally:
+                if state.current_phase and state.phase_started_at:
+                    state.phase_durations[state.current_phase] = (
+                        state.phase_durations.get(state.current_phase, 0.0)
+                        + max(0.0, time.time() - state.phase_started_at)
+                    )
+            state.returncode = rc
+            write_event(event_path, {"type": "process_exit", "returncode": rc})
+            write_summary(summary_path, state)
+            if classify_verdict(state) != "blocked":
+                break
+        else:
+            state.repair_stop_reason = (
+                f"Max repair rounds ({watch_args.max_repair_rounds}) reached."
+            )
+
     emit_status(
         state,
         final=True,
@@ -733,7 +965,7 @@ def main(argv: list[str] | None = None) -> int:
         f"events={display_path(event_path)} "
         f"summary={display_path(summary_path)}"
     )
-    return rc
+    return state.returncode if state.returncode is not None else rc
 
 
 if __name__ == "__main__":

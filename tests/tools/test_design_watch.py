@@ -187,3 +187,78 @@ def test_design_watch_help_smoke():
     )
     assert proc.returncode == 0
     assert "human-friendly progress" in proc.stdout.lower()
+
+
+def test_watch_parser_exposes_auto_unblock_flags():
+    watch = load_design_watch()
+    parser = watch.build_parser()
+    args, _ = parser.parse_known_args(
+        [
+            "--auto-unblock",
+            "--max-repair-rounds",
+            "2",
+            "--unblock-dry-run",
+            "--",
+            "--spec",
+            "tmp/specs/agave.json",
+        ]
+    )
+    assert args.auto_unblock is True
+    assert args.max_repair_rounds == 2
+    assert args.unblock_dry_run is True
+
+
+def test_resume_design_args_replaces_from():
+    watch = load_design_watch()
+    resumed = watch._resume_design_args(
+        ["--spec", "tmp/specs/agave.json", "--from", "validate", "--no-strict"],
+        "check",
+    )
+    # --from validate should have been stripped; --from check should be present.
+    assert "--from" in resumed
+    idx = resumed.index("--from")
+    assert resumed[idx + 1] == "check"
+    # --spec and --no-strict should still be present.
+    assert "--spec" in resumed
+    assert "--no-strict" in resumed
+
+
+def test_resume_design_args_strips_only_flag():
+    watch = load_design_watch()
+    resumed = watch._resume_design_args(
+        ["--spec", "foo.json", "--only", "check"],
+        "check",
+    )
+    assert "--only" not in resumed
+    assert resumed[-2:] == ["--from", "check"]
+
+
+def test_write_status_emits_auto_unblock_section(tmp_path):
+    watch = load_design_watch()
+    now = time.time()
+    state = watch.WatchState(
+        run_id="test",
+        started_at=now,
+        command=["python3", "bin/design.py"],
+        cwd=str(REPO_ROOT),
+        phase_started_at=now,
+        last_output_at=now,
+        slug="agave",
+    )
+    state.repair_round = 1
+    state.repair_last_decision = "not-improved"
+    state.repair_last_reason = "Blocker set unchanged after repair attempt."
+    state.repair_last_touched = ["agave/theme.json"]
+    state.repair_attempts = [
+        {"attempt": 1, "decision": "not-improved", "reason": "unchanged"}
+    ]
+    state.repair_stop_reason = (
+        "Repair cap or non-improving streak reached."
+    )
+    status_path = tmp_path / "STATUS.md"
+    watch.write_status(status_path, state)
+    body = status_path.read_text(encoding="utf-8")
+    assert "## Auto-Unblock" in body
+    assert "not-improved" in body
+    assert "agave/theme.json" in body
+    assert "Auto-unblock stopped:" in body
