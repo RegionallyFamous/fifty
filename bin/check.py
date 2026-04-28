@@ -168,18 +168,20 @@ _PHASES = (PHASE_STRUCTURAL, PHASE_CONTENT, PHASE_ALL)
 # asserts every name here is actually invoked by `_build_results()`,
 # so a rename that breaks the tie fails the gate loudly instead of
 # silently demoting a content check to "runs in structural".
-_CONTENT_FIT_CHECK_NAMES = frozenset({
-    "check_product_image_visual_diversity",
-    "check_product_images_json_complete",
-    "check_no_placeholder_product_images",
-    "check_no_woocommerce_placeholder_in_findings",
-    "check_product_images_unique_across_themes",
-    "check_hero_images_unique_across_themes",
-    "check_pattern_microcopy_distinct",
-    "check_all_rendered_text_distinct_across_themes",
-    "check_front_page_unique_layout",
-    "check_concept_similarity",
-})
+_CONTENT_FIT_CHECK_NAMES = frozenset(
+    {
+        "check_product_image_visual_diversity",
+        "check_product_images_json_complete",
+        "check_no_placeholder_product_images",
+        "check_no_woocommerce_placeholder_in_findings",
+        "check_product_images_unique_across_themes",
+        "check_hero_images_unique_across_themes",
+        "check_pattern_microcopy_distinct",
+        "check_all_rendered_text_distinct_across_themes",
+        "check_front_page_unique_layout",
+        "check_concept_similarity",
+    }
+)
 
 
 def _phase_for(func_name: str) -> str:
@@ -413,10 +415,7 @@ def check_theme_readiness() -> Result:
         return r
     problems = validate_payload(data)
     if problems:
-        r.fail(
-            f"{MANIFEST_NAME} has schema problems: "
-            + "; ".join(problems)
-        )
+        r.fail(f"{MANIFEST_NAME} has schema problems: " + "; ".join(problems))
         return r
     r.details.append(f"stage={data.get('stage')!r}, owner={data.get('owner', '(blank)')!r}")
     return r
@@ -1349,16 +1348,12 @@ def check_block_markup_anti_patterns() -> Result:
             tag_style_m = re.search(r'\sstyle\s*=\s*"([^"]*)"', tag)
             tag_style = tag_style_m.group(1) if tag_style_m else ""
             tag_style_props = {
-                p.split(":", 1)[0].strip().lower()
-                for p in tag_style.split(";")
-                if ":" in p
+                p.split(":", 1)[0].strip().lower() for p in tag_style.split(";") if ":" in p
             }
             missing: list[str] = []
 
             # 6a. Top-level `fontSize: "<slug>"` shortcut → has-<kebab-slug>-font-size class.
-            font_size_short = re.search(
-                r'(?<![\w])"fontSize"\s*:\s*"([A-Za-z0-9_-]+)"', json_part
-            )
+            font_size_short = re.search(r'(?<![\w])"fontSize"\s*:\s*"([A-Za-z0-9_-]+)"', json_part)
             if font_size_short and not re.search(
                 r'(?<![\w])"style"\s*:\s*\{[^{}]*?"typography"\s*:\s*\{[^{}]*?"fontSize"',
                 json_part,
@@ -1366,7 +1361,7 @@ def check_block_markup_anti_patterns() -> Result:
                 slug = font_size_short.group(1)
                 expected = f"has-{_slug_to_class_token(slug)}-font-size"
                 if expected not in tag_classes:
-                    missing.append(f"class `{expected}` (from JSON fontSize:\"{slug}\")")
+                    missing.append(f'class `{expected}` (from JSON fontSize:"{slug}")')
 
             # 6b. Top-level `fontFamily: "<slug>"` shortcut → has-<kebab-slug>-font-family class.
             # Skip values that look like CSS variables / preset references --
@@ -1378,7 +1373,7 @@ def check_block_markup_anti_patterns() -> Result:
                 slug = font_family_short.group(1)
                 expected = f"has-{_slug_to_class_token(slug)}-font-family"
                 if expected not in tag_classes:
-                    missing.append(f"class `{expected}` (from JSON fontFamily:\"{slug}\")")
+                    missing.append(f'class `{expected}` (from JSON fontFamily:"{slug}")')
 
             # 6c. style.typography.<prop> → matching CSS property in inline style.
             typo_block = re.search(
@@ -1419,29 +1414,25 @@ def check_block_markup_anti_patterns() -> Result:
             # don't use these keys.
             if not re.search(r'"layout"\s*:\s*\{[^{}]*?"type"\s*:\s*"grid"', json_part):
                 continue
-            has_column_count = bool(
-                re.search(r'(?<![\w])"columnCount"\s*:\s*\d+', json_part)
-            )
+            has_column_count = bool(re.search(r'(?<![\w])"columnCount"\s*:\s*\d+', json_part))
             # `minimumColumnWidth` is "set" only when its value is a non-empty
             # string. `null` and `""` mean "unset" -- the canonical pattern
             # used by every working post/term-template in this repo.
-            min_col_width = re.search(
-                r'(?<![\w])"minimumColumnWidth"\s*:\s*"([^"]+)"', json_part
-            )
+            min_col_width = re.search(r'(?<![\w])"minimumColumnWidth"\s*:\s*"([^"]+)"', json_part)
             if has_column_count and min_col_width:
                 lineno = text.count("\n", 0, m.start()) + 1
                 r.fail(
                     f"{rel}:{lineno}: wp:{block_name} has BOTH `columnCount` "
-                    f"and `minimumColumnWidth: \"{min_col_width.group(1)}\"`. "
+                    f'and `minimumColumnWidth: "{min_col_width.group(1)}"`. '
                     f"WordPress's grid layout picks the `auto-fill` algorithm "
                     f"when `minimumColumnWidth` is set and ignores `columnCount`, "
                     f"so the rendered grid creates as many tracks as fit at the "
                     f"minimum width -- only the first N populate, leaving an "
                     f"empty void beside them at wide viewports. Pick one: set "
-                    f"`\"minimumColumnWidth\":null` for fixed N columns, or "
+                    f'`"minimumColumnWidth":null` for fixed N columns, or '
                     f"drop `columnCount` for a responsive grid. The canonical "
-                    f"pattern across this repo is `\"columnCount\":N,"
-                    f"\"minimumColumnWidth\":null`."
+                    f'pattern across this repo is `"columnCount":N,'
+                    f'"minimumColumnWidth":null`.'
                 )
 
         # Invariant 8: wide/full wp:query + constrained layout (default
@@ -1463,7 +1454,7 @@ def check_block_markup_anti_patterns() -> Result:
             # Find matching close (templates don't nest wp:query, but be safe
             # by taking the next /wp:query after the opener).
             close_m = query_close_re.search(text, m.end())
-            inner = text[m.end():close_m.start()] if close_m else text[m.end():]
+            inner = text[m.end() : close_m.start()] if close_m else text[m.end() :]
             grid_pt = False
             grid_lineno = None
             for pm in post_template_re.finditer(inner):
@@ -1478,7 +1469,7 @@ def check_block_markup_anti_patterns() -> Result:
             lineno = text.count("\n", 0, m.start()) + 1
             r.fail(
                 f"{rel}:{lineno}: wp:query is `align:wide|full` with inner "
-                f"`layout:{{\"type\":\"constrained\"}}` (no `contentSize` "
+                f'`layout:{{"type":"constrained"}}` (no `contentSize` '
                 f"override) AND contains a grid wp:post-template (line "
                 f"{grid_lineno}). The constrained layout falls back to the "
                 f"theme's DEFAULT contentSize (typically 780px), so the "
@@ -1486,9 +1477,9 @@ def check_block_markup_anti_patterns() -> Result:
                 f"the query block itself is painted at wide-size. The N "
                 f"columns then stack into the left half of the section "
                 f"with a void on the right. Fix: change the wp:query "
-                f"layout to `{{\"type\":\"default\"}}` so the post-template "
+                f'layout to `{{"type":"default"}}` so the post-template '
                 f"fills its parent's actual width, or set an explicit "
-                f"`\"contentSize\":\"var(--wp--style--global--wide-size)\"` "
+                f'`"contentSize":"var(--wp--style--global--wide-size)"` '
                 f"on the constrained layout."
             )
 
@@ -1617,9 +1608,7 @@ def check_bordered_group_text_has_explicit_color() -> Result:
     context and the designer is then forced to declare textColor on
     it anyway.
     """
-    r = Result(
-        "Bordered/backgrounded wp:group children declare an explicit textColor"
-    )
+    r = Result("Bordered/backgrounded wp:group children declare an explicit textColor")
 
     skip_dirs = {"templates/", "parts/", "patterns/"}
     files: list[Path] = []
@@ -1668,13 +1657,9 @@ def check_bordered_group_text_has_explicit_color() -> Result:
         # or gradient -- raw `style.background.backgroundColor` is the
         # same story as the top-level `backgroundColor` above, already
         # handled.
-        if re.search(
-            r'"background"\s*:\s*\{[^{}]*?"backgroundImage"\s*:', json_text
-        ):
+        if re.search(r'"background"\s*:\s*\{[^{}]*?"backgroundImage"\s*:', json_text):
             return True, "style.background.backgroundImage"
-        if re.search(
-            r'"background"\s*:\s*\{[^{}]*?"gradient"\s*:', json_text
-        ):
+        if re.search(r'"background"\s*:\s*\{[^{}]*?"gradient"\s*:', json_text):
             return True, "style.background.gradient"
         return False, ""
 
@@ -1769,9 +1754,7 @@ def check_bordered_group_text_has_explicit_color() -> Result:
             scan = pos
             close_at: int | None = None
             while depth > 0:
-                inner_open = re.search(
-                    r"<!--\s*wp:group(?:\s+\{[^<>]*?\})?\s*-->", text[scan:]
-                )
+                inner_open = re.search(r"<!--\s*wp:group(?:\s+\{[^<>]*?\})?\s*-->", text[scan:])
                 inner_close = re.search(r"<!--\s*/wp:group\s*-->", text[scan:])
                 if inner_close is None:
                     break
@@ -1793,7 +1776,7 @@ def check_bordered_group_text_has_explicit_color() -> Result:
                     f"wp:group (reason: {reason}) but has no `textColor` — "
                     f"paragraphs silently inherit the page's ambient color, "
                     f"which often produces a contrast failure on the "
-                    f"group's new background. Add `textColor:\"<preset>\"` "
+                    f'group\'s new background. Add `textColor:"<preset>"` '
                     f"to the {child_name} block attrs, or move the "
                     f"decoration into `theme.json` styles.css where it "
                     f"can be tested against the cascade. "
@@ -1919,7 +1902,7 @@ def check_block_text_contrast() -> Result:
         "spacer",
         "image",
         "gallery",
-        "cover",       # cover has its own overlay mechanics
+        "cover",  # cover has its own overlay mechanics
         "embed",
         "video",
         "audio",
@@ -2228,8 +2211,8 @@ def check_modern_blocks_only() -> Result:
                     "core/html is permitted narrowly for a pure "
                     "decorative SVG — no <form>/<iframe>/<script>/"
                     "<input>/<button> allowed in the body."
-                    if kind == "html" else
-                    "Replace with the appropriate core/* block."
+                    if kind == "html"
+                    else "Replace with the appropriate core/* block."
                 )
             )
 
@@ -2296,9 +2279,7 @@ def check_swatch_js_targets_real_select() -> Result:
     change `wrap.querySelector('select.wo-swatch-select')` to
     `wrap.querySelector('select')`.
     """
-    r = Result(
-        "Swatch JS targets real <select> (no phantom select.wo-swatch-select)"
-    )
+    r = Result("Swatch JS targets real <select> (no phantom select.wo-swatch-select)")
     fn_path = ROOT / "functions.php"
     if not fn_path.exists():
         r.skip("no functions.php at theme root")
@@ -2320,7 +2301,7 @@ def check_swatch_js_targets_real_select() -> Result:
         r.fail(
             f"functions.php{loc}: swatch JS shim queries for "
             f"'select.wo-swatch-select', but nothing ever adds that "
-            f"class to the hidden <select> (WC re-emits class=\"\" "
+            f'class to the hidden <select> (WC re-emits class="" '
             f"late in the tag, overwriting any injected class). The "
             f"querySelector returns null, the shim early-returns, and "
             f"swatch buttons do nothing -- variable products become "
@@ -2406,7 +2387,7 @@ def check_no_empty_cover_blocks() -> Result:
             if dim_ratio >= 30:
                 continue
             lineno = text.count("\n", 0, m.start()) + 1
-            min_h_match = re.search(r"min-height:(\d+)px", text[m.start():m.start() + 800])
+            min_h_match = re.search(r"min-height:(\d+)px", text[m.start() : m.start() + 800])
             min_h = (min_h_match.group(1) + "px") if min_h_match else "unknown-height"
             r.fail(
                 f"{rel}:{lineno}: wp:cover with empty `url` and dimRatio={dim_ratio} "
@@ -2422,7 +2403,9 @@ def check_no_empty_cover_blocks() -> Result:
             )
 
     if r.passed:
-        r.details.append(f"{len(files)} pattern/template/part file(s) scanned; no empty wp:cover blocks")
+        r.details.append(
+            f"{len(files)} pattern/template/part file(s) scanned; no empty wp:cover blocks"
+        )
     return r
 
 
@@ -2490,7 +2473,7 @@ def check_product_terms_query_show_nested() -> Result:
                 f"Demo product categories live under the `Shop` parent, "
                 f"so this block will render a single tile instead of the "
                 f"sub-category grid the design wants. Set "
-                f"`\"showNested\":true` or add `\"include\":[<term-ids>]` "
+                f'`"showNested":true` or add `"include":[<term-ids>]` '
                 f"with the curated subset."
             )
 
@@ -2639,7 +2622,9 @@ def check_no_large_placeholder_groups() -> Result:
         body = text[body_start:end_pos]
 
         is_card = (
-            "2-xl" in attrs_blob or "3-xl" in attrs_blob or "4-xl" in attrs_blob
+            "2-xl" in attrs_blob
+            or "3-xl" in attrs_blob
+            or "4-xl" in attrs_blob
             or '"shadow"' in attrs_blob
             or "width|thick" in attrs_blob
             or ('"border"' in attrs_blob and '"width"' in attrs_blob)
@@ -2664,7 +2649,7 @@ def check_no_large_placeholder_groups() -> Result:
             f"This renders as an empty card with at most a glyph "
             f"placeholder. Add a `<!-- wp:image -->` (resolved via "
             f"`get_theme_file_uri()` in a `.php` pattern), a "
-            f"`<!-- wp:pattern {{\"slug\":\"...\"}} /-->`, or a "
+            f'`<!-- wp:pattern {{"slug":"..."}} /-->`, or a '
             f"`<!-- wp:woocommerce/product-image -->` block."
         )
         findings += 1
@@ -2768,6 +2753,7 @@ def check_product_image_visual_diversity() -> Result:
             try:
                 sys.path.insert(0, str(Path(__file__).resolve().parent))
                 from _judgment_lib import ask_judgment
+
                 # Flatten the sample pairs into an ordered image list
                 # (A0, B0, A1, B1, ...) so the model sees each pair
                 # adjacent in content blocks. The ahash-flagged sample
@@ -2826,14 +2812,12 @@ def check_product_image_visual_diversity() -> Result:
             f"perceptually near-identical: {details}{more}. The catalogue "
             f"will read as 'one product, 30 labels'. Regenerate the "
             f"duplicates with different camera angles, props, or staging "
-            f"so each parent SKU has a visually distinct portrait."
-            + verdict_note
+            f"so each parent SKU has a visually distinct portrait." + verdict_note
         )
         return r
 
     r.details.append(
-        f"{len(hashes)} product photograph(s) compared pairwise; "
-        f"no perceptual near-duplicates"
+        f"{len(hashes)} product photograph(s) compared pairwise; no perceptual near-duplicates"
     )
     return r
 
@@ -2911,22 +2895,14 @@ def check_product_images_json_complete() -> Result:
     problems: list[str] = []
     if missing_on_disk:
         head = ", ".join(missing_on_disk[:5])
-        more = (
-            f" (+{len(missing_on_disk) - 5} more)"
-            if len(missing_on_disk) > 5
-            else ""
-        )
+        more = f" (+{len(missing_on_disk) - 5} more)" if len(missing_on_disk) > 5 else ""
         problems.append(
             f"{len(missing_on_disk)} filename(s) listed in the map but "
             f"missing from playground/images/: {head}{more}"
         )
     if unreferenced:
         head = ", ".join(unreferenced[:5])
-        more = (
-            f" (+{len(unreferenced) - 5} more)"
-            if len(unreferenced) > 5
-            else ""
-        )
+        more = f" (+{len(unreferenced) - 5} more)" if len(unreferenced) > 5 else ""
         problems.append(
             f"{len(unreferenced)} photograph(s) on disk that no SKU "
             f"references in the map: {head}{more}"
@@ -2936,7 +2912,8 @@ def check_product_images_json_complete() -> Result:
             "product-images.json is out of sync with playground/images/: "
             + "; ".join(problems)
             + ". Re-run `python3 bin/seed-playground-content.py --theme "
-            + ROOT.name + " --force` to rebuild the map."
+            + ROOT.name
+            + " --force` to rebuild the map."
         )
         return r
 
@@ -3705,9 +3682,7 @@ def check_hover_state_legibility() -> Result:
     # Match any body-class prefix scoped to the current theme, e.g.
     # `body.theme-foundry ` or the doubled-specificity variant
     # `body.theme-foundry.theme-foundry `.
-    current_prefix_re = re.compile(
-        rf"^body(?:\.theme-{re.escape(theme_slug)})+\s+"
-    )
+    current_prefix_re = re.compile(rf"^body(?:\.theme-{re.escape(theme_slug)})+\s+")
     other_prefix_re = re.compile(r"^body\.theme-([a-z0-9-]+)")
     overrides_by_trailing: dict[str, list[str]] = {}
     for o_match in re.finditer(r"([^{}]+)\{([^}]*)\}", top_css):
@@ -3721,8 +3696,9 @@ def check_hover_state_legibility() -> Result:
                 trailing = norm[m.end() :]
                 overrides_by_trailing.setdefault(trailing, []).append(o_body)
 
-    def _apply_theme_override(trailing_sels: str, base_color_token: str | None,
-                              base_bg_token: str | None) -> tuple[str | None, str | None]:
+    def _apply_theme_override(
+        trailing_sels: str, base_color_token: str | None, base_bg_token: str | None
+    ) -> tuple[str | None, str | None]:
         """For a generic rule's selector list, check if `body.theme-<slug>`
         redefines color/bg for any of those trailing selectors. If so, the
         override wins per cascade (specificity +1 from the body class).
@@ -3845,6 +3821,231 @@ def check_hover_state_legibility() -> Result:
     return r
 
 
+# ---------------------------------------------------------------------------
+# check_palette_polarity_coherent — catches the "partial spec left source
+# palette slugs as stale leftovers" footgun that cratered cipher's build
+# smoke on 2026-04-28. A theme.json whose `base` is dark but whose
+# `subtle` is obel's cream near-white silently ships cream-on-near-white
+# text sitewide (1.17:1) and fires 70+ axe color-contrast findings.
+# ---------------------------------------------------------------------------
+
+# Palette slugs that MUST share `base`'s luminance side (both light-half
+# or both dark-half). These are the tokens the monorepo's block / WC /
+# override CSS paints AS BACKGROUNDS at high density — if any of them
+# flips polarity away from `base`, the text tokens drawn on top of them
+# (which expect a `base`-polarity surface) become invisible.
+#
+# Why these specific slugs:
+#   subtle      — the `.has-subtle-background-color` block class, used
+#                 heavily across obel's inherited templates for quiet
+#                 section backgrounds (3,000+ refs monorepo-wide). A
+#                 polarity flip here paints 22-29 nodes per page at
+#                 sub-1.2:1 contrast.
+#   surface     — explicit card surfaces (cart sidebar, checkout
+#                 sidebar, mini-cart drawer). Flipping surface against
+#                 base shows up immediately in cart/checkout snapshots.
+#   accent-soft — paired with accent; painted as soft fill on hover
+#                 and on promo strips. Obel's `#EFD9C3` on a dark-base
+#                 theme paints text-on-peach at 1.03:1.
+#
+# NOT in this set (on purpose):
+#   muted       — `basalt/theme.json`'s `#9e9e9e` is a legitimate mid-
+#                 gray tone intended for muted text, not for painting
+#                 backgrounds. Holding it to strict polarity would
+#                 false-positive on basalt without a matching snap-
+#                 level contrast failure (axe confirms basalt's actual
+#                 `muted`-painted surfaces still clear AA). If a muted
+#                 surface ever DOES fail contrast, `check_block_text_
+#                 contrast` + axe's `a11y-color-contrast` will catch it
+#                 — the polarity check doesn't need to.
+#   accent, secondary, tertiary, primary, primary-hover, border, status
+#               — each of these either gets painted as text (covered by
+#                 contrast ratio checks) or has semantics that flex
+#                 across palettes (status colors can be dark OR light
+#                 as long as they clear AA against base).
+_BASE_POLARITY_SAMESIDE_SLUGS = frozenset({"subtle", "surface", "accent-soft"})
+
+# Semantic opposite of base: must land on the OTHER luminance side.
+# Kept tight — most "text" tokens flex across palettes so we don't
+# enforce polarity on them.
+_BASE_POLARITY_OPPOSITE_SLUGS = frozenset({"contrast"})
+
+
+def check_palette_polarity_coherent() -> Result:
+    """Fail if `settings.color.palette` contains a slug whose luminance
+    polarity contradicts its semantic role against `base`.
+
+    Why this exists (the 2026-04-28 cipher incident):
+        `_design_lib.apply_palette` explicitly documents "slugs the spec
+        doesn't mention are left untouched". When a spec inherits from
+        obel but flips `base` from light → dark (or vice versa) and
+        doesn't enumerate the full 16-slug palette, obel's `subtle`
+        (`#F2F1EC`, near-white) stays in the child theme's palette next
+        to the new dark `base`. Every block that paints
+        `.has-subtle-background-color` then renders the child theme's
+        `contrast` token (cream) on obel's leftover near-white — 1.17:1
+        — and axe flags 20-29 nodes per page with `color-contrast`.
+
+        The failure is invisible on every shipping theme because each
+        of their specs historically enumerated the full palette; the
+        first partial-spec authored by an LLM (or a terser hand-written
+        one) cratered on a gate no existing check could name. This
+        check closes the hole so the same shape can't ship again.
+
+    What this enforces:
+        1. `base` polarity is the theme's self-identified light/dark
+           axis (`_wcag_luminance(base) >= 0.5` → light; else dark).
+        2. Every `_BASE_POLARITY_SAMESIDE_SLUGS` entry present in the
+           palette MUST have the same polarity (both halves of a
+           well-chosen palette are either clustered near `base` or
+           clustered near `contrast` — we care about the first group).
+        3. Every `_BASE_POLARITY_OPPOSITE_SLUGS` entry (just `contrast`
+           for now) MUST have the opposite polarity — a theme that
+           declared `base` dark and `contrast` also dark would paint
+           invisible body text.
+
+        Slugs not in either set are skipped; the narrowness of this
+        check is intentional. Widening it risks false positives on
+        themes with legitimately low-contrast accent tokens
+        (iridescents, dark-on-dark decoratives).
+
+    What this check does NOT do:
+        - It does NOT compute contrast ratios. `check_block_text_contrast`
+          and `check_hover_state_legibility` are the AA-ratio gates;
+          this check only catches POLARITY inversion, the failure mode
+          ratio-based checks can't name ("your subtle is too close to
+          contrast's side of the palette" is a structural statement,
+          not a numeric one).
+        - It does NOT fix anything. A failure here means the spec
+          under-covered the source palette; the remedy is to extend
+          the spec's `palette` block to include the flagged slugs.
+        - It does NOT look at source-theme lineage. A hand-edited
+          `theme.json` with a mismatched `subtle` will fail the same
+          way a `design.py apply` with a partial spec does — which is
+          intentional (the check is a property of the artifact, not
+          of how it got there).
+
+    Remediation hint:
+        The failure message names each mismatched slug, its current
+        hex, its luminance, and the polarity side `base` expects. The
+        operator then either extends their spec or edits `theme.json`
+        directly. If this fires in CI, the commit author should inspect
+        `settings.color.palette` in their theme.json — every slug named
+        in the failure is a leftover from the source theme.
+    """
+    r = Result("Palette slug luminance polarity is coherent with base")
+
+    theme_json_path = ROOT / "theme.json"
+    if not theme_json_path.is_file():
+        r.skip("no theme.json on disk")
+        return r
+
+    try:
+        theme_json = json.loads(theme_json_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        # Another check (`check_json_validity`) will fail loudly on this;
+        # skipping here keeps the polarity check's diagnostic focused
+        # on its own concern.
+        r.skip("theme.json is not valid JSON (see check_json_validity)")
+        return r
+
+    palette_entries = theme_json.get("settings", {}).get("color", {}).get("palette", [])
+    by_slug = {
+        entry["slug"]: entry["color"]
+        for entry in palette_entries
+        if isinstance(entry, dict) and "slug" in entry and "color" in entry
+    }
+
+    base = by_slug.get("base")
+    if not base or not isinstance(base, str) or not base.startswith("#"):
+        r.skip("no `base` slug with a hex value in palette")
+        return r
+
+    try:
+        base_lum = _wcag_luminance(base)
+    except (ValueError, IndexError):
+        r.skip(f"could not parse base color `{base}`")
+        return r
+
+    base_side = "light" if base_lum >= 0.5 else "dark"
+    failures: list[str] = []
+    checked = 0
+
+    def _polarity_side(hex_color: str) -> str | None:
+        try:
+            return "light" if _wcag_luminance(hex_color) >= 0.5 else "dark"
+        except (ValueError, IndexError):
+            return None
+
+    for slug in sorted(_BASE_POLARITY_SAMESIDE_SLUGS):
+        hex_value = by_slug.get(slug)
+        if not hex_value or not isinstance(hex_value, str) or not hex_value.startswith("#"):
+            continue
+        side = _polarity_side(hex_value)
+        if side is None:
+            continue
+        checked += 1
+        if side != base_side:
+            lum = _wcag_luminance(hex_value)
+            failures.append(
+                f"`{slug}: {hex_value}` (luminance {lum:.3f}, {side}-side) "
+                f"opposes `base: {base} ({base_lum:.3f}, {base_side}-side). "
+                f"This slug is painted AS A BACKGROUND by inherited obel "
+                f"templates; text drawn on it will paint against a "
+                f"{side}-side surface while the rest of the theme assumes "
+                f"{base_side}-side backgrounds → near-zero contrast on "
+                f"every page that uses `.has-{slug}-background-color`."
+            )
+
+    for slug in sorted(_BASE_POLARITY_OPPOSITE_SLUGS):
+        hex_value = by_slug.get(slug)
+        if not hex_value or not isinstance(hex_value, str) or not hex_value.startswith("#"):
+            continue
+        side = _polarity_side(hex_value)
+        if side is None:
+            continue
+        checked += 1
+        if side == base_side:
+            lum = _wcag_luminance(hex_value)
+            failures.append(
+                f"`{slug}: {hex_value}` (luminance {lum:.3f}, {side}-side) "
+                f"shares a side with `base: {base} ({base_lum:.3f}, {base_side}-side). "
+                f"`contrast` is the body-text token — same-side as base means "
+                f"body text is effectively invisible (the only AA ratio you "
+                f"can get is between two similar-luminance colors, which "
+                f"tops out around 1.5:1)."
+            )
+
+    if failures:
+        # `relative_to` can raise when tests point `check.ROOT` outside
+        # the monorepo (pytest tmp_path lives under /private/var/...);
+        # fall back to the absolute path so the diagnostic stays
+        # readable either way.
+        try:
+            path_label = str(theme_json_path.relative_to(MONOREPO_ROOT))
+        except ValueError:
+            path_label = str(theme_json_path)
+        r.fail(
+            f"{len(failures)} palette slug(s) have polarity mismatched with "
+            f"`base`. This is almost always a symptom of a `design.py apply` "
+            f"spec that under-covered the source palette — obel's 16 palette "
+            f"slugs weren't all enumerated, and the untouched ones retained "
+            f"their light-theme defaults against a new dark base (or vice "
+            f"versa). Fix by extending the spec's `palette` block to include "
+            f"these slugs, or by editing `settings.color.palette` in "
+            f"`{path_label}` directly."
+        )
+        for msg in failures:
+            r.details.append(msg)
+        return r
+
+    r.details.append(
+        f"all {checked} polarity-significant palette slug(s) land on the "
+        f"correct side of `base` ({base_side}-side)."
+    )
+    return r
+
+
 def check_background_clip_text_legibility() -> Result:
     """Fail if any `background-clip: text` rule paints text using a
     gradient whose stops are ALL too light to read against the body
@@ -3928,12 +4129,8 @@ def check_background_clip_text_legibility() -> Result:
     # and allow the -webkit- prefix. We deliberately require the whole
     # declaration (`<prop>: text`) so we don't false-positive on e.g.
     # `content-clip: text` hypothetical names.
-    clip_re = re.compile(
-        r"(?:-webkit-)?background-clip\s*:\s*text\b", re.IGNORECASE
-    )
-    bg_decl_re = re.compile(
-        r"\bbackground(?:-image)?\s*:\s*([^;}]+)", re.IGNORECASE
-    )
+    clip_re = re.compile(r"(?:-webkit-)?background-clip\s*:\s*text\b", re.IGNORECASE)
+    bg_decl_re = re.compile(r"\bbackground(?:-image)?\s*:\s*([^;}]+)", re.IGNORECASE)
     token_re = re.compile(r"var\(--wp--preset--color--([a-z0-9-]+)\)")
 
     checked = 0
@@ -3974,8 +4171,7 @@ def check_background_clip_text_legibility() -> Result:
             if len(sel_pretty) > 140:
                 sel_pretty = sel_pretty[:137] + "..."
             stop_desc = ", ".join(
-                f"--{t} ({h}, {_wcag_contrast(h, base_hex):.2f}:1)"
-                for t, h in stops
+                f"--{t} ({h}, {_wcag_contrast(h, base_hex):.2f}:1)" for t, h in stops
             )
             failures.append(
                 f"{sel_pretty}: background-clip:text with gradient stops "
@@ -4087,22 +4283,16 @@ def check_nav_item_pill_scoped_to_horizontal() -> Result:
 
     # Signals inside the rule body that this IS pill treatment.
     # 1. non-zero horizontal padding.
-    pad_all_re = re.compile(
-        r"(?:^|[;{\s])padding\s*:\s*([^;}]+)", re.IGNORECASE
-    )
+    pad_all_re = re.compile(r"(?:^|[;{\s])padding\s*:\s*([^;}]+)", re.IGNORECASE)
     pad_inline_re = re.compile(
         r"(?:^|[;{\s])padding-(?:inline|left|right)\s*:\s*([^;}]+)",
         re.IGNORECASE,
     )
     # 2. pill-ish radius.
-    radius_re = re.compile(
-        r"(?:^|[;{\s])border-radius\s*:\s*([^;}]+)", re.IGNORECASE
-    )
+    radius_re = re.compile(r"(?:^|[;{\s])border-radius\s*:\s*([^;}]+)", re.IGNORECASE)
     # 3. :hover/:focus bg.
     state_re = re.compile(r":(?:hover|focus|focus-visible|active)\b")
-    bg_re = re.compile(
-        r"(?:^|[;{\s])background(?:-color)?\s*:\s*([^;}]+)", re.IGNORECASE
-    )
+    bg_re = re.compile(r"(?:^|[;{\s])background(?:-color)?\s*:\s*([^;}]+)", re.IGNORECASE)
 
     def _has_nonzero_horizontal_padding(body: str) -> bool:
         # `padding: <top> <right> <bottom> <left>` shorthand: a non-zero
@@ -4189,9 +4379,7 @@ def check_nav_item_pill_scoped_to_horizontal() -> Result:
         if _has_pill_radius(body):
             signals.append("pill-shaped border-radius")
         if _has_state_bg(sels, body):
-            signals.append(
-                ":hover/:focus background fill (capsule flash)"
-            )
+            signals.append(":hover/:focus background fill (capsule flash)")
         # Require at least TWO signals to flag the rule. A single signal
         # alone is too weak: base rules often set a tiny optical
         # padding-inline (e.g. 2-xs ≈ 4px) on all nav items without
@@ -4230,8 +4418,7 @@ def check_nav_item_pill_scoped_to_horizontal() -> Result:
         r.skip("no .wp-block-navigation-item__content rules in top-level styles.css")
     else:
         r.details.append(
-            f"{checked} nav-item rule(s) scoped correctly (horizontal-only "
-            f"or orientation-neutral)"
+            f"{checked} nav-item rule(s) scoped correctly (horizontal-only or orientation-neutral)"
         )
     return r
 
@@ -4335,9 +4522,7 @@ def check_disabled_atc_button_styled_per_theme() -> Result:
         body = m.group(1)
         # Reject `transparent` / `inherit` / `initial` / `none` -- the
         # rule has to actually paint a background.
-        bg_match = re.search(
-            r"background(?:-color)?\s*:\s*([^;}!]+)", body, re.IGNORECASE
-        )
+        bg_match = re.search(r"background(?:-color)?\s*:\s*([^;}!]+)", body, re.IGNORECASE)
         if bg_match:
             value = bg_match.group(1).strip().lower()
             if value not in {"transparent", "inherit", "initial", "none", ""}:
@@ -5655,7 +5840,9 @@ def check_distinctive_chrome() -> Result:
         return {"css": css} if css.strip() else {}
 
     known_theme_dirs = [
-        MONOREPO_ROOT / slug for slug in _KNOWN_THEME_SLUGS if (MONOREPO_ROOT / slug / "theme.json").exists()
+        MONOREPO_ROOT / slug
+        for slug in _KNOWN_THEME_SLUGS
+        if (MONOREPO_ROOT / slug / "theme.json").exists()
     ]
     cached_css = collect_fleet(
         known_theme_dirs,
@@ -6765,9 +6952,7 @@ def check_no_woocommerce_placeholder_in_findings() -> Result:
         issues = data.get("issues") or data.get("findings") or []
         for issue in issues:
             msg = (issue.get("message") or issue.get("title") or "").lower()
-            if "placeholder" in msg and (
-                "product image" in msg or "expected" in msg
-            ):
+            if "placeholder" in msg and ("product image" in msg or "expected" in msg):
                 viewport = findings_path.parent.name
                 route = findings_path.stem.replace(".findings", "")
                 placeholder_hits.append((route, viewport))
@@ -6776,12 +6961,12 @@ def check_no_woocommerce_placeholder_in_findings() -> Result:
     if placeholder_hits:
         # Group by viewport for readability.
         from collections import defaultdict
+
         by_vp: dict[str, list[str]] = defaultdict(list)
         for route, vp in placeholder_hits:
             by_vp[vp].append(route)
         groups = "; ".join(
-            f"{vp}: {', '.join(sorted(set(routes)))}"
-            for vp, routes in sorted(by_vp.items())
+            f"{vp}: {', '.join(sorted(set(routes)))}" for vp, routes in sorted(by_vp.items())
         )
         r.fail(
             f"`{theme_slug}` is rendering the WooCommerce placeholder "
@@ -6866,9 +7051,7 @@ def check_product_reviews_uses_inner_blocks_not_legacy_render() -> Result:
         ROOT / "single-product.html"
     ).is_file()
     if not has_pdp:
-        r.skip(
-            f"theme `{theme_slug}` has no single-product.html — no PDP to gate"
-        )
+        r.skip(f"theme `{theme_slug}` has no single-product.html — no PDP to gate")
         return r
 
     # The exact byte-sequence that flips WC into the legacy render
@@ -6878,9 +7061,7 @@ def check_product_reviews_uses_inner_blocks_not_legacy_render() -> Result:
     #   <!-- wp:woocommerce/product-reviews/-->
     #   <!-- wp:woocommerce/product-reviews  /-->
     # We match all three via a permissive regex.
-    legacy_re = re.compile(
-        r"<!--\s*wp:woocommerce/product-reviews\s*/-->"
-    )
+    legacy_re = re.compile(r"<!--\s*wp:woocommerce/product-reviews\s*/-->")
 
     hits: list[tuple[Path, int, str]] = []
     scan_roots = [ROOT / "templates", ROOT / "parts", ROOT / "patterns"]
@@ -6901,23 +7082,18 @@ def check_product_reviews_uses_inner_blocks_not_legacy_render() -> Result:
             for match in legacy_re.finditer(text):
                 line_no = text.count("\n", 0, match.start()) + 1
                 line_text = (
-                    text.splitlines()[line_no - 1]
-                    if line_no <= len(text.splitlines())
-                    else ""
+                    text.splitlines()[line_no - 1] if line_no <= len(text.splitlines()) else ""
                 )
                 rel = path.relative_to(ROOT)
                 hits.append((rel, line_no, line_text.strip()))
 
     if hits:
-        lines = "\n  ".join(
-            f"{rel}:{ln}  →  `{preview[:100]}`"
-            for rel, ln, preview in hits
-        )
+        lines = "\n  ".join(f"{rel}:{ln}  →  `{preview[:100]}`" for rel, ln, preview in hits)
         r.fail(
             f"`{theme_slug}` has {len(hits)} self-closing "
             f"`<!-- wp:woocommerce/product-reviews /-->` occurrence(s). "
             f"That shape triggers WC's `render_legacy_block()` path, "
-            f"which emits a raw `<select id=\"rating\">` the browser "
+            f'which emits a raw `<select id="rating">` the browser '
             f"never restyles (WC skips `wc-single-product.js` on block "
             f"themes). Replace with the modern inner-block structure "
             f"(`product-reviews-title`, `product-review-template`, "
@@ -6992,12 +7168,12 @@ def check_no_unstyled_review_rating_in_findings() -> Result:
 
     if hits:
         from collections import defaultdict
+
         by_vp: dict[str, list[str]] = defaultdict(list)
         for route, vp in hits:
             by_vp[vp].append(route)
         groups = "; ".join(
-            f"{vp}: {', '.join(sorted(set(routes)))}"
-            for vp, routes in sorted(by_vp.items())
+            f"{vp}: {', '.join(sorted(set(routes)))}" for vp, routes in sorted(by_vp.items())
         )
         r.fail(
             f"`{theme_slug}` is rendering an unstyled native <select> "
@@ -7012,9 +7188,7 @@ def check_no_unstyled_review_rating_in_findings() -> Result:
         )
         return r
 
-    r.details.append(
-        f"scanned {scanned} findings.json files; no unstyled-review-rating."
-    )
+    r.details.append(f"scanned {scanned} findings.json files; no unstyled-review-rating.")
     return r
 
 
@@ -7965,9 +8139,7 @@ def check_wc_microcopy_distinct_across_themes() -> Result:
         if not map_match:
             return {}
         map_body = map_match.group(1)
-        return {
-            php_unquote(k): php_unquote(v) for k, v in pair_re.findall(map_body)
-        }
+        return {php_unquote(k): php_unquote(v) for k, v in pair_re.findall(map_body)}
 
     per_theme_raw = collect_fleet(
         list(iter_themes()),
@@ -8411,9 +8583,7 @@ def check_hero_images_unique_across_themes() -> Result:
         d = theme / "playground" / "images"
         if not d.is_dir():
             return []
-        return sorted(
-            list(d.glob("wonders-page-*.png")) + list(d.glob("wonders-post-*.png"))
-        )
+        return sorted(list(d.glob("wonders-page-*.png")) + list(d.glob("wonders-post-*.png")))
 
     def _fp(theme: Path) -> dict[str, str]:
         out: dict[str, str] = {}
@@ -8432,10 +8602,7 @@ def check_hero_images_unique_across_themes() -> Result:
     )
     total_heroes = sum(len(v) for v in by_theme.values())
     if not total_heroes:
-        r.skip(
-            "no wonders-page-*.png / wonders-post-*.png placeholders "
-            "found in any theme"
-        )
+        r.skip("no wonders-page-*.png / wonders-post-*.png placeholders found in any theme")
         return r
 
     overlaps = find_value_overlaps(by_theme)
@@ -8446,9 +8613,7 @@ def check_hero_images_unique_across_themes() -> Result:
             files = [f"{slug}/{fname}" for slug, fname in sites]
             themes_involved.setdefault(theme_set, []).append((digest, files))
 
-        for theme_set, group in sorted(
-            themes_involved.items(), key=lambda kv: sorted(kv[0])
-        ):
+        for theme_set, group in sorted(themes_involved.items(), key=lambda kv: sorted(kv[0])):
             theme_list = ", ".join(sorted(theme_set))
             count = len(group)
             sample = sorted(files for _, files in group)[:3]
@@ -8588,9 +8753,7 @@ def check_theme_screenshots_distinct() -> Result:
 # `_finding_fingerprint`. There's a self-test in
 # `tests/check_py/test_axe_allowlist.py` that asserts both
 # implementations agree on a synthetic finding.
-_AXE_ALLOWLIST_PATH = (
-    MONOREPO_ROOT / "tests" / "visual-baseline" / "heuristics-allowlist.json"
-)
+_AXE_ALLOWLIST_PATH = MONOREPO_ROOT / "tests" / "visual-baseline" / "heuristics-allowlist.json"
 
 
 def _load_axe_allowlist() -> dict[str, dict[str, set[str]]]:
@@ -8816,9 +8979,7 @@ def check_no_serious_axe_in_recent_snaps() -> Result:
                 continue
             if f.get("severity") != "error":
                 continue
-            if _axe_finding_is_allowlisted(
-                allowlist, ROOT.name, viewport, route, f
-            ):
+            if _axe_finding_is_allowlisted(allowlist, ROOT.name, viewport, route, f):
                 allowlisted_total += 1
                 continue
             kind = f.get("kind", "unknown")
@@ -8851,10 +9012,7 @@ def check_no_serious_axe_in_recent_snaps() -> Result:
             f"--theme {ROOT.name}` to add the entries"
         )
         if allowlisted_total:
-            hint += (
-                f"; {allowlisted_total} pre-existing allowlisted "
-                f"finding(s) suppressed"
-            )
+            hint += f"; {allowlisted_total} pre-existing allowlisted finding(s) suppressed"
         r.fail(hint + ":\n" + "\n".join(failures))
         return r
 
@@ -8864,8 +9022,7 @@ def check_no_serious_axe_in_recent_snaps() -> Result:
     )
     if allowlisted_total:
         detail += (
-            f" ({allowlisted_total} suppressed via "
-            f"tests/visual-baseline/heuristics-allowlist.json)"
+            f" ({allowlisted_total} suppressed via tests/visual-baseline/heuristics-allowlist.json)"
         )
     r.details.append(detail)
     return r
@@ -8935,9 +9092,7 @@ def check_visual_baseline_present() -> Result:
             "and commit the result."
         )
         return r
-    r.details.append(
-        f"{len(pngs)} baseline PNG(s) under tests/visual-baseline/{ROOT.name}/"
-    )
+    r.details.append(f"{len(pngs)} baseline PNG(s) under tests/visual-baseline/{ROOT.name}/")
     return r
 
 
@@ -9089,7 +9244,15 @@ def check_evidence_freshness() -> Result:
         return r
 
     source_suffixes = {".json", ".php", ".html", ".css"}
-    source_dirs = ("theme.json", "functions.php", "styles", "templates", "parts", "patterns", "playground")
+    source_dirs = (
+        "theme.json",
+        "functions.php",
+        "styles",
+        "templates",
+        "parts",
+        "patterns",
+        "playground",
+    )
     edited_sources: list[Path] = []
     for line in proc.stdout.splitlines():
         if not line or len(line) < 4:
@@ -9152,8 +9315,7 @@ def check_evidence_freshness() -> Result:
             f"({len(findings_files)} findings file(s) under "
             f"tmp/snaps/{theme_root.name}/). Re-shoot with "
             f"`python3 bin/snap.py shoot {theme_root.name}` so findings "
-            f"reflect the post-edit state, then re-run the gate.\n"
-            + "\n".join(bullets)
+            f"reflect the post-edit state, then re-run the gate.\n" + "\n".join(bullets)
         )
     return r
 
@@ -9265,9 +9427,7 @@ def check_wc_specificity_winnable() -> Result:
         if not builder_path.is_file():
             r.skip("bin/build-wc-specificity-index.py not present; cannot parse selectors")
             return r
-        builder_spec = importlib.util.spec_from_file_location(
-            "_wc_spec_builder", builder_path
-        )
+        builder_spec = importlib.util.spec_from_file_location("_wc_spec_builder", builder_path)
         if builder_spec is None or builder_spec.loader is None:
             r.fail("failed to load build-wc-specificity-index.py")
             return r
@@ -9356,8 +9516,7 @@ def check_wc_specificity_winnable() -> Result:
                     grand_tolerated += 1
                     continue
                 losses.append(
-                    f"  ours    = {our_spec}  ({sel})\n"
-                    f"      WC max  = {wc_spec}  ({wc_sel})"
+                    f"  ours    = {our_spec}  ({sel})\n      WC max  = {wc_spec}  ({wc_sel})"
                 )
 
     if losses:
@@ -9485,7 +9644,7 @@ def check_view_transitions_wired() -> Result:
         )
     if "speculationrules" not in php:
         r.fail(
-            "functions.php is missing the `<script type=\"speculationrules\">` "
+            'functions.php is missing the `<script type="speculationrules">` '
             "block (`fifty_view_transitions_speculation_rules`) — the "
             "largest perceived-perf lever for cross-document VT"
         )
@@ -9521,6 +9680,7 @@ def check_concept_similarity() -> Result:
     # than a normal `import` statement.
     try:
         from importlib import import_module
+
         sim_mod = import_module("check-concept-similarity")
     except ImportError as e:
         r.skip(f"could not import check-concept-similarity ({e})")
@@ -9981,7 +10141,10 @@ def _build_results(offline: bool) -> list[tuple[str, Callable[[], Result]]]:
         ("check_block_attrs_use_tokens", check_block_attrs_use_tokens),
         ("check_block_markup_anti_patterns", check_block_markup_anti_patterns),
         ("check_blocks_validator", check_blocks_validator),
-        ("check_bordered_group_text_has_explicit_color", check_bordered_group_text_has_explicit_color),
+        (
+            "check_bordered_group_text_has_explicit_color",
+            check_bordered_group_text_has_explicit_color,
+        ),
         ("check_block_text_contrast", check_block_text_contrast),
         ("check_no_fake_forms", check_no_fake_forms),
         ("check_modern_blocks_only", check_modern_blocks_only),
@@ -10002,6 +10165,7 @@ def _build_results(offline: bool) -> list[tuple[str, Callable[[], Result]]]:
         ("check_outline_button_paired_with_primary", check_outline_button_paired_with_primary),
         ("check_wc_card_padding_not_zeroed", check_wc_card_padding_not_zeroed),
         ("check_hover_state_legibility", check_hover_state_legibility),
+        ("check_palette_polarity_coherent", check_palette_polarity_coherent),
         ("check_background_clip_text_legibility", check_background_clip_text_legibility),
         ("check_nav_item_pill_scoped_to_horizontal", check_nav_item_pill_scoped_to_horizontal),
         ("check_account_grid_scoped_to_sidebar", check_account_grid_scoped_to_sidebar),
@@ -10013,11 +10177,23 @@ def _build_results(offline: bool) -> list[tuple[str, Callable[[], Result]]]:
         ("check_blueprint_landing_page", check_blueprint_landing_page),
         ("check_front_page_unique_layout", check_front_page_unique_layout),
         ("check_pdp_has_image", check_pdp_has_image),
-        ("check_no_woocommerce_placeholder_in_findings", check_no_woocommerce_placeholder_in_findings),
-        ("check_product_reviews_uses_inner_blocks_not_legacy_render", check_product_reviews_uses_inner_blocks_not_legacy_render),
-        ("check_no_unstyled_review_rating_in_findings", check_no_unstyled_review_rating_in_findings),
+        (
+            "check_no_woocommerce_placeholder_in_findings",
+            check_no_woocommerce_placeholder_in_findings,
+        ),
+        (
+            "check_product_reviews_uses_inner_blocks_not_legacy_render",
+            check_product_reviews_uses_inner_blocks_not_legacy_render,
+        ),
+        (
+            "check_no_unstyled_review_rating_in_findings",
+            check_no_unstyled_review_rating_in_findings,
+        ),
         ("check_pattern_microcopy_distinct", check_pattern_microcopy_distinct),
-        ("check_all_rendered_text_distinct_across_themes", check_all_rendered_text_distinct_across_themes),
+        (
+            "check_all_rendered_text_distinct_across_themes",
+            check_all_rendered_text_distinct_across_themes,
+        ),
         ("check_no_default_wc_strings", check_no_default_wc_strings),
         ("check_no_brand_filters_in_playground", check_no_brand_filters_in_playground),
         ("check_theme_ships_cart_page_pattern", check_theme_ships_cart_page_pattern),
