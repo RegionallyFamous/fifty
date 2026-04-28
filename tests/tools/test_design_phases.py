@@ -42,12 +42,12 @@ wanting no remote writes. A regression that pushes anyway under
 API-rate / remote-write credentials that the operator was trying to
 conserve.
 
-### Invariant #3: `--skip-commit` skips `prepublish` too.
+### Invariant #3: `--skip-commit` skips only `commit` + `publish`.
 
-Same shape: prepublish IS a commit, and `--skip-commit` is the "no git
-writes at all" knob. A regression that commits anyway under
-`--skip-commit` would pollute a clean working tree with an unexpected
-"design: scaffold <slug>" commit.
+`prepublish` still runs: snap's Playground boot needs a reachable
+`raw.githubusercontent.com` ref for a *new* theme's `playground/content/`.
+Dropping `prepublish` under `--skip-commit` regressed `build --skip-commit`
+with HTTP 404 on `content.xml` before Playground boots.
 
 Why this is a static source scan, not a behavioural test
 --------------------------------------------------------
@@ -366,16 +366,14 @@ def test_skill_phases_match_code() -> None:
     )
 
 
-def test_skip_commit_drops_prepublish_too() -> None:
-    """`--skip-commit` must filter out `prepublish` in addition to
-    `commit` and `publish`. prepublish IS a commit; leaving it in the
-    phase list under `--skip-commit` would pollute a clean tree with an
-    unwanted "design: scaffold <slug>" commit.
+def test_skip_commit_drops_final_commit_and_publish_only() -> None:
+    """`--skip-commit` must keep `prepublish` so snap can resolve content.
+
+    Regression: filtering out `prepublish` with `--skip-commit` made
+    `design.py build --skip-commit` run `snap` before GitHub served the
+    new theme's playground payload (404 preflight on content.xml).
     """
     drop_set = _extract_drop_set_for_skip_flag("skip_commit")
-    for required in ("prepublish", "commit", "publish"):
-        assert required in drop_set, (
-            f"`--skip-commit` branch no longer drops {required!r}. "
-            "`--skip-commit` is the 'no git writes at all' knob; "
-            f"re-add {required!r} to the drop set."
-        )
+    assert drop_set == {"commit", "publish"}, (
+        f"expected {{'commit', 'publish'}} only, got {drop_set!r}"
+    )

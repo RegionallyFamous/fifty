@@ -505,11 +505,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--skip-commit",
         action="store_true",
         help=(
-            "Skip phase N (commit) and phase O (publish). Use for local "
-            "iteration where you want to eyeball the theme and BRIEF.md "
-            "before anything lands in git. Default is commit + publish — "
-            "a design.py run that goes green SHOULD ship, because the "
-            "gates already prove every theme invariant holds."
+            "Skip phase N (final commit) and phase O (publish). Pre-snap "
+            "`prepublish` still runs when applicable — Playground fetches "
+            "playground/content from raw.githubusercontent.com, so a "
+            "brand-new theme must be pushed on a feature branch before "
+            "`snap` (see `_phase_prepublish`). Use on `agent/<slug>` etc., "
+            "not on `main`, until `origin/main` already contains the theme."
         ),
     )
     p.add_argument(
@@ -674,11 +675,12 @@ def main(argv: list[str] | None = None) -> int:
             if p not in {"snap", "vision-review", "baseline", "screenshot", "report"}
         ]
     if args.skip_commit and not args.only:
-        # --skip-commit implies --skip-publish (you can't publish a
-        # commit that doesn't exist) AND --skip-prepublish (prepublish
-        # IS a commit, and the operator just said they don't want any
-        # commits). Drop all three.
-        phases_to_run = [p for p in phases_to_run if p not in {"prepublish", "commit", "publish"}]
+        # --skip-commit implies --skip-publish (can't push a commit that
+        # never ran).  Keep `prepublish`: it is the push that makes
+        # raw.githubusercontent.com serve a NEW theme's playground/content
+        # before `snap` — dropping it broke `build --skip-commit` with
+        # snap's HTTP 404 preflight on content.xml.
+        phases_to_run = [p for p in phases_to_run if p not in {"commit", "publish"}]
     elif args.skip_publish and not args.only:
         # --skip-publish means "no push at all", which rules out the
         # mid-pipeline prepublish push too. The snap phase will then
@@ -1217,12 +1219,13 @@ def _phase_prepublish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace)
     Skipped when
     ------------
       * `--skip-publish` — operator explicitly opted out of pushing.
-      * `--skip-commit`  — operator explicitly opted out of committing.
+      * `--skip-commit`  — skips phase N/O only; prepublish still runs
+        (needed so snap can resolve playground content on a pushed ref).
       * `--skip-prepublish` — operator knows they're rebaselining an
         already-shipping theme and just wants to skip the mid-pipeline
         push.
-      * current branch is `main` — the content is already on the
-        default branch; snap will resolve content against `main`.
+      * current branch is `main` **and** `origin/main:<slug>/theme.json`
+        exists — the content ref snap will use already includes this theme.
       * current branch has no symbolic ref (detached HEAD).
     """
     git = ["git", "-C", str(MONOREPO_ROOT)]
@@ -1236,21 +1239,42 @@ def _phase_prepublish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace)
         print("  [prepublish] skipped: detached HEAD (no branch to push)")
         return
     branch = proc.stdout.strip()
-    if not branch or branch == "main":
-        print(
-            "  [prepublish] skipped: on main (raw.githubusercontent "
-            "already serves main; nothing to pre-publish)"
-        )
+    if not branch:
+        print("  [prepublish] skipped: empty branch name")
         return
 
     remote = args.publish_remote
+    slug = spec.slug
+    # On `main`, only skip when this theme already exists on origin/main.
+    # A brand-new theme checked out locally on `main` is NOT on GitHub yet —
+    # snap would 404 content.xml if we skipped prepublish.
+    if branch == "main":
+        has_on_origin = subprocess.run(
+            [*git, "cat-file", "-e", f"origin/main:{slug}/theme.json"],
+            capture_output=True,
+        ).returncode == 0
+        if has_on_origin:
+            print(
+                "  [prepublish] skipped: on main and "
+                f"`origin/main:{slug}/theme.json` exists (nothing to pre-publish)"
+            )
+            return
+        raise PhaseError(
+            "prepublish",
+            "On branch `main` but this theme is not on `origin/main` yet — "
+            "raw.githubusercontent.com would 404 the playground content and "
+            "`snap` would fail.\n"
+            f"  git checkout -b agent/{slug}\n"
+            "Then re-run `design.py build` (with or without `--skip-commit`). "
+            "Prepublish will push the feature branch so Playground can fetch "
+            "content before snap runs.",
+        )
 
     # Stage what the earlier phases produced. We scope strictly to the
     # theme dir + docs/ + every theme's blueprint (which
     # sync-playground.py may have touched), NOT `-A`: the operator may
     # have unrelated WIP in their worktree and we don't want to sweep
     # that into the pre-snap commit.
-    slug = spec.slug
     add_paths: list[str] = [f"{slug}/", "docs/"]
     for bp in sorted(MONOREPO_ROOT.glob("*/playground/blueprint.json")):
         add_paths.append(str(bp.relative_to(MONOREPO_ROOT)))
