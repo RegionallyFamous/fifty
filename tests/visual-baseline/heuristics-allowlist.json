@@ -396,5 +396,51 @@
     "narrow-wc-block": [
       ".wo-account-login-grid"
     ]
+  },
+  "agave:desktop:cart-filled": {
+    "narrow-wc-block": [
+      ".wc-block-cart-items"
+    ]
+  },
+  "agave:desktop:cart-filled.line-remove": {
+    "narrow-wc-block": [
+      ".wc-block-cart-items"
+    ]
+  },
+  "agave:desktop:checkout-filled.return-to-cart-visible": {
+    "a11y-autocomplete-valid": [
+      "*"
+    ],
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "agave:desktop:my-account": {
+    "narrow-wc-block": [
+      ".wo-account-login-grid"
+    ]
+  },
+  "agave:wide:cart-filled": {
+    "narrow-wc-block": [
+      ".wc-block-cart-items"
+    ]
+  },
+  "agave:wide:cart-filled.line-remove": {
+    "narrow-wc-block": [
+      ".wc-block-cart-items"
+    ]
+  },
+  "agave:wide:checkout-filled.return-to-cart-visible": {
+    "a11y-autocomplete-valid": [
+      "*"
+    ],
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "agave:wide:my-account": {
+    "narrow-wc-block": [
+      ".wo-account-login-grid"
+    ]
   }
 }

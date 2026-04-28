@@ -1,0 +1,174 @@
+{
+  "findings": [
+    {
+      "severity": "info",
+      "kind": "inspect-selector-missing",
+      "message": "Selector `.woocommerce-MyAccount-content` matched 0 elements on this page.",
+      "selector": ".woocommerce-MyAccount-content"
+    },
+    {
+      "severity": "info",
+      "kind": "console-warn-budget",
+      "message": "18 console warnings on this cell (>10). Consider triaging.",
+      "count": 18,
+      "max": 10
+    }
+  ],
+  "selectors": [
+    {
+      "selector": ".woocommerce-form-login",
+      "count": 1,
+      "instances": [
+        {
+          "width": 342,
+          "height": 367,
+          "visible": true,
+          "display": "block",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        }
+      ]
+    },
+    {
+      "selector": ".wo-account-intro",
+      "count": 1,
+      "instances": [
+        {
+          "width": 342,
+          "height": 365,
+          "visible": true,
+          "display": "block",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "100%"
+        }
+      ]
+    },
+    {
+      "selector": ".wo-account-help",
+      "count": 1,
+      "instances": [
+        {
+          "width": 342,
+          "height": 25,
+          "visible": true,
+          "display": "block",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "100%"
+        }
+      ]
+    },
+    {
+      "selector": ".wo-account-login-grid",
+      "count": 1,
+      "instances": [
+        {
+          "width": 342,
+          "height": 928,
+          "visible": true,
+          "display": "grid",
+          "grid_template_columns": "342px",
+          "min_width": "0px",
+          "max_width": "100%"
+        }
+      ]
+    },
+    {
+      "selector": ".woocommerce-MyAccount-content",
+      "count": 0,
+      "instances": [],
+      "missing": true
+    }
+  ],
+  "dom": {
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "scrollHeight": 2435
+  },
+  "bg_image_pairs": [],
+  "theme": "agave",
+  "viewport": "mobile",
+  "route": "my-account",
+  "url": "http://127.0.0.1:9400/my-account/",
+  "navigation_error": null,
+  "console": [
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    }
+  ],
+  "page_errors": [],
+  "network_failures": [],
+  "a11y_path": "tmp/snaps/agave/mobile/my-account.a11y.json"
+}

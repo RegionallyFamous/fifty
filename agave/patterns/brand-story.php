@@ -24,7 +24,7 @@
 			<!-- /wp:heading -->
 
 			<!-- wp:paragraph {"textColor":"secondary","fontSize":"md"} -->
-			<p class="has-secondary-color has-text-color has-md-font-size"><?php esc_html_e( 'Two or three sentences explaining why your brand exists, what it makes, and who it makes it for. Keep it concrete.', 'agave' ); ?></p>
+			<p class="has-secondary-color has-text-color has-md-font-size"><?php esc_html_e( 'Agave grows slow and gives everything once. Our products follow the same principle — crafted without shortcuts, built to outlast the moment you bought them for.', 'agave' ); ?></p>
 			<!-- /wp:paragraph -->
 
 			<!-- wp:buttons -->

@@ -40,7 +40,7 @@
 			<!-- /wp:heading -->
 
 			<!-- wp:paragraph {"fontSize":"md","textColor":"secondary"} -->
-			<p class="has-secondary-color has-text-color has-md-font-size"><?php esc_html_e( 'A block-only WooCommerce theme. Composed entirely of core blocks, styled entirely from one design file.', 'agave' ); ?></p>
+			<p class="has-secondary-color has-text-color has-md-font-size"><?php esc_html_e( 'Unhurried goods for everyday rituals. Every object here earns its place on your shelf.', 'agave' ); ?></p>
 			<!-- /wp:paragraph -->
 
 			<!-- wp:buttons {"style":{"spacing":{"margin":{"top":"var:preset|spacing|md"}}}} -->
