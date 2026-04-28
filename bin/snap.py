@@ -1565,18 +1565,59 @@ def boot_and_wait(
 # ---------------------------------------------------------------------------
 # Capture (Playwright)
 # ---------------------------------------------------------------------------
+def _normalise_filter_args(values: Iterable[str] | None, *, kind: str) -> list[str] | None:
+    """Return CLI filter values, accepting comma-separated typos explicitly.
+
+    argparse's ``nargs='+'`` accepts ``--routes shop,category`` as one literal
+    string, which used to resolve to zero routes and silently skip the shoot.
+    Splitting here keeps the operator's intent while still letting the caller
+    validate unknown names below.
+    """
+    if not values:
+        return None
+    out: list[str] = []
+    for raw in values:
+        parts = [part.strip() for part in str(raw).split(",")]
+        out.extend(part for part in parts if part)
+    if values and not out:
+        raise SystemExit(f"--{kind} did not include any usable names.")
+    return out
+
+
 def filter_routes(slugs: Iterable[str] | None) -> list[Route]:
     if not slugs:
         return list(ROUTES)
-    wanted = set(slugs)
-    return [r for r in ROUTES if r.slug in wanted]
+    wanted = set(_normalise_filter_args(slugs, kind="routes") or [])
+    known = {r.slug for r in ROUTES}
+    unknown = sorted(wanted - known)
+    if unknown:
+        choices = ", ".join(sorted(known))
+        raise SystemExit(
+            f"Unknown route(s): {', '.join(unknown)}. "
+            f"Use space-separated or comma-separated names from: {choices}"
+        )
+    picked = [r for r in ROUTES if r.slug in wanted]
+    if not picked:
+        raise SystemExit("--routes matched zero routes.")
+    return picked
 
 
 def filter_viewports(names: Iterable[str] | None) -> list[Viewport]:
     if not names:
         return list(VIEWPORTS)
-    wanted = set(names)
-    return [v for v in VIEWPORTS if v.name in wanted]
+    wanted = set(_normalise_filter_args(names, kind="viewports") or [])
+    known = {v.name for v in VIEWPORTS}
+    unknown = sorted(wanted - known)
+    if unknown:
+        choices = ", ".join(sorted(known))
+        raise SystemExit(
+            f"Unknown viewport(s): {', '.join(unknown)}. "
+            f"Use space-separated or comma-separated names from: {choices}"
+        )
+    picked = [v for v in VIEWPORTS if v.name in wanted]
+    if not picked:
+        raise SystemExit("--viewports matched zero viewports.")
+    return picked
 
 
 _FREEZE_CSS = """

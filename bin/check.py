@@ -67,6 +67,36 @@ DIM = "\033[2m" if USE_COLOR else ""
 RESET = "\033[0m" if USE_COLOR else ""
 
 
+def _repo_relpath(path: Path) -> str:
+    try:
+        return path.resolve().relative_to(MONOREPO_ROOT.resolve()).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def _git_tracks(path: Path) -> bool:
+    """Return whether `path` is already in the git index.
+
+    Playground content is fetched from raw.githubusercontent.com during snaps
+    and live demos. A local-but-untracked map is therefore indistinguishable
+    from a missing file once Playground boots remotely.
+    """
+    rel = _repo_relpath(path)
+    try:
+        return (
+            subprocess.run(
+                ["git", "ls-files", "--error-unmatch", rel],
+                cwd=MONOREPO_ROOT,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            ).returncode
+            == 0
+        )
+    except OSError:
+        return True
+
+
 class Result:
     def __init__(self, name: str) -> None:
         self.name = name
@@ -196,13 +226,74 @@ def _phase_keeps(func_name: str, phase: str) -> bool:
     return _phase_for(func_name) == phase
 
 
+_ONLY_ALIASES = {
+    "placeholder-images": "check_no_woocommerce_placeholder_in_findings",
+    "no-woocommerce-placeholder": "check_no_woocommerce_placeholder_in_findings",
+    "woocommerce-placeholder": "check_no_woocommerce_placeholder_in_findings",
+    "product-image-map": "check_product_images_json_complete",
+    "product-images-json": "check_product_images_json_complete",
+    "category-image-map": "check_category_images_json_complete",
+    "category-images-json": "check_category_images_json_complete",
+    "playground-content": "check_playground_content_seeded",
+    "snap-evidence": "check_evidence_freshness",
+}
+
+
+def _normalise_check_selector(value: str) -> str:
+    return value.strip().lower().replace("-", "_")
+
+
+def _filter_checks_by_only(
+    items: list[tuple[str, Callable[[], Result]]],
+    only: list[str] | None,
+) -> list[tuple[str, Callable[[], Result]]]:
+    """Return checks selected by --only.
+
+    Selectors accept the exact function name, the function name without the
+    `check_` prefix, or a curated alias for the common expensive triage loops.
+    """
+    if not only:
+        return items
+
+    by_name: dict[str, tuple[str, Callable[[], Result]]] = {}
+    for name, thunk in items:
+        by_name[_normalise_check_selector(name)] = (name, thunk)
+        by_name[_normalise_check_selector(name.removeprefix("check_"))] = (name, thunk)
+
+    selected: list[tuple[str, Callable[[], Result]]] = []
+    missing: list[str] = []
+    seen: set[str] = set()
+    for raw in only:
+        key = _normalise_check_selector(_ONLY_ALIASES.get(raw, raw))
+        match = by_name.get(key)
+        if not match:
+            missing.append(raw)
+            continue
+        if match[0] in seen:
+            continue
+        seen.add(match[0])
+        selected.append(match)
+
+    if missing:
+        available = sorted(name.removeprefix("check_") for name, _ in items)
+        raise SystemExit(
+            "Unknown --only check selector(s): "
+            + ", ".join(missing)
+            + ". Available examples: "
+            + ", ".join(available[:12])
+            + (" ..." if len(available) > 12 else "")
+        )
+    return selected
+
+
 def _evaluate_checks(
     items: list[tuple[str, Callable[[], Result]]],
     phase: str,
+    only: list[str] | None = None,
 ) -> list[Result]:
     """Filter by phase, invoke the surviving thunks, tag each Result."""
     results: list[Result] = []
-    for name, thunk in items:
+    for name, thunk in _filter_checks_by_only(items, only):
         if not _phase_keeps(name, phase):
             continue
         r = thunk()
@@ -2017,6 +2108,142 @@ def check_block_text_contrast() -> Result:
     return r
 
 
+def check_post_title_link_color_not_accent_on_low_contrast_base() -> Result:
+    """Fail when linked post titles use `--accent` as the *resting* link text
+    color while the palette's (accent, base) pair is below WCAG AA Normal
+    (4.5:1).
+
+    Canonical case: Ember journal listed linked post titles that painted
+    terracotta accent on a cream base (~4.06:1) because the cascade did not
+    reliably apply `core/post-title` theme.json link colors, tripping
+    axe `color-contrast` on `/journal/`.
+
+    Scope
+    -----
+    * If `accent` or `base` is missing from the palette, skip.
+    * If contrast_ratio(accent, base) >= 4.5, pass without scanning — accent
+      is legible enough for body-sized linked titles on the page ground.
+    * Otherwise, reject:
+        - `theme.json` → `styles.blocks["core/post-title"].elements.link.color.text`
+          when it is `var(--wp--preset--color--accent)`.
+        - Block markup → `wp:post-title` JSON where
+          `style.elements.link.color.text` is `var(--wp--preset--color--accent)`.
+
+    `:hover` link colors are intentionally ignored — transient states are
+    covered by `check_hover_state_legibility`; this check targets the
+    resting fill axe evaluates by default.
+    """
+    r = Result(
+        "Resting post-title link text is not accent when accent-on-base "
+        "fails WCAG AA Normal"
+    )
+    from _contrast import contrast_ratio, load_palette
+
+    theme_json_path = ROOT / "theme.json"
+    if not theme_json_path.is_file():
+        r.skip("theme.json missing")
+        return r
+    palette = load_palette(theme_json_path)
+    if not palette or "accent" not in palette or "base" not in palette:
+        r.skip("palette missing accent/base")
+        return r
+    try:
+        ratio = contrast_ratio(palette["accent"], palette["base"])
+    except ValueError:
+        r.skip("non-hex accent/base in palette")
+        return r
+    if ratio >= 4.5:
+        r.details.append(
+            f"accent-on-base {ratio:.2f}:1 ≥ 4.5:1 — no post-title accent restriction"
+        )
+        return r
+
+    def _style_link_resting_text_is_accent(attrs: dict) -> bool:
+        style = attrs.get("style")
+        if not isinstance(style, dict):
+            return False
+        elements = style.get("elements")
+        if not isinstance(elements, dict):
+            return False
+        link = elements.get("link")
+        if not isinstance(link, dict):
+            return False
+        color = link.get("color")
+        if not isinstance(color, dict):
+            return False
+        return color.get("text") == "var(--wp--preset--color--accent)"
+
+    def _theme_json_post_title_accent_resting_link(theme: dict) -> bool:
+        blocks = theme.get("styles", {}).get("blocks", {})
+        if not isinstance(blocks, dict):
+            return False
+        pt = blocks.get("core/post-title")
+        if not isinstance(pt, dict):
+            return False
+        elements = pt.get("elements")
+        if not isinstance(elements, dict):
+            return False
+        link = elements.get("link")
+        if not isinstance(link, dict):
+            return False
+        color = link.get("color")
+        if not isinstance(color, dict):
+            return False
+        return color.get("text") == "var(--wp--preset--color--accent)"
+
+    try:
+        theme_data = json.loads(theme_json_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        r.skip("theme.json invalid JSON")
+        return r
+
+    if _theme_json_post_title_accent_resting_link(theme_data):
+        r.fail(
+            "theme.json styles.blocks[core/post-title].elements.link.color.text "
+            f"uses --accent while accent-on-base is {ratio:.2f}:1 (< 4.5:1). "
+            "Use --contrast for resting link text; reserve --accent for "
+            "hover underline or other non-fill cues."
+        )
+
+    block_open_re = re.compile(
+        r"<!--\s*wp:([a-z0-9][a-z0-9-]*(?:/[a-z0-9][a-z0-9-]*)?)"
+        r"(?:\s+(\{[^<>]*?\}))?\s*(/?)-->",
+    )
+    skip_dirs = ("templates/", "parts/", "patterns/")
+    for path in iter_files((".html", ".php")):
+        rel = path.relative_to(ROOT).as_posix()
+        if not any(rel.startswith(d) for d in skip_dirs):
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for m in block_open_re.finditer(text):
+            name = m.group(1)
+            if name.split("/")[-1] != "post-title":
+                continue
+            raw = m.group(2)
+            if not raw:
+                continue
+            try:
+                attrs = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(attrs, dict):
+                continue
+            if _style_link_resting_text_is_accent(attrs):
+                lineno = text.count("\n", 0, m.start()) + 1
+                r.fail(
+                    f"{rel}:{lineno}: wp:post-title sets style.elements.link.color."
+                    f"text to --accent while accent-on-base is {ratio:.2f}:1 "
+                    f"(< 4.5:1). Use --contrast for the link fill."
+                )
+
+    if r.passed:
+        r.details.append(
+            f"accent-on-base {ratio:.2f}:1 < 4.5:1; no resting accent on "
+            f"post-title links"
+        )
+    return r
+
+
 def check_no_fake_forms() -> Result:
     """Fail if any pattern/template/part contains a 'form-shaped' block that
     cannot actually submit anywhere.
@@ -2869,6 +3096,16 @@ def check_product_images_json_complete() -> Result:
             f"for an example."
         )
         return r
+    if not _git_tracks(map_path):
+        r.fail(
+            "`playground/content/product-images.json` exists locally but is "
+            "not tracked by git. Playground fetches this map through "
+            "raw.githubusercontent.com during remote snaps/live demos, so an "
+            "untracked map 404s and products render WooCommerce placeholders. "
+            f"Stage and commit `{_repo_relpath(map_path)}` with the matching "
+            "`playground/images/product-wo-*.jpg` files."
+        )
+        return r
 
     try:
         data = json.loads(map_path.read_text(encoding="utf-8"))
@@ -2920,6 +3157,91 @@ def check_product_images_json_complete() -> Result:
     r.details.append(
         f"product-images.json maps {len(data)} SKU(s); every entry "
         f"resolves to an on-disk photograph"
+    )
+    return r
+
+
+def check_category_images_json_complete() -> Result:
+    """Fail if category cover assets cannot be served by the blueprint.
+
+    `playground/wo-configure.php` reads `content/category-images.json` and
+    sideloads `cat-*.jpg` files from the same raw GitHub ref. If those files
+    are only present locally, product-category archives boot with WooCommerce
+    placeholder tiles until a snap catches the runtime failure.
+    """
+    r = Result("`playground/content/category-images.json` covers category cover art")
+    bp = ROOT / "playground" / "blueprint.json"
+    if not bp.exists():
+        r.skip("no playground/blueprint.json (theme without a Playground demo)")
+        return r
+    images_dir = ROOT / "playground" / "images"
+    if not images_dir.is_dir():
+        r.skip("no playground/images/ directory")
+        return r
+
+    covers = sorted(images_dir.glob("cat-*.jpg"))
+    map_path = ROOT / "playground" / "content" / "category-images.json"
+    if not covers and not map_path.exists():
+        r.skip("no cat-*.jpg category cover photographs found")
+        return r
+    if not map_path.is_file():
+        r.fail(
+            f"theme ships {len(covers)} `cat-*.jpg` category cover image(s) "
+            "but `playground/content/category-images.json` is missing. "
+            "`playground/wo-configure.php` reads that map at boot to attach "
+            "term thumbnails; without it category grids render WooCommerce "
+            "placeholder tiles."
+        )
+        return r
+    if not _git_tracks(map_path):
+        r.fail(
+            "`playground/content/category-images.json` exists locally but is "
+            "not tracked by git. Remote Playground boots fetch it through "
+            "raw.githubusercontent.com, so an untracked category map behaves "
+            f"like a 404. Stage and commit `{_repo_relpath(map_path)}` with "
+            "the matching `playground/images/cat-*.jpg` files."
+        )
+        return r
+
+    try:
+        data = json.loads(map_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        r.fail(f"playground/content/category-images.json is unreadable: {e}.")
+        return r
+    if not isinstance(data, dict) or not data:
+        r.fail("playground/content/category-images.json is empty or not a term-name->filename object.")
+        return r
+
+    cover_names = {p.name for p in covers}
+    referenced = {v for v in data.values() if isinstance(v, str)}
+    missing_on_disk = sorted(referenced - cover_names)
+    unreferenced = sorted(cover_names - referenced)
+    problems: list[str] = []
+    if missing_on_disk:
+        problems.append(
+            "map references missing file(s): " + ", ".join(missing_on_disk[:6])
+        )
+    if unreferenced:
+        problems.append(
+            "unmapped cat-*.jpg file(s): " + ", ".join(unreferenced[:6])
+        )
+    if problems:
+        r.fail("category-images.json is out of sync with playground/images/: " + "; ".join(problems))
+        return r
+
+    untracked_covers = [p for p in covers if not _git_tracks(p)]
+    if untracked_covers:
+        head = ", ".join(_repo_relpath(p) for p in untracked_covers[:6])
+        more = f" (+{len(untracked_covers) - 6} more)" if len(untracked_covers) > 6 else ""
+        r.fail(
+            "`cat-*.jpg` category cover image(s) exist locally but are not "
+            f"tracked by git: {head}{more}. Remote Playground boots will 404 "
+            "them and render WooCommerce placeholders."
+        )
+        return r
+
+    r.details.append(
+        f"category-images.json maps {len(data)} term(s); every cover is tracked and on disk"
     )
     return r
 
@@ -10157,6 +10479,10 @@ def _build_results(offline: bool) -> list[tuple[str, Callable[[], Result]]]:
             check_bordered_group_text_has_explicit_color,
         ),
         ("check_block_text_contrast", check_block_text_contrast),
+        (
+            "check_post_title_link_color_not_accent_on_low_contrast_base",
+            check_post_title_link_color_not_accent_on_low_contrast_base,
+        ),
         ("check_no_fake_forms", check_no_fake_forms),
         ("check_modern_blocks_only", check_modern_blocks_only),
         ("check_swatch_js_targets_real_select", check_swatch_js_targets_real_select),
@@ -10165,6 +10491,7 @@ def _build_results(offline: bool) -> list[tuple[str, Callable[[], Result]]]:
         ("check_no_large_placeholder_groups", check_no_large_placeholder_groups),
         ("check_product_image_visual_diversity", check_product_image_visual_diversity),
         ("check_product_images_json_complete", check_product_images_json_complete),
+        ("check_category_images_json_complete", check_category_images_json_complete),
         ("check_no_duplicate_templates", check_no_duplicate_templates),
         ("check_no_duplicate_stock_indicator", check_no_duplicate_stock_indicator),
         ("check_archive_sort_dropdown_styled", check_archive_sort_dropdown_styled),
@@ -10225,16 +10552,22 @@ def _build_results(offline: bool) -> list[tuple[str, Callable[[], Result]]]:
     ]
 
 
-def run_checks_for(theme_root: Path, offline: bool, phase: str = PHASE_ALL) -> int:
+def run_checks_for(
+    theme_root: Path,
+    offline: bool,
+    phase: str = PHASE_ALL,
+    only: list[str] | None = None,
+) -> int:
     global ROOT
     ROOT = theme_root
     phase_suffix = "" if phase == PHASE_ALL else f", phase={phase}"
+    only_suffix = "" if not only else f", only={', '.join(only)}"
     print(
         f"Running checks for {theme_root.name} "
-        f"({'offline' if offline else 'online'}{phase_suffix})...\n"
+        f"({'offline' if offline else 'online'}{phase_suffix}{only_suffix})...\n"
     )
 
-    results = _evaluate_checks(_build_results(offline), phase)
+    results = _evaluate_checks(_build_results(offline), phase, only)
 
     # Demote known pre-existing failures (see `_demote_baseline_failures`)
     # BEFORE rendering so the labels in `render()` reflect the demotion.
@@ -10320,6 +10653,17 @@ def main() -> int:
             "`content` (default for `design.py dress`) runs ONLY those "
             "10. `all` (default here, keeps pre-split behaviour) runs "
             "every check. See `_CONTENT_FIT_CHECK_NAMES`."
+        ),
+    )
+    parser.add_argument(
+        "--only",
+        nargs="+",
+        default=None,
+        help=(
+            "Run only the named check(s), by function name, name without "
+            "`check_`, or alias (for example: placeholder-images, "
+            "playground-content, product-images-json). Intended for fast "
+            "triage; full gates should omit this flag."
         ),
     )
     parser.add_argument(
@@ -10421,11 +10765,11 @@ def main() -> int:
         exit_codes = []
         for theme in iter_themes():
             print(f"\n{'=' * 60}")
-            exit_codes.append(run_checks_for(theme, offline, args.phase))
+            exit_codes.append(run_checks_for(theme, offline, args.phase, args.only))
         static_rc = 1 if any(exit_codes) else 0
     else:
         theme_root = resolve_theme_root(args.theme)
-        static_rc = run_checks_for(theme_root, offline, args.phase)
+        static_rc = run_checks_for(theme_root, offline, args.phase, args.only)
 
     # Visual diff runs LAST and only if static checks already passed.
     # Bailing out early on a static failure avoids spending 2-5 minutes

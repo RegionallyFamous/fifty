@@ -1,0 +1,56 @@
+<?php
+/**
+ * Title: Human-readable title shown in the inserter
+ * Slug: ember/your-slug-here
+ * Categories: ember
+ * Block Types: core/post-content
+ * Description: One sentence describing what this pattern is for. Shown in the inserter preview.
+ * Keywords: comma, separated, search, terms
+ * Viewport Width: 1280
+ *
+ * --------------------------------------------------------------------------
+ * COPY THIS FILE TO patterns/your-slug.php WHEN CREATING A NEW PATTERN.
+ * The .txt suffix prevents WordPress from loading this stub.
+ *
+ * Pattern header reference:
+ *   Title          Required. Human-readable name in the inserter.
+ *   Slug           Required. namespace/slug format. Use ember/<your-slug> for theme patterns.
+ *   Categories     Comma-separated. Built-in WP categories: featured, posts, text,
+ *                  gallery, call-to-action, banner, header, footer, query, contact,
+ *                  about, services, portfolio, media, testimonials, woo-commerce.
+ *                  Theme adds: ember.
+ *   Block Types    Comma-separated context where the pattern surfaces. Most common:
+ *                  core/post-content. For headers/footers: core/template-part/header,
+ *                  core/template-part/footer.
+ *   Description    Shown in the inserter preview tooltip.
+ *   Keywords       Comma-separated search terms.
+ *   Viewport Width Pixel width used to render the inserter preview. 1280 for full-width
+ *                  layouts, 1024 for content-area patterns.
+ * --------------------------------------------------------------------------
+ *
+ * Tips for the body:
+ *   - Use only core/* and woocommerce/* blocks.
+ *   - Reference design tokens in attributes: var:preset|spacing|lg, var:preset|color|accent.
+ *   - Wrap user-visible strings in esc_html_e('text', 'ember') for translation.
+ *   - Keep alignments consistent: alignfull for full-bleed, alignwide for centered-wide.
+ */
+?>
+<!-- wp:group {"align":"full","style":{"spacing":{"padding":{"top":"var:preset|spacing|2-xl","bottom":"var:preset|spacing|2-xl","left":"var:preset|spacing|lg","right":"var:preset|spacing|lg"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group alignfull" style="padding-top:var(--wp--preset--spacing--2-xl);padding-right:var(--wp--preset--spacing--lg);padding-bottom:var(--wp--preset--spacing--2-xl);padding-left:var(--wp--preset--spacing--lg)">
+	<!-- wp:heading {"textAlign":"center"} -->
+	<h2 class="wp-block-heading has-text-align-center"><?php esc_html_e( 'Section heading', 'ember' ); ?></h2>
+	<!-- /wp:heading -->
+
+	<!-- wp:paragraph {"align":"center","textColor":"secondary"} -->
+	<p class="has-text-align-center has-secondary-color has-text-color"><?php esc_html_e( 'Supporting paragraph that introduces the section.', 'ember' ); ?></p>
+	<!-- /wp:paragraph -->
+
+	<!-- wp:buttons {"layout":{"type":"flex","justifyContent":"center"}} -->
+	<div class="wp-block-buttons">
+		<!-- wp:button -->
+		<div class="wp-block-button"><a class="wp-block-button__link wp-element-button"><?php esc_html_e( 'Primary CTA', 'ember' ); ?></a></div>
+		<!-- /wp:button -->
+	</div>
+	<!-- /wp:buttons -->
+</div>
+<!-- /wp:group -->

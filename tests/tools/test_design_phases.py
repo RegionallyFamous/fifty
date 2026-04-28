@@ -262,6 +262,18 @@ def test_skip_publish_drops_prepublish_too() -> None:
         )
 
 
+def test_skip_flags_are_independent_not_elif_chained() -> None:
+    """Combining --skip-commit with --skip-prepublish must honor both.
+
+    A local design-watch rehearsal used `--skip-commit --skip-publish
+    --skip-prepublish` and still created a pre-snap content commit
+    because these filters were chained as `if` / `elif` / `elif`.
+    """
+    src = DESIGN_PY.read_text(encoding="utf-8")
+    assert "elif args.skip_publish" not in src
+    assert "elif args.skip_prepublish" not in src
+
+
 def test_prepublish_push_skips_every_snap_dependent_gate() -> None:
     """The push inside `_phase_prepublish` must set every documented
     `FIFTY_SKIP_*=1` env var whose input is snap evidence that this
@@ -327,6 +339,19 @@ def test_prepublish_push_skips_every_snap_dependent_gate() -> None:
             f"and the batch reports 'failed' with `git push exited 1`. "
             f'Re-add `env[{key!r}] = "1"` alongside the other two.'
         )
+
+
+def test_prepublish_commit_skips_evidence_freshness() -> None:
+    """The pre-snap scaffold commit itself runs the pre-commit hook.
+
+    At that point snap evidence cannot be fresh yet, because snap runs
+    after prepublish. The phase must therefore set the documented
+    evidence-freshness skip env on the commit subprocess too, not only
+    on the following push.
+    """
+    src = DESIGN_PY.read_text(encoding="utf-8")
+    assert 'commit_env["FIFTY_SKIP_EVIDENCE_FRESHNESS"] = "1"' in src
+    assert 'subprocess.call([*git, "commit", "-m", msg], env=commit_env)' in src
 
 
 def test_skill_phases_match_code() -> None:

@@ -1,0 +1,156 @@
+{
+  "findings": [
+    {
+      "severity": "error",
+      "kind": "a11y-color-contrast",
+      "message": "Elements must meet minimum color contrast ratio thresholds (4 node(s)) \u2014 first: a[data-commentid=\"8\"]",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+      "axe_impact": "serious",
+      "axe_node_count": 4,
+      "axe_first_selectors": [
+        "a[data-commentid=\"8\"]",
+        "a[data-commentid=\"9\"]",
+        "a[data-commentid=\"10\"]"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/agave/desktop/journal-post.a11y-color-contrast.0.crop.jpg"
+    },
+    {
+      "severity": "info",
+      "kind": "console-warn-budget",
+      "message": "24 console warnings on this cell (>10). Consider triaging.",
+      "count": 24,
+      "max": 10
+    }
+  ],
+  "selectors": [
+    {
+      "selector": ".entry-content.wp-block-post-content",
+      "count": 1,
+      "instances": [
+        {
+          "width": 780,
+          "height": 956,
+          "visible": true,
+          "display": "flow-root",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "780px"
+        }
+      ]
+    }
+  ],
+  "dom": {
+    "width": 1280,
+    "height": 800,
+    "scrollWidth": 1280,
+    "scrollHeight": 4415
+  },
+  "bg_image_pairs": [],
+  "theme": "agave",
+  "viewport": "desktop",
+  "route": "journal-post",
+  "url": "http://127.0.0.1:9400/caring-for-your-portable-hole/",
+  "navigation_error": null,
+  "console": [
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/agave/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    }
+  ],
+  "page_errors": [],
+  "network_failures": [],
+  "a11y_path": "tmp/snaps/agave/desktop/journal-post.a11y.json"
+}

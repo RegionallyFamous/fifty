@@ -1,0 +1,71 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/theme.json",
+	"version": 3,
+	"title": "Editorial",
+	"settings": {
+		"layout": {
+			"contentSize": "640px",
+			"wideSize": "1100px"
+		},
+		"color": {
+			"palette": [
+				{ "slug": "base",        "name": "Base",        "color": "#FBF9F4" },
+				{ "slug": "surface",     "name": "Surface",     "color": "#FFFFFF" },
+				{ "slug": "subtle",      "name": "Subtle",      "color": "#F1ECE0" },
+				{ "slug": "muted",       "name": "Muted",       "color": "#E4DCC8" },
+				{ "slug": "border",      "name": "Border",      "color": "#CFC5AC" },
+				{ "slug": "tertiary",    "name": "Tertiary",    "color": "#8A7E63" },
+				{ "slug": "secondary",   "name": "Secondary",   "color": "#5A5142" },
+				{ "slug": "contrast",    "name": "Contrast",    "color": "#1F1B14" },
+				{ "slug": "primary",     "name": "Primary",     "color": "#1F1B14" },
+				{ "slug": "primary-hover","name": "Primary Hover","color": "#3D3527" },
+				{ "slug": "accent",      "name": "Accent",      "color": "#A03D2A" },
+				{ "slug": "accent-soft", "name": "Accent Soft", "color": "#E8C8B8" },
+				{ "slug": "success",     "name": "Success",     "color": "#2F6B45" },
+				{ "slug": "warning",     "name": "Warning",     "color": "#9B6F1F" },
+				{ "slug": "error",       "name": "Error",       "color": "#9C2E2E" },
+				{ "slug": "info",        "name": "Info",        "color": "#2F567A" }
+			]
+		}
+	},
+	"styles": {
+		"typography": {
+			"fontFamily": "var(--wp--preset--font-family--serif)",
+			"lineHeight": "var(--wp--custom--line-height--relaxed)"
+		},
+		"elements": {
+			"heading": {
+				"typography": {
+					"fontFamily": "var(--wp--preset--font-family--display)",
+					"fontWeight": "var(--wp--custom--font-weight--regular)",
+					"lineHeight": "var(--wp--custom--line-height--snug)",
+					"letterSpacing": "var(--wp--custom--letter-spacing--normal)"
+				}
+			},
+			"h1": {
+				"typography": {
+					"fontSize": "var(--wp--preset--font-size--5-xl)"
+				}
+			},
+			"h2": {
+				"typography": {
+					"fontSize": "var(--wp--preset--font-size--3-xl)"
+				}
+			}
+		},
+		"blocks": {
+			"core/post-content": {
+				"typography": {
+					"fontFamily": "var(--wp--preset--font-family--serif)",
+					"fontSize": "var(--wp--preset--font-size--md)",
+					"lineHeight": "var(--wp--custom--line-height--loose)"
+				}
+			},
+			"core/quote": {
+				"typography": {
+					"fontStyle": "italic"
+				}
+			}
+		}
+	}
+}
