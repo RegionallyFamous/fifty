@@ -486,6 +486,114 @@ def test_agentic_dry_run_returns_5(tmp_path, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# LLM response parsing — regression tests for real failure modes
+# ---------------------------------------------------------------------------
+
+
+def test_parse_llm_edits_accepts_bare_json():
+    u = _load_module()
+    raw = '{"rationale": "x", "done": false, "edits": []}'
+    data = u._parse_llm_edits(raw)
+    assert data["done"] is False
+    assert data["edits"] == []
+
+
+def test_parse_llm_edits_strips_json_code_fence():
+    u = _load_module()
+    raw = '```json\n{"rationale": "x", "done": true, "edits": []}\n```'
+    data = u._parse_llm_edits(raw)
+    assert data["done"] is True
+
+
+def test_parse_llm_edits_strips_bare_code_fence():
+    u = _load_module()
+    raw = '```\n{"rationale": "x", "done": false, "edits": []}\n```'
+    data = u._parse_llm_edits(raw)
+    assert data["rationale"] == "x"
+
+
+def test_parse_llm_edits_handles_prose_before_json():
+    """Regression: the model wraps its JSON in an explanation paragraph.
+
+    This is the actual failure the Agave rehearsal hit — the parser
+    must still extract the JSON rather than bailing with
+    ``Expecting value: line 1 column 1``.
+    """
+    u = _load_module()
+    raw = (
+        "Looking at the blockers:\n"
+        "\n"
+        "1. hover-contrast — needs color change.\n"
+        "2. microcopy-duplicate — needs rewrite.\n"
+        "\n"
+        "Here is the JSON:\n"
+        "\n"
+        '{"rationale": "fix hover", "done": false, "edits": '
+        '[{"path": "agave/theme.json", "old_string": "a", "new_string": "b"}]}'
+    )
+    data = u._parse_llm_edits(raw)
+    assert data["edits"] == [
+        {"path": "agave/theme.json", "old_string": "a", "new_string": "b"}
+    ]
+    assert "fix hover" in data["rationale"]
+
+
+def test_parse_llm_edits_handles_prose_wrapped_fenced_json():
+    """Prose before AND a ```json fence around the payload — common."""
+    u = _load_module()
+    raw = (
+        "I will fix two blockers.\n"
+        "\n"
+        "```json\n"
+        '{"rationale": "two fixes", "done": false, "edits": []}\n'
+        "```\n"
+        "\n"
+        "Let me know if that works."
+    )
+    data = u._parse_llm_edits(raw)
+    assert data["rationale"] == "two fixes"
+
+
+def test_parse_llm_edits_handles_nested_braces_in_strings():
+    """Balanced-brace scan must skip `{` / `}` inside JSON strings."""
+    u = _load_module()
+    raw = (
+        "Here you go:\n"
+        '{"rationale": "rewrite `${var}` to `{{var}}`", "done": false, "edits": []}'
+    )
+    data = u._parse_llm_edits(raw)
+    assert "var" in data["rationale"]
+
+
+def test_parse_llm_edits_rejects_truncated_json():
+    """When the model hits max_tokens mid-JSON the parser must error
+
+    cleanly rather than silently returning a half-formed object. The
+    Agave rehearsal hit this before we raised max_output_tokens; the
+    regression test locks in the clean-error behaviour.
+    """
+    u = _load_module()
+    raw = (
+        "Here is the plan:\n"
+        '{"rationale": "partial", "done": false, "edits": [\n'
+        '  {"path": "agave/theme.json", "old_string": "foo'
+    )
+    try:
+        u._parse_llm_edits(raw)
+    except ValueError as exc:
+        assert "not valid JSON" in str(exc)
+    else:
+        raise AssertionError("expected ValueError for truncated JSON")
+
+
+def test_extract_json_object_returns_longest_balanced_object():
+    u = _load_module()
+    raw = 'prefix {"a": 1} suffix {"b": 2}'
+    extracted = u._extract_json_object(raw)
+    assert extracted == '{"a": 1}'
+
+
+# ---------------------------------------------------------------------------
 # CLI smoke
 # ---------------------------------------------------------------------------
 

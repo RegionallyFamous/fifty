@@ -614,6 +614,17 @@ def append_attempt(run_dir: Path, record: AttemptRecord) -> Path:
     path = run_dir / "repair-attempts.jsonl"
     with path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(asdict(record), sort_keys=True) + "\n")
+    # Surface each attempt result on stdout too so an operator tailing
+    # the run.log (or watching STATUS.md's upstream) sees progress in
+    # real time instead of an opaque multi-minute silence while the
+    # verification ladder runs.
+    touched = ", ".join(record.touched_files) if record.touched_files else "none"
+    summary = record.reason[:160].replace("\n", " ")
+    print(
+        f"[attempt {record.attempt}] {record.decision}: {summary} "
+        f"(touched: {touched})",
+        flush=True,
+    )
     return path
 
 
