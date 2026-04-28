@@ -33,12 +33,21 @@ def gallery():
 
 
 def _real_themes() -> set[str]:
-    """Every folder that looks like a shippable theme. This is the set
-    the gallery must cover; any omission is a regression."""
+    """Every *shipping* theme folder on disk. The gallery intentionally
+    excludes `incubating` themes (WIP clones whose baselines haven't been
+    shipped yet); the regression guard checks only that every SHIPPING
+    theme lands in the picker, which matches the contract
+    `bin/build-snap-gallery.py._discover_themes()` enforces."""
+    import sys
+
+    sys.path.insert(0, str(ROOT / "bin"))
+    from _readiness import STAGE_SHIPPING, load_readiness
+
     return {
         p.parent.name
         for p in ROOT.glob("*/theme.json")
         if (p.parent / "playground" / "blueprint.json").exists()
+        and load_readiness(p.parent).stage == STAGE_SHIPPING
     }
 
 

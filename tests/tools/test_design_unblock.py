@@ -158,9 +158,7 @@ def test_build_repair_plan_classifies_agave_style_summary(tmp_path):
         [
             {
                 "title": "Product photographs are visually distinct within a theme",
-                "detail": (
-                    "product-wo-bottled-morning.jpg ~ product-wo-forbidden-honey.jpg"
-                ),
+                "detail": ("product-wo-bottled-morning.jpg ~ product-wo-forbidden-honey.jpg"),
                 "summary": "duplicate product photos",
                 "next_action": "Regenerate",
             },
@@ -179,7 +177,7 @@ def test_build_repair_plan_classifies_agave_style_summary(tmp_path):
         ],
     )
     # Don't let git-status leak real worktree drift into the plan.
-    u._changed_files = lambda cwd: []  # type: ignore[assignment]
+    u._changed_files = lambda cwd: []
     plan = u.build_repair_plan(run_dir)
     assert plan.slug == "agave"
     cats = [b.category for b in plan.blockers]
@@ -210,8 +208,8 @@ def test_build_repair_plan_visual_blockers_force_snap_resume(tmp_path):
             },
         ],
     )
-    u._changed_files = lambda cwd: []  # type: ignore[assignment]
-    u._snap_findings_for_blocker = lambda slug, limit=12: []  # type: ignore[assignment]
+    u._changed_files = lambda cwd: []
+    u._snap_findings_for_blocker = lambda slug, limit=12: []
     plan = u.build_repair_plan(run_dir)
     assert plan.resume_phase == "snap"
 
@@ -230,7 +228,7 @@ def test_build_repair_plan_emits_and_reads_back(tmp_path):
             }
         ],
     )
-    u._changed_files = lambda cwd: []  # type: ignore[assignment]
+    u._changed_files = lambda cwd: []
     plan = u.build_repair_plan(run_dir)
     out = u.write_repair_plan(run_dir, plan)
     data = json.loads(out.read_text(encoding="utf-8"))
@@ -261,9 +259,7 @@ def test_judge_progress_improved_when_count_drops(monkeypatch):
 def test_judge_progress_worse_when_new_blocker_appears(monkeypatch):
     u = _load_module()
     monkeypatch.setattr(u, "_snap_error_count", lambda slug: 0)
-    decision, reason = u._judge_progress(
-        ["a"], ["a", "c"], slug="agave", snap_errors_before=0
-    )
+    decision, reason = u._judge_progress(["a"], ["a", "c"], slug="agave", snap_errors_before=0)
     assert decision == "worse"
     assert "1 new blocker" in reason
 
@@ -271,9 +267,7 @@ def test_judge_progress_worse_when_new_blocker_appears(monkeypatch):
 def test_judge_progress_worse_when_snap_error_cells_grow(monkeypatch):
     u = _load_module()
     monkeypatch.setattr(u, "_snap_error_count", lambda slug: 12)
-    decision, reason = u._judge_progress(
-        ["a"], ["a"], slug="agave", snap_errors_before=8
-    )
+    decision, reason = u._judge_progress(["a"], ["a"], slug="agave", snap_errors_before=8)
     assert decision == "worse"
     assert "8 to 12" in reason
 
@@ -350,9 +344,7 @@ def _seed_attempts(run_dir: Path, decisions: list[str]) -> None:
     path = run_dir / "repair-attempts.jsonl"
     with path.open("w", encoding="utf-8") as fh:
         for i, d in enumerate(decisions, 1):
-            fh.write(
-                json.dumps({"attempt": i, "decision": d, "reason": ""}) + "\n"
-            )
+            fh.write(json.dumps({"attempt": i, "decision": d, "reason": ""}) + "\n")
 
 
 def test_non_improving_streak_counts_trailing_fails(tmp_path):
@@ -380,7 +372,7 @@ def test_apply_verification_refuses_on_streak(tmp_path, monkeypatch):
     )
     _seed_attempts(run_dir, ["not-improved", "not-improved", "not-improved"])
     # Prevent real command execution.
-    u._run_cmd = lambda cmd, timeout=None: {  # type: ignore[assignment]
+    u._run_cmd = lambda cmd, timeout=None: {
         "argv": cmd,
         "returncode": 0,
         "stdout_tail": "",
@@ -388,9 +380,9 @@ def test_apply_verification_refuses_on_streak(tmp_path, monkeypatch):
         "elapsed_s": 0.0,
         "timed_out": False,
     }
-    u._changed_files = lambda cwd: []  # type: ignore[assignment]
-    u._collect_fingerprints = lambda slug, cats: []  # type: ignore[assignment]
-    u._snap_error_count = lambda slug: 0  # type: ignore[assignment]
+    u._changed_files = lambda cwd: []
+    u._collect_fingerprints = lambda slug, cats: []
+    u._snap_error_count = lambda slug: 0
     record = u.apply_verification(run_dir, max_non_improving=3)
     assert record.decision == "stopped"
     assert "streak" in record.reason.lower()
@@ -411,7 +403,7 @@ def test_apply_verification_refuses_after_cap(tmp_path, monkeypatch):
         ],
     )
     _seed_attempts(run_dir, ["not-improved"] * 6)
-    u._changed_files = lambda cwd: []  # type: ignore[assignment]
+    u._changed_files = lambda cwd: []
     record = u.apply_verification(run_dir, max_attempts=6)
     assert record.decision == "stopped"
     assert "max-attempts" in record.reason.lower()
@@ -450,7 +442,7 @@ def test_refuse_apply_when_worktree_has_unrelated_files(tmp_path):
             }
         ],
     )
-    u._changed_files = lambda cwd: ["bin/check.py"]  # type: ignore[assignment]
+    u._changed_files = lambda cwd: ["bin/check.py"]
     rc = u.main(
         [
             "--run-id",
@@ -478,7 +470,7 @@ def test_agentic_dry_run_returns_5(tmp_path, monkeypatch):
             }
         ],
     )
-    u._changed_files = lambda cwd: []  # type: ignore[assignment]
+    u._changed_files = lambda cwd: []
     rc = u.agentic_repair(run_dir, dry_run=True)
     assert rc == 5
     attempts_path = run_dir / "repair-attempts.jsonl"
@@ -532,9 +524,7 @@ def test_parse_llm_edits_handles_prose_before_json():
         '[{"path": "agave/theme.json", "old_string": "a", "new_string": "b"}]}'
     )
     data = u._parse_llm_edits(raw)
-    assert data["edits"] == [
-        {"path": "agave/theme.json", "old_string": "a", "new_string": "b"}
-    ]
+    assert data["edits"] == [{"path": "agave/theme.json", "old_string": "a", "new_string": "b"}]
     assert "fix hover" in data["rationale"]
 
 
@@ -557,10 +547,7 @@ def test_parse_llm_edits_handles_prose_wrapped_fenced_json():
 def test_parse_llm_edits_handles_nested_braces_in_strings():
     """Balanced-brace scan must skip `{` / `}` inside JSON strings."""
     u = _load_module()
-    raw = (
-        "Here you go:\n"
-        '{"rationale": "rewrite `${var}` to `{{var}}`", "done": false, "edits": []}'
-    )
+    raw = 'Here you go:\n{"rationale": "rewrite `${var}` to `{{var}}`", "done": false, "edits": []}'
     data = u._parse_llm_edits(raw)
     assert "var" in data["rationale"]
 
