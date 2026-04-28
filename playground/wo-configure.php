@@ -785,7 +785,7 @@ if ( ! get_option( '_wo_product_images_seeded' ) ) {
 	}
 	if ( empty( $prod_images ) ) {
 		WP_CLI::log( "Product images: no map found at {$prod_map_url}, skipping." );
-	}
+	} else {
 
 	// Map of simple-product SKU -> variant-parent SKU created in section 10.
 	// When 11c sideloads a per-theme image for a simple, the same attachment is
@@ -871,8 +871,34 @@ if ( ! get_option( '_wo_product_images_seeded' ) ) {
 		}
 	}
 
+	// Fail the blueprint if any mapped product or variant parent still has no
+	// featured image — otherwise the demo renders WC grey placeholders and
+	// bin/check.py only catches it after a full snap cycle.
+	$thumb_check_ids = array();
+	foreach ( $prod_images as $sku => $_filename ) {
+		$pid = wc_get_product_id_by_sku( $sku );
+		if ( $pid ) {
+			$thumb_check_ids[] = (int) $pid;
+		}
+	}
+	foreach ( array_unique( array_values( $variant_parents ) ) as $parent_sku ) {
+		$pid = wc_get_product_id_by_sku( $parent_sku );
+		if ( $pid ) {
+			$thumb_check_ids[] = (int) $pid;
+		}
+	}
+	foreach ( array_unique( $thumb_check_ids ) as $pid ) {
+		if ( ! has_post_thumbnail( $pid ) ) {
+			WP_CLI::error(
+				"Product image seed incomplete: product #{$pid} has no featured image after 11c. "
+				. "Verify {$prod_map_url} and that every file in the map is reachable at {$prod_raw_base}."
+			);
+		}
+	}
+
 	update_option( '_wo_product_images_seeded', '1' );
 	WP_CLI::log( "Product images: {$pi_count} assigned, {$variant_hit} variant parents updated." );
+	} // ! empty( $prod_images )
 }
 
 // ---------------------------------------------------------------------------
