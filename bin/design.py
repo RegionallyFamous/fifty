@@ -676,19 +676,21 @@ def main(argv: list[str] | None = None) -> int:
         ]
     if args.skip_commit and not args.only:
         # --skip-commit implies --skip-publish (can't push a commit that
-        # never ran).  Keep `prepublish`: it is the push that makes
-        # raw.githubusercontent.com serve a NEW theme's playground/content
-        # before `snap` — dropping it broke `build --skip-commit` with
-        # snap's HTTP 404 preflight on content.xml.
+        # never ran). Keep `prepublish` by default: it is the push that
+        # makes raw.githubusercontent.com serve a NEW theme's playground/
+        # content before `snap` -- dropping it broke `build --skip-commit`
+        # with snap's HTTP 404 preflight on content.xml.
         phases_to_run = [p for p in phases_to_run if p not in {"commit", "publish"}]
-    elif args.skip_publish and not args.only:
+    if args.skip_publish and not args.only:
         # --skip-publish means "no push at all", which rules out the
         # mid-pipeline prepublish push too. The snap phase will then
         # fail fast on a brand-new theme (that's the documented
         # --skip-publish trade-off) but re-baselines of existing
         # themes still work because their content is already on main.
         phases_to_run = [p for p in phases_to_run if p not in {"prepublish", "publish"}]
-    elif args.skip_prepublish and not args.only:
+    if args.skip_prepublish and not args.only:
+        # Explicitly wins even when combined with --skip-commit for local
+        # rehearsals that should not create the pre-snap publish commit.
         phases_to_run = [p for p in phases_to_run if p != "prepublish"]
     print(f"design.py: running phases {' -> '.join(phases_to_run)} for `{spec.slug}`")
 

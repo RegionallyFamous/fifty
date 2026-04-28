@@ -114,6 +114,29 @@ def test_parser_translates_known_check_failures():
     assert "Hamming" in failure.detail
 
 
+def test_grouped_failures_extracts_affected_theme_names():
+    watch = load_design_watch()
+    failures = [
+        watch.CheckFailure(
+            title="Snap evidence is fresh",
+            detail="1 uncommitted source file(s) in aero but no snap evidence exists.",
+            summary="The source files changed after the latest screenshot evidence.",
+            next_action="Re-run the screenshot step.",
+        ),
+        watch.CheckFailure(
+            title="Snap evidence is fresh",
+            detail="1 uncommitted source file(s) in basalt but no snap evidence exists.",
+            summary="The source files changed after the latest screenshot evidence.",
+            next_action="Re-run the screenshot step.",
+        ),
+    ]
+
+    grouped = watch.grouped_failures(failures)
+
+    assert grouped == [("The source files changed after the latest screenshot evidence.", failures)]
+    assert watch.affected_names(failures) == ["aero", "basalt"]
+
+
 def test_design_watch_help_smoke():
     proc = subprocess.run(
         [sys.executable, str(BIN_DIR / "design-watch.py"), "--help"],

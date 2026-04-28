@@ -262,6 +262,18 @@ def test_skip_publish_drops_prepublish_too() -> None:
         )
 
 
+def test_skip_flags_are_independent_not_elif_chained() -> None:
+    """Combining --skip-commit with --skip-prepublish must honor both.
+
+    A local design-watch rehearsal used `--skip-commit --skip-publish
+    --skip-prepublish` and still created a pre-snap content commit
+    because these filters were chained as `if` / `elif` / `elif`.
+    """
+    src = DESIGN_PY.read_text(encoding="utf-8")
+    assert "elif args.skip_publish" not in src
+    assert "elif args.skip_prepublish" not in src
+
+
 def test_prepublish_push_skips_every_snap_dependent_gate() -> None:
     """The push inside `_phase_prepublish` must set every documented
     `FIFTY_SKIP_*=1` env var whose input is snap evidence that this

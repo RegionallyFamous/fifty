@@ -336,9 +336,30 @@ def emit_status(state: WatchState, *, stalled: bool = False, final: bool = False
     if stalled and state.last_line:
         print(f"        detail: last output was: {state.last_line[:180]}", flush=True)
     if final and state.check_failures:
-        for failure in state.check_failures[:5]:
-            print(f"        issue: {failure.summary}", flush=True)
-            print(f"        next: {failure.next_action}", flush=True)
+        for summary, failures in grouped_failures(state.check_failures)[:5]:
+            if len(failures) == 1:
+                print(f"        issue: {summary}", flush=True)
+            else:
+                affected = affected_names(failures)
+                suffix = f": {', '.join(affected)}" if affected else ""
+                print(f"        issue: {summary} ({len(failures)} times{suffix})", flush=True)
+            print(f"        next: {failures[0].next_action}", flush=True)
+
+
+def grouped_failures(failures: list[CheckFailure]) -> list[tuple[str, list[CheckFailure]]]:
+    groups: dict[str, list[CheckFailure]] = {}
+    for failure in failures:
+        groups.setdefault(failure.summary or failure.title, []).append(failure)
+    return sorted(groups.items(), key=lambda item: len(item[1]), reverse=True)
+
+
+def affected_names(failures: list[CheckFailure]) -> list[str]:
+    names: list[str] = []
+    for failure in failures:
+        match = re.search(r"\bin ([a-z0-9-]+)\b", failure.detail)
+        if match and match.group(1) not in names:
+            names.append(match.group(1))
+    return names[:8]
 
 
 def write_event(path: Path, event: dict[str, Any]) -> None:
