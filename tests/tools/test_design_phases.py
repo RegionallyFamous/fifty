@@ -108,17 +108,17 @@ def _extract_drop_set_for_skip_flag(flag_attr: str) -> set[str]:
                 return node
             if node.orelse:
                 # Walk the elif chain and the else body.
-                for child in node.orelse:
-                    found = _find_if(child)
+                for child_node in node.orelse:
+                    found = _find_if(child_node)
                     if found is not None:
                         return found
-            for child in node.body:
-                found = _find_if(child)
+            for child_node in node.body:
+                found = _find_if(child_node)
                 if found is not None:
                     return found
         else:
-            for child in ast.iter_child_nodes(node):
-                found = _find_if(child)
+            for ast_child in ast.iter_child_nodes(node):
+                found = _find_if(ast_child)
                 if found is not None:
                     return found
         return None

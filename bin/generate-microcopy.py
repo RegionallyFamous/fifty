@@ -255,8 +255,9 @@ def _load_spec(theme_root: Path) -> dict:
 def _match_table(slug: str, voice: str) -> dict[str, str]:
     """Return the best substitution map for this theme from the fallback table."""
     # 1. Exact slug
-    if slug in _FALLBACK_TABLE:
-        return _FALLBACK_TABLE[slug]  # type: ignore[return-value]
+    exact = _FALLBACK_TABLE.get(slug)
+    if exact is not None:
+        return exact
 
     voice_lower = voice.lower()
 
@@ -271,23 +272,30 @@ def _match_table(slug: str, voice: str) -> dict[str, str]:
 
     if matched_era and matched_sector:
         key = (matched_era, matched_sector)
-        if key in _FALLBACK_TABLE:
-            return _FALLBACK_TABLE[key]  # type: ignore[return-value]
+        exact_tuple = _FALLBACK_TABLE.get(key)
+        if exact_tuple is not None:
+            return exact_tuple
 
     # 3. Sector only
     if matched_sector:
-        for (e, s), v in _FALLBACK_TABLE.items():  # type: ignore[misc]
-            if isinstance(e, str) and s == matched_sector:  # type: ignore[misc]
-                return v  # type: ignore[return-value]
+        for table_key, value in _FALLBACK_TABLE.items():
+            if not isinstance(table_key, tuple):
+                continue
+            _, sector = table_key
+            if sector == matched_sector:
+                return value
 
     # 4. Era only
     if matched_era:
-        for (e, s), v in _FALLBACK_TABLE.items():  # type: ignore[misc]
-            if isinstance(e, str) and e == matched_era:  # type: ignore[misc]
-                return v  # type: ignore[return-value]
+        for table_key, value in _FALLBACK_TABLE.items():
+            if not isinstance(table_key, tuple):
+                continue
+            era, _ = table_key
+            if era == matched_era:
+                return value
 
     # 5. _default
-    return _FALLBACK_TABLE.get("_default", {})  # type: ignore[return-value]
+    return _FALLBACK_TABLE.get("_default", {})
 
 
 def _find_duplicates(theme_root: Path) -> dict[str, str]:
@@ -369,7 +377,7 @@ def _generate_overrides_with_api(
 ) -> dict[str, str]:
     """Call the Anthropic API to generate voice-appropriate replacements."""
     try:
-        import anthropic  # noqa: PLC0415
+        import anthropic
     except ImportError:
         return {}
 
@@ -413,7 +421,11 @@ Strings to rewrite:
             max_tokens=4096,
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = message.content[0].text.strip()
+        raw = "\n".join(
+            str(getattr(block, "text", ""))
+            for block in message.content
+            if getattr(block, "type", "") == "text"
+        ).strip()
         # Strip markdown code fences if present
         raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
         overrides = json.loads(raw)

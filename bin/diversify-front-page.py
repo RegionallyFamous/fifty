@@ -38,7 +38,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib import MONOREPO_ROOT, iter_themes, resolve_theme_root
+from _lib import iter_themes, resolve_theme_root
 
 # Re-uses the same delimiter regex shape as check.py
 _DELIM_RE = re.compile(
@@ -135,10 +135,8 @@ def _add_layout_class(html: str, slug: str) -> str:
 
     # Walk direct children; collect matches for group blocks at depth==0
     target_match: re.Match | None = None
-    first_is_pattern = False
     depth = 0
     group_children_seen = 0
-    pattern_children_seen = 0
 
     for tok in _DELIM_RE.finditer(html, pos=main_match.end()):
         name = tok.group(1)
@@ -154,9 +152,7 @@ def _add_layout_class(html: str, slug: str) -> str:
         if depth == 0:
             block = name[len("wp:"):]
             if block == "pattern":
-                pattern_children_seen += 1
-                if group_children_seen == 0 and pattern_children_seen == 1:
-                    first_is_pattern = True
+                pass
             elif block == "group":
                 # Check it doesn't already have a wo-layout class
                 try:
@@ -164,16 +160,13 @@ def _add_layout_class(html: str, slug: str) -> str:
                 except json.JSONDecodeError:
                     attrs = {}
                 existing_classes = attrs.get("className", "") or ""
-                if f"wo-layout-" in existing_classes:
+                if "wo-layout-" in existing_classes:
                     # Already has a variant class — nothing to do
                     return html
                 group_children_seen += 1
                 # Pick the first group if first child was a pattern, else
                 # pick the first group regardless.
-                if first_is_pattern and group_children_seen == 1:
-                    target_match = tok
-                    break
-                elif not first_is_pattern and group_children_seen == 1:
+                if group_children_seen == 1:
                     target_match = tok
                     break
 
@@ -185,7 +178,6 @@ def _add_layout_class(html: str, slug: str) -> str:
 
     # Splice: add/extend className in the JSON attrs of the target block
     start, end = target_match.start(), target_match.end()
-    original_tok = html[start:end]
     attrs_json = target_match.group(2) or ""
     try:
         attrs = json.loads(attrs_json) if attrs_json else {}

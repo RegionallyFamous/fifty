@@ -27,6 +27,7 @@ Covers:
      - ``photos`` / ``microcopy`` / ``frontpage`` are in PHASES and come
        before ``prepublish``
 """
+
 from __future__ import annotations
 
 import json
@@ -44,6 +45,7 @@ BIN_DIR = REPO_ROOT / "bin"
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _run(script: str, *args: str, cwd: Path | None = None) -> subprocess.CompletedProcess:
     return subprocess.run(
@@ -66,12 +68,17 @@ def _make_minimal_theme(tmp_path: Path, slug: str, palette: list[dict] | None = 
         {"slug": "contrast", "color": "#1F1B16"},
         {"slug": "secondary", "color": "#191612"},
     ]
-    (theme / "theme.json").write_text(json.dumps({
-        "settings": {
-            "color": {"palette": _palette},
-        },
-        "styles": {"css": ""},
-    }), encoding="utf-8")
+    (theme / "theme.json").write_text(
+        json.dumps(
+            {
+                "settings": {
+                    "color": {"palette": _palette},
+                },
+                "styles": {"css": ""},
+            }
+        ),
+        encoding="utf-8",
+    )
     (theme / "style.css").write_text("/* Theme Name: Test */", encoding="utf-8")
     for d in ("templates", "parts", "patterns"):
         (theme / d).mkdir()
@@ -109,7 +116,7 @@ def _make_seeded_theme(tmp_path: Path, slug: str) -> Path:
     return theme
 
 
-def test_generate_product_photos_creates_jpegs(tmp_path: pytest.TempdirFactory) -> None:
+def test_generate_product_photos_creates_jpegs(tmp_path: Path) -> None:
     """Script generates one JPEG per parent-product SKU (no variations)."""
     pytest.importorskip("PIL")
     theme = _make_seeded_theme(tmp_path, "testbrand")
@@ -128,7 +135,7 @@ def test_generate_product_photos_creates_jpegs(tmp_path: pytest.TempdirFactory) 
     assert len(jpegs) == 3
 
 
-def test_generate_product_photos_idempotent(tmp_path: pytest.TempdirFactory) -> None:
+def test_generate_product_photos_idempotent(tmp_path: Path) -> None:
     """Running twice doesn't overwrite existing files."""
     pytest.importorskip("PIL")
     theme = _make_seeded_theme(tmp_path, "testbrand2")
@@ -144,7 +151,7 @@ def test_generate_product_photos_idempotent(tmp_path: pytest.TempdirFactory) -> 
 
 
 def test_generate_product_photos_creates_product_images_json(
-    tmp_path: pytest.TempdirFactory,
+    tmp_path: Path,
 ) -> None:
     """Script creates product-images.json when it doesn't exist."""
     pytest.importorskip("PIL")
@@ -163,7 +170,7 @@ def test_generate_product_photos_creates_product_images_json(
 
 
 def test_generate_product_photos_creates_category_images_json(
-    tmp_path: pytest.TempdirFactory,
+    tmp_path: Path,
 ) -> None:
     """Script creates category-images.json with defaults when missing."""
     pytest.importorskip("PIL")
@@ -198,7 +205,7 @@ _FP_OBEL_SHAPE = """\
 """
 
 
-def test_diversify_front_page_adds_class(tmp_path: pytest.TempdirFactory) -> None:
+def test_diversify_front_page_adds_class(tmp_path: Path) -> None:
     """Adds wo-layout-<slug> class to first group when fingerprint clashes."""
     # Create a "fake obel" reference theme to clash with
     obel = _make_minimal_theme(tmp_path, "obel")
@@ -215,7 +222,7 @@ def test_diversify_front_page_adds_class(tmp_path: pytest.TempdirFactory) -> Non
 
 
 def test_diversify_front_page_no_op_when_already_has_class(
-    tmp_path: pytest.TempdirFactory,
+    tmp_path: Path,
 ) -> None:
     """Is a no-op when wo-layout class already present (idempotent guard)."""
     obel = _make_minimal_theme(tmp_path, "obel")
@@ -235,14 +242,15 @@ def test_diversify_front_page_no_op_when_already_has_class(
     assert (theme / "templates" / "front-page.html").read_text() == original
 
 
-def test_diversify_front_page_idempotent(tmp_path: pytest.TempdirFactory) -> None:
+def test_diversify_front_page_idempotent(tmp_path: Path) -> None:
     """Running twice doesn't add the class twice."""
     obel = _make_minimal_theme(tmp_path, "obel2")
     _write(obel / "templates" / "front-page.html", _FP_OBEL_SHAPE)
 
     theme = _make_minimal_theme(tmp_path, "newtheme2")
-    _write(theme / "templates" / "front-page.html",
-           _FP_OBEL_SHAPE.replace("testtheme", "newtheme2"))
+    _write(
+        theme / "templates" / "front-page.html", _FP_OBEL_SHAPE.replace("testtheme", "newtheme2")
+    )
 
     _run("diversify-front-page.py", "--theme", "newtheme2", cwd=tmp_path)
     content_after_first = (theme / "templates" / "front-page.html").read_text()
@@ -255,7 +263,8 @@ def test_diversify_front_page_idempotent(tmp_path: pytest.TempdirFactory) -> Non
 # 3. apply-microcopy-overrides.py
 # ---------------------------------------------------------------------------
 
-def test_apply_microcopy_overrides_basic(tmp_path: pytest.TempdirFactory) -> None:
+
+def test_apply_microcopy_overrides_basic(tmp_path: Path) -> None:
     """Applies substitutions from microcopy-overrides.json."""
     theme = _make_minimal_theme(tmp_path, "copytheme")
     pattern = theme / "patterns" / "hero.php"
@@ -271,7 +280,7 @@ def test_apply_microcopy_overrides_basic(tmp_path: pytest.TempdirFactory) -> Non
     assert "a considered warm headline" in pattern.read_text()
 
 
-def test_apply_microcopy_overrides_cascade_guard(tmp_path: pytest.TempdirFactory) -> None:
+def test_apply_microcopy_overrides_cascade_guard(tmp_path: Path) -> None:
     """Rejects pairs where replacement contains the needle."""
     theme = _make_minimal_theme(tmp_path, "cascadetheme")
     (theme / "microcopy-overrides.json").write_text(
@@ -282,9 +291,9 @@ def test_apply_microcopy_overrides_cascade_guard(tmp_path: pytest.TempdirFactory
     assert result.returncode == 1
 
 
-def test_apply_microcopy_overrides_no_op_when_absent(tmp_path: pytest.TempdirFactory) -> None:
+def test_apply_microcopy_overrides_no_op_when_absent(tmp_path: Path) -> None:
     """No-op and exit 0 when microcopy-overrides.json is missing."""
-    theme = _make_minimal_theme(tmp_path, "emptytheme")
+    _make_minimal_theme(tmp_path, "emptytheme")
     # Run from the theme dir itself so resolve_theme_root finds it via cwd
     result = subprocess.run(
         [sys.executable, str(BIN_DIR / "apply-microcopy-overrides.py"), "--theme", "emptytheme"],
@@ -300,6 +309,7 @@ def test_apply_microcopy_overrides_no_op_when_absent(tmp_path: pytest.TempdirFac
 # 4. autofix-contrast.py — CSS hover-contrast extension
 # ---------------------------------------------------------------------------
 
+
 def _set_theme_css(theme_root: Path, css: str) -> None:
     data = json.loads((theme_root / "theme.json").read_text())
     data["styles"] = data.get("styles", {})
@@ -312,13 +322,17 @@ def _get_theme_css(theme_root: Path) -> str:
     return data.get("styles", {}).get("css", "")
 
 
-def test_autofix_contrast_fixes_hover_rule(tmp_path: pytest.TempdirFactory) -> None:
+def test_autofix_contrast_fixes_hover_rule(tmp_path: Path) -> None:
     """Rewrites color: var(--base) in a :hover rule when contrast fails."""
-    theme = _make_minimal_theme(tmp_path, "hovertheme", palette=[
-        {"slug": "base", "color": "#F5EFE6"},  # cream (light)
-        {"slug": "accent", "color": "#D87E3A"},  # terracotta mid-tone
-        {"slug": "contrast", "color": "#1F1B16"},  # near-black
-    ])
+    theme = _make_minimal_theme(
+        tmp_path,
+        "hovertheme",
+        palette=[
+            {"slug": "base", "color": "#F5EFE6"},  # cream (light)
+            {"slug": "accent", "color": "#D87E3A"},  # terracotta mid-tone
+            {"slug": "contrast", "color": "#1F1B16"},  # near-black
+        ],
+    )
     # accent vs base: ~2.6:1 → should be rewritten
     _set_theme_css(
         theme,
@@ -339,13 +353,17 @@ def test_autofix_contrast_fixes_hover_rule(tmp_path: pytest.TempdirFactory) -> N
     assert "var(--contrast)" in css_after or "var(--secondary)" in css_after
 
 
-def test_autofix_contrast_leaves_passing_hover_rule(tmp_path: pytest.TempdirFactory) -> None:
+def test_autofix_contrast_leaves_passing_hover_rule(tmp_path: Path) -> None:
     """Does NOT rewrite a hover rule that already passes contrast."""
-    theme = _make_minimal_theme(tmp_path, "passhover", palette=[
-        {"slug": "base", "color": "#F5EFE6"},
-        {"slug": "accent", "color": "#D87E3A"},
-        {"slug": "contrast", "color": "#1F1B16"},
-    ])
+    theme = _make_minimal_theme(
+        tmp_path,
+        "passhover",
+        palette=[
+            {"slug": "base", "color": "#F5EFE6"},
+            {"slug": "accent", "color": "#D87E3A"},
+            {"slug": "contrast", "color": "#1F1B16"},
+        ],
+    )
     # contrast on accent: >4.5:1 → should be left alone
     original_css = ".btn:hover { color: var(--contrast); background: var(--accent); }"
     _set_theme_css(theme, original_css)
@@ -359,25 +377,35 @@ def test_autofix_contrast_leaves_passing_hover_rule(tmp_path: pytest.TempdirFact
     assert _get_theme_css(theme) == original_css
 
 
-def test_autofix_contrast_hover_idempotent(tmp_path: pytest.TempdirFactory) -> None:
+def test_autofix_contrast_hover_idempotent(tmp_path: Path) -> None:
     """Running twice after a fix doesn't change the file again."""
-    theme = _make_minimal_theme(tmp_path, "idempotent", palette=[
-        {"slug": "base", "color": "#F5EFE6"},
-        {"slug": "accent", "color": "#D87E3A"},
-        {"slug": "contrast", "color": "#1F1B16"},
-    ])
+    theme = _make_minimal_theme(
+        tmp_path,
+        "idempotent",
+        palette=[
+            {"slug": "base", "color": "#F5EFE6"},
+            {"slug": "accent", "color": "#D87E3A"},
+            {"slug": "contrast", "color": "#1F1B16"},
+        ],
+    )
     _set_theme_css(
         theme,
         ".btn:hover { color: var(--base); background: var(--accent); }",
     )
     subprocess.run(
         [sys.executable, str(BIN_DIR / "autofix-contrast.py"), "idempotent"],
-        cwd=str(tmp_path), capture_output=True, text=True, check=False,
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
     )
     css_after_first = _get_theme_css(theme)
     subprocess.run(
         [sys.executable, str(BIN_DIR / "autofix-contrast.py"), "idempotent"],
-        cwd=str(tmp_path), capture_output=True, text=True, check=False,
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
     )
     css_after_second = _get_theme_css(theme)
     assert css_after_first == css_after_second
@@ -386,6 +414,7 @@ def test_autofix_contrast_hover_idempotent(tmp_path: pytest.TempdirFactory) -> N
 # ---------------------------------------------------------------------------
 # 5. design.py PHASES order
 # ---------------------------------------------------------------------------
+
 
 def test_design_phases_order() -> None:
     """index is after sync; photos/microcopy/frontpage are before prepublish."""
@@ -401,9 +430,9 @@ def test_design_phases_order() -> None:
                 if isinstance(target, ast.Name) and target.id == "PHASES":
                     if isinstance(node.value, ast.Tuple):
                         phases = [
-                            elt.s  # type: ignore[attr-defined]
+                            elt.value
                             for elt in node.value.elts
-                            if isinstance(elt, ast.Constant)
+                            if isinstance(elt, ast.Constant) and isinstance(elt.value, str)
                         ]
                     break
 
@@ -411,7 +440,7 @@ def test_design_phases_order() -> None:
 
     def _idx(name: str) -> int:
         assert name in phases, f"{name!r} not in PHASES"
-        return phases.index(name)  # type: ignore[union-attr]
+        return phases.index(name)
 
     assert _idx("index") > _idx("sync"), "index must come after sync"
     assert _idx("photos") < _idx("prepublish"), "photos must come before prepublish"
