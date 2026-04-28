@@ -769,6 +769,14 @@ def _phase_apply(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> N
     except json.JSONDecodeError as e:
         raise PhaseError("apply", f"{theme_json_path} is not valid JSON: {e}") from e
 
+    # Warn about background-critical slugs the spec didn't cover BEFORE
+    # the palette lands — the `check` phase's `check_palette_polarity_
+    # coherent` will hard-fail downstream if any of these stay stale,
+    # but catching the problem at apply time is cheaper for the operator
+    # (they can extend the spec and re-run instead of sitting through
+    # the full snap cycle).
+    _warn_uncovered_polarity_slugs(theme_json, spec)
+
     if spec.palette:
         apply_palette(theme_json, spec.palette)
     if spec.fonts:
@@ -788,6 +796,107 @@ def _phase_apply(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> N
         print(
             f"  [apply] seeded {allow_added} heuristics-allowlist cell(s) "
             f"from {spec.source} → {spec.slug}"
+        )
+
+
+# Keep in sync with `bin/check.py::_BASE_POLARITY_SAMESIDE_SLUGS` — the
+# warning here is the soft signal; the hard signal is the check. Drifting
+# the two lists apart would mean the operator sees a warning for a slug
+# the check doesn't care about (or vice versa — a silent check failure
+# on a slug this warning never mentions).
+_APPLY_POLARITY_CRITICAL_SLUGS = ("subtle", "surface", "accent-soft")
+
+
+def _wcag_luminance_hex(hex_color: str) -> float | None:
+    """WCAG 2.x relative luminance for `#RRGGBB`. Returns `None` if the
+    string doesn't parse — callers skip the slug rather than crash.
+    Kept here (duplicated with bin/check.py's `_wcag_luminance`) because
+    `bin/design.py` shouldn't import from `bin/check.py` — a cyclic
+    dependency that would freeze once the `check` phase calls design
+    helpers in turn."""
+    h = hex_color.strip().lstrip("#")
+    if len(h) != 6:
+        return None
+    try:
+        r, g, b = (int(h[i : i + 2], 16) / 255 for i in (0, 2, 4))
+    except ValueError:
+        return None
+
+    def _lin(c: float) -> float:
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
+    return 0.2126 * _lin(r) + 0.7152 * _lin(g) + 0.0722 * _lin(b)
+
+
+def _warn_uncovered_polarity_slugs(theme_json: dict, spec: ValidatedSpec) -> None:
+    """Print a one-line warning per polarity-critical slug that the spec
+    doesn't override, when doing so would leave a stale source value on
+    the wrong side of the new `base`.
+
+    The downstream `check` phase has `check_palette_polarity_coherent`
+    as the authoritative gate — this warning is an early heads-up so
+    the operator isn't surprised when a 15-phase build fails at check
+    for a spec gap they could have fixed in 5 seconds by extending the
+    palette block.
+
+    Silent when:
+      - the spec didn't flip `base` polarity vs the source theme, OR
+      - the spec covers every polarity-critical slug already, OR
+      - the source theme.json doesn't have a `base` we can read.
+
+    Loud (one line per affected slug) when the spec's new `base` lands
+    on a different polarity side than the source's, and a
+    polarity-critical slug would stay at the source's original value.
+    """
+    source_base = None
+    source_slugs: dict[str, str] = {}
+    for entry in theme_json.get("settings", {}).get("color", {}).get("palette", []):
+        if not isinstance(entry, dict):
+            continue
+        slug = entry.get("slug")
+        color = entry.get("color")
+        if not isinstance(slug, str) or not isinstance(color, str):
+            continue
+        source_slugs[slug] = color
+        if slug == "base":
+            source_base = color
+
+    spec_base = spec.palette.get("base") if spec.palette else None
+    if not spec_base or not source_base:
+        return
+
+    lum_source = _wcag_luminance_hex(source_base)
+    lum_spec = _wcag_luminance_hex(spec_base)
+    if lum_source is None or lum_spec is None:
+        return
+    source_side = "light" if lum_source >= 0.5 else "dark"
+    spec_side = "light" if lum_spec >= 0.5 else "dark"
+    if source_side == spec_side:
+        return  # no polarity flip → any leftover slugs are fine
+
+    flagged: list[tuple[str, str]] = []
+    for slug in _APPLY_POLARITY_CRITICAL_SLUGS:
+        if spec.palette and slug in spec.palette:
+            continue
+        source_value = source_slugs.get(slug)
+        if not source_value:
+            continue
+        flagged.append((slug, source_value))
+
+    if not flagged:
+        return
+
+    print(
+        f"  [apply] WARN: spec flips `base` polarity "
+        f"({source_side} → {spec_side}) but leaves "
+        f"{len(flagged)} polarity-critical slug(s) uncovered — they'll "
+        f"stay at {spec.source}'s value and fire "
+        f"`check_palette_polarity_coherent` downstream:"
+    )
+    for slug, color in flagged:
+        print(
+            f"  [apply] WARN:   `{slug}: {color}` (from {spec.source}) — "
+            f"extend spec.palette with a {spec_side}-side value for this slug"
         )
 
 
