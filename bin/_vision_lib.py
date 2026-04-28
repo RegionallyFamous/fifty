@@ -103,7 +103,7 @@ ANTHROPIC_API_VERSION = "2023-06-01"
 # pinned at a Sonnet snapshot known to be reliable for image+JSON; bumping
 # the default model invalidates every cached fingerprint by design (the
 # fingerprint includes the model id), so you'll re-burn budget once.
-DEFAULT_MODEL = os.environ.get("FIFTY_VISION_MODEL", "claude-sonnet-4-5-20250929")
+DEFAULT_MODEL = os.environ.get("FIFTY_VISION_MODEL", "claude-sonnet-4-6")
 
 # Pricing in USD per million tokens. Updated 2026-Q2 from Anthropic public
 # pricing. Override via FIFTY_VISION_PRICE_INPUT / FIFTY_VISION_PRICE_OUTPUT.
@@ -732,6 +732,7 @@ def vision_completion(
     max_output_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
     ledger_path: Path = DEFAULT_LEDGER_PATH,
     daily_budget_usd: float = DEFAULT_DAILY_BUDGET_USD,
+    extra_png_paths: list[Path] | None = None,
 ) -> VisionResponse:
     """Generic PNG + prompt -> text completion against Anthropic's vision API.
 
@@ -780,15 +781,34 @@ def vision_completion(
             "Either export an API key or pass --dry-run."
         )
 
-    png_bytes = Path(png_path).read_bytes()
+    # Assemble every image (main + extras) into a list so the API call
+    # gets the full visual context. `extra_png_paths` lets callers send
+    # e.g. two near-duplicate product photos side-by-side for a pairwise
+    # judgment without having to composite them first.
+    all_paths: list[Path] = [Path(png_path)]
+    if extra_png_paths:
+        all_paths.extend(Path(p) for p in extra_png_paths)
 
-    # Approximate floor cost: 1500 image tokens + ~800 prompt tokens.
-    estimated = estimate_cost_usd(2300, max_output_tokens // 2)
+    # Approximate floor cost: 1500 image tokens per image + ~800 prompt.
+    estimated = estimate_cost_usd(1500 * len(all_paths) + 800, max_output_tokens // 2)
     assert_under_budget(estimated, cap_usd=daily_budget_usd, ledger_path=ledger_path)
 
-    # Resize / recompress to fit Anthropic's 5 MB + 8000 px image limits
-    # before base64-encoding. Full-page snap PNGs routinely blow both.
-    image_bytes, media_type = _prepare_image_for_api(png_bytes)
+    # Resize / recompress each one to fit Anthropic's 5 MB + 8000 px
+    # image limits before base64-encoding. Full-page snap PNGs routinely
+    # blow both.
+    image_blocks: list[dict] = []
+    for p in all_paths:
+        img_bytes, media_type = _prepare_image_for_api(p.read_bytes())
+        image_blocks.append(
+            {
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": media_type,
+                    "data": base64.b64encode(img_bytes).decode("ascii"),
+                },
+            }
+        )
 
     payload = {
         "model": model,
@@ -798,14 +818,7 @@ def vision_completion(
             {
                 "role": "user",
                 "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": base64.b64encode(image_bytes).decode("ascii"),
-                        },
-                    },
+                    *image_blocks,
                     {"type": "text", "text": user_prompt},
                 ],
             }

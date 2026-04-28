@@ -91,6 +91,7 @@ from _lib import (
     playground_deeplink,
     theme_blueprint_raw_url,
 )
+from _readiness import STAGE_SHIPPING, load_readiness
 
 DOCS_DIR = MONOREPO_ROOT / "docs"
 MOCKUPS_DIR = MONOREPO_ROOT / "mockups"
@@ -1381,7 +1382,6 @@ def build(*, dry_run: bool = False) -> int:
     # the total ahead of time. Skips the same way the original loop did
     # if a theme is missing its blueprint.
     valid_themes = [t for t in themes if (t / "playground" / "blueprint.json").is_file()]
-    total_shipped = len(valid_themes)
     for missing in [t for t in themes if not (t / "playground" / "blueprint.json").is_file()]:
         print(
             f"warn: {missing.name} has no playground/blueprint.json — "
@@ -1389,8 +1389,26 @@ def build(*, dry_run: bool = False) -> int:
             file=sys.stderr,
         )
 
+    # Split `valid_themes` into "show on landing page" (stage: shipping)
+    # and "write redirectors but keep private" (stage: incubating or
+    # retired). Both groups get `docs/<slug>/*/index.html` so private
+    # share-links still resolve, but only `shipping` themes appear on
+    # `demo.regionallyfamous.com/` and count toward the "Theme 0X / 0Y"
+    # index. Without this split, a freshly-cloned chandler at
+    # stage=incubating would surface as a live card on the public
+    # landing page before the design pass is complete. The bin/promote-theme.py
+    # gate flips a theme to stage=shipping once it has passed
+    # static + visual verification, and only then does it appear here.
+    shipping_themes = [
+        t for t in valid_themes if load_readiness(t).stage == STAGE_SHIPPING
+    ]
+    total_shipped = len(shipping_themes)
+    shipping_slug_index: dict[str, int] = {
+        t.name: i for i, t in enumerate(shipping_themes, start=1)
+    }
+
     cards: list[str] = []
-    for index, theme_dir in enumerate(valid_themes, start=1):
+    for theme_dir in valid_themes:
         theme_slug = theme_dir.name
         theme_name = theme_display_name(theme_dir)
         for page in PAGES:
@@ -1406,9 +1424,16 @@ def build(*, dry_run: bool = False) -> int:
             sub = (DOCS_DIR / theme_slug / page_slug) if page_slug else (DOCS_DIR / theme_slug)
             write_file(sub / "index.html", html, dry_run=dry_run, written=written)
 
-        cards.append(
-            render_theme_card(theme_dir, theme_name, theme_slug, index=index, total=total_shipped)
-        )
+        if theme_slug in shipping_slug_index:
+            cards.append(
+                render_theme_card(
+                    theme_dir,
+                    theme_name,
+                    theme_slug,
+                    index=shipping_slug_index[theme_slug],
+                    total=total_shipped,
+                )
+            )
         # Sanity check: confirm the blueprint URL we're encoding actually
         # matches what bin/sync-playground.py points at. Mismatches mean
         # the docs/ links would 404 in Playground.

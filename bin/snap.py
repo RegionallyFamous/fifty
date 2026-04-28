@@ -862,8 +862,99 @@ def build_local_blueprint(theme: str, login: bool = False) -> Path:
     out = BLUEPRINTS_DIR / f"{theme}.json"
     payload = json.dumps(bp, indent=2)
     payload = _retarget_content_ref(payload)
+    _preflight_content_url(theme, payload)
     out.write_text(payload, encoding="utf-8")
     return out
+
+
+def _preflight_content_url(theme: str, blueprint_payload: str) -> None:
+    """HEAD-check that the theme's `playground/content/products.csv`
+    resolves at the content ref the blueprint is pointing at BEFORE
+    Playground boots.
+
+    Why: the closed-loop design flow scaffolds a fresh theme on `main`
+    via `bin/clone.py`, then runs `bin/snap.py shoot <theme>` via
+    `bin/design.py`. At that point, the theme directory exists locally
+    but hasn't been pushed, so `raw.githubusercontent.com/.../main/
+    <theme>/playground/content/products.csv` returns 404. Playground
+    fetches the 404 body (14 bytes of "404: Not Found"), `wo-import.php`
+    splits it into one line, and bails with "W&O CSV looked malformed:
+    fewer than 2 lines after trim." The operator gets a cryptic
+    `PHP.run() failed with exit code 1` 30 seconds after the boot
+    started, with no hint that the root cause is "push the branch".
+
+    This pre-flight does a 5-second HEAD request against the same URL
+    the blueprint's `wo-import.php` will fetch. On 4xx/5xx or
+    connection failure, we exit 2 with an actionable message before
+    spinning up Playground. The check is best-effort — if the network
+    itself is down we warn and continue (Playground runs offline for
+    most steps; the content fetch may also be cached upstream).
+    """
+    import re
+    import urllib.error
+    import urllib.request
+
+    # Pick any raw.githubusercontent.com URL under the theme's own
+    # `<theme>/playground/` path. Prefer `content.xml` (an early-step
+    # WXR import URL) because it's literal in the blueprint; fall back
+    # to the base path. Either returning 404 means the theme dir isn't
+    # present at the blueprint's content ref, which is all we need to
+    # decide whether to abort.
+    pattern = (
+        r"https://raw\.githubusercontent\.com/[^/\"' ]+/[^/\"' ]+/[^/\"' ]+/"
+        + re.escape(theme)
+        + r"/playground/(?:content/content\.xml|content/products\.csv|)"
+    )
+    candidates = re.findall(pattern, blueprint_payload)
+    # Prefer a concrete file URL over the bare base path.
+    url = next(
+        (u for u in candidates if u.endswith(".xml") or u.endswith(".csv")),
+        candidates[0] if candidates else None,
+    )
+    if not url:
+        # No theme-scoped content reference in the blueprint — nothing
+        # to pre-flight (legacy / upstream-sourced themes).
+        return
+    req = urllib.request.Request(url, method="HEAD")
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            status = resp.getcode()
+    except urllib.error.HTTPError as exc:
+        status = exc.code
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        # Network trouble — don't block. Operator will see the real
+        # failure if the content really can't be fetched.
+        print(
+            f"[snap] warn: preflight HEAD on {url} failed ({exc!r}); "
+            "proceeding anyway.",
+            file=sys.stderr,
+        )
+        return
+
+    if status >= 400:
+        # Derive the ref from the URL for a crisp hint.
+        ref_match = re.search(
+            r"raw\.githubusercontent\.com/[^/]+/[^/]+/([^/]+)/", url
+        )
+        ref = ref_match.group(1) if ref_match else "main"
+        print(
+            f"\n[snap] FATAL: {url} returns HTTP {status}.\n"
+            f"  Playground's wo-import.php fetches this URL inside the "
+            f"blueprint, and a 404 here produces the cryptic\n"
+            f"  `W&O CSV looked malformed: fewer than 2 lines after "
+            f"trim.` error that blocked the snap in the past.\n"
+            f"\n"
+            f"  The theme `{theme}` isn't present at ref `{ref}` on "
+            f"GitHub yet. Three ways to fix:\n"
+            f"    1. git add {theme}/ && git commit && git push   "
+            f"(recommended for real runs)\n"
+            f"    2. push the theme on a branch and "
+            f"FIFTY_CONTENT_REF=<branch> bin/snap.py shoot {theme}\n"
+            f"    3. FIFTY_CONTENT_REF=<commit-sha>   "
+            f"(works on any pushed SHA)\n",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
 
 
 def _auto_detect_content_ref() -> tuple[str | None, str]:
@@ -1619,6 +1710,34 @@ _HEURISTICS_JS = r"""
     if (rawToken.test(document.body.innerText || '')) {
         push("warn", "raw-i18n-token",
              "Page body contains a raw __() i18n token (string never translated).");
+    }
+
+    // WP default placeholder content. The fresh-install posts/pages
+    // ("Hello world!", the boilerplate first post body, "Sample Page",
+    // and the auto-draft Privacy Policy) are the loudest "this is a
+    // default WordPress install" tell on a generated theme. They survive
+    // the WXR import (it doesn't touch existing IDs) and the demo
+    // home/journal pulls posts by date, so the placeholder routinely
+    // lands as the third card on every theme. `playground/wo-configure.php`
+    // purges them at boot; this heuristic is the runtime guard that
+    // catches a regression before it ships.
+    {
+        const body = document.body.innerText || '';
+        const wpDefaults = [
+            ['Welcome to WordPress. This is your first post.', 'wp-default-hello-world-body'],
+            ['Hello world!', 'wp-default-hello-world-title'],
+            ['This is an example page. It\u2019s different from a blog post', 'wp-default-sample-page-body'],
+            ['Sample Page', 'wp-default-sample-page-title'],
+        ];
+        for (const [needle, kind] of wpDefaults) {
+            if (body.includes(needle)) {
+                push("error", "wp-default-content",
+                     `Page contains the WordPress installer placeholder "${needle.slice(0, 60)}\u2026" `
+                     + `(matched: ${kind}). Default WP content survived the WXR import; `
+                     + `playground/wo-configure.php must purge it. See AGENTS.md root rule on placeholder content.`,
+                     {fingerprint: kind, needle: needle});
+            }
+        }
     }
 
     // Unstyled WC review-rating select. Product pages render a legacy
@@ -3638,6 +3757,42 @@ def shoot_theme(
     # disables a11y checks gracefully instead of failing the shoot.
     axe_source = _ensure_axe_vendored()
 
+    # Partition routes into anonymous vs authenticated groups. We run
+    # the anonymous routes in the existing browser context, then (if any
+    # auth-required routes remain) spin up a SECOND context per viewport
+    # that POSTs `wp-login.php` as `admin` to acquire the session
+    # cookie. Two contexts (rather than one shared logged-in context)
+    # keeps the anonymous routes free of dashboard chrome -- WC injects
+    # the admin bar on every page when a session is active, which
+    # would shift the layout below it on EVERY anonymous capture.
+    anon_routes = [r for r in routes if not getattr(r, "auth", False)]
+    auth_routes = [r for r in routes if getattr(r, "auth", False)]
+
+    def _login_admin(ctx) -> bool:
+        """POST wp-login.php with admin/password and return True on success.
+
+        Mirrors what Playground's `login: true` blueprint step does
+        client-side. Uses the request API rather than driving the form
+        because the wp-login form uses a self-submitting POST, which
+        Playwright's `page.goto` doesn't follow gracefully.
+        """
+        try:
+            page = ctx.new_page()
+            page.goto(server_url + "/wp-login.php", wait_until="domcontentloaded", timeout=20_000)
+            page.fill("input#user_login", "admin")
+            page.fill("input#user_pass", "password")
+            page.click("input#wp-submit")
+            page.wait_for_url(
+                lambda u: "/wp-admin" in u or "/my-account" in u or u.endswith("/wp-login.php"),
+                timeout=20_000,
+            )
+            ok = "wp-login" not in page.url
+            page.close()
+            return ok
+        except Exception as e:
+            print(f"    {YELLOW}warn:{RESET} wp-login failed: {e}")
+            return False
+
     with sync_playwright() as p:
         browser = p.chromium.launch()
         try:
@@ -3676,162 +3831,199 @@ def shoot_theme(
                 bag = _attach_diagnostics(page)
                 vp_dir = out_root / vp.name
                 vp_dir.mkdir(parents=True, exist_ok=True)
-                for route in routes:
+                # Anonymous phase: every non-auth route in the existing
+                # context. Authenticated phase comes after, in a fresh
+                # context that POSTs wp-login.php first (logs admin in).
+                # The admin bar that appears on logged-in pages would
+                # otherwise shift every anon capture below it; keeping
+                # the contexts separate is cheaper than diff-tolerating
+                # the bar.
+                phase_routes = [(False, anon_routes), (True, auth_routes)]
+                for phase_auth, phase_route_list in phase_routes:
+                    if not phase_route_list:
+                        continue
+                    if phase_auth:
+                        if ctx is not None:
+                            ctx.close()
+                        ctx = browser.new_context(
+                            viewport={"width": vp.width, "height": vp.height},
+                            device_scale_factor=2,
+                            user_agent=(
+                                "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) "
+                                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                                "Chrome/138.0.0.0 Safari/537.36"
+                            ),
+                        )
+                        ctx.add_init_script(
+                            "(() => { const s = document.createElement('style');"
+                            f" s.textContent = {json.dumps(_FREEZE_CSS)};"
+                            " document.documentElement.appendChild(s); })();"
+                        )
+                        if not _login_admin(ctx):
+                            print(
+                                f"  {YELLOW}warn:{RESET} {vp.name:7s} "
+                                f"could not log in; skipping {len(phase_route_list)} "
+                                f"auth route(s)"
+                            )
+                            continue
+                        page = ctx.new_page()
+                        bag = _attach_diagnostics(page)
+                    for route in phase_route_list:
                     # Phase 2 skip: if the caller computed that this
                     # cell's signature matches the baseline, the tmp
                     # tree was already populated by _materialize_skipped_
                     # cell() before we booted. Don't re-navigate or
                     # re-capture -- the whole point is to keep 40 of 44
                     # cells out of Playwright's hot loop.
-                    if skip_cells and (vp.name, route.slug) in skip_cells:
+                        if skip_cells and (vp.name, route.slug) in skip_cells:
+                            print(
+                                f"  {DIM}{vp.name:7s}{RESET} "
+                                f"{route.slug:18s} {GREEN}skip{RESET} "
+                                f"{DIM}(signature match){RESET}",
+                                flush=True,
+                            )
+                            continue
+                        url = server_url + route.path
                         print(
                             f"  {DIM}{vp.name:7s}{RESET} "
-                            f"{route.slug:18s} {GREEN}skip{RESET} "
-                            f"{DIM}(signature match){RESET}",
+                            f"{route.slug:18s} → {url}",
                             flush=True,
                         )
-                        continue
-                    url = server_url + route.path
-                    print(
-                        f"  {DIM}{vp.name:7s}{RESET} "
-                        f"{route.slug:18s} → {url}",
-                        flush=True,
-                    )
-                    # Reset accumulators between routes so per-route
-                    # findings only attribute their own console + net
-                    # noise (cross-route bleed would confuse the
-                    # report).
-                    bag["console"].clear()
-                    bag["page_errors"].clear()
-                    bag["network_failures"].clear()
-                    nav_error: str | None = None
-                    try:
-                        page.goto(url, wait_until="networkidle", timeout=45_000)
-                    except Exception as e:
-                        nav_error = str(e)
-                        print(f"    {YELLOW}warn:{RESET} navigation: {e}")
-                    # Small settle for late client renders (mini-cart
-                    # hydration, font swap, WC checkout XHR).
-                    page.wait_for_timeout(500)
-                    # Wait for WooCommerce blocks loading skeletons to
-                    # disappear before screenshotting. Without this the
-                    # cart and checkout routes routinely shoot at a
-                    # moment where the WC blocks store API call has
-                    # finished (so `networkidle` fired) but React
-                    # hasn't yet swapped the `.wc-block-components-
-                    # skeleton` placeholder for the real markup, and
-                    # the screenshot captures gray skeleton bars
-                    # instead of the actual order summary, line items,
-                    # subtotals, etc. Bug visible on every cart-
-                    # filled / checkout-filled snap before this guard
-                    # was added.
-                    #
-                    # `wait_for_function` returns true once the page
-                    # has zero `.wc-block-components-skeleton`
-                    # elements OR every remaining skeleton is hidden
-                    # (display:none / visibility:hidden / opacity:0 —
-                    # the form Phase A's premium hide-rule takes for
-                    # the WC blocks loading mask).
-                    #
-                    # 6s timeout: long enough for a slow WC store-API
-                    # round-trip on a cold playground boot, short
-                    # enough that pages without skeletons don't slow
-                    # the run noticeably (the predicate returns true
-                    # on the FIRST evaluation when the DOM has no
-                    # skeleton at all). Failures are swallowed (some
-                    # blocks legitimately keep a skeleton up; we'd
-                    # rather shoot the page than hang the run).
-                    try:
-                        page.wait_for_function(
-                            """() => {
-                                const skeletons = document.querySelectorAll(
-                                    '.wc-block-components-skeleton, '
-                                    + '.wc-block-components-skeleton__element'
-                                );
-                                if (skeletons.length === 0) return true;
-                                return Array.from(skeletons).every((el) => {
-                                    const cs = window.getComputedStyle(el);
-                                    return (
-                                        cs.display === 'none'
-                                        || cs.visibility === 'hidden'
-                                        || parseFloat(cs.opacity) === 0
-                                    );
-                                });
-                            }""",
-                            timeout=6_000,
-                        )
-                    except Exception:
-                        # Skeleton still present after 6s — capture
-                        # anyway so the reviewer sees the regression
-                        # instead of the script hanging.
-                        pass
-
-                    # Static cell. Heuristics + axe + screenshot of the
-                    # page in its initial-load state.
-                    static_entry = _capture_cell(
-                        page=page, bag=bag, axe_source=axe_source,
-                        theme=theme, vp=vp, slug=route.slug,
-                        inspect=INSPECT_SELECTORS.get(route.slug, []),
-                        url=url, out_dir=vp_dir, nav_error=nav_error,
-                    )
-                    if static_entry:
-                        manifest["shots"].append(static_entry)
-                        # Phase 2: stamp the route's signature next to
-                        # the freshly-captured PNG so the next run can
-                        # skip this cell if nothing upstream changes.
-                        # We prefer the signature passed in by the
-                        # caller (pre-computed once per theme, reused
-                        # across viewports) over recomputing it here
-                        # -- identical values, one less filesystem walk.
-                        cell_key = (vp.name, route.slug)
-                        sig = None
-                        if signatures and cell_key in signatures:
-                            sig = signatures[cell_key]
-                        else:
-                            sig = compute_route_signature(theme, route.slug)
-                        _write_sig_after_shoot(theme, vp.name, route.slug, sig)
-
-                    # Interactive cells (Phase 3). Run any flows
-                    # registered for this route + viewport. Each flow
-                    # produces its own <route>.<flow>.* artifact set
-                    # so reviewers can compare static vs interacted
-                    # state side-by-side.
-                    for flow in INTERACTIONS.get(route.slug, []):
-                        if flow.viewports and vp.name not in flow.viewports:
-                            continue
+                        # Reset accumulators between routes so per-route
+                        # findings only attribute their own console + net
+                        # noise (cross-route bleed would confuse the
+                        # report).
                         bag["console"].clear()
                         bag["page_errors"].clear()
                         bag["network_failures"].clear()
-                        flow_slug = f"{route.slug}.{flow.name}"
-                        print(f"    {DIM}↳ flow:{RESET} {flow.name} "
-                              f"({flow.description})", flush=True)
-                        flow_err = _run_interaction(page, flow)
-                        # Settle after the interaction to let any XHR /
-                        # transition finish before the screenshot.
-                        page.wait_for_timeout(300)
-                        extra: list[dict] = []
-                        if flow_err:
-                            extra.append({
-                                "severity": "warn",
-                                "kind": "interaction-failed",
-                                "message": (
-                                    f"Interaction `{flow.name}` failed: "
-                                    f"{flow_err}"
-                                ),
-                                "interaction": flow.name,
-                            })
-                            print(f"    {YELLOW}warn:{RESET} flow "
-                                  f"`{flow.name}`: {flow_err}")
-                        flow_entry = _capture_cell(
+                        nav_error: str | None = None
+                        try:
+                            page.goto(url, wait_until="networkidle", timeout=45_000)
+                        except Exception as e:
+                            nav_error = str(e)
+                            print(f"    {YELLOW}warn:{RESET} navigation: {e}")
+                        # Small settle for late client renders (mini-cart
+                        # hydration, font swap, WC checkout XHR).
+                        page.wait_for_timeout(500)
+                        # Wait for WooCommerce blocks loading skeletons to
+                        # disappear before screenshotting. Without this the
+                        # cart and checkout routes routinely shoot at a
+                        # moment where the WC blocks store API call has
+                        # finished (so `networkidle` fired) but React
+                        # hasn't yet swapped the `.wc-block-components-
+                        # skeleton` placeholder for the real markup, and
+                        # the screenshot captures gray skeleton bars
+                        # instead of the actual order summary, line items,
+                        # subtotals, etc. Bug visible on every cart-
+                        # filled / checkout-filled snap before this guard
+                        # was added.
+                        #
+                        # `wait_for_function` returns true once the page
+                        # has zero `.wc-block-components-skeleton`
+                        # elements OR every remaining skeleton is hidden
+                        # (display:none / visibility:hidden / opacity:0 —
+                        # the form Phase A's premium hide-rule takes for
+                        # the WC blocks loading mask).
+                        #
+                        # 6s timeout: long enough for a slow WC store-API
+                        # round-trip on a cold playground boot, short
+                        # enough that pages without skeletons don't slow
+                        # the run noticeably (the predicate returns true
+                        # on the FIRST evaluation when the DOM has no
+                        # skeleton at all). Failures are swallowed (some
+                        # blocks legitimately keep a skeleton up; we'd
+                        # rather shoot the page than hang the run).
+                        try:
+                            page.wait_for_function(
+                                """() => {
+                                    const skeletons = document.querySelectorAll(
+                                        '.wc-block-components-skeleton, '
+                                        + '.wc-block-components-skeleton__element'
+                                    );
+                                    if (skeletons.length === 0) return true;
+                                    return Array.from(skeletons).every((el) => {
+                                        const cs = window.getComputedStyle(el);
+                                        return (
+                                            cs.display === 'none'
+                                            || cs.visibility === 'hidden'
+                                            || parseFloat(cs.opacity) === 0
+                                        );
+                                    });
+                                }""",
+                                timeout=6_000,
+                            )
+                        except Exception:
+                            # Skeleton still present after 6s — capture
+                            # anyway so the reviewer sees the regression
+                            # instead of the script hanging.
+                            pass
+
+                        # Static cell. Heuristics + axe + screenshot of the
+                        # page in its initial-load state.
+                        static_entry = _capture_cell(
                             page=page, bag=bag, axe_source=axe_source,
-                            theme=theme, vp=vp, slug=flow_slug,
+                            theme=theme, vp=vp, slug=route.slug,
                             inspect=INSPECT_SELECTORS.get(route.slug, []),
                             url=url, out_dir=vp_dir, nav_error=nav_error,
-                            extra_findings=extra,
                         )
-                        if flow_entry:
-                            flow_entry["interaction"] = flow.name
-                            manifest["shots"].append(flow_entry)
+                        if static_entry:
+                            manifest["shots"].append(static_entry)
+                            # Phase 2: stamp the route's signature next to
+                            # the freshly-captured PNG so the next run can
+                            # skip this cell if nothing upstream changes.
+                            # We prefer the signature passed in by the
+                            # caller (pre-computed once per theme, reused
+                            # across viewports) over recomputing it here
+                            # -- identical values, one less filesystem walk.
+                            cell_key = (vp.name, route.slug)
+                            sig = None
+                            if signatures and cell_key in signatures:
+                                sig = signatures[cell_key]
+                            else:
+                                sig = compute_route_signature(theme, route.slug)
+                            _write_sig_after_shoot(theme, vp.name, route.slug, sig)
+
+                        # Interactive cells (Phase 3). Run any flows
+                        # registered for this route + viewport. Each flow
+                        # produces its own <route>.<flow>.* artifact set
+                        # so reviewers can compare static vs interacted
+                        # state side-by-side.
+                        for flow in INTERACTIONS.get(route.slug, []):
+                            if flow.viewports and vp.name not in flow.viewports:
+                                continue
+                            bag["console"].clear()
+                            bag["page_errors"].clear()
+                            bag["network_failures"].clear()
+                            flow_slug = f"{route.slug}.{flow.name}"
+                            print(f"    {DIM}↳ flow:{RESET} {flow.name} "
+                                  f"({flow.description})", flush=True)
+                            flow_err = _run_interaction(page, flow)
+                            # Settle after the interaction to let any XHR /
+                            # transition finish before the screenshot.
+                            page.wait_for_timeout(300)
+                            extra: list[dict] = []
+                            if flow_err:
+                                extra.append({
+                                    "severity": "warn",
+                                    "kind": "interaction-failed",
+                                    "message": (
+                                        f"Interaction `{flow.name}` failed: "
+                                        f"{flow_err}"
+                                    ),
+                                    "interaction": flow.name,
+                                })
+                                print(f"    {YELLOW}warn:{RESET} flow "
+                                      f"`{flow.name}`: {flow_err}")
+                            flow_entry = _capture_cell(
+                                page=page, bag=bag, axe_source=axe_source,
+                                theme=theme, vp=vp, slug=flow_slug,
+                                inspect=INSPECT_SELECTORS.get(route.slug, []),
+                                url=url, out_dir=vp_dir, nav_error=nav_error,
+                                extra_findings=extra,
+                            )
+                            if flow_entry:
+                                flow_entry["interaction"] = flow.name
+                                manifest["shots"].append(flow_entry)
                 # `view-transition-fires-on-click` — once per viewport,
                 # navigate to a listing route, click the first internal
                 # card link, and assert a real cross-document View

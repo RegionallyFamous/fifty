@@ -175,6 +175,15 @@
       "verify": "python3 bin/snap-vision-review.py <theme> --routes <route>"
     },
     {
+      "id": "wp-default-content",
+      "axe_rule": "wp-default-content",
+      "selector_pattern": "",
+      "file": "playground/wo-configure.php",
+      "strategy": "WordPress's installer creates 'Hello world!' (post 1), 'Sample Page' (page 2), and a 'WordPress' privacy-policy draft on every fresh install. The WXR import doesn't touch existing IDs so they survive into the demo, and the home/journal query pulls posts by date — so the placeholder routinely lands as the third card on every theme. `playground/wo-configure.php` MUST `wp_delete_post(..., true)` these slugs early in the configurator so they never reach the rendered page. If this fires, the purge step regressed or never ran.",
+      "example_diff": "+ // Force-delete WP installer placeholder content.\n+ foreach ( array(\n+   array( 'slug' => 'hello-world',    'post_type' => 'post' ),\n+   array( 'slug' => 'sample-page',    'post_type' => 'page' ),\n+   array( 'slug' => 'privacy-policy', 'post_type' => 'page' ),\n+ ) as $entry ) {\n+   $post = get_page_by_path( $entry['slug'], OBJECT, $entry['post_type'] );\n+   if ( $post && $post->post_status !== 'trash' ) {\n+     wp_delete_post( (int) $post->ID, true );\n+   }\n+ }",
+      "verify": "python3 bin/sync-playground.py && python3 bin/snap.py shoot <theme> --routes home,journal"
+    },
+    {
       "id": "vision-mockup-divergent",
       "axe_rule": "vision:mockup-divergent",
       "selector_pattern": "",

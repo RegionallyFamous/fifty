@@ -108,17 +108,17 @@ def _extract_drop_set_for_skip_flag(flag_attr: str) -> set[str]:
                 return node
             if node.orelse:
                 # Walk the elif chain and the else body.
-                for child in node.orelse:
-                    found = _find_if(child)
+                for orelse_child in node.orelse:
+                    found = _find_if(orelse_child)
                     if found is not None:
                         return found
-            for child in node.body:
-                found = _find_if(child)
+            for body_child in node.body:
+                found = _find_if(body_child)
                 if found is not None:
                     return found
         else:
-            for child in ast.iter_child_nodes(node):
-                found = _find_if(child)
+            for any_child in ast.iter_child_nodes(node):
+                found = _find_if(any_child)
                 if found is not None:
                     return found
         return None
@@ -306,6 +306,43 @@ def test_prepublish_push_skips_every_snap_dependent_gate() -> None:
             f"and the batch reports 'failed' with `git push exited 1`. "
             f'Re-add `env[{key!r}] = "1"` alongside the other two.'
         )
+
+
+def test_skill_phases_match_code() -> None:
+    """The design-theme SKILL documents the phase pipeline in a
+    Markdown table; when an agent reads the skill to plan work, the
+    table IS the mental model. If the table drifts from `PHASES` in
+    `bin/design.py`, agents follow a stale pipeline and land half-done
+    themes.
+
+    Lock the two together by parsing the skill's Markdown table and
+    comparing its phase column to `PHASES`.
+    """
+    phases = _extract_phases_tuple()
+    skill_path = ROOT / ".claude" / "skills" / "design-theme" / "SKILL.md"
+    body = skill_path.read_text(encoding="utf-8")
+    import re
+
+    documented: list[str] = []
+    for row in re.finditer(
+        r"^\|\s*\d+\s*\|\s*\*\*([a-z][a-z0-9-]*)\*\*\s*\|",
+        body,
+        re.MULTILINE,
+    ):
+        documented.append(row.group(1))
+    assert documented, (
+        "design-theme SKILL.md does not list numbered phase rows. "
+        "The skill must document every phase in `PHASES` so agents "
+        "know what the pipeline runs."
+    )
+    assert tuple(documented) == phases, (
+        "design-theme SKILL.md phase table is out of sync with "
+        f"bin/design.py PHASES.\n"
+        f"  code:   {phases}\n"
+        f"  skill:  {tuple(documented)}\n"
+        "Update the markdown table in "
+        ".claude/skills/design-theme/SKILL.md to match."
+    )
 
 
 def test_skip_commit_drops_prepublish_too() -> None:

@@ -206,6 +206,34 @@ table.variations select:focus{{outline:none;border-color:var(--wp--preset--color
 .wp-block-woocommerce-order-confirmation-create-account input[type=password],.wp-block-woocommerce-order-confirmation-create-account input[type=text]{{width:100%;background:var(--wp--preset--color--surface);border:1px solid var(--wp--preset--color--border);border-radius:var(--wp--custom--radius--md);padding:var(--wp--preset--spacing--sm) var(--wp--preset--spacing--md);font:inherit;color:var(--wp--preset--color--contrast);}}
 .wp-block-woocommerce-order-confirmation-create-account input[type=submit],.wp-block-woocommerce-order-confirmation-create-account button[type=submit]{{background:var(--wp--preset--color--contrast);color:var(--wp--preset--color--base);border:1px solid var(--wp--preset--color--contrast);border-radius:var(--wp--custom--radius--pill);padding:var(--wp--preset--spacing--sm) var(--wp--preset--spacing--lg);font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);font-weight:var(--wp--custom--font-weight--medium);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;cursor:pointer;}}
 .woocommerce-account .woocommerce:has(>.woocommerce-MyAccount-navigation){{display:grid;grid-template-columns:220px 1fr;gap:var(--wp--preset--spacing--2-xl);}}
+/* WC ships `.woocommerce::before, ::after {{content:" "; display:table}}` as a
+   legacy clearfix. Once we flip `.woocommerce` to `display:grid`, those two
+   pseudo-elements become GRID ITEMS (one per track), so grid auto-flow places
+   ::before in cell (1,1), pushes the nav to (2,1), and wraps the content
+   pane to row 2 at column 1 — the logged-in /my-account/ view renders with
+   an empty column on the right and the dashboard cards collapsed into a
+   narrow column underneath the nav. Neutralising the clearfix only inside
+   the grid context preserves WC's default layout everywhere else. */
+.woocommerce-account .woocommerce:has(>.woocommerce-MyAccount-navigation)::before,.woocommerce-account .woocommerce:has(>.woocommerce-MyAccount-navigation)::after{{display:none;content:none;}}
+/* WC frontend.css also sets `.woocommerce-MyAccount-navigation
+   {{float:left;width:30%}}` and `.woocommerce-MyAccount-content
+   {{float:right;width:68%}}` for its legacy float-based two-col
+   layout. Those percentage widths resolve against the GRID CELL
+   when the parent becomes a grid, so the nav shrinks to 66px
+   (30% of the 220px track) and the content to ~470px (68% of the
+   692px track), leaving ~30% dead space inside each column. Reset
+   width and float inside the grid context so each child fills its
+   track. */
+.woocommerce-account .woocommerce:has(>.woocommerce-MyAccount-navigation)>.woocommerce-MyAccount-navigation,.woocommerce-account .woocommerce:has(>.woocommerce-MyAccount-navigation)>.woocommerce-MyAccount-content{{width:auto;max-width:100%;float:none;}}
+/* woocommerce-blocktheme.css caps `.woocommerce-account main .woocommerce`
+   at `max-width:1000px` (WC wants a readable form column on account / cart
+   / checkout surfaces), but it leaves the wrapper left-aligned inside the
+   `alignwide` .entry-content. At desktop widths (1200px-wide container vs
+   1000px cap) that leaves ~200px of dead space hanging off the right — the
+   literal "weird empty column" every shopper described. Centre the wrapper
+   inside its parent so the 1000px cap reads as deliberate composition
+   rather than layout bug. */
+.woocommerce-account .woocommerce:has(>.woocommerce-MyAccount-navigation){{margin-inline:auto;}}
 .woocommerce-account .woocommerce:has(>.wo-account-login-grid),.woocommerce-account .woocommerce:has(>form.woocommerce-form-login){{display:block;max-width:100%;}}
 .woocommerce-MyAccount-navigation ul{{list-style:none;padding:0;margin:0;display:grid;gap:0;}}
 .woocommerce-MyAccount-navigation li{{margin:0;}}
@@ -222,6 +250,26 @@ table.variations select:focus{{outline:none;border-color:var(--wp--preset--color
 .woocommerce-EditAccountForm label,.woocommerce-address-fields__field-wrapper label{{display:block;font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;color:var(--wp--preset--color--secondary);margin-bottom:var(--wp--preset--spacing--2-xs);}}
 .woocommerce-EditAccountForm input,.woocommerce-address-fields__field-wrapper input,.woocommerce-EditAccountForm select,.woocommerce-address-fields__field-wrapper select{{width:100%;background:var(--wp--preset--color--surface);border:1px solid var(--wp--preset--color--border);border-radius:var(--wp--custom--radius--md);padding:var(--wp--preset--spacing--sm) var(--wp--preset--spacing--md);font:inherit;color:var(--wp--preset--color--contrast);}}
 @media (max-width:720px){{.woocommerce-account .woocommerce:has(>.woocommerce-MyAccount-navigation){{grid-template-columns:1fr;}}}}
+/* Branded dashboard (wo-account-*) — the markup is emitted by every
+   theme's `// === BEGIN my-account ===` block in functions.php (see
+   obel_render_account_dashboard() and its per-theme counterparts).
+   Without CSS for these classes the dashboard paints as an unstyled
+   bulleted list of headings, which was the second half of the
+   "weird column thing" every theme inherited. */
+.wo-account-dashboard{{display:flex;flex-direction:column;gap:var(--wp--preset--spacing--xl);}}
+.wo-account-greeting{{display:flex;flex-direction:column;gap:var(--wp--preset--spacing--xs);margin:0;}}
+.wo-account-greeting__eyebrow{{font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;color:var(--wp--preset--color--secondary);margin:0;}}
+.wo-account-greeting__title{{font-family:var(--wp--preset--font-family--display);font-size:var(--wp--preset--font-size--3-xl);font-weight:var(--wp--custom--font-weight--regular);color:var(--wp--preset--color--contrast);margin:0;line-height:1.1;}}
+.wo-account-greeting__lede{{font-size:var(--wp--preset--font-size--sm);color:var(--wp--preset--color--secondary);margin:0;max-width:56ch;}}
+.wo-account-cards{{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--wp--preset--spacing--lg);}}
+@media (max-width:960px){{.wo-account-cards{{grid-template-columns:1fr;}}}}
+.wo-account-card{{display:flex;flex-direction:column;gap:var(--wp--preset--spacing--xs);padding:var(--wp--preset--spacing--lg);background:var(--wp--preset--color--surface,var(--wp--preset--color--subtle));border:1px solid var(--wp--preset--color--border);border-radius:var(--wp--custom--radius--md);margin:0;transition:border-color 160ms ease;}}
+.wo-account-card:hover{{border-color:var(--wp--preset--color--contrast);}}
+.wo-account-card__eyebrow{{font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;color:var(--wp--preset--color--secondary);margin:0;}}
+.wo-account-card__title{{font-family:var(--wp--preset--font-family--display);font-size:var(--wp--preset--font-size--xl);font-weight:var(--wp--custom--font-weight--regular);color:var(--wp--preset--color--contrast);margin:0;}}
+.wo-account-card__lede{{font-size:var(--wp--preset--font-size--sm);color:var(--wp--preset--color--secondary);margin:0;flex:1;}}
+.wo-account-card__cta{{display:inline-flex;align-items:center;gap:var(--wp--preset--spacing--2-xs);margin-top:var(--wp--preset--spacing--sm);font-family:var(--wp--preset--font-family--sans);font-size:var(--wp--preset--font-size--xs);font-weight:var(--wp--custom--font-weight--medium);letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase;color:var(--wp--preset--color--contrast);text-decoration:none;border-bottom:1px solid var(--wp--preset--color--border);padding-bottom:var(--wp--preset--spacing--2-xs);align-self:flex-start;transition:border-color 160ms ease;}}
+.wo-account-card__cta:hover{{border-bottom-color:var(--wp--preset--color--accent);border-bottom-width:2px;padding-bottom:calc(var(--wp--preset--spacing--2-xs) - 1px);}}
 {SENTINEL_CLOSE}"""
 
 

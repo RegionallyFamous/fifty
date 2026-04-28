@@ -219,7 +219,7 @@ class Cell(NamedTuple):
 
 
 def _discover_themes() -> list[str]:
-    """Return every real theme slug on disk, in a stable order.
+    """Return every `stage: shipping` theme slug on disk, in a stable order.
 
     A "real theme" is any top-level folder with BOTH `theme.json` and
     `playground/blueprint.json` — the same definition `bin/snap.py` and
@@ -227,19 +227,30 @@ def _discover_themes() -> list[str]:
     diff stability + canonical magazine-cover ordering on the gallery
     index), then append any newly-added themes alphabetically.
 
+    Incubating themes are EXCLUDED by default so a freshly-cloned theme
+    whose PNGs happen to exist in `tmp/snaps/` doesn't surface on the
+    public `demo.regionallyfamous.com/snaps/<slug>/` gallery before
+    `bin/promote-theme.py` flips its readiness to `shipping`. Operators
+    can still opt an incubating theme in explicitly via `--theme <slug>`
+    on the CLI; that path doesn't go through `_discover_themes()`.
+
     Why auto-discovery: the previous hardcoded filter silently excluded
     any theme not listed in `snap_config.THEME_ORDER`. Foundry was added
     to the repo after that list was written, so its Playground booted,
     its PNGs were shot, and its `theme.json` passed every check — but
     the snap gallery skipped it entirely, leaving users with a
     five-theme picker that pretended foundry didn't exist. Auto-discovery
-    means "every theme on disk ships on demo.regionallyfamous.com/snaps/"
+    means "every SHIPPING theme on disk ships on demo.regionallyfamous.com/snaps/"
     is the default, and no maintenance commit is required when a new
     theme lands."""
+    sys.path.insert(0, str(ROOT / "bin"))
+    from _readiness import STAGE_SHIPPING, load_readiness  # local import to avoid cycles
+
     have = {
         p.parent.name
         for p in ROOT.glob("*/theme.json")
         if (p.parent / "playground" / "blueprint.json").exists()
+        and load_readiness(p.parent).stage == STAGE_SHIPPING
     }
     ordered = [t for t in THEME_ORDER if t in have]
     extras = sorted(have - set(ordered))

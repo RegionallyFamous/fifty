@@ -2043,6 +2043,125 @@ def check_no_fake_forms() -> Result:
     return r
 
 
+def check_modern_blocks_only() -> Result:
+    """Fail if any `templates/`, `parts/`, or `patterns/` file uses a
+    forbidden legacy block (`core/html` except narrow SVG escapes,
+    `core/shortcode`, `core/freeform`) or any WooCommerce shortcode
+    the monorepo's hard-rule #4 forbids.
+
+    Context
+    -------
+    The `build-block-theme-variant` skill has long asked agents to
+    manually run three `grep -rE` commands before declaring a theme
+    done. The skill's checklist said to run these greps, but nothing
+    automated enforced them — so the "I forgot to grep" class of
+    regression was always latent. This check folds those three greps
+    into a real static gate, so "done" implies the same contract
+    regardless of whether an agent remembered to run the checklist.
+
+    What's forbidden
+    ----------------
+    1. `<!-- wp:html -->`, `<!-- wp:shortcode -->`, `<!-- wp:freeform -->`
+       in `templates/`, `parts/`, or `patterns/`. (core/html is allowed
+       narrowly inside `patterns/` for inline decorative SVG — see the
+       SVG escape carve-out in the skill; we detect that here by
+       confirming the block body looks like pure `<svg ...>…</svg>`
+       with no `<form>` / `<iframe>` / `<script>`.)
+    2. Legacy WooCommerce page shortcodes: `[woocommerce_cart]`,
+       `[woocommerce_checkout]`, `[woocommerce_my_account]`,
+       `[woocommerce_order_tracking]`. The monorepo ships block-based
+       equivalents for every one of these.
+    3. Legacy WooCommerce catalogue shortcodes: `[products]`,
+       `[product_category]`, `[recent_products]`, `[featured_products]`,
+       `[sale_products]`, `[product_page]`, `[add_to_cart]`,
+       `[shop_messages]`. Every one has a `woocommerce/*` block
+       counterpart.
+    """
+    r = Result("Only modern blocks (no legacy wp:html/shortcode/freeform or WC shortcodes)")
+    scan_dirs = ("templates", "parts", "patterns")
+    files: list[Path] = []
+    for d in scan_dirs:
+        base = ROOT / d
+        if base.is_dir():
+            files.extend(p for p in base.rglob("*.html") if p.is_file())
+            files.extend(p for p in base.rglob("*.php") if p.is_file())
+    if not files:
+        r.skip("no template/part/pattern files")
+        return r
+
+    legacy_block_re = re.compile(
+        r"<!--\s*wp:(html|shortcode|freeform)\b",
+        re.IGNORECASE,
+    )
+    html_block_body_re = re.compile(
+        r"<!--\s*wp:html\s*-->(.*?)<!--\s*/wp:html\s*-->",
+        re.DOTALL | re.IGNORECASE,
+    )
+    wc_page_shortcode_re = re.compile(
+        r"\[woocommerce_(cart|checkout|my_account|order_tracking)\b",
+        re.IGNORECASE,
+    )
+    wc_catalogue_shortcode_re = re.compile(
+        r"\[(products|product_category|recent_products|featured_products|"
+        r"sale_products|product_page|add_to_cart|shop_messages)\b",
+        re.IGNORECASE,
+    )
+    danger_inside_svg_re = re.compile(
+        r"<(?:form|iframe|script|input|button)\b",
+        re.IGNORECASE,
+    )
+
+    for path in files:
+        rel = path.relative_to(ROOT).as_posix()
+        text = path.read_text(encoding="utf-8", errors="replace")
+
+        for m in legacy_block_re.finditer(text):
+            kind = m.group(1).lower()
+            lineno = text.count("\n", 0, m.start()) + 1
+            if kind == "html":
+                body_match = html_block_body_re.search(text, m.start())
+                body = body_match.group(1) if body_match else ""
+                body_stripped = body.strip()
+                has_svg = body_stripped.lower().startswith(("<svg", "<!--"))
+                has_danger = bool(danger_inside_svg_re.search(body))
+                if "<svg" in body_stripped.lower() and not has_danger and has_svg:
+                    continue
+            r.fail(
+                f"{rel}:{lineno}: legacy wp:{kind} block is forbidden "
+                "(hard rule #4: only core/* and woocommerce/* blocks). "
+                + (
+                    "core/html is permitted narrowly for a pure "
+                    "decorative SVG — no <form>/<iframe>/<script>/"
+                    "<input>/<button> allowed in the body."
+                    if kind == "html" else
+                    "Replace with the appropriate core/* block."
+                )
+            )
+
+        for m in wc_page_shortcode_re.finditer(text):
+            lineno = text.count("\n", 0, m.start()) + 1
+            r.fail(
+                f"{rel}:{lineno}: legacy WC page shortcode "
+                f"`[woocommerce_{m.group(1)}]`. Use the block equivalent "
+                f"(woocommerce/cart, woocommerce/checkout, "
+                f"woocommerce/customer-account, etc)."
+            )
+
+        for m in wc_catalogue_shortcode_re.finditer(text):
+            lineno = text.count("\n", 0, m.start()) + 1
+            r.fail(
+                f"{rel}:{lineno}: legacy WC catalogue shortcode "
+                f"`[{m.group(1)}]`. Use `woocommerce/product-collection` "
+                f"with the appropriate filters."
+            )
+
+    if r.passed:
+        r.details.append(
+            f"{len(files)} template/part/pattern file(s) scanned; no legacy blocks or shortcodes"
+        )
+    return r
+
+
 def check_swatch_js_targets_real_select() -> Result:
     """The variation-swatch JS shim in `functions.php` must target the
     real hidden `<select>` that WooCommerce emits -- not a phantom
@@ -2209,6 +2328,527 @@ def check_no_empty_cover_blocks() -> Result:
 
     if r.passed:
         r.details.append(f"{len(files)} pattern/template/part file(s) scanned; no empty wp:cover blocks")
+    return r
+
+
+def check_product_terms_query_show_nested() -> Result:
+    """Fail if any `wp:terms-query` for `product_cat` declares
+    `showNested:false` without an explicit `include` filter.
+
+    THE SELVEDGE FAIL MODE
+    ----------------------
+    All canonical demo product categories live under a top-level `Shop`
+    parent (`Shop > Tools`, `Shop > Sundries`, etc.). When a
+    `core/terms-query` block walks the `product_cat` taxonomy with
+    `showNested:false`, the WP loop only emits the top-level term --
+    so a "Shop by Trade" / "Shop by Category" surface that should
+    list 5+ children renders as a single tile linking to `/shop/`.
+
+    The fix is to set `showNested:true` (so children are included),
+    or to explicitly filter `include` to the curated subset the design
+    actually wants. Anything else is almost certainly a paste-from-
+    obel bug because obel's category seeding is flat.
+
+    What's allowed:
+      * `wp:terms-query` blocks for non-`product_cat` taxonomies (post
+        category, tag, navigation menu) -- those don't share the
+        nested structure.
+      * `wp:terms-query` blocks that declare an explicit `include`
+        array -- the author has hand-picked the terms.
+      * `wp:terms-query` blocks where `showNested:true` (or the key
+        is omitted; WP's default depends on the block but most setups
+        treat omission as "show nested").
+
+    What's NOT allowed:
+      * `wp:terms-query` for `product_cat` with `showNested:false`
+        AND no `include` filter -- the block will silently render a
+        single category tile.
+    """
+    r = Result("`wp:terms-query` for product_cat must show nested categories")
+
+    terms_query_re = re.compile(r"<!--\s*wp:terms-query\s*(\{.*?\})\s*-->", re.DOTALL)
+    skip_dirs = ("templates/", "parts/", "patterns/")
+    files: list[Path] = []
+    for path in iter_files((".html", ".php")):
+        rel = path.relative_to(ROOT).as_posix()
+        if any(rel.startswith(d) for d in skip_dirs):
+            files.append(path)
+
+    for path in files:
+        rel = path.relative_to(ROOT).as_posix()
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for m in terms_query_re.finditer(text):
+            attrs_blob = m.group(1)
+            if '"product_cat"' not in attrs_blob:
+                continue
+            if re.search(r'"showNested"\s*:\s*true', attrs_blob):
+                continue
+            include_match = re.search(r'"include"\s*:\s*\[([^\]]*)\]', attrs_blob)
+            if include_match and include_match.group(1).strip():
+                continue
+            if not re.search(r'"showNested"\s*:\s*false', attrs_blob):
+                continue
+            lineno = text.count("\n", 0, m.start()) + 1
+            r.fail(
+                f"{rel}:{lineno}: `wp:terms-query` for `product_cat` has "
+                f"`showNested:false` but no explicit `include` filter. "
+                f"Demo product categories live under the `Shop` parent, "
+                f"so this block will render a single tile instead of the "
+                f"sub-category grid the design wants. Set "
+                f"`\"showNested\":true` or add `\"include\":[<term-ids>]` "
+                f"with the curated subset."
+            )
+
+    if r.passed:
+        r.details.append(
+            f"{len(files)} pattern/template/part file(s) scanned; "
+            f"no product_cat terms-query with hidden nesting"
+        )
+    return r
+
+
+def check_no_large_placeholder_groups() -> Result:
+    """Fail if a front-page template renders a large `wp:group` whose only
+    visible content is a single decorative glyph/icon paragraph and no
+    image, media, query, pattern, or product block.
+
+    THE CHONK FAIL MODE
+    -------------------
+    `check_no_empty_cover_blocks` only flags `wp:cover` voids. The
+    chonk hero shipped a giant `wp:group` containing a 7-xl glyph
+    paragraph (e.g. `◳`) inside a heavy-bordered card -- the
+    rendered page showed an empty cream box with a single Unicode
+    character because no image was present. Visually identical to
+    the empty-cover bug, but a different block name slipped past the
+    cover gate.
+
+    The check looks for `wp:group` blocks whose author intent is
+    clearly "a hero card holding a featured image / pattern" but
+    whose body has no image, media, query, pattern, or product
+    descendant -- only paragraphs (the placeholder glyph + a
+    sticker label).
+
+    Heuristic:
+      * Group block lives in `templates/front-page.html` (the only
+        place an empty hero is catastrophically visible).
+      * Group has padding token `2-xl` or larger, OR explicit border
+        width >= `thick`, OR a shadow attribute -- i.e. it's an
+        intentional card surface, not a layout wrapper.
+      * Group's inner blocks contain ONLY `wp:paragraph`,
+        `wp:heading`, `wp:spacer`, or `wp:separator` -- no
+        `wp:image`, `wp:cover`, `wp:gallery`, `wp:media-text`,
+        `wp:video`, `wp:embed`, `wp:pattern`, `wp:query`,
+        `wp:woocommerce/*`, or `wp:post-featured-image`.
+    """
+    r = Result(
+        "Front-page hero `wp:group` cards must contain an image, "
+        "pattern, or media block (no glyph-only placeholder hero)"
+    )
+
+    front = ROOT / "templates" / "front-page.html"
+    if not front.is_file():
+        r.skip("no templates/front-page.html in this theme")
+        return r
+
+    text = front.read_text(encoding="utf-8", errors="replace")
+
+    media_block_re = re.compile(
+        r"<!--\s*wp:("
+        r"image|cover|gallery|media-text|video|embed|pattern|query|"
+        r"post-featured-image|woocommerce/[A-Za-z0-9_-]+|"
+        r"latest-posts|featured-content|terms-query"
+        r")\b"
+    )
+
+    # Hand-rolled brace-balanced parser for `wp:group` attribute JSON --
+    # nested objects (style.border.color, style.spacing.padding) make a
+    # `[^}]*` regex incorrect.
+    def _parse_group_open(s: str, start: int) -> tuple[int, str] | None:
+        m = re.compile(r"<!--\s*wp:group(\s*)").match(s, start)
+        if not m:
+            return None
+        i = m.end()
+        attrs = ""
+        if i < len(s) and s[i] == "{":
+            depth = 0
+            in_str = False
+            esc = False
+            j = i
+            while j < len(s):
+                ch = s[j]
+                if in_str:
+                    if esc:
+                        esc = False
+                    elif ch == "\\":
+                        esc = True
+                    elif ch == '"':
+                        in_str = False
+                else:
+                    if ch == '"':
+                        in_str = True
+                    elif ch == "{":
+                        depth += 1
+                    elif ch == "}":
+                        depth -= 1
+                        if depth == 0:
+                            j += 1
+                            break
+                j += 1
+            attrs = s[i:j]
+            i = j
+        rest = re.compile(r"\s*-->").match(s, i)
+        if not rest:
+            return None
+        return rest.end(), attrs
+
+    pos = 0
+    findings = 0
+    open_re = re.compile(r"<!--\s*wp:group\b")
+    while True:
+        om = open_re.search(text, pos)
+        if not om:
+            break
+        parsed = _parse_group_open(text, om.start())
+        if not parsed:
+            pos = om.end()
+            continue
+        body_start, attrs_blob = parsed
+        depth = 1
+        cursor = body_start
+        block_close_re = re.compile(r"<!--\s*(/wp:group|wp:group\b)")
+        end_pos = -1
+        while depth > 0:
+            inner = block_close_re.search(text, cursor)
+            if not inner:
+                break
+            tag = inner.group(1)
+            if tag.startswith("/wp:group"):
+                depth -= 1
+                if depth == 0:
+                    close_end = text.find("-->", inner.end())
+                    if close_end < 0:
+                        break
+                    end_pos = close_end + 3
+                    break
+                cursor = inner.end()
+            else:
+                nested = _parse_group_open(text, inner.start())
+                if nested:
+                    cursor = nested[0]
+                    depth += 1
+                else:
+                    cursor = inner.end()
+        if end_pos < 0:
+            pos = om.end()
+            continue
+        body = text[body_start:end_pos]
+
+        is_card = (
+            "2-xl" in attrs_blob or "3-xl" in attrs_blob or "4-xl" in attrs_blob
+            or '"shadow"' in attrs_blob
+            or "width|thick" in attrs_blob
+            or ('"border"' in attrs_blob and '"width"' in attrs_blob)
+        )
+        if not is_card:
+            pos = end_pos
+            continue
+        if media_block_re.search(body):
+            pos = end_pos
+            continue
+        char_text = re.findall(r">([^<>]+)<", body)
+        non_ws_chars = "".join(c for c in "".join(char_text) if not c.isspace())
+        if len(non_ws_chars) > 60:
+            pos = end_pos
+            continue
+
+        lineno = text.count("\n", 0, om.start()) + 1
+        r.fail(
+            f"templates/front-page.html:{lineno}: large `wp:group` card "
+            f"(padding/shadow/thick-border) contains no image, pattern, "
+            f"or media block -- visible characters: {non_ws_chars[:60]!r}. "
+            f"This renders as an empty card with at most a glyph "
+            f"placeholder. Add a `<!-- wp:image -->` (resolved via "
+            f"`get_theme_file_uri()` in a `.php` pattern), a "
+            f"`<!-- wp:pattern {{\"slug\":\"...\"}} /-->`, or a "
+            f"`<!-- wp:woocommerce/product-image -->` block."
+        )
+        findings += 1
+        if findings >= 5:
+            break
+        pos = end_pos
+
+    if r.passed:
+        r.details.append("front-page.html scanned; no glyph-only hero placeholder groups")
+    return r
+
+
+def check_product_image_visual_diversity() -> Result:
+    """Warn if any two `product-wo-*.jpg` photographs inside a single
+    theme are perceptually near-identical (visually so similar that the
+    catalogue reads as the same image with different filenames).
+
+    THE FOUNDRY FAIL MODE
+    ---------------------
+    `check_product_images_unique_across_themes` already catches
+    cross-theme byte-for-byte copies. But generators can produce a
+    set of 30 product photographs that are byte-unique (different
+    JPEG compression artifacts, different filenames) yet visually
+    repetitive -- the same camera angle, the same prop arrangement,
+    the same lighting, the same subject framed slightly differently.
+    Visually a shopper sees "this brand has one product photographed
+    30 times".
+
+    This check uses an ahash-style perceptual hash (8x8 average-hash
+    on the luminance channel, no PIL dependency required) and emits
+    a WARN-tier finding when any pair has Hamming distance <= 8 bits
+    (out of 64), i.e. when at least 56 of 64 sampled cells agree.
+    Empirically that threshold catches near-duplicates while letting
+    the same hand-built sticker on three different products through.
+
+    The check is opt-in: it requires Pillow (PIL). When PIL isn't
+    available it skips with a hint rather than failing -- the
+    project's pyproject pins Pillow but pre-commit hooks may run in
+    a stripped venv where the import fails.
+    """
+    r = Result("Product photographs are visually distinct within a theme")
+    images_dir = ROOT / "playground" / "images"
+    if not images_dir.is_dir():
+        r.skip("no playground/images/ directory")
+        return r
+    products = sorted(images_dir.glob("product-wo-*.jpg"))
+    if len(products) < 2:
+        r.skip("fewer than 2 product photographs to compare")
+        return r
+
+    try:
+        from PIL import Image  # type: ignore[import-untyped]
+    except ImportError:
+        r.skip("Pillow (PIL) not available; install pillow to run perceptual diff")
+        return r
+
+    def ahash(path: Path) -> int:
+        with Image.open(path) as im:
+            small = im.convert("L").resize((8, 8), Image.Resampling.LANCZOS)
+            pixels = list(small.getdata())
+        avg = sum(pixels) / 64.0
+        bits = 0
+        for i, p in enumerate(pixels):
+            if p >= avg:
+                bits |= 1 << i
+        return bits
+
+    hashes: list[tuple[str, int]] = []
+    for p in products:
+        try:
+            hashes.append((p.name, ahash(p)))
+        except OSError:
+            continue
+
+    near_dupes: list[tuple[str, str, int]] = []
+    for i in range(len(hashes)):
+        for j in range(i + 1, len(hashes)):
+            name_a, h_a = hashes[i]
+            name_b, h_b = hashes[j]
+            dist = bin(h_a ^ h_b).count("1")
+            # Threshold is 5 bits (out of 64). 0-2 bits is functionally
+            # the same image; 3-5 catches the same staging with a
+            # different prop swap (the failure mode foundry shipped);
+            # 6-9 starts to bleed into legitimate "same brand voice,
+            # different subject" pairs and produces too much noise.
+            if dist <= 5:
+                near_dupes.append((name_a, name_b, dist))
+
+    if near_dupes:
+        sample = near_dupes[:5]
+        more = f" (+{len(near_dupes) - 5} more)" if len(near_dupes) > 5 else ""
+        details = "; ".join(f"{a} ~ {b} (Hamming {d}/64)" for a, b, d in sample)
+        verdict_note = ""
+        if os.environ.get("FIFTY_JUDGMENT_ENABLED") == "1":
+            # The flexible-judgment opt-in: instead of unconditionally
+            # failing on a pHash distance <=5, ask the LLM whether the
+            # near-duplicates are genuinely the same staging or two
+            # distinct products that happen to share a camera angle.
+            # The cache is keyed on the image bytes, so a re-shoot with
+            # unchanged files short-circuits without re-billing.
+            try:
+                sys.path.insert(0, str(Path(__file__).resolve().parent))
+                from _judgment_lib import ask_judgment
+                # Flatten the sample pairs into an ordered image list
+                # (A0, B0, A1, B1, ...) so the model sees each pair
+                # adjacent in content blocks. The ahash-flagged sample
+                # is capped at 5 pairs upstream so we send at most 10
+                # images — well under Anthropic's per-request image cap
+                # and the daily budget guard.
+                pair_images: list[Path] = []
+                for a, b, _ in sample:
+                    pair_images.append(images_dir / a)
+                    pair_images.append(images_dir / b)
+                answer = ask_judgment(
+                    theme_slug=ROOT.name,
+                    question_id="product-image-diversity",
+                    system_prompt=(
+                        "You are auditing a shop catalogue's product "
+                        "photographs. A perceptual hash (ahash) flagged "
+                        "these pairs as near-identical. The images are "
+                        "attached in pairs (image 1 & 2 are the first "
+                        "pair, 3 & 4 the second, and so on). Decide "
+                        "whether each pair shows distinct products/"
+                        "compositions (pass) or the same staging with "
+                        "a different label (fail). Look at lighting, "
+                        "camera angle, props, product silhouette, and "
+                        "the product itself. Low confidence -> needs_human."
+                    ),
+                    user_prompt=(
+                        f"Theme: {ROOT.name}\n"
+                        f"Near-duplicate pairs (Hamming <=5 / 64), in "
+                        f"the order of the attached images:\n"
+                        + "\n".join(
+                            f"  - pair {i + 1}: {a} vs {b} (distance {d})"
+                            for i, (a, b, d) in enumerate(sample)
+                        )
+                    ),
+                    image_paths=pair_images,
+                )
+                if answer.passed:
+                    verdict_note = (
+                        f"\nLLM judgment: PASS (confidence "
+                        f"{answer.confidence:.2f}): {answer.rationale}"
+                    )
+                    r.details.append(verdict_note.strip())
+                    return r
+                verdict_note = (
+                    f"\nLLM judgment: {answer.verdict.upper()} "
+                    f"(confidence {answer.confidence:.2f}): "
+                    f"{answer.rationale}"
+                )
+            except Exception as exc:
+                verdict_note = (
+                    f"\nLLM judgment: unavailable ({exc!r}); "
+                    "falling back to deterministic hard fail."
+                )
+        r.fail(
+            f"{len(near_dupes)} pair(s) of product photographs are "
+            f"perceptually near-identical: {details}{more}. The catalogue "
+            f"will read as 'one product, 30 labels'. Regenerate the "
+            f"duplicates with different camera angles, props, or staging "
+            f"so each parent SKU has a visually distinct portrait."
+            + verdict_note
+        )
+        return r
+
+    r.details.append(
+        f"{len(hashes)} product photograph(s) compared pairwise; "
+        f"no perceptual near-duplicates"
+    )
+    return r
+
+
+def check_product_images_json_complete() -> Result:
+    """Fail if a theme ships per-theme `product-wo-*.jpg` photographs
+    without a `playground/content/product-images.json` mapping.
+
+    `playground/wo-configure.php` reads `product-images.json` (when
+    present) at boot to look up which file to attach to each parent
+    WC SKU. Without the map, the per-theme photographs sit on disk
+    unused and the products fall back to the upstream cartoon PNGs
+    (or to whatever the CSV references). Symptom on the live demo:
+    the catalogue grid renders a mix of bespoke per-theme photos
+    (from the slugs the seeder hardcoded) and stale upstream
+    placeholders (everything else).
+
+    The map is required if (and only if) the theme has any
+    `product-wo-*.jpg` files and a `playground/blueprint.json`. If
+    a theme deliberately has no photographs yet (incubating) it
+    can ship without the map; the seeder will use upstream art.
+    """
+    r = Result("`playground/content/product-images.json` covers every product photograph")
+    bp = ROOT / "playground" / "blueprint.json"
+    if not bp.exists():
+        r.skip("no playground/blueprint.json (theme without a Playground demo)")
+        return r
+    images_dir = ROOT / "playground" / "images"
+    if not images_dir.is_dir():
+        r.skip("no playground/images/ directory")
+        return r
+    photos = sorted(images_dir.glob("product-wo-*.jpg"))
+    if not photos:
+        r.skip("no product-wo-*.jpg photographs found")
+        return r
+
+    map_path = ROOT / "playground" / "content" / "product-images.json"
+    if not map_path.is_file():
+        r.fail(
+            f"theme ships {len(photos)} `product-wo-*.jpg` "
+            f"photograph(s) but `playground/content/product-images.json` "
+            f"is missing. `playground/wo-configure.php` reads that map "
+            f"at boot to attach each parent SKU's thumbnail; without "
+            f"it the per-theme photographs sit unused and the catalogue "
+            f"renders the upstream cartoon placeholders. Create the "
+            f"map (SKU -> filename) -- see "
+            f"`.cursor/rules/playground-imagery.mdc` for the canonical "
+            f"shape and `obel/playground/content/product-images.json` "
+            f"for an example."
+        )
+        return r
+
+    try:
+        data = json.loads(map_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        r.fail(
+            f"playground/content/product-images.json is unreadable: {e}. "
+            f"Regenerate it from a fresh `bin/seed-playground-content.py "
+            f"--theme {ROOT.name} --force` run."
+        )
+        return r
+
+    if not isinstance(data, dict) or not data:
+        r.fail(
+            "playground/content/product-images.json is empty or not "
+            "a SKU->filename object. Regenerate it; see "
+            "`.cursor/rules/playground-imagery.mdc` for the shape."
+        )
+        return r
+
+    photo_names = {p.name for p in photos}
+    referenced = {v for v in data.values() if isinstance(v, str)}
+    missing_on_disk = sorted(referenced - photo_names)
+    unreferenced = sorted(photo_names - referenced)
+    problems: list[str] = []
+    if missing_on_disk:
+        head = ", ".join(missing_on_disk[:5])
+        more = (
+            f" (+{len(missing_on_disk) - 5} more)"
+            if len(missing_on_disk) > 5
+            else ""
+        )
+        problems.append(
+            f"{len(missing_on_disk)} filename(s) listed in the map but "
+            f"missing from playground/images/: {head}{more}"
+        )
+    if unreferenced:
+        head = ", ".join(unreferenced[:5])
+        more = (
+            f" (+{len(unreferenced) - 5} more)"
+            if len(unreferenced) > 5
+            else ""
+        )
+        problems.append(
+            f"{len(unreferenced)} photograph(s) on disk that no SKU "
+            f"references in the map: {head}{more}"
+        )
+    if problems:
+        r.fail(
+            "product-images.json is out of sync with playground/images/: "
+            + "; ".join(problems)
+            + ". Re-run `python3 bin/seed-playground-content.py --theme "
+            + ROOT.name + " --force` to rebuild the map."
+        )
+        return r
+
+    r.details.append(
+        f"product-images.json maps {len(data)} SKU(s); every entry "
+        f"resolves to an on-disk photograph"
+    )
     return r
 
 
@@ -3563,13 +4203,19 @@ def check_disabled_atc_button_styled_per_theme() -> Result:
         r.skip("no top-level styles.css")
         return r
 
-    # Identify which theme dir we're in -- slug comes from the
-    # parent directory name (one of the six known theme slugs) so we
-    # don't have to parse style.css.
+    # Identify which theme dir we're in via the directory name. Any
+    # theme that ships a `single-product.html` template AND a
+    # top-level `styles.css` with WC chrome is expected to paint the
+    # disabled-ATC state per-theme. Previously the check hardcoded the
+    # set of six original themes, which silently skipped every new
+    # theme (basalt, etc.). Switching to a presence check means every
+    # theme is gated.
     slug = ROOT.name.lower()
-    KNOWN = {"chonk", "lysholm", "obel", "selvedge", "foundry", "aero"}
-    if slug not in KNOWN:
-        r.skip(f"theme dir `{slug}` is not one of the six known shopper themes")
+    has_pdp = (ROOT / "single-product.html").is_file() or (
+        ROOT / "templates" / "single-product.html"
+    ).is_file()
+    if not has_pdp:
+        r.skip(f"theme `{slug}` has no single-product.html — no PDP to gate")
         return r
 
     css_no_comments = re.sub(r"/\*.*?\*/", " ", top_css, flags=re.S)
@@ -6117,10 +6763,16 @@ def check_product_reviews_uses_inner_blocks_not_legacy_render() -> Result:
     r = Result("Product-reviews block uses modern inner-block structure")
 
     theme_slug = ROOT.name.lower()
-    KNOWN = {"chonk", "lysholm", "obel", "selvedge", "foundry", "aero"}
-    if theme_slug not in KNOWN:
+    # Previously this hardcoded the six shipped theme slugs, which
+    # silently skipped every new theme. Switch to a presence check on
+    # a `single-product.html` template so every theme with a PDP gets
+    # gated against the legacy-render regression.
+    has_pdp = (ROOT / "templates" / "single-product.html").is_file() or (
+        ROOT / "single-product.html"
+    ).is_file()
+    if not has_pdp:
         r.skip(
-            f"theme dir `{theme_slug}` is not one of the six known shopper themes"
+            f"theme `{theme_slug}` has no single-product.html — no PDP to gate"
         )
         return r
 
@@ -9222,8 +9874,13 @@ def _build_results(offline: bool) -> list[Result]:
         check_bordered_group_text_has_explicit_color(),
         check_block_text_contrast(),
         check_no_fake_forms(),
+        check_modern_blocks_only(),
         check_swatch_js_targets_real_select(),
         check_no_empty_cover_blocks(),
+        check_product_terms_query_show_nested(),
+        check_no_large_placeholder_groups(),
+        check_product_image_visual_diversity(),
+        check_product_images_json_complete(),
         check_no_duplicate_templates(),
         check_no_duplicate_stock_indicator(),
         check_archive_sort_dropdown_styled(),

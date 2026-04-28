@@ -19,6 +19,11 @@ Subcommands
     finish <slug> [--keep] [--push]  Push the branch (if --push), open
                                      a PR (gh), and (unless --keep)
                                      `git worktree remove` it.
+    prune [--dry-run] [--remote]     Delete local worktrees (and
+                                     optionally remote branches) whose
+                                     PR is merged or closed. Safe to
+                                     run at any time; prints a summary
+                                     of what it removed.
     warn-if-racing                    Soft warning used by .githooks/
                                      pre-commit: prints to stderr if
                                      CWD is the shared root AND any
@@ -34,6 +39,10 @@ Examples
 
     # When the task is done:
     python3 bin/agent-worktree.py finish closed-loop-phases23 --push
+
+    # Clean up merged/closed branches (dry run first):
+    python3 bin/agent-worktree.py prune --dry-run
+    python3 bin/agent-worktree.py prune --remote
 
 The script is intentionally NOT a wrapper around `move_agent_to_root`
 itself -- that is an MCP tool and must be invoked by the LLM, not by
@@ -245,6 +254,150 @@ def cmd_finish(args: argparse.Namespace) -> int:
     return 0
 
 
+def _gh_pr_state(branch: str) -> str | None:
+    """Return 'MERGED', 'CLOSED', 'OPEN', or None if gh is unavailable / no PR."""
+    if not shutil.which("gh"):
+        return None
+    res = subprocess.run(
+        ["gh", "pr", "list", "--state", "all", "--head", branch,
+         "--json", "state", "--limit", "1"],
+        capture_output=True, text=True, check=False,
+    )
+    if res.returncode != 0:
+        return None
+    try:
+        data = json.loads(res.stdout)
+        return data[0]["state"] if data else None
+    except (json.JSONDecodeError, KeyError, IndexError):
+        return None
+
+
+def cmd_prune(args: argparse.Namespace) -> int:
+    """Remove local worktrees (and optionally remote branches) that are done.
+
+    A branch is considered done when its PR is MERGED or CLOSED, or when
+    the branch has been fully merged into the remote default branch and
+    has no open PR.
+
+    With --remote, also deletes the remote branch on origin.
+    With --dry-run, prints what *would* be removed without touching anything.
+    """
+    dry = args.dry_run
+
+    # 1. Collect all agent/* remote branches git knows about locally.
+    fetch_res = _git("fetch", "--prune", check=False)
+    if fetch_res.returncode != 0:
+        print("warning: git fetch --prune failed; working from local cache.",
+              file=sys.stderr)
+
+    remote_refs = _git("branch", "-r").stdout.splitlines()
+    remote_branches = [
+        r.strip().removeprefix("origin/")
+        for r in remote_refs
+        if r.strip().startswith("origin/agent/")
+    ]
+
+    # 2. Also check every local agent/* worktree branch.
+    local_branches: set[str] = set()
+    for w in _agent_worktrees():
+        b = (w.get("branch") or "").removeprefix("refs/heads/")
+        if b.startswith("agent/"):
+            local_branches.add(b)
+
+    all_branches = sorted(set(remote_branches) | local_branches)
+
+    if not all_branches:
+        print("Nothing to prune — no agent/* branches found.")
+        return 0
+
+    removed_worktrees: list[str] = []
+    removed_remote: list[str] = []
+    skipped: list[str] = []
+
+    default_branch = _git(
+        "rev-parse", "--abbrev-ref", "origin/HEAD", check=False
+    ).stdout.strip().removeprefix("origin/") or "main"
+
+    for branch in all_branches:
+        state = _gh_pr_state(branch)
+
+        # Fallback: if no gh or no PR, check if branch tip is an ancestor
+        # of the remote default branch (i.e. already merged).
+        if state is None or state == "OPEN":
+            merge_check = _git(
+                "merge-base", "--is-ancestor",
+                f"origin/{branch}", f"origin/{default_branch}",
+                check=False,
+            )
+            if state == "OPEN":
+                # Branch has open PR — keep it.
+                skipped.append(f"{branch}  [OPEN PR — kept]")
+                continue
+            if merge_check.returncode == 0:
+                state = "MERGED"
+            else:
+                skipped.append(f"{branch}  [no PR, not merged — kept]")
+                continue
+
+        if state not in ("MERGED", "CLOSED"):
+            skipped.append(f"{branch}  [{state} — kept]")
+            continue
+
+        label = f"[{state}]"
+
+        # Remove local worktree if it exists.
+        slug = branch.removeprefix("agent/")
+        wt_path = WORKTREES_ROOT / slug
+        if wt_path.exists():
+            if dry:
+                print(f"  would remove worktree: {wt_path}  {label}")
+            else:
+                rm = _git("worktree", "remove", "--force", str(wt_path), check=False)
+                if rm.returncode == 0:
+                    print(f"  removed worktree: {wt_path}  {label}")
+                    removed_worktrees.append(str(wt_path))
+                else:
+                    print(f"  warning: could not remove {wt_path}: {rm.stderr.strip()}",
+                          file=sys.stderr)
+
+        # Delete remote branch if requested.
+        if args.remote and branch in remote_branches:
+            if dry:
+                print(f"  would delete remote: origin/{branch}  {label}")
+            else:
+                del_res = subprocess.run(
+                    ["gh", "api", "-X", "DELETE",
+                     f"repos/RegionallyFamous/fifty/git/refs/heads/{branch}"],
+                    capture_output=True, text=True, check=False,
+                )
+                if del_res.returncode == 0:
+                    print(f"  deleted remote: origin/{branch}  {label}")
+                    removed_remote.append(branch)
+                else:
+                    print(
+                        f"  warning: could not delete origin/{branch}: "
+                        f"{del_res.stderr.strip()}",
+                        file=sys.stderr,
+                    )
+
+    if skipped:
+        print("\nKept:")
+        for s in skipped:
+            print(f"  {s}")
+
+    if dry:
+        print("\n(dry run — nothing was modified; re-run without --dry-run to apply)")
+    else:
+        total = len(removed_worktrees) + len(removed_remote)
+        print(f"\nPruned {total} item(s): "
+              f"{len(removed_worktrees)} worktree(s), "
+              f"{len(removed_remote)} remote branch(es).")
+        if removed_worktrees or removed_remote:
+            _git("fetch", "--prune", check=False)
+
+    return 0
+
+
 def cmd_warn_if_racing(args: argparse.Namespace) -> int:
     """Soft warning used by .githooks/pre-commit (rule #20).
 
@@ -309,6 +462,20 @@ def main(argv: list[str]) -> int:
     sp.add_argument("--body", default=None,
                     help="PR body markdown (default: a one-liner mentioning the branch).")
     sp.set_defaults(func=cmd_finish)
+
+    sp = sub.add_parser(
+        "prune",
+        help="Remove merged/closed worktrees (and optionally their remote branches).",
+    )
+    sp.add_argument(
+        "--dry-run", action="store_true",
+        help="Print what would be removed without actually doing it.",
+    )
+    sp.add_argument(
+        "--remote", action="store_true",
+        help="Also delete the remote branch on origin for each pruned worktree.",
+    )
+    sp.set_defaults(func=cmd_prune)
 
     sp = sub.add_parser("warn-if-racing",
                         help="(internal) soft warning for the pre-commit hook.")

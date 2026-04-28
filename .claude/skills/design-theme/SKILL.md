@@ -110,16 +110,48 @@ Dry-run parses the spec, validates every field, prints a one-line summary, and e
 python3 bin/design.py --spec tmp/<slug>.json
 ```
 
-The orchestrator runs phases A-F:
+The orchestrator runs the following phases, in order. This list must
+stay in sync with `PHASES` in `bin/design.py` — if you edit one, audit
+the other. `tests/tools/test_design_phases.py::test_skill_phases_match_code`
+snapshots the canonical list and fails loudly on drift.
 
-| Phase | Action | Failure mode |
-|-------|--------|--------------|
-| **validate** | Re-validate (no-op if dry-run already passed) | Same errors as step 2 |
-| **clone** | `bin/clone.py <slug> --source <source>` | Refuses if `<slug>/` already exists; pass `--skip-clone` to operate on it |
-| **apply** | Mutates `<slug>/theme.json` (palette + fonts) and writes `<slug>/BRIEF.md` | JSON parse error on theme.json |
-| **seed** | `bin/seed-playground-content.py --theme <slug>` | Soft fail (warns, continues) |
-| **sync** | `bin/sync-playground.py` (refreshes blueprints across all themes) | Hard fail |
-| **check** | `bin/check.py <slug> --quick` | Default informational; `--strict` to fail |
+| # | Phase | Action | Failure mode |
+|---|-------|--------|--------------|
+| 1 | **validate** | Re-validate the spec (no-op if `--dry-run` passed already) | Same errors as step 2 |
+| 2 | **clone** | `bin/clone.py <slug> --source <source>` + reset `readiness.json` to `incubating` | Refuses if `<slug>/` already exists; pass `--skip-clone` to operate on it |
+| 3 | **apply** | Mutates `<slug>/theme.json` (palette + fonts) and writes `<slug>/BRIEF.md` | JSON parse error on theme.json |
+| 4 | **contrast** | `bin/autofix-contrast.py` rewrites any block whose resolved `(textColor, backgroundColor)` pair fails WCAG AA against the new palette | Idempotent; re-runs on green tree are no-ops |
+| 5 | **index** | `bin/build-index.py` refreshes the theme INDEX.md | Hard fail |
+| 6 | **seed** | `bin/seed-playground-content.py --theme <slug>` | Soft fail (warns, continues) |
+| 7 | **sync** | `bin/sync-playground.py` (refreshes blueprints across all themes) | Hard fail |
+| 8 | **prepublish** | Scoped `git add <slug>/` + commit + push so `raw.githubusercontent.com` can serve playground assets before snap | Skipped with `--skip-publish`; snap will 404 without it on a fresh theme |
+| 9 | **snap** | `bin/snap.py shoot <slug>` | Skipped with `--skip-snap`; leaves no screenshot evidence |
+| 10 | **vision-review** | `bin/snap-vision-review.py` against each cell — LLM critique against `<slug>/design-intent.md` | Skipped silently when `ANTHROPIC_API_KEY` is unset; in a release pipeline treat the skip as a WARN, not a PASS |
+| 11 | **baseline** | `bin/snap.py baseline <slug>` (writes `tests/visual-baseline/<slug>/`) | Hard fail |
+| 12 | **screenshot** | `bin/build-theme-screenshots.py <slug>` replaces the WP admin card screenshot with a crop of this theme's home page | Hard fail |
+| 13 | **check** | `bin/check.py <slug> --quick` | **Strict by default** — any failure aborts. `--no-strict` demotes to a warning (prototype-only; never ship in that mode) |
+| 14 | **report** | `bin/snap.py report <slug>` prints the tiered `STATUS: PASS/WARN/FAIL` | Non-pass aborts unless `--no-strict` |
+| 15 | **redirects** | `bin/build-redirects.py` regenerates the `docs/<slug>/` short-URL redirectors | Hard fail |
+| 16 | **commit** | Stages `<slug>/` + generated artifacts and creates one `design: ship <slug>` commit | Skipped with `--skip-commit`; runs only if every earlier phase was green |
+| 17 | **publish** | `git push` of the freshly-created commit | Skipped with `--skip-publish` |
+
+**Strict is the default.** `bin/design.py` ships with `strict=True` as of
+Spring 2026. A `STATUS: PASS` at phase 13 (`check`) and a `STATUS: PASS`
+at phase 14 (`report`) are both required before the orchestrator will
+reach phase 16 (`commit`). Passing `--no-strict` demotes check / report
+to informational — **never use it for a release**. Prototype flags
+(`--no-strict`, `--skip-snap`, and running with `ANTHROPIC_API_KEY`
+unset so vision-review skips) explicitly produce an **incubating** theme
+per the readiness manifest. Only a green full run — every phase
+including vision-review — followed by `python3 bin/promote-theme.py
+<slug>` flips `readiness.json` to `shipping`.
+
+**`STATUS: PASS` is not the end.** Post-clone, the theme still shares
+Obel's structural layout and most body copy. The front-page-uniqueness
+check (`check_front_page_unique_layout`) and the cross-theme
+rendered-text check (`check_all_rendered_text_distinct_across_themes`)
+will **fail** until the judgment work in step 5 lands — that is the
+design pipeline working as intended, not a gate to silence.
 
 **Iteration patterns:**
 
@@ -130,8 +162,8 @@ python3 bin/design.py --spec tmp/<slug>.json --only apply
 # Re-run from apply onwards (after editing spec):
 python3 bin/design.py --spec tmp/<slug>.json --from apply --skip-clone
 
-# Strict mode (CI-style: any check failure aborts):
-python3 bin/design.py --spec tmp/<slug>.json --strict
+# Prototype mode (informational check; NEVER ship in this mode):
+python3 bin/design.py --spec tmp/<slug>.json --no-strict
 ```
 
 The `--only` and `--from` switches are the inner loop. Rebuilding the whole theme from a single spec edit usually means `--from apply --skip-clone`.
@@ -169,10 +201,23 @@ For the deeper surface-by-surface methodology (hero composition, archive layout,
 ## Step 6 — Verify
 
 ```bash
-python3 bin/check.py <slug> --quick
+python3 bin/check.py <slug>              # full static gate (preferred)
+python3 bin/verify-theme.py <slug> --snap --strict   # full release gate (snap + vision + check)
 ```
 
-Must exit 0. If it doesn't, fix every failure listed before committing — don't suppress with `--no-verify`. Common first-build failures:
+`bin/check.py <slug>` runs every static gate. `bin/check.py <slug> --quick`
+(which is what `bin/design.py`'s internal `check` phase calls) is an
+alias for `--offline`, which **skips** `check_block_names` and the
+Node-side `validate-theme-json.py` block-tree validator — so passing
+`--quick` is necessary but not sufficient. Always re-run without
+`--quick` before promotion.
+
+`bin/verify-theme.py <slug> --snap --strict` is the single local command
+that reproduces the release gate. `bin/promote-theme.py <slug>` calls
+it internally before flipping the readiness manifest.
+
+If check fails, fix every failure listed before committing — don't
+suppress with `--no-verify`. Common first-build failures:
 
 | Check | Fix |
 |-------|-----|
@@ -228,11 +273,16 @@ The pre-commit and pre-push hooks run `bin/check.py --all --offline` and (on pus
 ## Final self-check
 
 - [ ] `tmp/<slug>.json` validates with `--dry-run`
-- [ ] `python3 bin/design.py --spec tmp/<slug>.json` exited 0 with `STATUS: PASS`
+- [ ] `python3 bin/design.py --spec tmp/<slug>.json` exited 0 with `STATUS: PASS` at BOTH `check` and `report`
 - [ ] `<slug>/BRIEF.md` exists and was read
-- [ ] Microcopy block in `<slug>/functions.php` rewritten in the spec's voice
-- [ ] `<slug>/playground/images/product-wo-*.jpg` are branded for this theme (not sibling copies)
+- [ ] Microcopy block in `<slug>/functions.php` rewritten in the spec's voice (`check_wc_microcopy_distinct_across_themes`)
+- [ ] My-account dashboard lede + card copy in `<slug>/functions.php` rewritten in the spec's voice (not reused from obel/foundry/etc)
+- [ ] `<slug>/playground/images/product-wo-*.jpg` are branded for this theme AND visually distinct from each other (`check_product_image_visual_diversity` — same composition with different labels still fails)
+- [ ] `<slug>/playground/content/product-images.json` exists and maps every parent SKU to its photograph (`check_product_images_json_complete`)
 - [ ] `<slug>/templates/front-page.html` is structurally distinct from every sibling
-- [ ] `python3 bin/check.py <slug> --quick` exits 0
+- [ ] `<slug>/design-intent.md` exists with non-trivial Voice / Palette / Typography / Required / Forbidden sections (vision reviewer grades against it)
+- [ ] `python3 bin/check.py <slug>` exits 0 (full check, not just `--quick`)
 - [ ] `python3 bin/snap.py report <slug>` shows `STATUS: PASS`
-- [ ] Commit + push lands green CI
+- [ ] No default WP content strings ("Hello world!", "Sample Page") in any snapshot
+- [ ] `python3 bin/promote-theme.py <slug>` succeeds — flips `readiness.json` from `incubating` to `shipping`
+- [ ] Commit + push lands green CI with `verify-theme` returning `passed`

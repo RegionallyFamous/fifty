@@ -66,7 +66,7 @@ Manifest format
         {"spec": "specs/aerocoastal.json"}
       ],
       "concurrency": 1,
-      "model": "claude-sonnet-4-5-20250929"
+      "model": "claude-sonnet-4-6"
     }
 
 CLI flags override manifest values.
@@ -302,13 +302,33 @@ class RunnerOptions:
     # before we wait on CI. --no-verify disables it for agents doing
     # quick turns where the extra ~5-15s/theme isn't worth it.
     run_verify: bool = True
+    # Run `bin/verify-theme.py --snap` so the post-push verification
+    # also re-shoots the theme and runs every snap-backed gate
+    # (placeholder images, my-account dashboard layout, vision review,
+    # axe). Adds ~2-5 minutes per theme but is the only way to catch
+    # the regression class that already shipped twice (Chonk's empty
+    # hero and the my-account column collapse). Default True so the
+    # batch shipping path matches what CI would run; flip off via
+    # --no-verify-snap when iterating quickly on the orchestrator.
+    run_verify_snap: bool = True
     # Arm GitHub auto-merge (squash) immediately after `gh pr create`
     # so a green PR lands on main without a human click. When False,
     # the PR opens with auto-merge OFF and a human must enable it.
     # Default True because the whole point of this runner is
     # hands-off batch shipping; disable it when you want to eyeball
     # each PR before letting it merge.
+    #
+    # NOTE: arming auto-merge is also gated on the verify bundle's
+    # status. If `verify_status != "passed"` we open the PR but leave
+    # auto-merge OFF so a human reviewer is forced to look at the
+    # failing gate before the change lands. See `_commit_and_push`
+    # below for the gating logic.
     arm_auto_merge: bool = True
+    # Allow auto-merge even when verify-theme failed. Default False
+    # (closed-loop: a failing snap or static gate blocks auto-merge
+    # at orchestration time, not just at branch-protection time). Flip
+    # to True only for explicit one-off rescue runs.
+    arm_auto_merge_on_failure: bool = False
 
 
 def _git(*args: str, cwd: Path | None = None, check: bool = True) -> subprocess.CompletedProcess:
@@ -502,7 +522,22 @@ def _commit_and_push(
     # level, or a missing pr_url just prints a warning and returns
     # the PR URL anyway -- the PR itself is still valid; only the
     # auto-merge arming is degraded.
-    if opts.arm_auto_merge and pr_url:
+    # Auto-merge is gated on a CLEAN verify bundle. A failed snap, a
+    # blocked static check, or an errored verify run all suppress
+    # auto-merge so a human reviewer is forced to look at the
+    # findings before the PR lands. The `arm_auto_merge_on_failure`
+    # escape hatch exists only for explicit rescue runs.
+    auto_merge_blocked = bool(
+        verify_status and verify_status != "passed" and not opts.arm_auto_merge_on_failure
+    )
+    if opts.arm_auto_merge and pr_url and auto_merge_blocked:
+        sys.stderr.write(
+            f"[batch] verify-theme reported '{verify_status}' on {slug}; "
+            f"auto-merge NOT armed on {pr_url}. The PR is open with the "
+            f"failure summary in the body so a reviewer can decide "
+            f"whether to fix-and-merge or close.\n"
+        )
+    elif opts.arm_auto_merge and pr_url:
         arm = subprocess.run(
             ["gh", "pr", "merge", pr_url, "--auto", "--squash"],
             cwd=str(worktree),
@@ -545,22 +580,29 @@ def _run_verify_after_push(
     slug: str,
     opts: RunnerOptions,
 ) -> _VerifyBundle:
-    """Invoke `bin/verify-theme.py <slug> --strict --format markdown`
+    """Invoke `bin/verify-theme.py <slug> --strict [--snap] --format markdown`
     inside the worktree after push, plus a JSON pass for a
     machine-readable record. Never raises -- verification failures are
     surfaced through the returned bundle so the caller can still finish
-    opening the PR (with the failure summary in the body)."""
+    opening the PR (with the failure summary in the body).
+
+    `--snap` is on by default (gated by `opts.run_verify_snap`); see
+    the rationale on `RunnerOptions.run_verify_snap`. The snap pass is
+    what catches the regression class that already shipped twice on
+    main (Chonk's empty hero, the my-account column collapse).
+    """
     json_path = worktree / "tmp" / f"verify-{opts.run_id}-{slug}.json"
+    base_args = [
+        sys.executable,
+        "bin/verify-theme.py",
+        slug,
+        "--strict",
+    ]
+    if opts.run_verify_snap:
+        base_args.append("--snap")
     try:
         _run = subprocess.run(
-            [
-                sys.executable,
-                "bin/verify-theme.py",
-                slug,
-                "--strict",
-                "--format", "json",
-                "--out", str(json_path),
-            ],
+            [*base_args, "--format", "json", "--out", str(json_path)],
             cwd=str(worktree),
             capture_output=True,
             text=True,
@@ -594,13 +636,7 @@ def _run_verify_after_push(
         )
     overall = data.get("overall", "failed")
     md_run = subprocess.run(
-        [
-            sys.executable,
-            "bin/verify-theme.py",
-            slug,
-            "--strict",
-            "--format", "markdown",
-        ],
+        [*base_args, "--format", "markdown"],
         cwd=str(worktree),
         capture_output=True,
         text=True,
@@ -862,6 +898,18 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--no-verify-snap",
+        action="store_true",
+        help=(
+            "Run the post-push `bin/verify-theme.py` WITHOUT --snap. "
+            "Default is to include --snap so the verify pass re-shoots "
+            "the theme and runs every snap-backed gate (placeholder "
+            "images, my-account dashboard layout, vision review). "
+            "Disable for fast iteration on the batch orchestrator only "
+            "-- the regression class --snap catches has shipped twice."
+        ),
+    )
+    p.add_argument(
         "--no-auto-merge",
         action="store_true",
         help=(
@@ -870,6 +918,18 @@ def _build_parser() -> argparse.ArgumentParser:
             "so a green PR lands hands-off. Use this when you want to "
             "eyeball each PR before it merges (e.g. when debugging the "
             "pipeline, or on a one-off batch you plan to hand-review)."
+        ),
+    )
+    p.add_argument(
+        "--arm-auto-merge-on-failure",
+        action="store_true",
+        help=(
+            "Arm GitHub auto-merge even when verify-theme reports "
+            "failures or errors. Default behaviour leaves auto-merge "
+            "OFF on a non-passing verify so a human reviewer is forced "
+            "to look at the failing gate before the PR can land. Only "
+            "use this for explicit rescue runs where you've already "
+            "decided the failures are acceptable."
         ),
     )
     p.add_argument(
@@ -1126,7 +1186,9 @@ def main(argv: list[str] | None = None) -> int:
         port_base=args.port_base,
         label_run_id=True,
         run_verify=not args.no_verify,
+        run_verify_snap=not args.no_verify_snap,
         arm_auto_merge=not args.no_auto_merge,
+        arm_auto_merge_on_failure=args.arm_auto_merge_on_failure,
     )
 
     print(

@@ -66,6 +66,14 @@ class Route(NamedTuple):
     slug: str
     path: str
     description: str  # surfaced in `bin/snap.py list` for human readability
+    # When `auth=True`, `bin/snap.py shoot` performs a wp-login as the
+    # `admin` user before navigating to this route. Used to capture the
+    # logged-in My Account dashboard, which is otherwise unreachable
+    # because WC redirects unauthenticated visitors to the login form
+    # (the existing `my-account` route below intentionally captures
+    # that login form). Two routes can share a path with different
+    # `auth` flags; keep the slugs distinct.
+    auth: bool = False
 
 
 class Viewport(NamedTuple):
@@ -119,6 +127,32 @@ ROUTES: list[Route] = [
         slug="my-account",
         path="/my-account/",
         description="My Account login form (logged-out view).",
+    ),
+    Route(
+        slug="my-account-dashboard",
+        path="/my-account/",
+        description=(
+            "My Account dashboard, logged in as `admin`. The shoot "
+            "performs a wp-login first; covers the surfaces that the "
+            "logged-out `my-account` route can't reach: the dashboard "
+            "cards grid, the WooCommerce-MyAccount-navigation sidebar, "
+            "and the `.woocommerce` wrapper layout that broke when "
+            "WC's clearfix pseudo-elements turned into grid items."
+        ),
+        auth=True,
+    ),
+    Route(
+        slug="my-account-orders",
+        path="/my-account/orders/",
+        description=(
+            "My Account > Orders subpage, logged in as `admin`. Same "
+            "two-column WC layout as the dashboard but with the "
+            "`.woocommerce-orders-table` content -- the second-most "
+            "regression-prone account surface (the table breaks "
+            "responsively at desktop widths if the parent grid track "
+            "collapses)."
+        ),
+        auth=True,
     ),
     Route(
         slug="journal",
@@ -228,6 +262,14 @@ ROUTE_DEPENDENCIES: dict[str, tuple[str, ...]] = {
     ),
     "my-account": (
         "templates/page-my-account.html",
+    ),
+    "my-account-dashboard": (
+        "templates/page-my-account.html",
+        "functions.php",
+    ),
+    "my-account-orders": (
+        "templates/page-my-account.html",
+        "functions.php",
     ),
     "journal": (
         "templates/home.html",
@@ -731,6 +773,31 @@ INSPECT_SELECTORS: dict[str, list[str]] = {
         # `align:wide` checks nor the aesthetic vision rubric.
         ".wo-account-login-grid",
         ".woocommerce-MyAccount-content",
+    ],
+    # Logged-in dashboard surfaces. Tracking the wrapper, the nav
+    # column, the content column, AND the dashboard inner content
+    # gives `_cross_theme_parity` enough signal to flag the exact
+    # column-collapse class of bug that shipped on the Obel-derived
+    # `/my-account/` view (nav shrunk to 66px / content to ~470px
+    # because WC's float-based widths resolved against the grid cell).
+    "my-account-dashboard": [
+        ".woocommerce-account .woocommerce",
+        ".woocommerce-MyAccount-navigation",
+        ".woocommerce-MyAccount-navigation ul",
+        ".woocommerce-MyAccount-content",
+        ".woocommerce-MyAccount-content > .woocommerce-MyAccount-content-wrapper",
+        # Per-theme dashboard cards container: each theme renders
+        # different markup but they all paint a card grid here. Loose
+        # selector lets the inspector report the rendered grid width
+        # without the check needing to know the per-theme class names.
+        ".woocommerce-MyAccount-content > div",
+    ],
+    "my-account-orders": [
+        ".woocommerce-account .woocommerce",
+        ".woocommerce-MyAccount-navigation",
+        ".woocommerce-MyAccount-content",
+        ".woocommerce-orders-table",
+        ".woocommerce-MyAccount-orders",
     ],
     "journal": [
         ".wp-block-query",

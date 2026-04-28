@@ -9,7 +9,7 @@ Read this file at the start of any LLM session to discover the project's structu
 ## At a glance
 
 - 25 templates, 8 parts
-- 11 starter patterns
+- 12 starter patterns
 - 3 style variations
 - 156 block style entries in `theme.json` (85 core, 71 woocommerce)
 
@@ -40,6 +40,7 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- explore-the-shop.php
 |   |-- faq-accordion.php
 |   |-- featured-products.php
+|   |-- hero-feature-image.php
 |   |-- hero-image.php
 |   |-- hero-text.php
 |   |-- testimonials.php
@@ -268,6 +269,14 @@ Read this file at the start of any LLM session to discover the project's structu
 - **Categories:** chonk, woo-commerce
 - **Keywords:** products, collection, grid, shop, featured
 - **Description:** 3-column grid of featured products using the Product Collection block. Adjust the query attributes for your needs.
+
+### `patterns/hero-feature-image.php`
+
+- **Slug:** `chonk/hero-feature-image`
+- **Title:** Front-page hero feature image
+- **Categories:** chonk, featured
+- **Keywords:** hero, image, featured, front
+- **Description:** The chonk-hero__photo image. A single-product still composed in
 
 ### `patterns/hero-image.php`
 

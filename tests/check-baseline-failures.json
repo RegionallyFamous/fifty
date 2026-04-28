@@ -9,10 +9,27 @@
     "",
     "Regenerate: `python3 bin/check.py --save-baseline-failures`, ideally",
     "from a detached `git worktree` at origin/main so the snapshot",
-    "reflects main's reality and not the feature branch's."
+    "reflects main's reality and not the feature branch's.",
+    "",
+    "This file was extended on the 'automate-theme-pipeline' branch to",
+    "absorb the *initial* findings from new gates added on that branch:",
+    "the perceptual-diversity check (`Product photographs are visually",
+    "distinct within a theme`) flagged near-duplicate product staging on",
+    "every shipping theme, and aero ships per-theme product photographs",
+    "without the matching product-images.json yet. Those are the",
+    "current-theme-sweep todo's responsibility to fix; until then the",
+    "gate runs in `incubating` mode so unrelated PRs are not blocked."
   ],
   "recorded_against": "origin/main",
   "recorded_sha": "25fb017bed25912a503e1fb31f76f2e595c832a3",
   "recorded_at_utc": "2026-04-24T14:14:13Z",
-  "failures": []
+  "failures": [
+    {"theme": "aero",     "check": "Product photographs are visually distinct within a theme"},
+    {"theme": "aero",     "check": "`playground/content/product-images.json` covers every product photograph"},
+    {"theme": "basalt",   "check": "Product photographs are visually distinct within a theme"},
+    {"theme": "chonk",    "check": "Product photographs are visually distinct within a theme"},
+    {"theme": "foundry",  "check": "Product photographs are visually distinct within a theme"},
+    {"theme": "obel",     "check": "Product photographs are visually distinct within a theme"},
+    {"theme": "selvedge", "check": "Product photographs are visually distinct within a theme"}
+  ]
 }

@@ -182,6 +182,87 @@ def test_cli_flag_is_plumbed_to_runner_options(script_text: str) -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_runner_options_has_run_verify_snap_field(script_text: str) -> None:
+    """`RunnerOptions.run_verify_snap` must exist and default to True.
+
+    The post-push verification command MUST include `--snap` by default
+    so the verify pass re-shoots the theme and runs every snap-backed
+    gate (placeholder images, my-account dashboard layout, vision
+    review). Without --snap the orchestrator only catches the static
+    gate failures — exactly the regression class that already shipped
+    twice on main (Chonk's empty hero, the my-account column collapse).
+    """
+    assert "run_verify_snap: bool = True" in script_text, (
+        "RunnerOptions.run_verify_snap is missing or doesn't default to True. "
+        "Without it the batch runner ships a verify-theme call that only "
+        "covers the static gate; the snap-backed checks (image diversity, "
+        "auth-required routes, vision review) never run before auto-merge "
+        "fires."
+    )
+
+
+def test_verify_invocation_uses_snap(script_text: str) -> None:
+    """`_run_verify_after_push` MUST conditionally append `--snap`.
+
+    The flag belongs on the verify-theme command line, gated on the
+    options object so `--no-verify-snap` can disable it for fast
+    iteration. We grep for the literal flag and the conditional
+    branch so a future refactor that drops the flag fails the gate.
+    """
+    assert 'base_args.append("--snap")' in script_text, (
+        "design-batch.py does not append `--snap` to bin/verify-theme.py. "
+        "Without it, the post-push verify pass only runs the static gate; "
+        "snap-backed regressions slip through to CI (or worse, to the live "
+        "demo)."
+    )
+
+
+def test_auto_merge_blocked_on_verify_failure(script_text: str) -> None:
+    """A failing verify bundle MUST suppress auto-merge by default.
+
+    The closed-loop story is: verify-theme produces a verdict; if the
+    verdict is anything other than `passed`, the PR opens but
+    auto-merge stays OFF so a human reviewer is forced to look at the
+    findings before the change lands. Branch-protection alone is not
+    enough — auto-merge can still fire on green required checks even
+    if the verify report flagged a soft regression that branch
+    protection doesn't enforce.
+    """
+    assert "auto_merge_blocked" in script_text, (
+        "design-batch.py is missing the `auto_merge_blocked` gate that "
+        "suppresses auto-merge on a failing verify bundle. Without it "
+        "the orchestrator can auto-merge a PR whose snap pass found a "
+        "regression — exactly the failure mode the closed-loop plan "
+        "exists to prevent."
+    )
+
+
+def test_arm_auto_merge_on_failure_escape_hatch_exists(script_text: str) -> None:
+    """`--arm-auto-merge-on-failure` exists for explicit rescue runs.
+
+    When a Proprietor has already triaged the failures and decided to
+    ship anyway, they need a way to override the verify-blocks-merge
+    gate. The flag must:
+
+      * Be a real CLI argument (so it's discoverable in --help).
+      * Default to False (so the gate is on by default).
+      * Be plumbed into RunnerOptions so the gating logic sees it.
+    """
+    assert "--arm-auto-merge-on-failure" in script_text
+    assert "arm_auto_merge_on_failure: bool = False" in script_text, (
+        "RunnerOptions.arm_auto_merge_on_failure is missing or defaults to "
+        "True. The escape hatch should default to OFF so a forgotten "
+        "--arm-auto-merge-on-failure on the command line doesn't silently "
+        "let regressions auto-merge."
+    )
+    assert "arm_auto_merge_on_failure=args.arm_auto_merge_on_failure" in script_text, (
+        "`--arm-auto-merge-on-failure` is declared but not plumbed into "
+        "RunnerOptions. Wire it as "
+        "`arm_auto_merge_on_failure=args.arm_auto_merge_on_failure` in the "
+        "RunnerOptions constructor at the bottom of main()."
+    )
+
+
 def test_auto_merge_failure_is_best_effort(script_text: str) -> None:
     """A non-zero `gh pr merge` exit MUST print a warning, not raise.
 

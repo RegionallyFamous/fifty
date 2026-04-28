@@ -104,6 +104,51 @@ foreach ( $empty_email_comments as $row ) {
 WP_CLI::log( sprintf( 'Tagline + avatars: set. Backfilled %d empty comment email(s) for stable identicons.', $backfilled ) );
 
 // ---------------------------------------------------------------------------
+// 2b. Purge WordPress's default placeholder content
+// ---------------------------------------------------------------------------
+//
+// WP core's installer creates three pieces of placeholder content on every
+// fresh install: the "Hello world!" first post (typically post_id=1), the
+// "Sample Page" (post_id=2), and the "WordPress" privacy policy draft. The
+// WXR import doesn't touch them, so they survive into the demo. Two
+// regressions follow:
+//
+//   1. The home journal preview pulls the most-recent published posts; the
+//      demo WXR's blog posts share dates with WP's "Hello world!" entry, so
+//      the literal placeholder ("Welcome to WordPress. This is your first
+//      post. Edit or delete it, then start writing!") routinely lands as
+//      the third card on every theme's homepage. It's the loudest "default
+//      WordPress install" tell we ship.
+//   2. `core/query` blocks anywhere on the site that paginate by post_date
+//      bring the same Hello-world card into archive / category / journal
+//      pages.
+//
+// Force-delete (skip the trash) by slug so re-running on a site that
+// already trashed them is a no-op.
+$placeholder_slugs = array(
+	array( 'slug' => 'hello-world',    'post_type' => 'post' ),
+	array( 'slug' => 'sample-page',    'post_type' => 'page' ),
+	array( 'slug' => 'privacy-policy', 'post_type' => 'page' ),
+);
+$purged = 0;
+foreach ( $placeholder_slugs as $entry ) {
+	$post = get_page_by_path( $entry['slug'], OBJECT, $entry['post_type'] );
+	if ( $post && $post->post_status !== 'trash' ) {
+		// Skip the privacy-policy page only if a real privacy URL has been
+		// wired by another step (so we don't blow away a deliberate one).
+		if ( 'privacy-policy' === $entry['slug'] ) {
+			$wp_pp_id = (int) get_option( 'wp_page_for_privacy_policy', 0 );
+			if ( $wp_pp_id && $wp_pp_id !== (int) $post->ID ) {
+				continue;
+			}
+		}
+		wp_delete_post( (int) $post->ID, true );
+		++$purged;
+	}
+}
+WP_CLI::log( sprintf( 'Placeholders purged: %d default WP post(s)/page(s) removed.', $purged ) );
+
+// ---------------------------------------------------------------------------
 // 3. WooCommerce store config
 // ---------------------------------------------------------------------------
 update_option( 'woocommerce_default_country', 'US:CA' );

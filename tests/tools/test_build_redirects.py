@@ -212,6 +212,29 @@ def test_detail_page_swaps_cta_for_shipped_concepts(br, fake_mockups) -> None:
     assert "Pick this one" not in html
 
 
+def test_landing_page_only_surfaces_shipping_themes(br) -> None:
+    """A theme at `stage: incubating` (freshly cloned, still being
+    designed) MUST NOT appear on the public landing page. It still gets
+    its per-page redirectors under `docs/<slug>/*/index.html` so private
+    share-links resolve, but `docs/index.html` is the shipping-only
+    magazine cover. This test locks in the behavior by inspecting the
+    `build()` function's source for the exact filter shape; if a future
+    refactor drops the stage filter, this test breaks loudly.
+    """
+    import inspect
+
+    src = inspect.getsource(br.build)
+    assert "load_readiness(t).stage == STAGE_SHIPPING" in src, (
+        "bin/build-redirects.py::build must filter landing-page cards "
+        "to `stage: shipping` themes. Otherwise a freshly-cloned "
+        "incubating theme surfaces on the public landing page before "
+        "the design pass is complete."
+    )
+    assert "shipping_themes" in src
+    assert "total_shipped = len(shipping_themes)" in src
+    assert "shipping_slug_index" in src
+
+
 def test_filter_strip_only_emits_axes_with_values(br, fake_mockups) -> None:
     """The filter strip is data-driven: only axes with at least one
     populated value emit a button group. A queue with no `era` tags
