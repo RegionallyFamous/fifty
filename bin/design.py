@@ -1295,7 +1295,9 @@ def _phase_prepublish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace)
         print("  [prepublish] nothing new to commit (already up to date)")
     else:
         msg = f"design: scaffold {slug} (pre-snap content publish)"
-        rc = subprocess.call([*git, "commit", "-m", msg])
+        commit_env = os.environ.copy()
+        commit_env["FIFTY_SKIP_EVIDENCE_FRESHNESS"] = "1"
+        rc = subprocess.call([*git, "commit", "-m", msg], env=commit_env)
         if rc != 0:
             raise PhaseError("prepublish", f"git commit exited {rc}")
         print(f"  [prepublish] committed: {msg}")

@@ -341,6 +341,19 @@ def test_prepublish_push_skips_every_snap_dependent_gate() -> None:
         )
 
 
+def test_prepublish_commit_skips_evidence_freshness() -> None:
+    """The pre-snap scaffold commit itself runs the pre-commit hook.
+
+    At that point snap evidence cannot be fresh yet, because snap runs
+    after prepublish. The phase must therefore set the documented
+    evidence-freshness skip env on the commit subprocess too, not only
+    on the following push.
+    """
+    src = DESIGN_PY.read_text(encoding="utf-8")
+    assert 'commit_env["FIFTY_SKIP_EVIDENCE_FRESHNESS"] = "1"' in src
+    assert 'subprocess.call([*git, "commit", "-m", msg], env=commit_env)' in src
+
+
 def test_skill_phases_match_code() -> None:
     """The design-theme SKILL documents the phase pipeline in a
     Markdown table; when an agent reads the skill to plan work, the
