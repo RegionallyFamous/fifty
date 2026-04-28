@@ -121,6 +121,16 @@ DEST_IMAGES_RELDIR = Path("playground") / "images"
 # during the seed so the new per-theme layout is self-contained.
 LEGACY_CATEGORY_IMAGES_DIR = MONOREPO_ROOT / "playground" / "category-images"
 
+# Canonical source of per-theme product photographs. When a freshly-cloned
+# theme is missing a photograph that its inherited templates/patterns
+# reference (most notably `patterns/hero-split.php`'s hardcoded
+# `product-wo-bottled-morning.jpg`), we copy from this theme so the
+# `build` pipeline renders without broken images. The `dress` pipeline
+# later regenerates theme-specific photography that overwrites these
+# placeholders. See `copy_photo_placeholders` below for the idempotence
+# rules — we never clobber a theme's own photographs.
+PHOTO_PLACEHOLDER_SOURCE_THEME = "obel"
+
 
 def ensure_source_cache(source_override: Path | None) -> Path:
     """Return a path to the canonical source repo, cloning or fetching as
@@ -273,6 +283,67 @@ def copy_asset_files(src_dir: Path, dst_dir: Path, force: bool) -> tuple[int, in
     return (copied, skipped)
 
 
+def copy_photo_placeholders(
+    source_theme: str,
+    target_theme: str,
+    dst_dir: Path,
+) -> tuple[int, int]:
+    """Copy per-theme product photographs (`product-wo-*.jpg`) from a
+    canonical source theme into `dst_dir`, filling gaps without ever
+    clobbering a file the target already owns.
+
+    Why this exists:
+        `bin/clone.py` copies obel's `patterns/` verbatim. Several of
+        those patterns — most notably `hero-split.php` — hardcode
+        `product-wo-<slug>.jpg` URLs that resolve against the TARGET
+        theme's `playground/images/` folder. A freshly-cloned theme's
+        images folder has only upstream `wonders-*.png` cartoons, so
+        the pattern's hero image 404s and `bin/snap.py`'s
+        `broken-image` heuristic (intentionally, 0 cells allowlisted)
+        blocks `bin/design.py build` on something that is really a
+        missing-placeholder rather than a structural defect. The
+        placeholder makes `build` pass on a fresh clone; the `dress`
+        pipeline later regenerates theme-specific photography that
+        overwrites these files.
+
+    Idempotence:
+        - A re-run on an already-seeded theme is a strict no-op: every
+          target file already exists, so every copy short-circuits on
+          the `dst.exists()` guard.
+        - A re-run on a theme that has ALREADY shipped its own real
+          photography (chonk / foundry / shipping themes) is also a
+          no-op for the same reason — we never overwrite a file.
+        - Seeding the source theme onto itself short-circuits before
+          any file I/O; guards a subtle "copy obel's photos onto obel"
+          infinite-refresh footgun.
+
+    Returns `(copied, skipped)` so the seeder log can stay one line
+    per theme.
+    """
+    if target_theme == source_theme:
+        return (0, 0)
+    source_images = MONOREPO_ROOT / source_theme / "playground" / "images"
+    if not source_images.is_dir():
+        return (0, 0)
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    copied = 0
+    skipped = 0
+    for entry in sorted(source_images.iterdir()):
+        if not entry.is_file():
+            continue
+        if not entry.name.startswith("product-wo-"):
+            continue
+        if entry.suffix.lower() != ".jpg":
+            continue
+        dst = dst_dir / entry.name
+        if dst.exists():
+            skipped += 1
+            continue
+        shutil.copy2(entry, dst)
+        copied += 1
+    return (copied, skipped)
+
+
 def seed_theme(theme_dir: Path, source_dir: Path, force: bool) -> None:
     slug = theme_dir.name
     csv_src = source_dir / SOURCE_CSV_FILENAME
@@ -291,6 +362,19 @@ def seed_theme(theme_dir: Path, source_dir: Path, force: bool) -> None:
     asset_copied, asset_skipped = copy_asset_files(source_dir, images_dir, force)
     cat_copied, cat_skipped = copy_asset_files(LEGACY_CATEGORY_IMAGES_DIR, images_dir, force)
 
+    # Photo placeholders: copy per-theme product photographs from the
+    # canonical source theme (obel) into this theme's images folder,
+    # skipping anything the target already has. Runs BEFORE the upgrade
+    # pass so the newly-copied JPGs enter the `available` set and the
+    # upgrade pass can rewrite `wonders-<slug>.png` catalogue refs to
+    # `product-wo-<slug>.jpg` — meaning a freshly-cloned theme ships a
+    # fully-photographed catalogue on first `build`, not a half-photo
+    # half-cartoon mishmash. See `copy_photo_placeholders` for
+    # idempotence guarantees.
+    photo_copied, photo_skipped = copy_photo_placeholders(
+        PHOTO_PLACEHOLDER_SOURCE_THEME, slug, images_dir
+    )
+
     # Upgrade pass: run AFTER assets are in place, so that
     # upgrade_product_image_refs can see which `product-wo-<slug>.jpg`
     # photographs are actually present and only rewrite refs that have a
@@ -305,6 +389,7 @@ def seed_theme(theme_dir: Path, source_dir: Path, force: bool) -> None:
         f"{slug:>10}  csv={csv_status:<8} xml={xml_status:<8} "
         f"assets={asset_copied}+{asset_skipped}-skip  "
         f"cat={cat_copied}+{cat_skipped}-skip  "
+        f"photos={photo_copied}+{photo_skipped}-skip  "
         f"upgrade=csv:{csv_upgraded}/xml:{xml_upgraded}  "
         f"cleaned-cartoons={cleaned}"
     )
