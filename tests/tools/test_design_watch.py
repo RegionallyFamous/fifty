@@ -137,6 +137,46 @@ def test_grouped_failures_extracts_affected_theme_names():
     assert watch.affected_names(failures) == ["aero", "basalt"]
 
 
+def test_write_status_creates_live_markdown_dashboard(tmp_path):
+    watch = load_design_watch()
+    now = time.time()
+    state = watch.WatchState(
+        run_id="demo",
+        started_at=now,
+        command=["python3", "bin/design.py", "--spec", "tmp/specs/demo.json"],
+        cwd=str(REPO_ROOT),
+        slug="demo",
+        phases=["validate", "check"],
+        current_phase="check",
+        phase_started_at=now,
+        last_output_at=now,
+        last_status_label="Needs attention",
+        last_status_message="[00:02] Demo is running quality checks. 1 issue found so far.",
+        check_failures=[
+            watch.CheckFailure(
+                title="Product photographs are visually distinct within a theme",
+                detail="product-wo-a.jpg ~ product-wo-b.jpg",
+                summary="Two product photos look too similar; shoppers may think they are the same item.",
+                next_action="Regenerate or replace the named duplicate product photo.",
+            )
+        ],
+    )
+    status_path = tmp_path / "STATUS.md"
+
+    watch.write_status(
+        status_path,
+        state,
+        event_path=tmp_path / "events.jsonl",
+        summary_path=tmp_path / "summary.json",
+    )
+
+    body = status_path.read_text(encoding="utf-8")
+    assert "# Demo Pipeline Status" in body
+    assert "**Status:** Needs attention" in body
+    assert "Regenerate or replace the named duplicate product photo." in body
+    assert "## Last Output" in body
+
+
 def test_design_watch_help_smoke():
     proc = subprocess.run(
         [sys.executable, str(BIN_DIR / "design-watch.py"), "--help"],
