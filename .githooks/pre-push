@@ -166,6 +166,27 @@ else
     echo "▸ pre-push: PHP/template diffs detected; running boot smoke"
     echo "            on: $(echo "$php_changed_themes" | tr '\n' ' ')"
     echo "            (3 retries per theme; set FIFTY_SKIP_BOOT_SMOKE=1 to bypass)"
+    current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+    current_branch_published=0
+    if [ -n "$current_branch" ] \
+       && [ "$current_branch" != "HEAD" ] \
+       && git rev-parse --verify --quiet "refs/remotes/origin/$current_branch" >/dev/null 2>&1; then
+      current_branch_published=1
+    fi
+    boot_content_ref="${FIFTY_CONTENT_REF:-}"
+    if [ -z "$boot_content_ref" ] \
+       && [ "$current_branch_published" != "1" ] \
+       && [ -n "$current_branch" ] \
+       && [ "$current_branch" != "HEAD" ] \
+       && [ "$current_branch" != "main" ]; then
+      upstream_ref="$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)"
+      case "$upstream_ref" in
+        origin/*)
+          boot_content_ref="${upstream_ref#origin/}"
+          echo "            content ref: origin/$boot_content_ref (stacked branch; current branch is not on origin yet)"
+          ;;
+      esac
+    fi
     for t in $php_changed_themes; do
       if [ ! -f "$t/theme.json" ]; then
         # The diff touched something that LOOKS like a theme dir but
@@ -175,11 +196,19 @@ else
         echo "  skip $t (no theme.json; not a real theme)"
         continue
       fi
+      if [ -z "$boot_content_ref" ] \
+         && [ "$current_branch_published" != "1" ] \
+         && [ -f "$t/playground/content/content.xml" ] \
+         && ! git cat-file -e "origin/main:$t/playground/content/content.xml" 2>/dev/null; then
+        echo "  defer $t boot smoke (new theme content is not on any remote ref yet; CI can boot it after this push)"
+        continue
+      fi
       attempt=1
       max_attempts=3
       passed=0
       while [ $attempt -le $max_attempts ]; do
-        if python3 bin/snap.py boot "$t" --cache-state; then
+        if env ${boot_content_ref:+FIFTY_CONTENT_REF="$boot_content_ref"} \
+             python3 bin/snap.py boot "$t" --cache-state; then
           passed=1
           break
         fi
