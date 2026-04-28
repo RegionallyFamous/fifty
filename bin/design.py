@@ -783,6 +783,107 @@ def _phase_apply(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> N
     brief_path.write_text(make_brief(spec, dest), encoding="utf-8")
     print(f"  [apply] wrote {brief_path.relative_to(MONOREPO_ROOT)}")
 
+    allow_added = _seed_allowlist_from_source(spec.source, spec.slug)
+    if allow_added:
+        print(
+            f"  [apply] seeded {allow_added} heuristics-allowlist cell(s) "
+            f"from {spec.source} → {spec.slug}"
+        )
+
+
+def _seed_allowlist_from_source(source_slug: str, target_slug: str) -> int:
+    """Duplicate every `tests/visual-baseline/heuristics-allowlist.json`
+    entry keyed `<source_slug>:viewport:route` under the same
+    `<target_slug>:viewport:route` key, so a freshly-cloned theme
+    inherits its source's known-tolerated waivers.
+
+    Why this exists:
+        Shipping themes carry grandfathered `narrow-wc-block`,
+        `element-overflow-x`, and `a11y-color-contrast` findings that
+        the team has already decided to tolerate — `check.py`'s
+        `check_no_serious_axe_errors` reads the allowlist and demotes
+        them to `info`. A newly-cloned theme inherits the SAME
+        templates (same markup, same CSS) but none of the allowlist
+        entries, so the same findings re-fire as NEW errors and block
+        `design.py build` on problems the operator never introduced.
+
+        Seeding the entries at `apply` time rather than at `check`
+        time keeps the file as the single source of truth (instead of
+        making the matcher lineage-aware), and preserves the rule
+        that "new findings not in the allowlist fail the gate" —
+        because any finding the new theme introduces BEYOND the
+        source's baseline will still be absent from the file and fail.
+
+    Idempotence:
+        - Re-running `apply` is a no-op: each inbound entry is written
+          only when the target key is missing (never overwrites).
+        - Target entries that pre-exist (because the operator hand-
+          edited the allowlist, or a prior run seeded them) survive
+          untouched — merge is additive at the `<kind>: [fingerprints]`
+          level, not replacing.
+        - Seeding a theme from itself (`spec.source == spec.slug`)
+          short-circuits; prevents duplicate-key self-inflation.
+        - Returns the count of newly-created CELLS (not entries),
+          which is what the operator needs to see in the log.
+    """
+    if source_slug == target_slug:
+        return 0
+    allowlist_path = MONOREPO_ROOT / "tests" / "visual-baseline" / "heuristics-allowlist.json"
+    if not allowlist_path.is_file():
+        return 0
+    try:
+        allow: dict = json.loads(allowlist_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return 0
+    if not isinstance(allow, dict):
+        return 0
+
+    source_prefix = f"{source_slug}:"
+    target_prefix = f"{target_slug}:"
+
+    # Preserve the file's existing key order — the operator has curated
+    # the layout (wildcard waivers first, then per-theme blocks grouped
+    # by slug), and a blanket `sorted()` would rewrite the whole file
+    # on every apply run, turning a 2-line diff into a 300-line one.
+    # New target cells are appended in the same order as the source's
+    # keys, so the diff is exactly the block of new entries.
+    new_cells = 0
+    changed = False
+    for key in list(allow.keys()):
+        if not key.startswith(source_prefix):
+            continue
+        src_cell = allow[key]
+        if not isinstance(src_cell, dict):
+            continue
+        target_key = target_prefix + key[len(source_prefix) :]
+        dst_cell = allow.get(target_key)
+        if dst_cell is None:
+            allow[target_key] = json.loads(json.dumps(src_cell))
+            new_cells += 1
+            changed = True
+            continue
+        if not isinstance(dst_cell, dict):
+            continue
+        for kind, fps in src_cell.items():
+            if not isinstance(fps, list):
+                continue
+            existing = dst_cell.setdefault(kind, [])
+            if not isinstance(existing, list):
+                continue
+            for fp in fps:
+                if fp not in existing:
+                    existing.append(fp)
+                    changed = True
+
+    if not changed:
+        return new_cells
+
+    allowlist_path.write_text(
+        json.dumps(allow, indent=2, sort_keys=False) + "\n",
+        encoding="utf-8",
+    )
+    return new_cells
+
 
 def _phase_contrast(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
     """Run `bin/autofix-contrast.py <slug>` to rewrite any block whose
