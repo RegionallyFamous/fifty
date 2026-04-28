@@ -81,6 +81,8 @@ from _vision_lib import (
     DEFAULT_LEDGER_PATH,
     DEFAULT_MODEL,
     PROMPT_VERSION,
+    VISION_PHASE_ALL,
+    VISION_PHASES,
     ApiCallFailedError,
     ApiKeyMissingError,
     BudgetExceededError,
@@ -350,6 +352,7 @@ def review_one(
     use_cache: bool,
     daily_budget_usd: float,
     ledger_path: Path,
+    phase: str = VISION_PHASE_ALL,
 ) -> ReviewResult:
     png_bytes = item.png_path.read_bytes()
     fp = fingerprint_inputs(
@@ -357,7 +360,10 @@ def review_one(
         intent_md=intent_md,
         prompt_version=PROMPT_VERSION,
         model=model,
-        extra=f"{item.theme}/{item.route}/{item.viewport}",
+        # Fold phase into the cache key so a switch between `content`
+        # and `all` doesn't serve stale structural findings (the prompt
+        # differs + the output allowlist differs).
+        extra=f"{item.theme}/{item.route}/{item.viewport}/{phase}",
     )
 
     if use_cache and item.fingerprint_path.exists():
@@ -389,6 +395,7 @@ def review_one(
             dry_run=dry_run,
             ledger_path=ledger_path,
             daily_budget_usd=daily_budget_usd,
+            phase=phase,
         )
     except (ApiKeyMissingError, BudgetExceededError):
         raise
@@ -554,6 +561,19 @@ def main(argv: list[str]) -> int:
                    help=f"Path to spend ledger (default {DEFAULT_LEDGER_PATH}).")
     p.add_argument("--validate", type=Path, default=None,
                    help="Run against the labelled fixture set at this path; skip normal review.")
+    p.add_argument(
+        "--phase",
+        choices=list(VISION_PHASES),
+        default=VISION_PHASE_ALL,
+        help=(
+            "Which vision-finding kinds to grade. `content` (used by "
+            "`design.py dress`) runs the reviewer with only the 4 "
+            "catalogue-fit kinds (photography-mismatch, color-clash, "
+            "brand-violation, mockup-divergent); `structural` runs the "
+            "complement; `all` (default) runs both buckets, same as "
+            "pre-split behaviour."
+        ),
+    )
     args = p.parse_args(argv)
 
     if args.validate:
@@ -605,6 +625,7 @@ def main(argv: list[str]) -> int:
                 use_cache=not args.no_cache,
                 daily_budget_usd=args.budget,
                 ledger_path=args.ledger,
+                phase=args.phase,
             )
         except ApiKeyMissingError as exc:
             print(f"!! {exc}", file=sys.stderr)

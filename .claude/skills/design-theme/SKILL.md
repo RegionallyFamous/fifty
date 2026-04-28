@@ -121,24 +121,27 @@ snapshots the canonical list and fails loudly on drift.
 | 2 | **clone** | `bin/clone.py <slug> --source <source>` + reset `readiness.json` to `incubating` | Refuses if `<slug>/` already exists; pass `--skip-clone` to operate on it |
 | 3 | **apply** | Mutates `<slug>/theme.json` (palette + fonts) and writes `<slug>/BRIEF.md` | JSON parse error on theme.json |
 | 4 | **contrast** | `bin/autofix-contrast.py` rewrites any block whose resolved `(textColor, backgroundColor)` pair fails WCAG AA against the new palette | Idempotent; re-runs on green tree are no-ops |
-| 5 | **index** | `bin/build-index.py` refreshes the theme INDEX.md | Hard fail |
-| 6 | **seed** | `bin/seed-playground-content.py --theme <slug>` | Soft fail (warns, continues) |
-| 7 | **sync** | `bin/sync-playground.py` (refreshes blueprints across all themes) | Hard fail |
-| 8 | **prepublish** | Scoped `git add <slug>/` + commit + push so `raw.githubusercontent.com` can serve playground assets before snap | Skipped with `--skip-publish`; snap will 404 without it on a fresh theme |
-| 9 | **snap** | `bin/snap.py shoot <slug>` | Skipped with `--skip-snap`; leaves no screenshot evidence |
-| 10 | **vision-review** | `bin/snap-vision-review.py` against each cell — LLM critique against `<slug>/design-intent.md` | Skipped silently when `ANTHROPIC_API_KEY` is unset; in a release pipeline treat the skip as a WARN, not a PASS |
-| 11 | **baseline** | `bin/snap.py baseline <slug>` (writes `tests/visual-baseline/<slug>/`) | Hard fail |
-| 12 | **screenshot** | `bin/build-theme-screenshots.py <slug>` replaces the WP admin card screenshot with a crop of this theme's home page | Hard fail |
-| 13 | **check** | `bin/check.py <slug> --quick` | **Strict by default** — any failure aborts. `--no-strict` demotes to a warning (prototype-only; never ship in that mode) |
-| 14 | **report** | `bin/snap.py report <slug>` prints the tiered `STATUS: PASS/WARN/FAIL` | Non-pass aborts unless `--no-strict` |
-| 15 | **redirects** | `bin/build-redirects.py` regenerates the `docs/<slug>/` short-URL redirectors | Hard fail |
-| 16 | **commit** | Stages `<slug>/` + generated artifacts and creates one `design: ship <slug>` commit | Skipped with `--skip-commit`; runs only if every earlier phase was green |
-| 17 | **publish** | `git push` of the freshly-created commit | Skipped with `--skip-publish` |
+| 5 | **seed** | `bin/seed-playground-content.py --theme <slug>` | Soft fail (warns, continues) |
+| 6 | **sync** | `bin/sync-playground.py` (refreshes blueprints across all themes) | Hard fail |
+| 7 | **photos** | `bin/generate-product-photos.py --theme <slug>` — per-theme product JPGs + category covers; idempotent (skips files already on disk) | `design.py dress` phase; skipped by `design.py build` |
+| 8 | **microcopy** | `bin/generate-microcopy.py --theme <slug>` + `bin/apply-microcopy-overrides.py --theme <slug>` — per-theme voice substitutions | `design.py dress` phase; skipped by `design.py build` |
+| 9 | **frontpage** | `bin/diversify-front-page.py --theme <slug>` — adds a `wo-layout-<slug>` className so the front-page fingerprint is unique vs every sibling | `design.py dress` phase; skipped by `design.py build` |
+| 10 | **index** | `bin/build-index.py` refreshes the theme INDEX.md | Hard fail |
+| 11 | **prepublish** | Scoped `git add <slug>/` + commit + push so `raw.githubusercontent.com` can serve playground assets before snap | Skipped with `--skip-publish`; snap will 404 without it on a fresh theme |
+| 12 | **snap** | `bin/snap.py shoot <slug>` | Skipped with `--skip-snap`; leaves no screenshot evidence |
+| 13 | **vision-review** | `bin/snap-vision-review.py` against each cell — LLM critique against `<slug>/design-intent.md` | Skipped silently when `ANTHROPIC_API_KEY` is unset; in a release pipeline treat the skip as a WARN, not a PASS |
+| 14 | **baseline** | `bin/snap.py baseline <slug>` (writes `tests/visual-baseline/<slug>/`) | Hard fail |
+| 15 | **screenshot** | `bin/build-theme-screenshots.py <slug>` replaces the WP admin card screenshot with a crop of this theme's home page | Hard fail |
+| 16 | **check** | `bin/check.py <slug> --quick` | **Strict by default** — any failure aborts. `--no-strict` demotes to a warning (prototype-only; never ship in that mode) |
+| 17 | **report** | `bin/snap.py report <slug>` prints the tiered `STATUS: PASS/WARN/FAIL` | Non-pass aborts unless `--no-strict` |
+| 18 | **redirects** | `bin/build-redirects.py` regenerates the `docs/<slug>/` short-URL redirectors | Hard fail |
+| 19 | **commit** | Stages `<slug>/` + generated artifacts and creates one `design: ship <slug>` commit | Skipped with `--skip-commit`; runs only if every earlier phase was green |
+| 20 | **publish** | `git push` of the freshly-created commit | Skipped with `--skip-publish` |
 
 **Strict is the default.** `bin/design.py` ships with `strict=True` as of
-Spring 2026. A `STATUS: PASS` at phase 13 (`check`) and a `STATUS: PASS`
-at phase 14 (`report`) are both required before the orchestrator will
-reach phase 16 (`commit`). Passing `--no-strict` demotes check / report
+Spring 2026. A `STATUS: PASS` at phase 16 (`check`) and a `STATUS: PASS`
+at phase 17 (`report`) are both required before the orchestrator will
+reach phase 19 (`commit`). Passing `--no-strict` demotes check / report
 to informational — **never use it for a release**. Prototype flags
 (`--no-strict`, `--skip-snap`, and running with `ANTHROPIC_API_KEY`
 unset so vision-review skips) explicitly produce an **incubating** theme
@@ -167,6 +170,27 @@ python3 bin/design.py --spec tmp/<slug>.json --no-strict
 ```
 
 The `--only` and `--from` switches are the inner loop. Rebuilding the whole theme from a single spec edit usually means `--from apply --skip-clone`.
+
+---
+
+## Two-step flow (optional but recommended)
+
+When you have room to stage the work over more than one turn, split the one-shot pipeline into two subcommands that answer two separable questions:
+
+```bash
+# Step 1: Is the theme structurally sound?
+python3 bin/design.py build --spec tmp/<slug>.json
+
+# Step 2: Does the demo content match the vibe?
+python3 bin/design.py dress <slug>
+```
+
+- **`design.py build`** runs the deterministic structural phases — `validate, clone, apply, contrast, seed, sync, index, prepublish, snap, baseline, screenshot, check, report, redirects, commit, publish`. The `check` phase runs with `--phase structural`, which skips the 10 content-fit checks (product-image diversity, per-theme microcopy uniqueness, front-page fingerprint, etc.) that only pass AFTER `dress` has regenerated per-theme photography and microcopy. It does NOT call a vision model. Re-running `build` after a CSS / token / markup tweak is the tight inner loop (5–10 min).
+- **`design.py dress`** runs the content-fit phases — `photos, microcopy, frontpage, snap, vision-review, check, report, commit, publish`. The `check` phase runs with `--phase all` (every check must pass before promotion), and `vision-review` runs with `--phase content` so the reviewer focuses on the catalogue-fit lens (photography-mismatch, color-clash, brand-violation, mockup-divergent) instead of re-grading structural complaints that `build` already gated. This is the outer loop that burns vision-review budget (≈ $0.30 / run).
+- **`dress`** requires the theme to already exist on disk — preflight checks for `<slug>/theme.json` and `<slug>/playground/blueprint.json` and exits 2 with a "run build first" message if either is missing.
+- Each subcommand emits its own verdict banner on green (`BUILD OK — ...` / `DRESS OK — ...`) and lands its own commit (`design: build <slug> (structurally sound)` / `design: dress <slug> (content-fit)`).
+
+Use the two-step flow when iterating on tokens / CSS / markup (re-run `build` many times, `dress` once at the end). Use the flat CLI (`design.py --spec X`) when you want one-shot ship-it semantics and the spec is known-good.
 
 ---
 

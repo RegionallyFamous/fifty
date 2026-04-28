@@ -242,6 +242,156 @@ class PhaseError(RuntimeError):
     detail (subprocess stderr, exception message, etc.) is in `args[1]`."""
 
 
+# ---------------------------------------------------------------------------
+# Two-step flow (`design.py build` / `design.py dress`)
+# ---------------------------------------------------------------------------
+#
+# `build` answers: does this theme render correctly? (CSS, markup,
+# tokens, block parity, WCAG, chrome overrides, view-transitions.)
+# It is fast, re-runnable, and never calls a vision model.
+#
+# `dress` answers: does the demo catalogue speak in this theme's voice?
+# (product photos, category covers, microcopy, front-page composition,
+# vision-level photography/brand violations.) It is the more expensive
+# outer loop that burns vision-review budget.
+#
+# The flat CLI (`design.py --spec X`) remains the one-shot ship-it
+# pipeline and is byte-identical in behaviour to the pre-split version.
+# `design.py build --spec X` and `design.py dress <slug>` each pick a
+# hardcoded subset of PHASES; see `_select_phases_for_subcommand` for
+# the dispatch table.
+
+_PHASES_FOR_BUILD = (
+    "validate",
+    "clone",
+    "apply",
+    "contrast",
+    "seed",
+    "sync",
+    "index",
+    "prepublish",
+    "snap",
+    "baseline",
+    "screenshot",
+    "check",
+    "report",
+    "redirects",
+    "commit",
+    "publish",
+)
+_PHASES_FOR_DRESS = (
+    "photos",
+    "microcopy",
+    "frontpage",
+    "snap",
+    "vision-review",
+    "check",
+    "report",
+    "commit",
+    "publish",
+)
+
+
+BUILD_OK_BANNER = (
+    "\n"
+    "══════════════════════════════════════════════════\n"
+    "  BUILD OK — theme is structurally sound.\n"
+    "  Next:  python3 bin/design.py dress {slug}\n"
+    "══════════════════════════════════════════════════\n"
+)
+DRESS_OK_BANNER = (
+    "\n"
+    "══════════════════════════════════════════════════\n"
+    "  DRESS OK — demo content matches the theme.\n"
+    "  Next:  python3 bin/promote-theme.py {slug}\n"
+    "══════════════════════════════════════════════════\n"
+)
+
+
+def _select_phases_for_subcommand(subcommand: str | None) -> tuple[str, ...] | None:
+    """Return the hardcoded phase list for a subcommand, or None for flat.
+
+    The flat CLI path calls `_select_phases(args.from_phase, args.only)`
+    to compute the phase list (preserving pre-split behaviour). The two
+    subcommands ignore `--from` / `--only` and always run their full
+    allowlist -- iteration during structural work should re-run the
+    inner phases directly (`bin/check.py`, `bin/snap.py shoot`), not
+    contort `design.py build` into a one-phase runner.
+    """
+    if subcommand == "build":
+        return _PHASES_FOR_BUILD
+    if subcommand == "dress":
+        return _PHASES_FOR_DRESS
+    return None
+
+
+def _dress_preflight(slug: str) -> None:
+    """Validate the theme exists before running `dress` phases.
+
+    `dress` subcommand presumes `build` already shipped a structurally
+    sound theme. If the slug is wrong or the theme was never built,
+    the downstream phases emit confusing errors (seed phase not found,
+    snap phase 404s, etc). Exit 2 with an actionable message instead.
+    """
+    theme_root = MONOREPO_ROOT / slug
+    if not (theme_root / "theme.json").is_file():
+        sys.exit(
+            f"design.py dress: theme `{slug}` has no theme.json. "
+            f"Run `bin/design.py build --spec <spec>.json` first."
+        )
+    if not (theme_root / "playground" / "blueprint.json").is_file():
+        sys.exit(
+            f"design.py dress: theme `{slug}` hasn't been seeded. "
+            f"Run `bin/design.py build --spec <spec>.json` first."
+        )
+
+
+def _theme_display_name(slug: str) -> str:
+    """Best-effort read of the theme's human-readable name from style.css.
+
+    `style.css` is the WP-required theme header (``Theme Name: Obel``).
+    For `dress`, we don't have the original spec.json; scraping the
+    style.css header preserves the title case without the operator
+    having to hand it in as a flag.
+    """
+    style_css = MONOREPO_ROOT / slug / "style.css"
+    if style_css.is_file():
+        import re as _re
+
+        match = _re.search(
+            r"^\s*Theme Name:\s*(.+?)\s*$",
+            style_css.read_text(encoding="utf-8", errors="replace"),
+            flags=_re.MULTILINE,
+        )
+        if match:
+            return match.group(1).strip()
+    return slug.replace("-", " ").title()
+
+
+def _synthesize_dress_spec(slug: str) -> Path:
+    """Write a minimal spec JSON file for `dress` re-use of the flat loop.
+
+    `dress` phases only need `spec.slug` + `spec.name` (they delegate
+    everything else to the existing theme's theme.json + content set,
+    which `build` already produced). Synthesizing a tiny spec keeps
+    the inner `main()` logic uniform between the flat CLI and the two
+    subcommands -- no separate code path for dress.
+    """
+    specs_dir = MONOREPO_ROOT / "tmp" / "specs"
+    specs_dir.mkdir(parents=True, exist_ok=True)
+    spec_path = specs_dir / f"{slug}.dress.json"
+    # Always overwrite: the operator may have iterated on the theme's
+    # style.css between invocations.
+    spec_path.write_text(
+        json.dumps(
+            {"slug": slug, "name": _theme_display_name(slug)},
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    return spec_path
+
+
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="design.py",
@@ -402,7 +552,53 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    # Intercept `build` / `dress` subcommands BEFORE argparse. The flat
+    # CLI (`design.py --spec X`) stays byte-identical; subcommands
+    # route through the same phase-dispatch loop with a hardcoded
+    # phase allowlist and different `--phase` flags for
+    # `bin/check.py` / `bin/snap-vision-review.py`.
+    subcommand: str | None = None
+    if argv and argv[0] in ("build", "dress"):
+        subcommand = argv[0]
+        argv = argv[1:]
+        if subcommand == "dress":
+            # `dress <slug>` — no --spec required; the theme is
+            # expected to exist on disk (preflight validates this).
+            # Synthesize a minimal spec so the inner main() stays
+            # uniform.
+            if not argv or argv[0].startswith("-"):
+                print(
+                    "error: `design.py dress` requires a theme slug "
+                    "(e.g. `design.py dress chandler`).",
+                    file=sys.stderr,
+                )
+                return 2
+            slug = argv[0]
+            rest = argv[1:]
+            _dress_preflight(slug)
+            spec_path = _synthesize_dress_spec(slug)
+            argv = ["--spec", str(spec_path), *rest]
+
     args = _build_parser().parse_args(argv)
+    args.subcommand = subcommand
+    # Derive check + vision phase from the subcommand. `build` runs
+    # check with --phase structural (the content-fit checks fail on a
+    # fresh clone that still has upstream cartoons; that's what `dress`
+    # is for). `dress` runs check with --phase all (the content-fit
+    # checks must be green to promote) and vision-review with --phase
+    # content (catalogue-fit lens only -- structural complaints were
+    # already gated in `build`).
+    if subcommand == "build":
+        args.check_phase = "structural"
+        args.vision_phase = "all"  # unused: vision-review not in _PHASES_FOR_BUILD
+    elif subcommand == "dress":
+        args.check_phase = "all"
+        args.vision_phase = "content"
+    else:
+        args.check_phase = "all"
+        args.vision_phase = "all"
 
     if args.print_example_spec:
         json.dump(example_spec(), sys.stdout, indent=2, ensure_ascii=False)
@@ -461,7 +657,14 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
 
-    phases_to_run = _select_phases(args.from_phase, args.only)
+    # Subcommands override `--from` / `--only` with a hardcoded
+    # allowlist. Flat CLI keeps using the existing _select_phases
+    # logic (preserves pre-split behaviour byte-identically).
+    subcommand_phases = _select_phases_for_subcommand(subcommand)
+    if subcommand_phases is not None:
+        phases_to_run = list(subcommand_phases)
+    else:
+        phases_to_run = _select_phases(args.from_phase, args.only)
     if args.skip_snap and not args.only:
         # `screenshot` is derived from the baseline PNG so it's equally
         # dependent on a fresh snap; group it with the snap phases.
@@ -501,7 +704,12 @@ def main(argv: list[str] | None = None) -> int:
     print("\nSTATUS: PASS")
     print(f"  Theme:  {dest}")
     print(f"  Brief:  {dest / 'BRIEF.md'}")
-    print("  Next:   read BRIEF.md, then continue with .claude/skills/design-theme.")
+    if subcommand == "build":
+        print(BUILD_OK_BANNER.format(slug=spec.slug))
+    elif subcommand == "dress":
+        print(DRESS_OK_BANNER.format(slug=spec.slug))
+    else:
+        print("  Next:   read BRIEF.md, then continue with .claude/skills/design-theme.")
     return 0
 
 
@@ -910,12 +1118,18 @@ def _phase_vision_review(spec: ValidatedSpec, dest: Path, args: argparse.Namespa
 
     env = os.environ.copy()
     env["FIFTY_VISION_BUDGET_USD"] = f"{args.vision_budget:.4f}"
+    vision_phase = getattr(args, "vision_phase", "all")
     cmd = [
         sys.executable,
         str(ROOT / "bin" / "snap-vision-review.py"),
         spec.slug,
     ]
-    print(f"  [vision-review] {' '.join(cmd[1:])} (budget=${args.vision_budget:.2f})")
+    if vision_phase != "all":
+        cmd.extend(["--phase", vision_phase])
+    print(
+        f"  [vision-review] {' '.join(cmd[1:])} "
+        f"(budget=${args.vision_budget:.2f}, phase={vision_phase})"
+    )
     rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT), env=env)
     if rc != 0:
         raise PhaseError("vision-review", f"bin/snap-vision-review.py exited {rc}")
@@ -977,7 +1191,10 @@ def _phase_check(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> N
     so absence here means snap.py crashed without raising."""
     env = os.environ.copy()
     env.setdefault("FIFTY_REQUIRE_SNAP_EVIDENCE", "1")
+    check_phase = getattr(args, "check_phase", "all")
     cmd = [sys.executable, str(ROOT / "bin" / "check.py"), spec.slug, "--quick"]
+    if check_phase != "all":
+        cmd.extend(["--phase", check_phase])
     print(f"  [check] {' '.join(cmd[1:])}")
     rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT), env=env)
     if rc == 0:
@@ -1096,7 +1313,14 @@ def _phase_commit(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> 
         print(f"  [commit] skip: no staged diff for {slug} (theme already matches HEAD).")
         return
 
-    message = f"design: ship {slug} theme\n\nGenerated by bin/design.py"
+    subcommand = getattr(args, "subcommand", None)
+    if subcommand == "build":
+        headline = f"design: build {slug} (structurally sound)"
+    elif subcommand == "dress":
+        headline = f"design: dress {slug} (content-fit)"
+    else:
+        headline = f"design: ship {slug} theme"
+    message = f"{headline}\n\nGenerated by bin/design.py"
     cproc = subprocess.run(
         [*git, "commit", "-m", message],
         capture_output=True,
@@ -1113,7 +1337,7 @@ def _phase_commit(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> 
     # the PR / issue / Linear ticket without another `git log`.
     sha_proc = subprocess.run([*git, "rev-parse", "HEAD"], capture_output=True, text=True)
     sha = sha_proc.stdout.strip()[:12] if sha_proc.returncode == 0 else "(unknown)"
-    print(f"  [commit] {sha}  design: ship {slug} theme")
+    print(f"  [commit] {sha}  {headline}")
 
 
 def _phase_publish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:

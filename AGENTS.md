@@ -145,6 +145,8 @@ python3 bin/check.py --all --quick
 python3 bin/build-index.py --all
 ```
 
+When generating a whole theme from a spec/prompt, `bin/design.py` supports a two-step flow: `design.py build --spec <spec>.json` runs the deterministic structural phases and exits 0 when the theme renders correctly (even if product photos are still upstream cartoons); `design.py dress <slug>` then runs the content-fit phases (photos, microcopy, front-page restructure, vision-review at `--phase content`, `check --phase all`) and exits 0 only when every check is green. Both subcommands share every `--skip-*` flag with the flat CLI. See `.claude/skills/design-theme/SKILL.md` for the full two-step flow and when to prefer it over the one-shot `design.py --spec X`.
+
 ## Seeing what you built (visual snapshots)
 
 You cannot load `playground.wordpress.net` from the in-app browser, and asking the user to ship screenshots back over chat is a broken loop. Use `bin/snap.py` instead. It boots the theme's WordPress Playground locally via `@wp-playground/cli` (same blueprint the live demos use, with the local theme dir mounted on top of the GitHub-installed copy so unsynced edits show up), captures Playwright PNGs **plus diagnostic artifacts** for every (route × viewport) cell, runs a JS heuristics pass (broken images, mid-word wraps, raw i18n tokens, PHP debug output, visible WC notices, web-font load state, tap-target sizes, ellipsis truncation, empty landmarks, placeholder images, responsive-image mismatches), and runs an axe-core a11y audit. Findings are bucketed into a tiered gate (`pass | warn | fail`) so the build can fail loudly when something genuinely broke.

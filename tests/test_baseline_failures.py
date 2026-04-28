@@ -349,8 +349,11 @@ def test_save_baseline_failures_preserves_added_at(tmp_path: Path, monkeypatch):
 
     monkeypatch.setattr(check, "iter_themes", lambda: [_Theme("obel")])
 
+    # `_build_results` now returns (function_name, thunk) pairs;
+    # wrap the pre-built Result in a lambda thunk so the shape
+    # matches post-split.
     def fake_build(offline: bool):
-        return [_make_fail("known-debt")]
+        return [("check_known_debt", lambda: _make_fail("known-debt"))]
 
     monkeypatch.setattr(check, "_build_results", fake_build)
 
@@ -381,7 +384,12 @@ def test_save_baseline_failures_stamps_new_entries(tmp_path: Path, monkeypatch):
             self.name = name
 
     monkeypatch.setattr(check, "iter_themes", lambda: [_Theme("obel")])
-    monkeypatch.setattr(check, "_build_results", lambda offline: [_make_fail("brand-new")])
+    # `_build_results` now returns (function_name, thunk) pairs.
+    monkeypatch.setattr(
+        check,
+        "_build_results",
+        lambda offline: [("check_brand_new", lambda: _make_fail("brand-new"))],
+    )
     monkeypatch.setattr(check, "_git_committer_email", lambda: "bot@example.com")
 
     assert check._save_baseline_failures(offline=True) == 0

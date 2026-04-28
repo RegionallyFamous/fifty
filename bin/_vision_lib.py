@@ -179,6 +179,45 @@ ALLOWED_FINDING_KINDS = frozenset(
     }
 )
 
+# Phase-split for the two-step `design.py build` / `design.py dress`
+# pipeline. `build` never calls vision (step 1 is deterministic-only),
+# so the split only matters inside `dress`: its vision-review pass uses
+# phase=content so the reviewer stays focused on the catalogue-fit
+# lens instead of re-raising structural complaints that `check --phase
+# structural` already covered in step 1.
+VISION_PHASE_STRUCTURAL = "structural"
+VISION_PHASE_CONTENT = "content"
+VISION_PHASE_ALL = "all"
+VISION_PHASES = (VISION_PHASE_STRUCTURAL, VISION_PHASE_CONTENT, VISION_PHASE_ALL)
+
+# Content-fit kinds: each of these grades the demo catalogue against
+# the theme's design-intent.md (does the photo/palette/voice match?).
+# Everything else in ALLOWED_FINDING_KINDS is structural.
+_CONTENT_VISION_KINDS = frozenset(
+    {
+        "vision:photography-mismatch",
+        "vision:color-clash",
+        "vision:brand-violation",
+        "vision:mockup-divergent",
+    }
+)
+_STRUCTURAL_VISION_KINDS = ALLOWED_FINDING_KINDS - _CONTENT_VISION_KINDS
+
+
+def kinds_for_phase(phase: str) -> frozenset[str]:
+    """Return the allowed-kind set for a given vision phase.
+
+    `all` (the default) returns the full ALLOWED_FINDING_KINDS; the two
+    split phases return the content or structural subset. Unknown
+    phases fall back to ALL so callers that accidentally pass an
+    empty/garbage string never silently drop everything.
+    """
+    if phase == VISION_PHASE_CONTENT:
+        return _CONTENT_VISION_KINDS
+    if phase == VISION_PHASE_STRUCTURAL:
+        return _STRUCTURAL_VISION_KINDS
+    return ALLOWED_FINDING_KINDS
+
 # Route prefixes where the functional-breakage kinds above are
 # meaningful. On non-WC routes (home, shop, journal, PDP) the review
 # should stick to the aesthetic kinds so we don't chase shadows on
@@ -423,9 +462,20 @@ def build_user_prompt(
     viewport: str,
     intent_md: str,
     route_purpose: str = "",
+    kinds_allowlist: frozenset[str] | None = None,
 ) -> str:
     """The per-call user message. Plain text; image is attached separately
-    by the caller."""
+    by the caller.
+
+    ``kinds_allowlist`` shrinks the enumerated "Allowed kind values"
+    list the model sees. When None, enumerates the full
+    ALLOWED_FINDING_KINDS (legacy behaviour). When set to the content
+    or structural subset (via ``kinds_for_phase``), the model is told
+    that only those kinds are valid, so off-phase findings become
+    off-list and get dropped by ``parse_findings_response``'s filter
+    too (defence-in-depth).
+    """
+    allowlist = kinds_allowlist if kinds_allowlist else ALLOWED_FINDING_KINDS
     return (
         f"## Theme\n`{theme}`\n\n"
         f"## Route\n`{route}` at viewport `{viewport}`"
@@ -447,21 +497,33 @@ def build_user_prompt(
         "}\n"
         "```\n\n"
         "## Allowed `kind` values\n\n"
-        + "\n".join(f"- `{k}`" for k in sorted(ALLOWED_FINDING_KINDS))
+        + "\n".join(f"- `{k}`" for k in sorted(allowlist))
         + "\n\nReturn the JSON object now."
     )
 
 
-def parse_findings_response(raw_text: str) -> list[dict]:
+def parse_findings_response(
+    raw_text: str,
+    *,
+    kinds_allowlist: frozenset[str] | None = None,
+) -> list[dict]:
     """Extract + normalise the findings list from the model's response.
 
     Best-effort: if the model wraps JSON in a code fence, strip it. If
     fields are missing, supply defaults. If a finding has an unknown
     `kind` or invalid `severity`, drop it (don't crash).
 
+    ``kinds_allowlist`` tightens the kind filter to a subset of
+    ALLOWED_FINDING_KINDS (e.g. the content-only or structural-only
+    subset from ``kinds_for_phase``). The default (None) keeps the
+    full legacy allowlist.
+
     Returns a list of normalised finding dicts ready to be appended to
     `<route>.findings.json`.
     """
+    effective_allowlist = (
+        kinds_allowlist if kinds_allowlist else ALLOWED_FINDING_KINDS
+    )
     text = raw_text.strip()
     # Tolerate fenced output even though the prompt forbids it.
     if text.startswith("```"):
@@ -484,7 +546,7 @@ def parse_findings_response(raw_text: str) -> list[dict]:
             continue
         kind = f.get("kind")
         severity = f.get("severity")
-        if kind not in ALLOWED_FINDING_KINDS:
+        if kind not in effective_allowlist:
             continue
         if severity not in ALLOWED_SEVERITIES:
             severity = "warn"
@@ -884,6 +946,7 @@ def review_image(
     max_output_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
     ledger_path: Path = DEFAULT_LEDGER_PATH,
     daily_budget_usd: float = DEFAULT_DAILY_BUDGET_USD,
+    phase: str = VISION_PHASE_ALL,
 ) -> VisionResponse:
     """Send one screenshot to the vision model and return parsed findings.
 
@@ -892,6 +955,16 @@ def review_image(
     runs `parse_findings_response` on the model's raw text. Callers
     that want a different response shape (e.g. a design spec) should
     call `vision_completion` directly with their own prompts.
+
+    ``phase`` controls the two-step `design.py build` / `dress` split:
+    ``all`` (default) keeps legacy behaviour — the model grades
+    everything in ALLOWED_FINDING_KINDS. ``content`` shrinks the
+    allowlist to the 4 catalogue-fit kinds (photography-mismatch,
+    color-clash, brand-violation, mockup-divergent), used by
+    `design.py dress`. ``structural`` shrinks it to the complement,
+    which `design.py build` never needs (build skips vision entirely)
+    but is wired for symmetry and for callers that want to isolate
+    layout/hierarchy problems without content noise.
 
     Raises:
       ApiKeyMissingError if not dry_run and ANTHROPIC_API_KEY is unset.
@@ -902,6 +975,13 @@ def review_image(
     findings; does not call the API or touch the ledger.
     """
     include_functional = should_flag_functional_breakage(route, viewport)
+    phase_allowlist = kinds_for_phase(phase)
+    # When phase is `content`, the functional-breakage section is
+    # out-of-phase (those kinds are structural). Force it off so the
+    # prompt doesn't contradict the smaller allowed-kinds list the
+    # model sees in the user prompt.
+    if phase == VISION_PHASE_CONTENT:
+        include_functional = False
     system_prompt = build_system_prompt(
         include_functional_breakage=include_functional,
     )
@@ -911,6 +991,7 @@ def review_image(
         viewport=viewport,
         intent_md=intent_md,
         route_purpose=route_purpose,
+        kinds_allowlist=phase_allowlist,
     )
 
     resp = vision_completion(
@@ -928,7 +1009,13 @@ def review_image(
         daily_budget_usd=daily_budget_usd,
     )
 
-    findings = [] if resp.dry_run else parse_findings_response(resp.raw_text)
+    findings = (
+        []
+        if resp.dry_run
+        else parse_findings_response(
+            resp.raw_text, kinds_allowlist=phase_allowlist
+        )
+    )
 
     return VisionResponse(
         findings=findings,

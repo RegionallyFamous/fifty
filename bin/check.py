@@ -45,6 +45,7 @@ import re
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -81,6 +82,14 @@ class Result:
         # labels it WARN-BASELINE instead of FAIL so the signal is still
         # loud on stdout.
         self.demoted = False
+        # Set by `_evaluate_checks()` to "structural" or "content" based
+        # on the backing check function's presence in
+        # `_CONTENT_FIT_CHECK_NAMES`. None when the Result was produced
+        # outside the phase-filtering path (e.g. direct call from a
+        # test). `render()` prepends the tag when present so a mixed
+        # run (`--phase all`) clearly separates "fix the CSS" failures
+        # from "regenerate the photos" failures.
+        self.phase: str | None = None
         self.details: list[str] = []
 
     def fail(self, detail: str) -> None:
@@ -103,7 +112,14 @@ class Result:
             label = f"{YELLOW}WARN-BASELINE{RESET}"
         else:
             label = f"{RED}FAIL{RESET}"
-        line = f"  [{label}] {self.name}"
+        # Phase tag is informational -- it never affects gating. A tiny
+        # dim prefix keeps mixed runs readable without cluttering the
+        # common single-phase case; unset means "phase unknown / not
+        # applicable" and we just omit.
+        prefix = ""
+        if self.phase:
+            prefix = f"{DIM}[{self.phase}]{RESET} "
+        line = f"  [{label}] {prefix}{self.name}"
         for detail in self.details:
             line += f"\n         {DIM}{detail}{RESET}"
         if self.demoted:
@@ -112,6 +128,85 @@ class Result:
                 f"already failing on origin/main, so not treated as a regression){RESET}"
             )
         return line
+
+
+# ---------------------------------------------------------------------------
+# Phase split (--phase {structural,content,all})
+# ---------------------------------------------------------------------------
+#
+# See `.cursor/plans/two-step_design_pipeline_*.plan.md` for the full
+# rationale. Short version: `bin/design.py` used to mash 20 phases into
+# one flame pile, so a fresh theme came back red on a mix of
+#
+#   - "hover contrast fails"                 (structural, fix the CSS)
+#   - "product photography is upstream stock" (content,    regen photos)
+#
+# forcing the operator to triage by eye. The two-step flow splits the
+# pipeline into `build` (structural) and `dress` (content). Every check
+# in `_build_results()` gets tagged by which phase it's meaningful in,
+# so `--phase structural` runs just the structural ones and exits 0 on
+# a fresh clone that still has upstream cartoons; `--phase content`
+# runs just the content-fit ones after `dress` has regenerated the
+# per-theme assets; `--phase all` (the default) runs every check and
+# is byte-identical to the pre-split behavior.
+#
+# Checks NOT in the frozenset below are structural. This is the
+# minimum-diff representation: decorating 74 check functions scattered
+# across 9,800 lines would churn the file much more.
+
+PHASE_STRUCTURAL = "structural"
+PHASE_CONTENT = "content"
+PHASE_ALL = "all"
+_PHASES = (PHASE_STRUCTURAL, PHASE_CONTENT, PHASE_ALL)
+
+# Content-fit checks: only meaningful AFTER `design.py dress` has
+# regenerated per-theme product photography, microcopy, and front-page
+# structure. Checks NOT in this set are structural and must pass
+# immediately after `design.py build` on a fresh clone.
+#
+# The rename-drift guard in tests/check_py/test_phase_filter.py
+# asserts every name here is actually invoked by `_build_results()`,
+# so a rename that breaks the tie fails the gate loudly instead of
+# silently demoting a content check to "runs in structural".
+_CONTENT_FIT_CHECK_NAMES = frozenset({
+    "check_product_image_visual_diversity",
+    "check_product_images_json_complete",
+    "check_no_placeholder_product_images",
+    "check_no_woocommerce_placeholder_in_findings",
+    "check_product_images_unique_across_themes",
+    "check_hero_images_unique_across_themes",
+    "check_pattern_microcopy_distinct",
+    "check_all_rendered_text_distinct_across_themes",
+    "check_front_page_unique_layout",
+    "check_concept_similarity",
+})
+
+
+def _phase_for(func_name: str) -> str:
+    """Return the phase a check function belongs to."""
+    return PHASE_CONTENT if func_name in _CONTENT_FIT_CHECK_NAMES else PHASE_STRUCTURAL
+
+
+def _phase_keeps(func_name: str, phase: str) -> bool:
+    """Decide whether a check named `func_name` runs under `phase`."""
+    if phase == PHASE_ALL:
+        return True
+    return _phase_for(func_name) == phase
+
+
+def _evaluate_checks(
+    items: list[tuple[str, Callable[[], Result]]],
+    phase: str,
+) -> list[Result]:
+    """Filter by phase, invoke the surviving thunks, tag each Result."""
+    results: list[Result] = []
+    for name, thunk in items:
+        if not _phase_keeps(name, phase):
+            continue
+        r = thunk()
+        r.phase = _phase_for(name)
+        results.append(r)
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -9737,7 +9832,11 @@ def _save_baseline_failures(offline: bool) -> int:
     try:
         for theme in iter_themes():
             ROOT = theme
-            results = _build_results(offline=offline)
+            # Baseline regeneration must cover every phase (structural
+            # AND content) because the allowlist is authoritative for
+            # the full `--phase all` gate. Using `_evaluate_checks` with
+            # PHASE_ALL also keeps the (name, thunk) plumbing honest.
+            results = _evaluate_checks(_build_results(offline=offline), PHASE_ALL)
             for r in results:
                 if not r.passed and not r.skipped:
                     key = (theme.name, r.name)
@@ -9843,97 +9942,112 @@ def iter_files(suffixes: tuple[str, ...]):
             yield path
 
 
-def _build_results(offline: bool) -> list[Result]:
-    """Single source of truth for the per-theme check list. Returns a
-    fresh list of Result objects; callers do whatever they want with
-    rendering + gating. Callers must set the module-level ROOT to the
-    target theme BEFORE calling this, since many checks read ROOT
-    directly.
+def _build_results(offline: bool) -> list[tuple[str, Callable[[], Result]]]:
+    """Return every check as a `(function_name, thunk)` pair.
+
+    The function-name string is the authoritative identity used by
+    `_CONTENT_FIT_CHECK_NAMES` and the phase filter; `Result.name`
+    (the human-readable title each check sets on its own Result) is
+    keyed separately by `tests/check-baseline-failures.json`, so the
+    two name systems stay decoupled on purpose.
+
+    The thunk is the zero-arg closure that runs the check. Almost
+    every check already takes no args; the one exception is
+    `check_block_names(offline=offline)`, which we bind to the current
+    `offline` flag with a lambda.
+
+    Callers must set the module-level `ROOT` to the target theme
+    BEFORE calling this, since many checks read ROOT at invocation
+    time.
     """
     return [
-        check_json_validity(),
-        check_design_intent_present(),
-        check_theme_readiness(),
-        check_php_syntax(),
-        check_block_names(offline=offline),
-        check_index_in_sync(),
-        check_no_important(),
-        check_no_stray_css(),
-        check_block_prefixes(),
-        check_no_wc_tabs_block(),
-        check_no_ai_fingerprints(),
-        check_no_hardcoded_colors(),
-        check_no_hex_in_theme_json(),
-        check_no_remote_fonts(),
-        check_wc_grid_integration(),
-        check_wc_overrides_styled(),
-        check_no_hardcoded_dimensions(),
-        check_block_attrs_use_tokens(),
-        check_block_markup_anti_patterns(),
-        check_blocks_validator(),
-        check_bordered_group_text_has_explicit_color(),
-        check_block_text_contrast(),
-        check_no_fake_forms(),
-        check_modern_blocks_only(),
-        check_swatch_js_targets_real_select(),
-        check_no_empty_cover_blocks(),
-        check_product_terms_query_show_nested(),
-        check_no_large_placeholder_groups(),
-        check_product_image_visual_diversity(),
-        check_product_images_json_complete(),
-        check_no_duplicate_templates(),
-        check_no_duplicate_stock_indicator(),
-        check_archive_sort_dropdown_styled(),
-        check_no_squeezed_wc_sidebars(),
-        check_wc_card_surfaces_padded(),
-        check_wc_totals_blocks_padded(),
-        check_wc_notices_styled(),
-        check_navigation_overlay_opaque(),
-        check_outline_button_paired_with_primary(),
-        check_wc_card_padding_not_zeroed(),
-        check_hover_state_legibility(),
-        check_background_clip_text_legibility(),
-        check_nav_item_pill_scoped_to_horizontal(),
-        check_account_grid_scoped_to_sidebar(),
-        check_disabled_atc_button_styled_per_theme(),
-        check_distinctive_chrome(),
-        check_cart_checkout_pages_are_wide(),
-        check_prose_layout_token_purged(),
-        check_wc_chrome_sentinel_present(),
-        check_blueprint_landing_page(),
-        check_front_page_unique_layout(),
-        check_pdp_has_image(),
-        check_no_woocommerce_placeholder_in_findings(),
-        check_product_reviews_uses_inner_blocks_not_legacy_render(),
-        check_no_unstyled_review_rating_in_findings(),
-        check_pattern_microcopy_distinct(),
-        check_all_rendered_text_distinct_across_themes(),
-        check_no_default_wc_strings(),
-        check_no_brand_filters_in_playground(),
-        check_theme_ships_cart_page_pattern(),
-        check_wc_microcopy_distinct_across_themes(),
-        check_playground_content_seeded(),
-        check_no_placeholder_product_images(),
-        check_product_images_unique_across_themes(),
-        check_hero_images_unique_across_themes(),
-        check_theme_screenshots_distinct(),
-        check_wc_specificity_winnable(),
-        check_no_serious_axe_in_recent_snaps(),
-        check_visual_baseline_present(),
-        check_allowlist_entries_resolve(),
-        check_evidence_freshness(),
-        check_view_transitions_wired(),
-        check_concept_similarity(),
-        check_no_unpushed_commits(),
+        ("check_json_validity", check_json_validity),
+        ("check_design_intent_present", check_design_intent_present),
+        ("check_theme_readiness", check_theme_readiness),
+        ("check_php_syntax", check_php_syntax),
+        ("check_block_names", lambda: check_block_names(offline=offline)),
+        ("check_index_in_sync", check_index_in_sync),
+        ("check_no_important", check_no_important),
+        ("check_no_stray_css", check_no_stray_css),
+        ("check_block_prefixes", check_block_prefixes),
+        ("check_no_wc_tabs_block", check_no_wc_tabs_block),
+        ("check_no_ai_fingerprints", check_no_ai_fingerprints),
+        ("check_no_hardcoded_colors", check_no_hardcoded_colors),
+        ("check_no_hex_in_theme_json", check_no_hex_in_theme_json),
+        ("check_no_remote_fonts", check_no_remote_fonts),
+        ("check_wc_grid_integration", check_wc_grid_integration),
+        ("check_wc_overrides_styled", check_wc_overrides_styled),
+        ("check_no_hardcoded_dimensions", check_no_hardcoded_dimensions),
+        ("check_block_attrs_use_tokens", check_block_attrs_use_tokens),
+        ("check_block_markup_anti_patterns", check_block_markup_anti_patterns),
+        ("check_blocks_validator", check_blocks_validator),
+        ("check_bordered_group_text_has_explicit_color", check_bordered_group_text_has_explicit_color),
+        ("check_block_text_contrast", check_block_text_contrast),
+        ("check_no_fake_forms", check_no_fake_forms),
+        ("check_modern_blocks_only", check_modern_blocks_only),
+        ("check_swatch_js_targets_real_select", check_swatch_js_targets_real_select),
+        ("check_no_empty_cover_blocks", check_no_empty_cover_blocks),
+        ("check_product_terms_query_show_nested", check_product_terms_query_show_nested),
+        ("check_no_large_placeholder_groups", check_no_large_placeholder_groups),
+        ("check_product_image_visual_diversity", check_product_image_visual_diversity),
+        ("check_product_images_json_complete", check_product_images_json_complete),
+        ("check_no_duplicate_templates", check_no_duplicate_templates),
+        ("check_no_duplicate_stock_indicator", check_no_duplicate_stock_indicator),
+        ("check_archive_sort_dropdown_styled", check_archive_sort_dropdown_styled),
+        ("check_no_squeezed_wc_sidebars", check_no_squeezed_wc_sidebars),
+        ("check_wc_card_surfaces_padded", check_wc_card_surfaces_padded),
+        ("check_wc_totals_blocks_padded", check_wc_totals_blocks_padded),
+        ("check_wc_notices_styled", check_wc_notices_styled),
+        ("check_navigation_overlay_opaque", check_navigation_overlay_opaque),
+        ("check_outline_button_paired_with_primary", check_outline_button_paired_with_primary),
+        ("check_wc_card_padding_not_zeroed", check_wc_card_padding_not_zeroed),
+        ("check_hover_state_legibility", check_hover_state_legibility),
+        ("check_background_clip_text_legibility", check_background_clip_text_legibility),
+        ("check_nav_item_pill_scoped_to_horizontal", check_nav_item_pill_scoped_to_horizontal),
+        ("check_account_grid_scoped_to_sidebar", check_account_grid_scoped_to_sidebar),
+        ("check_disabled_atc_button_styled_per_theme", check_disabled_atc_button_styled_per_theme),
+        ("check_distinctive_chrome", check_distinctive_chrome),
+        ("check_cart_checkout_pages_are_wide", check_cart_checkout_pages_are_wide),
+        ("check_prose_layout_token_purged", check_prose_layout_token_purged),
+        ("check_wc_chrome_sentinel_present", check_wc_chrome_sentinel_present),
+        ("check_blueprint_landing_page", check_blueprint_landing_page),
+        ("check_front_page_unique_layout", check_front_page_unique_layout),
+        ("check_pdp_has_image", check_pdp_has_image),
+        ("check_no_woocommerce_placeholder_in_findings", check_no_woocommerce_placeholder_in_findings),
+        ("check_product_reviews_uses_inner_blocks_not_legacy_render", check_product_reviews_uses_inner_blocks_not_legacy_render),
+        ("check_no_unstyled_review_rating_in_findings", check_no_unstyled_review_rating_in_findings),
+        ("check_pattern_microcopy_distinct", check_pattern_microcopy_distinct),
+        ("check_all_rendered_text_distinct_across_themes", check_all_rendered_text_distinct_across_themes),
+        ("check_no_default_wc_strings", check_no_default_wc_strings),
+        ("check_no_brand_filters_in_playground", check_no_brand_filters_in_playground),
+        ("check_theme_ships_cart_page_pattern", check_theme_ships_cart_page_pattern),
+        ("check_wc_microcopy_distinct_across_themes", check_wc_microcopy_distinct_across_themes),
+        ("check_playground_content_seeded", check_playground_content_seeded),
+        ("check_no_placeholder_product_images", check_no_placeholder_product_images),
+        ("check_product_images_unique_across_themes", check_product_images_unique_across_themes),
+        ("check_hero_images_unique_across_themes", check_hero_images_unique_across_themes),
+        ("check_theme_screenshots_distinct", check_theme_screenshots_distinct),
+        ("check_wc_specificity_winnable", check_wc_specificity_winnable),
+        ("check_no_serious_axe_in_recent_snaps", check_no_serious_axe_in_recent_snaps),
+        ("check_visual_baseline_present", check_visual_baseline_present),
+        ("check_allowlist_entries_resolve", check_allowlist_entries_resolve),
+        ("check_evidence_freshness", check_evidence_freshness),
+        ("check_view_transitions_wired", check_view_transitions_wired),
+        ("check_concept_similarity", check_concept_similarity),
+        ("check_no_unpushed_commits", check_no_unpushed_commits),
     ]
 
 
-def run_checks_for(theme_root: Path, offline: bool) -> int:
+def run_checks_for(theme_root: Path, offline: bool, phase: str = PHASE_ALL) -> int:
     global ROOT
     ROOT = theme_root
-    print(f"Running checks for {theme_root.name} ({'offline' if offline else 'online'})...\n")
+    phase_suffix = "" if phase == PHASE_ALL else f", phase={phase}"
+    print(
+        f"Running checks for {theme_root.name} "
+        f"({'offline' if offline else 'online'}{phase_suffix})...\n"
+    )
 
-    results = _build_results(offline)
+    results = _evaluate_checks(_build_results(offline), phase)
 
     # Demote known pre-existing failures (see `_demote_baseline_failures`)
     # BEFORE rendering so the labels in `render()` reflect the demotion.
@@ -10007,6 +10121,19 @@ def main() -> int:
         "--quick",
         action="store_true",
         help="Alias for --offline.",
+    )
+    parser.add_argument(
+        "--phase",
+        choices=list(_PHASES),
+        default=PHASE_ALL,
+        help=(
+            "Which checks to run. `structural` (default for `design.py "
+            "build`) skips the 10 content-fit checks that only pass once "
+            "per-theme photos / microcopy / front-page have been regen'd. "
+            "`content` (default for `design.py dress`) runs ONLY those "
+            "10. `all` (default here, keeps pre-split behaviour) runs "
+            "every check. See `_CONTENT_FIT_CHECK_NAMES`."
+        ),
     )
     parser.add_argument(
         "--visual",
@@ -10107,11 +10234,11 @@ def main() -> int:
         exit_codes = []
         for theme in iter_themes():
             print(f"\n{'=' * 60}")
-            exit_codes.append(run_checks_for(theme, offline))
+            exit_codes.append(run_checks_for(theme, offline, args.phase))
         static_rc = 1 if any(exit_codes) else 0
     else:
         theme_root = resolve_theme_root(args.theme)
-        static_rc = run_checks_for(theme_root, offline)
+        static_rc = run_checks_for(theme_root, offline, args.phase)
 
     # Visual diff runs LAST and only if static checks already passed.
     # Bailing out early on a static failure avoids spending 2-5 minutes
