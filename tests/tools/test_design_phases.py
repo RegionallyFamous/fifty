@@ -226,6 +226,27 @@ def test_prepublish_is_registered_in_phase_handlers() -> None:
         )
 
 
+def test_contrast_phase_refreshes_generated_wc_overrides() -> None:
+    """A freshly cloned theme must get palette-aware generated WC chrome.
+
+    Phase FF in `append-wc-overrides.py` computes `body.theme-<slug>`
+    hover-polarity selectors from the current theme palettes. If
+    `design.py build` skips that script after cloning a new slug, the
+    clone keeps the source theme's old generated chunk and dark-base
+    concepts fail `check_hover_state_legibility`.
+    """
+    src = DESIGN_PY.read_text(encoding="utf-8")
+    assert "append-wc-overrides.py" in src
+    assert '"--update", spec.slug' in src
+
+
+def test_skip_snap_check_does_not_require_snap_evidence() -> None:
+    """`--skip-snap` smoke runs intentionally have no tmp/snaps evidence."""
+    src = DESIGN_PY.read_text(encoding="utf-8")
+    assert 'getattr(args, "skip_snap", False)' in src
+    assert 'env.setdefault("FIFTY_REQUIRE_SNAP_EVIDENCE", "1")' in src
+
+
 def test_skip_publish_drops_prepublish_too() -> None:
     """`--skip-publish` must filter out `prepublish` in addition to
     `publish`. A regression that lets prepublish push under

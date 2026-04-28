@@ -53,6 +53,7 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- content/
 |   |   |-- category-images.json
 |   |   |-- content.xml
+|   |   |-- product-images.json
 |   |   `-- products.csv
 |   |-- images/
 |   |   |-- cat-curated-bundles.jpg

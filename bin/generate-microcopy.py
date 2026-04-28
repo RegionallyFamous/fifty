@@ -36,6 +36,7 @@ Exit codes
     0  Overrides written (or nothing to do).
     1  Fatal error.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -69,11 +70,9 @@ from _lib import MONOREPO_ROOT, iter_themes, resolve_theme_root
 # ---------------------------------------------------------------------------
 
 _FALLBACK_TABLE: dict[str | tuple[str, str], dict[str, str]] = {
-
     # -----------------------------------------------------------------------
     # Specific theme overrides (highest priority)
     # -----------------------------------------------------------------------
-
     "agave": {
         "a clear, confident headline": "a clear, considered statement",
         "a block-only woocommerce theme. composed entirely of core blocks, styled entirely from one design token file, and open-sourced at github.com/regionallyfamous/fifty.": "a beauty-first woocommerce theme. every surface distilled from one palette file, every token chosen by hand.",
@@ -98,11 +97,10 @@ _FALLBACK_TABLE: dict[str | tuple[str, str], dict[str, str]] = {
         "What happens next": "What follows now",
         "A receipt is on its way to your inbox. If it doesn't arrive, check your spam folder.": "A receipt is heading to your inbox. If it takes a while, your spam folder is worth checking.",
         "We'll wrap your order within one business day and email tracking the moment it ships.": "We'll prepare your order within one working day and send tracking as soon as it leaves.",
-        "Most orders arrive in 2–5 business days. Questions? <a href=\"/contact/\">Get in touch.</a>": "Most orders arrive in 2–5 working days. Questions? <a href=\"/contact/\">Write to us.</a>",
+        'Most orders arrive in 2–5 business days. Questions? <a href="/contact/">Get in touch.</a>': 'Most orders arrive in 2–5 working days. Questions? <a href="/contact/">Write to us.</a>',
         "Free shipping": "Postage included",
         "Made to last": "Made to endure",
     },
-
     "agitprop": {
         "a clear, confident headline": "a bold, printed statement",
         "a block-only woocommerce theme. composed entirely of core blocks, styled entirely from one design token file, and open-sourced at github.com/regionallyfamous/fifty.": "a press-ready woocommerce theme. every surface set in type, every rule drawn in ink, and released at github.com/regionallyfamous/fifty.",
@@ -125,11 +123,10 @@ _FALLBACK_TABLE: dict[str | tuple[str, str], dict[str, str]] = {
         "What happens next": "What the press does next",
         "A receipt is on its way to your inbox. If it doesn't arrive, check your spam folder.": "A receipt has been set and dispatched to your inbox. If it hasn't arrived, the spam folder may have intercepted it.",
         "We'll wrap your order within one business day and email tracking the moment it ships.": "We'll wrap and dispatch within one business day and post tracking the moment it leaves the studio.",
-        "Most orders arrive in 2–5 business days. Questions? <a href=\"/contact/\">Get in touch.</a>": "Most orders arrive in 2–5 business days. Questions? <a href=\"/contact/\">Send a note.</a>",
+        'Most orders arrive in 2–5 business days. Questions? <a href="/contact/">Get in touch.</a>': 'Most orders arrive in 2–5 business days. Questions? <a href="/contact/">Send a note.</a>',
         "Free shipping": "Postage on us",
         "Made to last": "Printed to last",
     },
-
     "apiary": {
         "a clear, confident headline": "a warm, nourishing headline",
         "a block-only woocommerce theme. composed entirely of core blocks, styled entirely from one design token file, and open-sourced at github.com/regionallyfamous/fifty.": "a honey-warm woocommerce theme. every surface drawn from one palette, every token chosen for warmth, and open-sourced at github.com/regionallyfamous/fifty.",
@@ -152,11 +149,10 @@ _FALLBACK_TABLE: dict[str | tuple[str, str], dict[str, str]] = {
         "What happens next": "What comes next",
         "A receipt is on its way to your inbox. If it doesn't arrive, check your spam folder.": "A receipt is winging its way to your inbox. If it doesn't land, your spam folder is worth a peek.",
         "We'll wrap your order within one business day and email tracking the moment it ships.": "We pack your order within one working day and send tracking the moment it's collected.",
-        "Most orders arrive in 2–5 business days. Questions? <a href=\"/contact/\">Get in touch.</a>": "Most orders arrive in 2–5 working days. Questions? <a href=\"/contact/\">Reach out.</a>",
+        'Most orders arrive in 2–5 business days. Questions? <a href="/contact/">Get in touch.</a>': 'Most orders arrive in 2–5 working days. Questions? <a href="/contact/">Reach out.</a>',
         "Free shipping": "Delivery included",
         "Made to last": "Made to keep",
     },
-
     "atomic": {
         "a clear, confident headline": "a bold, atomic-age headline",
         "a block-only woocommerce theme. composed entirely of core blocks, styled entirely from one design token file, and open-sourced at github.com/regionallyfamous/fifty.": "a mid-century woocommerce theme. every surface hand-drawn in the spirit of the space age, every token a nod to the era, and open-sourced at github.com/regionallyfamous/fifty.",
@@ -179,11 +175,10 @@ _FALLBACK_TABLE: dict[str | tuple[str, str], dict[str, str]] = {
         "What happens next": "Mission status",
         "A receipt is on its way to your inbox. If it doesn't arrive, check your spam folder.": "Your receipt is incoming. If it doesn't land, check the junk folder — ground control may have intercepted it.",
         "We'll wrap your order within one business day and email tracking the moment it ships.": "We'll stow your order within one business day and beam tracking the instant it ships.",
-        "Most orders arrive in 2–5 business days. Questions? <a href=\"/contact/\">Get in touch.</a>": "Most orders splash down in 2–5 business days. Questions? <a href=\"/contact/\">Radio us.</a>",
+        'Most orders arrive in 2–5 business days. Questions? <a href="/contact/">Get in touch.</a>': 'Most orders splash down in 2–5 business days. Questions? <a href="/contact/">Radio us.</a>',
         "Free shipping": "Free delivery",
         "Made to last": "Built to the decade",
     },
-
     "azulejo": {
         "a clear, confident headline": "a precise, glazed headline",
         "a block-only woocommerce theme. composed entirely of core blocks, styled entirely from one design token file, and open-sourced at github.com/regionallyfamous/fifty.": "a ceramics-first woocommerce theme. every surface reflects the glaze of the kiln, every pattern arranged by hand, and open-sourced at github.com/regionallyfamous/fifty.",
@@ -206,15 +201,13 @@ _FALLBACK_TABLE: dict[str | tuple[str, str], dict[str, str]] = {
         "What happens next": "What the kiln does next",
         "A receipt is on its way to your inbox. If it doesn't arrive, check your spam folder.": "Your receipt has been sent to your inbox. If it hasn't arrived, the spam folder is the first place to look.",
         "We'll wrap your order within one business day and email tracking the moment it ships.": "We wrap and pack your order within one working day and send tracking as soon as it leaves the workshop.",
-        "Most orders arrive in 2–5 business days. Questions? <a href=\"/contact/\">Get in touch.</a>": "Most orders arrive in 2–5 working days. Questions? <a href=\"/contact/\">Write to the workshop.</a>",
+        'Most orders arrive in 2–5 business days. Questions? <a href="/contact/">Get in touch.</a>': 'Most orders arrive in 2–5 working days. Questions? <a href="/contact/">Write to the workshop.</a>',
         "Free shipping": "Shipping without charge",
         "Made to last": "Fired to last",
     },
-
     # -----------------------------------------------------------------------
     # Generic fallback by era keyword (applied when no slug-specific entry)
     # -----------------------------------------------------------------------
-
     ("pre-1900", "ceramics"): {
         "a clear, confident headline": "a crafted, kiln-glazed headline",
         "Your cart is rather empty.": "Your tray holds nothing yet.",
@@ -232,13 +225,14 @@ _FALLBACK_TABLE: dict[str | tuple[str, str], dict[str, str]] = {
 _COMMON_STRINGS_TO_SKIP = {
     # Short strings that the check would ignore anyway
     "",
-    "Free shipping",   # handled per-theme above
+    "Free shipping",  # handled per-theme above
 }
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _load_spec(theme_root: Path) -> dict:
     """Read the design spec from either the worktree path or tmp/specs/."""
@@ -256,15 +250,24 @@ def _match_table(slug: str, voice: str) -> dict[str, str]:
     """Return the best substitution map for this theme from the fallback table."""
     # 1. Exact slug
     if slug in _FALLBACK_TABLE:
-        return _FALLBACK_TABLE[slug]  # type: ignore[return-value]
+        return _FALLBACK_TABLE[slug]
 
     voice_lower = voice.lower()
 
     # 2. (era, sector) tuple
     era_keywords = ["pre-1900", "pre-1950", "mid-century", "contemporary", "modern"]
     sector_keywords = [
-        "ceramics", "beauty", "food", "gift", "art-print", "coffee",
-        "wine", "jewellery", "textile", "book", "pharmacy",
+        "ceramics",
+        "beauty",
+        "food",
+        "gift",
+        "art-print",
+        "coffee",
+        "wine",
+        "jewellery",
+        "textile",
+        "book",
+        "pharmacy",
     ]
     matched_era = next((e for e in era_keywords if e in voice_lower), "")
     matched_sector = next((s for s in sector_keywords if s in voice_lower), "")
@@ -272,22 +275,26 @@ def _match_table(slug: str, voice: str) -> dict[str, str]:
     if matched_era and matched_sector:
         key = (matched_era, matched_sector)
         if key in _FALLBACK_TABLE:
-            return _FALLBACK_TABLE[key]  # type: ignore[return-value]
+            return _FALLBACK_TABLE[key]
 
     # 3. Sector only
     if matched_sector:
-        for (e, s), v in _FALLBACK_TABLE.items():  # type: ignore[misc]
-            if isinstance(e, str) and s == matched_sector:  # type: ignore[misc]
-                return v  # type: ignore[return-value]
+        for table_key, v in _FALLBACK_TABLE.items():
+            if isinstance(table_key, tuple):
+                _era, sector = table_key
+                if sector == matched_sector:
+                    return v
 
     # 4. Era only
     if matched_era:
-        for (e, s), v in _FALLBACK_TABLE.items():  # type: ignore[misc]
-            if isinstance(e, str) and e == matched_era:  # type: ignore[misc]
-                return v  # type: ignore[return-value]
+        for table_key, v in _FALLBACK_TABLE.items():
+            if isinstance(table_key, tuple):
+                era, _sector = table_key
+                if era == matched_era:
+                    return v
 
     # 5. _default
-    return _FALLBACK_TABLE.get("_default", {})  # type: ignore[return-value]
+    return _FALLBACK_TABLE.get("_default", {})
 
 
 def _find_duplicates(theme_root: Path) -> dict[str, str]:
@@ -334,8 +341,13 @@ def _find_duplicates(theme_root: Path) -> dict[str, str]:
     return duplicates
 
 
-_CONTENT_RE = re.compile(r'"content"\s*:\s*"((?:[^"\\]|\\.)*)"|<(?:h[1-6]|p|li|button|a|figcaption|blockquote)[^>]*>(.*?)</(?:h[1-6]|p|li|button|a|figcaption|blockquote)>', re.DOTALL)
-_PHP_STR_RE = re.compile(r"""(?:__|_e|esc_html_e|esc_html__|esc_attr_e|esc_attr__)\(\s*['"]([^'"]+)['"]\s*[,)]""")
+_CONTENT_RE = re.compile(
+    r'"content"\s*:\s*"((?:[^"\\]|\\.)*)"|<(?:h[1-6]|p|li|button|a|figcaption|blockquote)[^>]*>(.*?)</(?:h[1-6]|p|li|button|a|figcaption|blockquote)>',
+    re.DOTALL,
+)
+_PHP_STR_RE = re.compile(
+    r"""(?:__|_e|esc_html_e|esc_html__|esc_attr_e|esc_attr__)\(\s*['"]([^'"]+)['"]\s*[,)]"""
+)
 
 
 def _extract_strings(text: str) -> list[str]:
@@ -369,7 +381,7 @@ def _generate_overrides_with_api(
 ) -> dict[str, str]:
     """Call the Anthropic API to generate voice-appropriate replacements."""
     try:
-        import anthropic  # noqa: PLC0415
+        import anthropic
     except ImportError:
         return {}
 
@@ -413,7 +425,9 @@ Strings to rewrite:
             max_tokens=4096,
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = message.content[0].text.strip()
+        raw = getattr(message.content[0], "text", "").strip()
+        if not raw:
+            return {}
         # Strip markdown code fences if present
         raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
         overrides = json.loads(raw)
@@ -429,6 +443,7 @@ Strings to rewrite:
 # ---------------------------------------------------------------------------
 # Main generation logic
 # ---------------------------------------------------------------------------
+
 
 def generate_overrides(
     theme_root: Path,
@@ -460,9 +475,7 @@ def generate_overrides(
         missing = {k: v for k, v in duplicates.items() if k not in overrides}
         if missing and not quiet:
             print(f"  [{slug}] {len(missing)} duplicate(s) not covered by static table; trying API")
-        api_overrides = _generate_overrides_with_api(
-            theme_root, missing, spec, quiet=quiet
-        )
+        api_overrides = _generate_overrides_with_api(theme_root, missing, spec, quiet=quiet)
         overrides.update(api_overrides)
 
     if not overrides:
@@ -497,8 +510,9 @@ def main(argv: list[str] | None = None) -> int:
     grp = parser.add_mutually_exclusive_group(required=True)
     grp.add_argument("--theme", metavar="SLUG")
     grp.add_argument("--all", action="store_true")
-    parser.add_argument("--no-api", action="store_true",
-                        help="Skip Anthropic API; use static table only.")
+    parser.add_argument(
+        "--no-api", action="store_true", help="Skip Anthropic API; use static table only."
+    )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args(argv)
@@ -513,9 +527,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     theme_root = resolve_theme_root(args.theme)
-    generate_overrides(
-        theme_root, no_api=args.no_api, dry_run=args.dry_run, quiet=args.quiet
-    )
+    generate_overrides(theme_root, no_api=args.no_api, dry_run=args.dry_run, quiet=args.quiet)
     return 0
 
 

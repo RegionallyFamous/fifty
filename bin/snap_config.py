@@ -457,6 +457,16 @@ A11Y_SUPPRESSIONS: tuple[A11ySuppression, ...] = (
             "an unrolled `<div>`. Fix belongs upstream in WC Blocks."
         ),
     ),
+    A11ySuppression(
+        rule="color-contrast",
+        selector_contains="adminbar-search",
+        reason=(
+            "The logged-in WordPress admin bar is core/admin chrome, not part "
+            "of the storefront theme. The account-dashboard snap keeps it "
+            "visible only to authenticate Woo account routes, so its upstream "
+            "search-field contrast should not block theme visual evidence."
+        ),
+    ),
     # ----- Playground-transient blank-page suppressions ------------------
     # If Playground's PHP-WASM runtime hiccups during a shoot, Playwright
     # captures `<html><head></head><body></body></html>` for that cell —

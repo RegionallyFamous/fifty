@@ -1009,6 +1009,22 @@ def _phase_contrast(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -
     `check_block_text_contrast` which will re-report the same issues
     as a gate-blocking failure.
     """
+    wc_overrides = ROOT / "bin" / "append-wc-overrides.py"
+    if wc_overrides.is_file():
+        # New themes need the generated WC chrome phases (notably Phase FF
+        # hover-polarity auto-flip) after their palette lands. A fresh clone
+        # otherwise carries the source theme's previously-generated chunk,
+        # which cannot include the new `body.theme-<slug>` selectors.
+        cmd = [sys.executable, str(wc_overrides), "--update", spec.slug]
+        print(f"  [contrast] {' '.join(cmd[1:])}")
+        rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
+        if rc != 0:
+            if args.strict:
+                raise PhaseError("contrast", f"append-wc-overrides.py exited {rc}")
+            print(
+                f"  [contrast] WARN: append-wc-overrides.py exited {rc}; continuing (--no-strict)."
+            )
+
     script = ROOT / "bin" / "autofix-contrast.py"
     if not script.is_file():
         print("  [contrast] WARN: bin/autofix-contrast.py missing; skipping.")
@@ -1397,10 +1413,12 @@ def _phase_check(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> N
     --offline`) runs in CI on push.
 
     Sets FIFTY_REQUIRE_SNAP_EVIDENCE=1 so any missing snap evidence is a
-    FAIL rather than a silent SKIP — the snap phase already ran above,
-    so absence here means snap.py crashed without raising."""
+    FAIL rather than a silent SKIP when the snap phase is expected to
+    run. In explicit `--skip-snap` smoke runs we leave it unset because
+    missing evidence is the requested mode, not a crash."""
     env = os.environ.copy()
-    env.setdefault("FIFTY_REQUIRE_SNAP_EVIDENCE", "1")
+    if not getattr(args, "skip_snap", False):
+        env.setdefault("FIFTY_REQUIRE_SNAP_EVIDENCE", "1")
     check_phase = getattr(args, "check_phase", "all")
     cmd = [sys.executable, str(ROOT / "bin" / "check.py"), spec.slug, "--quick"]
     if check_phase != "all":

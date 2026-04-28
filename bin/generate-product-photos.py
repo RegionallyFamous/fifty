@@ -54,7 +54,6 @@ import argparse
 import json
 import subprocess
 import sys
-import textwrap
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -86,7 +85,7 @@ def _load_palette(theme_root: Path) -> dict[str, str]:
     return out
 
 
-def _find_font(size: int) -> "ImageFont.FreeTypeFont | ImageFont.ImageFont":
+def _find_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     """Return the best available PIL font at the requested size."""
     candidates = [
         "/System/Library/Fonts/Supplemental/Arial.ttf",
@@ -105,23 +104,23 @@ def _find_font(size: int) -> "ImageFont.FreeTypeFont | ImageFont.ImageFont":
 
 
 def _text_size(
-    draw: "ImageDraw.ImageDraw",
+    draw: ImageDraw.ImageDraw,
     text: str,
-    font: "ImageFont.FreeTypeFont | ImageFont.ImageFont",
+    font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
 ) -> tuple[int, int]:
     """Return (width, height) for the rendered text."""
     bbox = draw.textbbox((0, 0), text, font=font)
-    return bbox[2] - bbox[0], bbox[3] - bbox[1]
+    return int(bbox[2] - bbox[0]), int(bbox[3] - bbox[1])
 
 
-def _wrap_text(text: str, font: "ImageFont.FreeTypeFont | ImageFont.ImageFont",
-               max_width: int, draw: "ImageDraw.ImageDraw") -> list[str]:
+def _wrap_text(text: str, font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
+               max_width: int, draw: ImageDraw.ImageDraw) -> list[str]:
     """Break `text` into lines so each fits within `max_width` px."""
     words = text.split()
     lines: list[str] = []
     current: list[str] = []
     for word in words:
-        candidate = " ".join(current + [word])
+        candidate = " ".join([*current, word])
         w, _ = _text_size(draw, candidate, font)
         if w > max_width and current:
             lines.append(" ".join(current))
@@ -224,8 +223,8 @@ def _make_category_cover(
     contrast = _hex_to_rgb(contrast_hex)
 
     # Blend base with a touch of accent for the background
-    bg = tuple(int(b * 0.92 + a * 0.08) for b, a in zip(base, accent))
-    img = Image.new("RGB", (width, height), color=bg)  # type: ignore[arg-type]
+    bg = tuple(int(b * 0.92 + a * 0.08) for b, a in zip(base, accent))  # noqa: B905
+    img = Image.new("RGB", (width, height), color=bg)
     draw = ImageDraw.Draw(img)
 
     # Bottom accent stripe
@@ -233,7 +232,6 @@ def _make_category_cover(
     draw.rectangle([0, height - stripe_h, width, height], fill=accent)
 
     # Category name centred
-    name_parts = category_name.split()
     font_size = max(48, height // 6)
     font = _find_font(font_size)
     lines = _wrap_text(category_name, font, width - width // 5, draw)
@@ -267,7 +265,7 @@ def _build_product_images_json(content_dir: Path, images_dir: Path) -> dict[str,
        SKU (``WO-BOTTLED-MORNING`` → ``product-wo-bottled-morning.jpg``).
     3. Scan ``images_dir`` for any existing ``product-wo-*.jpg`` files.
     """
-    import csv  # noqa: PLC0415
+    import csv
 
     out: dict[str, str] = {}
     csv_path = content_dir / "products.csv"
@@ -353,7 +351,7 @@ def generate_photos_for_theme(
         if not quiet:
             print(f"  [{slug}] created {_rel(product_images_json)} ({len(product_map)} entries)")
 
-    product_map: dict[str, str] = json.loads(product_images_json.read_text())
+    product_map = json.loads(product_images_json.read_text())
     written = 0
 
     for sku, filename in sorted(product_map.items()):

@@ -90,7 +90,7 @@ def test_parse_findings_response_post_filters_by_phase() -> None:
         '{"kind": "vision:typography-overpowered", "severity": "error", '
         '"message": "hero is huge", "rationale": "too big", '
         '"remedy_hint": "shrink", "bbox": null}'
-        ']}'
+        "]}"
     )
     content_allow = mod.kinds_for_phase(mod.VISION_PHASE_CONTENT)
     out = mod.parse_findings_response(off_phase_payload, kinds_allowlist=content_allow)
@@ -106,7 +106,7 @@ def test_parse_findings_response_post_filters_by_phase() -> None:
         '{"kind": "vision:photography-mismatch", "severity": "error", '
         '"message": "cartoons", "rationale": "not photographic", '
         '"remedy_hint": "regen", "bbox": null}'
-        ']}'
+        "]}"
     )
     out2 = mod.parse_findings_response(in_phase_payload, kinds_allowlist=content_allow)
     assert len(out2) == 1 and out2[0]["kind"] == "vision:photography-mismatch"
@@ -125,16 +125,15 @@ def test_default_allowlist_is_full_set() -> None:
         '{"kind": "vision:photography-mismatch", "severity": "warn", '
         '"message": "m", "rationale": "r", "remedy_hint": null, '
         '"bbox": null}'
-        ']}'
+        "]}"
     )
     out = mod.parse_findings_response(payload)  # no kwarg
     kinds = {f["kind"] for f in out}
     assert kinds == {
         "vision:typography-overpowered",
         "vision:photography-mismatch",
-    }, (
-        "Default call (no `kinds_allowlist`) must accept every "
-        "ALLOWED_FINDING_KINDS; got " + repr(kinds)
+    }, "Default call (no `kinds_allowlist`) must accept every ALLOWED_FINDING_KINDS; got " + repr(
+        kinds
     )
 
 
@@ -152,9 +151,7 @@ def test_build_user_prompt_enumerates_only_phase_kinds() -> None:
     )
     # Every content kind appears in the enumerated list.
     for k in content_allow:
-        assert f"`{k}`" in prompt, (
-            f"Content-phase prompt must enumerate {k!r}; got:\n{prompt}"
-        )
+        assert f"`{k}`" in prompt, f"Content-phase prompt must enumerate {k!r}; got:\n{prompt}"
     # No structural kind appears.
     for k in mod._STRUCTURAL_VISION_KINDS:
         assert f"`{k}`" not in prompt, (

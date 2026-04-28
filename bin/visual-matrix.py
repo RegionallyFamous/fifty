@@ -25,6 +25,7 @@ Why this lives in bin/ rather than inline in visual.yml:
     debugging nightmare (no syntax highlighting, escape hell, no traceback).
     A real script also lets us add `--dry-run` for local verification.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -44,7 +45,7 @@ from snap import _changed_themes, discover_themes  # noqa: E402
 
 
 class Scope(NamedTuple):
-    """Resolved (mode, themes, do_full_shoot, new_themes) tuple emitted to GITHUB_OUTPUT.
+    """Resolved visual.yml scope emitted to GITHUB_OUTPUT.
 
     NamedTuple (rather than @dataclass) is deliberate: the smoke test
     in tests/tools/test_bin_scripts_smoke.py loads this module via
@@ -64,6 +65,7 @@ class Scope(NamedTuple):
     mode: str
     themes: list[str]
     do_full_shoot: bool
+    base_ref: str
     new_themes: list[str] = []  # noqa: RUF012  -- NamedTuple default must be literal
 
 
@@ -134,18 +136,36 @@ def compute(
 
     if event == "workflow_dispatch" and input_mode == "regenerate-gallery":
         themes = explicit_themes or discover_themes()
-        return Scope(mode="regenerate-gallery", themes=themes, do_full_shoot=True, new_themes=new)
+        return Scope(
+            mode="regenerate-gallery",
+            themes=themes,
+            do_full_shoot=True,
+            base_ref=base_ref,
+            new_themes=new,
+        )
 
     if event == "workflow_dispatch" and input_mode == "rebaseline":
         themes = explicit_themes or discover_themes()
-        return Scope(mode="rebaseline", themes=themes, do_full_shoot=True, new_themes=new)
+        return Scope(
+            mode="rebaseline",
+            themes=themes,
+            do_full_shoot=True,
+            base_ref=base_ref,
+            new_themes=new,
+        )
 
     if event == "workflow_dispatch" and explicit_themes:
         # Manual check against an explicit theme list — useful for
         # re-running a previously failed gate without waiting for a
         # rebaseline. Behaves like check-changed (shoot + diff +
         # report) but on the user-supplied subset.
-        return Scope(mode="check-manual", themes=explicit_themes, do_full_shoot=False, new_themes=new)
+        return Scope(
+            mode="check-manual",
+            themes=explicit_themes,
+            do_full_shoot=False,
+            base_ref=base_ref,
+            new_themes=new,
+        )
 
     # check-changed (default for push / PR, and for workflow_dispatch
     # with mode=check-changed and no themes). Use git to figure out
@@ -161,7 +181,13 @@ def compute(
     else:
         themes = affected
 
-    return Scope(mode="check-changed", themes=themes, do_full_shoot=False, new_themes=new)
+    return Scope(
+        mode="check-changed",
+        themes=themes,
+        do_full_shoot=False,
+        base_ref=base_ref,
+        new_themes=new,
+    )
 
 
 def emit(scope: Scope, out_stream, out_path: str | None) -> None:
@@ -170,6 +196,11 @@ def emit(scope: Scope, out_stream, out_path: str | None) -> None:
         f"mode={scope.mode}",
         f"themes={json.dumps(scope.themes)}",
         f"do_full_shoot={'true' if scope.do_full_shoot else 'false'}",
+        # Downstream shoot jobs MUST use the same diff base as setup.
+        # On push-to-main, setup compares against github.event.before;
+        # comparing the per-theme shoot against origin/main would diff
+        # HEAD against itself and auto-routes would upload no artifacts.
+        f"base_ref={scope.base_ref}",
         # `has_themes` is a convenience boolean for `if:` expressions.
         # The matrix-strategy `if: themes != '[]'` works but reads worse.
         f"has_themes={'true' if scope.themes else 'false'}",
@@ -230,8 +261,7 @@ def main(argv: list[str] | None = None) -> int:
         event=os.environ.get("EVENT_NAME", ""),
         input_mode=os.environ.get("INPUT_MODE", "").strip(),
         input_themes=os.environ.get("INPUT_THEMES", "").strip(),
-        base_ref=(os.environ.get("BASE_REF", "origin/main").strip()
-                  or "origin/main"),
+        base_ref=(os.environ.get("BASE_REF", "origin/main").strip() or "origin/main"),
     )
     out_path = None if args.dry_run else os.environ.get("GITHUB_OUTPUT")
     emit(scope, sys.stdout, out_path)
