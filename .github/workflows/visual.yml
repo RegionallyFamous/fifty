@@ -139,6 +139,7 @@ jobs:
       mode: ${{ steps.scope.outputs.mode }}
       themes: ${{ steps.scope.outputs.themes }}
       do_full_shoot: ${{ steps.scope.outputs.do_full_shoot }}
+      base_ref: ${{ steps.scope.outputs.base_ref }}
       has_themes: ${{ steps.scope.outputs.has_themes }}
     steps:
       - name: Checkout
@@ -299,10 +300,12 @@ jobs:
         run: |
           EXTRA_ARGS=""
           if [ "${{ needs.setup.outputs.do_full_shoot }}" != "true" ]; then
-            # Use --changed-base (without --changed, since the theme is
-            # already pinned by matrix) so _changed_routes() compares
-            # against origin/main rather than only uncommitted edits.
-            EXTRA_ARGS="--auto-routes --changed-base origin/main"
+            # Use the SAME diff base resolved by setup. On push/main this
+            # is github.event.before; using origin/main here compares HEAD
+            # to itself after checkout and every matrix job uploads no
+            # artifacts, leaving the aggregate job with "No snaps to
+            # report". On PRs setup resolves this to origin/main.
+            EXTRA_ARGS="--auto-routes --changed-base ${{ needs.setup.outputs.base_ref }}"
           fi
           python3 bin/snap.py shoot ${{ matrix.theme }} --cache-state $EXTRA_ARGS
 

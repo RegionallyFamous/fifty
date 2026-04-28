@@ -43,7 +43,7 @@ def vm():
 
 
 def test_scope_default_new_themes_is_empty_list(vm):
-    s = vm.Scope(mode="check-changed", themes=["aero"], do_full_shoot=False)
+    s = vm.Scope(mode="check-changed", themes=["aero"], do_full_shoot=False, base_ref="origin/main")
     assert s.new_themes == []
 
 
@@ -56,7 +56,33 @@ def test_compute_check_changed_surfaces_new_themes(vm, monkeypatch):
     monkeypatch.setattr(vm, "discover_themes", lambda: ["aero", "fresh"])
     scope = vm.compute(event="pull_request", input_mode="", input_themes="", base_ref="origin/main")
     assert scope.mode == "check-changed"
+    assert scope.base_ref == "origin/main"
     assert scope.new_themes == ["fresh"]
+
+
+def test_compute_push_threads_event_before_base_to_shoot_jobs(vm, monkeypatch):
+    """Push-to-main visual setup diffs against github.event.before.
+
+    The setup job already used that base to choose a non-empty matrix,
+    but the shoot job used to hardcode `origin/main` for route
+    narrowing. Once the runner checks out the pushed HEAD, `origin/main`
+    also points at HEAD, so every shoot job found an empty diff,
+    uploaded no artifacts, and the aggregate job failed with "No snaps
+    to report." Preserve the exact base ref on Scope so visual.yml can
+    pass it through to `snap.py shoot --changed-base`.
+    """
+    monkeypatch.setattr(vm, "_new_themes", lambda base: [])
+    monkeypatch.setattr(vm, "_changed_themes", lambda base: ["aero"])
+    monkeypatch.setattr(vm, "discover_themes", lambda: ["aero"])
+    scope = vm.compute(
+        event="push",
+        input_mode="",
+        input_themes="",
+        base_ref="deadbeef-before-sha",
+    )
+    assert scope.mode == "check-changed"
+    assert scope.themes == ["aero"]
+    assert scope.base_ref == "deadbeef-before-sha"
 
 
 def test_compute_regenerate_gallery_still_sets_new_themes(vm, monkeypatch):
@@ -85,7 +111,11 @@ def test_compute_no_new_themes_yields_empty_list(vm, monkeypatch):
 
 def test_emit_prints_new_themes_and_is_new_theme_true(vm):
     scope = vm.Scope(
-        mode="check-changed", themes=["fresh"], do_full_shoot=False, new_themes=["fresh"]
+        mode="check-changed",
+        themes=["fresh"],
+        do_full_shoot=False,
+        base_ref="origin/main",
+        new_themes=["fresh"],
     )
     buf = io.StringIO()
     vm.emit(scope, buf, None)
@@ -95,7 +125,13 @@ def test_emit_prints_new_themes_and_is_new_theme_true(vm):
 
 
 def test_emit_prints_is_new_theme_false_when_empty(vm):
-    scope = vm.Scope(mode="check-changed", themes=["aero"], do_full_shoot=False, new_themes=[])
+    scope = vm.Scope(
+        mode="check-changed",
+        themes=["aero"],
+        do_full_shoot=False,
+        base_ref="origin/main",
+        new_themes=[],
+    )
     buf = io.StringIO()
     vm.emit(scope, buf, None)
     text = buf.getvalue()
@@ -105,7 +141,11 @@ def test_emit_prints_is_new_theme_false_when_empty(vm):
 
 def test_emit_writes_all_lines_to_github_output(vm, tmp_path):
     scope = vm.Scope(
-        mode="check-changed", themes=["fresh"], do_full_shoot=False, new_themes=["fresh"]
+        mode="check-changed",
+        themes=["fresh"],
+        do_full_shoot=False,
+        base_ref="origin/main",
+        new_themes=["fresh"],
     )
     out_path = tmp_path / "github_output.txt"
     vm.emit(scope, io.StringIO(), str(out_path))
@@ -116,6 +156,7 @@ def test_emit_writes_all_lines_to_github_output(vm, tmp_path):
         "mode=",
         "themes=",
         "do_full_shoot=",
+        "base_ref=",
         "has_themes=",
         "new_themes=",
         "is_new_theme=",

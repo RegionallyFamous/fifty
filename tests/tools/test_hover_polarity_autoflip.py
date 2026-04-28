@@ -208,6 +208,34 @@ def test_phase_ff_surfaces_match_phase_a_through_d_rules(awc):
 
 
 # ---------------------------------------------------------------------------
+# CSS_PHASE_M — generated disabled add-to-cart coverage
+# ---------------------------------------------------------------------------
+
+
+def test_phase_m_disabled_button_rule_covers_dynamic_theme(awc, monkeypatch):
+    """Incubating themes must get the disabled PDP button contrast rule.
+
+    This used to be an enumerated list of shipped theme slugs, so a
+    fresh `design.py build` of a new dark theme failed
+    `check_disabled_button_contrast_per_theme` until someone hand-added
+    the slug. Phase M should discover every on-disk theme when the chunk
+    is built.
+    """
+    monkeypatch.setattr(awc, "discover_themes", lambda stages=(): ["obel", "nocturne"])
+    css = awc._build_phase_m_css()
+    assert "body.theme-nocturne .single_add_to_cart_button.disabled" in css
+    assert "body.theme-nocturne .single_add_to_cart_button:disabled" in css
+    assert "body.theme-nocturne .single_add_to_cart_button.wc-variation-selection-needed" in css
+
+
+def test_phase_m_disabled_button_rule_uses_tokens(awc):
+    """The disabled-state fix must stay tokenised, not hardcoded."""
+    assert "background:var(--wp--preset--color--contrast)" in awc.CSS_PHASE_M
+    assert "color:var(--wp--preset--color--base)" in awc.CSS_PHASE_M
+    assert "opacity:1" in awc.CSS_PHASE_M
+
+
+# ---------------------------------------------------------------------------
 # CSS_PHASE_GG — universal header flex-wrap
 # ---------------------------------------------------------------------------
 

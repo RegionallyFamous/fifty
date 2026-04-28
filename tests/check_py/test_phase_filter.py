@@ -75,8 +75,7 @@ def test_phase_sets_partition_the_full_registry() -> None:
     structural = {n for n in names if mod._phase_for(n) == mod.PHASE_STRUCTURAL}
     content = {n for n in names if mod._phase_for(n) == mod.PHASE_CONTENT}
     assert not (structural & content), (
-        f"A check belongs to both phases; this cannot happen: "
-        f"{sorted(structural & content)}"
+        f"A check belongs to both phases; this cannot happen: {sorted(structural & content)}"
     )
     assert structural | content == names, (
         f"Some checks belong to neither phase: {sorted(names - structural - content)}"
@@ -134,9 +133,7 @@ def test_phase_content_complements_phase_structural() -> None:
     assert content_kept | structural_kept == set(names), (
         "Together the two partitions cover every registered check."
     )
-    assert not (content_kept & structural_kept), (
-        "The partitions are disjoint."
-    )
+    assert not (content_kept & structural_kept), "The partitions are disjoint."
 
 
 def test_phase_constants_exist_and_are_canonical_strings() -> None:

@@ -92,8 +92,7 @@ def test_dress_phases_subset_of_phases() -> None:
     phases = _tuple_literal("PHASES")
     dress = _tuple_literal("_PHASES_FOR_DRESS")
     assert set(dress).issubset(set(phases)), (
-        f"_PHASES_FOR_DRESS contains phases not in PHASES: "
-        f"{set(dress) - set(phases)}."
+        f"_PHASES_FOR_DRESS contains phases not in PHASES: {set(dress) - set(phases)}."
     )
 
 
