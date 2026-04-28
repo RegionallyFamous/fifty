@@ -1,7 +1,7 @@
 {
   "stage": "incubating",
-  "summary": "Agave: WIP (cloned from obel). Edit this summary with the theme's brand voice once the design pass is complete.",
+  "summary": "Agave: slow-grown, desert-minded storefront. Products crafted without shortcuts, built to outlast the moment you bought them for.",
   "owner": "",
-  "last_checked": "",
-  "notes": "Scaffolded by bin/clone.py from obel. Promoted to `stage: shipping` by .github/workflows/first-baseline.yml once baselines are committed, or manually after the final design review."
+  "last_checked": "2026-04-28",
+  "notes": "First self-healing-loop rehearsal cleared 5 watcher-summary blockers in 1 attempt. Full `bin/check.py --all` surface still fails on cross-theme product-photo / hero-placeholder uniqueness (30 + 24 byte-identical files with obel/basalt), faq-accordion microcopy copy-paste from obel, hover-contrast on .single_add_to_cart_button:hover, and 4 new a11y-color-contrast snap errors. Promotion gated on those clearing via a broader agentic round that feeds `bin/check.py --all --offline` output into the unblocker."
 }

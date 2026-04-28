@@ -11,7 +11,9 @@ BIN_DIR = REPO_ROOT / "bin"
 
 
 def load_design_watch():
-    spec = importlib.util.spec_from_file_location("_design_watch_for_test", BIN_DIR / "design-watch.py")
+    spec = importlib.util.spec_from_file_location(
+        "_design_watch_for_test", BIN_DIR / "design-watch.py"
+    )
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     sys.modules["_design_watch_for_test"] = module
@@ -249,12 +251,8 @@ def test_write_status_emits_auto_unblock_section(tmp_path):
     state.repair_last_decision = "not-improved"
     state.repair_last_reason = "Blocker set unchanged after repair attempt."
     state.repair_last_touched = ["agave/theme.json"]
-    state.repair_attempts = [
-        {"attempt": 1, "decision": "not-improved", "reason": "unchanged"}
-    ]
-    state.repair_stop_reason = (
-        "Repair cap or non-improving streak reached."
-    )
+    state.repair_attempts = [{"attempt": 1, "decision": "not-improved", "reason": "unchanged"}]
+    state.repair_stop_reason = "Repair cap or non-improving streak reached."
     status_path = tmp_path / "STATUS.md"
     watch.write_status(status_path, state)
     body = status_path.read_text(encoding="utf-8")
