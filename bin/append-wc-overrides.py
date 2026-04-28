@@ -1495,10 +1495,16 @@ h1.wp-block-heading.wp-block-heading.wp-block-heading.wp-block-heading{{line-hei
 #
 SENTINEL_OPEN_PHASE_T = "/* wc-tells-phase-t-real-bug-cleanup-4 */"
 SENTINEL_CLOSE_PHASE_T = "/* /wc-tells-phase-t-real-bug-cleanup-4 */"
+# NOTE: the original Phase T also held a `@media (max-width:781px)`
+# header flex-wrap rule scoped to `body.theme-{selvedge,chonk,lysholm}`.
+# That enumeration was retired in favor of Phase GG's universal
+# `.wp-site-blocks header.wp-block-group.alignfull` selector (which
+# covers every theme on disk, current and future, without requiring a
+# hand-edit every time a new theme ships). Leaving Phase T's sentinel
+# intact so SENTINEL_CLOSE_PHASE_T remains a valid anchor for Phase U.
 CSS_PHASE_T = f"""{SENTINEL_OPEN_PHASE_T}
 .wo-account-login-grid.wo-account-login-grid.wo-account-login-grid{{display:grid;grid-template-columns:minmax(0,1fr);min-width:0;max-width:100%;}}
 .wo-account-login-grid.wo-account-login-grid.wo-account-login-grid>*{{min-width:0;max-width:100%;overflow-wrap:break-word;}}
-@media (max-width:781px){{body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull.alignfull,body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignfull,body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignwide,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull.alignfull,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignfull,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignwide,body.theme-lysholm .wp-site-blocks header.wp-block-group.alignfull.alignfull,body.theme-lysholm .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignfull,body.theme-lysholm .wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignwide{{flex-wrap:wrap;min-width:0;max-width:100%;}}body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation,body.theme-selvedge .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation__container,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation,body.theme-chonk .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation__container,body.theme-lysholm .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation,body.theme-lysholm .wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation__container{{flex-wrap:wrap;min-width:0;max-width:100%;}}}}
 {SENTINEL_CLOSE_PHASE_T}"""
 
 
@@ -1968,6 +1974,238 @@ h1.wp-block-heading.wp-block-heading,h2.wp-block-heading.wp-block-heading,h1.wp-
 {SENTINEL_CLOSE_PHASE_V}"""
 
 
+# ----------------------------------------------------------------------
+# Phase FF — hover foreground polarity auto-flip
+# ----------------------------------------------------------------------
+# Every `:hover` rule in Phase A–D that paints `{background: var(--accent);
+# color: var(--contrast);}` assumes `contrast` has ≥3:1 WCAG against
+# `accent`. That's true on obel (4.74:1), chonk (16.57:1), lysholm
+# (7.59:1), basalt (5.91:1), selvedge (3.05:1), aero (3.07:1). It is
+# NOT true on foundry (`contrast` 2.14:1 on burnt-orange accent) — for
+# which a hand-written override lives in Phase E line 732 with doubled
+# `.theme-foundry.theme-foundry` specificity — nor on any future theme
+# where a mid-luminance `accent` lands close to a mid-luminance
+# `contrast`. The cipher smoke on 2026-04-28 reproduced this exactly:
+# cream `#E5DFCE` on gold `#C8A04A` = 1.84:1 across 7 WC surfaces
+# (mini-cart footer, totals-coupon button, checkout place-order,
+# order-confirmation downloads, MyAccount form buttons, orders-table
+# buttons, empty-cart primary CTA, footer newsletter submit).
+#
+# `check_hover_state_legibility` catches this after-the-fact, but the
+# remediation (hand-write a `body.theme-<slug>.theme-<slug>` override
+# in Phase E) is brittle: every new theme whose palette lands in the
+# mid-luminance failure band gets quietly broken until the operator
+# notices. Phase FF closes the gap at generation time: read each theme's
+# palette once, compute `_wcag_contrast(contrast, accent)` and
+# `_wcag_contrast(base, accent)`, and emit an override flip for any
+# theme where `contrast`-on-`accent` sits below the 3:1 AA-Large floor
+# AND `base`-on-`accent` clears 3:1 (the flip only helps if the
+# alternative actually works — otherwise the theme has a fundamentally
+# broken accent choice that this script can't paper over).
+#
+# The output is a per-theme override block:
+#
+#   body.theme-<slug> <every accent-hover surface>:hover {
+#     background: var(--wp--preset--color--accent);
+#     color: var(--wp--preset--color--base);
+#   }
+#
+# One `body.theme-<slug>` class chain gives specificity (0,2,N) which
+# beats Phase A's (0,1,N) baseline without reaching for `!important`
+# (which `check_no_important` blocks outside its curated allowlist).
+# The block ships the same CSS to every theme's theme.json — the
+# `body.theme-<slug>` selector matches only on that one theme, so
+# cipher's rule is dead weight in obel's CSS, obel's rule is dead
+# weight in cipher's CSS, etc. Tiny bytes, zero risk of cross-theme
+# interference.
+#
+# Why this block is dynamically composed at script startup instead of
+# authored as a static string: the list of "flip-needed themes" is a
+# function of each theme's current palette. When a theme's accent
+# changes (or a new theme is scaffolded with a mid-luminance accent),
+# running `bin/append-wc-overrides.py --update` recomputes the block
+# from current `theme.json` values and rewrites the sentinel contents
+# everywhere. Pre-push's drift check (root-rule #19) will catch anyone
+# who edits a palette without rerunning the script.
+#
+# Related: `bin/check.py::check_hover_state_legibility` is the hard
+# gate; this phase is the remediation. The two pieces together mean a
+# palette change that produces a mid-luminance accent gets auto-flipped
+# to legibility without any manual Phase E work.
+
+# The 12 Woo+theme surfaces where Phase A–D hover rules paint
+# `{background:accent; color:contrast}`. Kept in sync (manually) with
+# the rule list in Phase A–D; if a future phase adds another accent-
+# hover surface, add its selector here so the flip reaches it. This is
+# a one-line grep against `append-wc-overrides.py` looking for
+# `:hover` selectors that set `background:var(--wp--preset--color--
+# accent)` and `color:var(--wp--preset--color--contrast)` together.
+_HOVER_ACCENT_SURFACES: tuple[str, ...] = (
+    ".wc-block-mini-cart__footer-actions a",
+    ".wc-block-mini-cart__footer-actions .wc-block-components-button",
+    ".wc-block-components-totals-coupon__button",
+    ".wc-block-components-totals-coupon button",
+    ".wc-block-cart__submit-container .wc-block-components-checkout-place-order-button",
+    ".wc-block-cart__submit-container a.wc-block-cart__submit-button",
+    ".wc-block-components-checkout-place-order-button",
+    ".wp-block-woocommerce-order-confirmation-downloads .button",
+    ".woocommerce-MyAccount-content form .button",
+    ".woocommerce-orders-table .button",
+    ".wo-empty__cta--primary",
+    ".selvedge-footer__newsletter-submit",
+)
+
+
+def _wcag_luminance_hex(hex_color: str) -> float | None:
+    """WCAG 2.x relative luminance for `#RRGGBB`. Returns `None` on
+    unparseable input — the caller treats that as "skip this theme"
+    rather than crashing mid-generation.
+
+    Duplicated in `bin/check.py::_wcag_luminance` and
+    `bin/design.py::_wcag_luminance_hex`. Keeping three copies rather
+    than an import because each script must stay runnable in isolation
+    (no cyclic import risk, no shared module to bootstrap). When one
+    changes, update all three — the drift check will fire if they
+    disagree on any theme's classification."""
+    h = hex_color.strip().lstrip("#")
+    if len(h) != 6:
+        return None
+    try:
+        r, g, b = (int(h[i : i + 2], 16) / 255 for i in (0, 2, 4))
+    except ValueError:
+        return None
+
+    def _lin(c: float) -> float:
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
+    return 0.2126 * _lin(r) + 0.7152 * _lin(g) + 0.0722 * _lin(b)
+
+
+def _wcag_contrast_hex(a: str, b: str) -> float | None:
+    """WCAG 2.x contrast ratio between two `#RRGGBB` hex strings.
+    Returns `None` if either is unparseable."""
+    la = _wcag_luminance_hex(a)
+    lb = _wcag_luminance_hex(b)
+    if la is None or lb is None:
+        return None
+    lighter, darker = max(la, lb), min(la, lb)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def _read_palette(slug: str) -> dict[str, str]:
+    """Return `{slug: hex}` for one theme's palette, or `{}` if the
+    theme.json is missing / malformed. Swallows IOError + JSONDecodeError
+    on purpose — a corrupt theme.json is a separate problem with its
+    own check (`check_json_validity`); Phase FF shouldn't crash the
+    entire append pipeline for it."""
+    import json
+
+    try:
+        data = json.loads(
+            (ROOT / slug / "theme.json").read_text(encoding="utf-8")
+        )
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        return {}
+    palette = data.get("settings", {}).get("color", {}).get("palette", [])
+    return {
+        e["slug"]: e["color"]
+        for e in palette
+        if isinstance(e, dict) and "slug" in e and "color" in e
+    }
+
+
+def _hover_accent_flip_themes() -> list[str]:
+    """Return slugs whose `contrast`-on-`accent` contrast fails the 3:1
+    floor AND whose `base`-on-`accent` clears it. Runs once at script
+    startup over `discover_themes(stages=())` so every on-disk theme
+    (shipping, incubating, or retired) is considered — the resulting
+    override block is cheap dead-weight on themes that don't match it,
+    but it would silently leave cipher broken if we scoped the scan
+    to shipping-only."""
+    flips: list[str] = []
+    for slug in discover_themes(stages=()):
+        palette = _read_palette(slug)
+        base = palette.get("base")
+        contrast = palette.get("contrast")
+        accent = palette.get("accent")
+        if not (base and contrast and accent):
+            continue
+        c_on_a = _wcag_contrast_hex(contrast, accent)
+        b_on_a = _wcag_contrast_hex(base, accent)
+        if c_on_a is None or b_on_a is None:
+            continue
+        if c_on_a < 3.0 and b_on_a >= 3.0:
+            flips.append(slug)
+    return flips
+
+
+_HOVER_ACCENT_FLIP_THEMES: tuple[str, ...] = tuple(_hover_accent_flip_themes())
+
+
+def _build_phase_ff_css() -> str:
+    """Assemble Phase FF's CSS. One selector-group rule per flip theme;
+    empty body (just the sentinels) when no theme needs the flip so
+    the sentinel pair is still present and the chunk is still
+    idempotent."""
+    rule_parts: list[str] = []
+    for slug in _HOVER_ACCENT_FLIP_THEMES:
+        # `body.theme-<slug>.theme-<slug>` doubled-class trick on every
+        # surface, joined with commas — bumps specificity from (0,3,2)
+        # to (0,4,2), which is what `check_wc_overrides_styled` requires
+        # for overrides to win the cascade against WC Blocks baselines
+        # like `.wp-block-woocommerce-product-details ul.wc-tabs li
+        # a:hover` at (0,3,3). Matches the exact shape of the Phase E
+        # hand-written foundry override on line 732.
+        group = ",".join(
+            f"body.theme-{slug}.theme-{slug} {surface}:hover"
+            for surface in _HOVER_ACCENT_SURFACES
+        )
+        rule_parts.append(
+            f"{group}{{background:var(--wp--preset--color--accent);"
+            f"color:var(--wp--preset--color--base);}}"
+        )
+    body = "".join(rule_parts)
+    return (
+        f"{SENTINEL_OPEN_PHASE_FF}\n"
+        f"{body}\n"
+        f"{SENTINEL_CLOSE_PHASE_FF}"
+    )
+
+
+SENTINEL_OPEN_PHASE_FF = "/* wc-tells-phase-ff-hover-polarity-autoflip */"
+SENTINEL_CLOSE_PHASE_FF = "/* /wc-tells-phase-ff-hover-polarity-autoflip */"
+CSS_PHASE_FF = _build_phase_ff_css()
+
+
+# ----------------------------------------------------------------------
+# Phase GG — universal header flex-wrap on tablet+mobile
+# ----------------------------------------------------------------------
+# Phase T shipped `@media (max-width:781px) { body.theme-selvedge ...
+# body.theme-chonk ... body.theme-lysholm ... { flex-wrap:wrap; } }` —
+# a hard-enumerated list of themes whose primary nav overflowed the
+# alignwide column at tablet (768px). Every other theme was trusted to
+# fit. Cipher's smoke on 2026-04-28 showed the enumeration is brittle:
+# a 6-char brand name + 6-item nav + 3-icon utility bar overflowed the
+# 705px alignwide by 14-20px at tablet. Same fix selvedge/chonk/lysholm
+# already had, but the enumeration didn't include cipher (or any future
+# theme).
+#
+# The fix is universal: `flex-wrap:wrap` on the header's alignfull /
+# alignwide containers is a no-op for themes whose content already fits
+# (flex-wrap is allowed-to-wrap, not required-to-wrap), so applying it
+# to every theme costs nothing and closes the enumeration footgun.
+#
+# Phase T's rule set is RETIRED here rather than deleted — Phase T's
+# sentinel body now contains a comment explaining the replacement.
+# Deleting the sentinel outright would leave Phase U's anchor
+# (SENTINEL_CLOSE_PHASE_T) dangling.
+SENTINEL_OPEN_PHASE_GG = "/* wc-tells-phase-gg-header-wrap-universal */"
+SENTINEL_CLOSE_PHASE_GG = "/* /wc-tells-phase-gg-header-wrap-universal */"
+CSS_PHASE_GG = f"""{SENTINEL_OPEN_PHASE_GG}
+@media (max-width:781px){{.wp-site-blocks header.wp-block-group.alignfull.alignfull,.wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignfull,.wp-site-blocks header.wp-block-group.alignfull .wp-block-group.alignwide{{flex-wrap:wrap;min-width:0;max-width:100%;}}.wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation,.wp-site-blocks header.wp-block-group.alignfull .wp-block-navigation__container{{flex-wrap:wrap;min-width:0;max-width:100%;}}}}
+{SENTINEL_CLOSE_PHASE_GG}"""
+
+
 # Each entry: (sentinel_open, sentinel_close, raw_css, anchor_after).
 # `anchor_after` is the marker the chunk is spliced in after — for the
 # first chunk that's the canonical archive-page marker; for follow-ups
@@ -2196,6 +2434,18 @@ CHUNKS: list[tuple[str, str, str, str]] = [
         CSS_PHASE_EE,
         SENTINEL_CLOSE_PHASE_DD,
     ),
+    (
+        SENTINEL_OPEN_PHASE_FF,
+        SENTINEL_CLOSE_PHASE_FF,
+        CSS_PHASE_FF,
+        SENTINEL_CLOSE_PHASE_EE,
+    ),
+    (
+        SENTINEL_OPEN_PHASE_GG,
+        SENTINEL_CLOSE_PHASE_GG,
+        CSS_PHASE_GG,
+        SENTINEL_CLOSE_PHASE_FF,
+    ),
 ]
 
 
@@ -2292,9 +2542,19 @@ def main(argv: list[str]) -> int:
     args = parser.parse_args(argv[1:])
 
     targets = args.themes or THEMES
+    # Accept any slug with a real theme.json + playground/blueprint.json
+    # on disk, even if it's incubating (and therefore hidden from the
+    # default shipping-only `THEMES` list). The script's guard was
+    # originally about typo-catching for the no-argument default run;
+    # when a slug is passed explicitly, the operator knows what they're
+    # asking for. This is needed so `design.py build <incubating-slug>`
+    # can pipe the new theme through `append-wc-overrides.py <slug>`
+    # and pick up auto-generated phases (FF hover flip, GG nav wrap)
+    # without the operator having to flip the readiness stage first.
+    all_on_disk = frozenset(discover_themes(stages=()))
     appended_any = False
     for t in targets:
-        if t not in THEMES:
+        if t not in all_on_disk:
             print(f"unknown theme: {t}", file=sys.stderr)
             return 2
         result = append_for(t, update=args.update)

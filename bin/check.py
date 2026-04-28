@@ -3724,6 +3724,17 @@ def check_hover_state_legibility() -> Result:
         if not state_re.search(sels):
             continue
 
+        # The `[^{}]+` group eats any `/* ... */` comments that live
+        # between the previous rule's `}` and this rule's `{`. Strip
+        # them before doing any selector-prefix matching, or a rule
+        # that follows a sentinel comment (`body.theme-cipher ...`
+        # right after `/* wc-tells-phase-ff-hover-polarity-autoflip */`)
+        # looks like it starts with `/*` instead of `body.`, and the
+        # other-theme-prefix match below silently fails.
+        sels = re.sub(r"/\*.*?\*/", "", sels, flags=re.DOTALL).strip()
+        if not sels:
+            continue
+
         # Rules scoped to a different theme via `body.theme-<other>` are
         # inert in the current theme's runtime — skip them so we don't
         # flag another theme's contrast choices against the current

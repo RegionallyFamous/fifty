@@ -97,3 +97,58 @@ def test_hover_catches_bad_primary_slug_in_fallback_chain(minimal_theme, bind_ch
         "background:var(--wp--preset--color--base);}",
     )
     assert not check.check_hover_state_legibility().passed
+
+
+def test_hover_skips_other_theme_prefixed_rule_after_comment(minimal_theme, bind_check_root):
+    """`body.theme-<other-slug>` rules are inert at runtime in the
+    current theme's cascade — the body class isn't on the <html> /
+    <body> of this theme, so the rule never matches. The check has
+    always tried to skip them, but when a theme.json's styles.css
+    string places a CSS comment immediately before such a rule (which
+    `bin/append-wc-overrides.py`'s Phase FF does, intentionally, to
+    document the sentinel), the top-level rule regex `[^{}]+\\{...\\}`
+    greedily consumes the comment into the `sels` group. The old code
+    took `sels.split(",")[0]` to find the first selector — but with a
+    leading `/* wc-tells-phase-ff-... */`, `first_sel` started with
+    `/*` and the `^body\\.theme-(...)` prefix match silently failed,
+    so the other-theme rule WAS evaluated against the current theme's
+    palette, producing a bogus failure.
+
+    This test repro's exactly that shape: a comment-leading rule
+    scoped to `body.theme-cipher` in a theme whose palette happens to
+    make the rule look like a contrast violation when mis-parsed. The
+    check must still skip the rule because the first non-comment
+    selector starts with `body.theme-cipher`, not the theme we're
+    auditing. The minimal-theme palette has `base #FAFAF7` and
+    `accent #C07241`; `base`-on-`accent` is 3.51:1 (passes) so the
+    mis-parse only fires when the palette flips. We use chonk-ish
+    yellow as the accent to reproduce the 1.12:1 failure case.
+
+    If this test fails, the comment-stripping step in
+    `check_hover_state_legibility` has regressed and cross-theme
+    rules will once again trip the gate on themes that don't own
+    them."""
+    check = bind_check_root(minimal_theme)
+    # Rewrite the minimal theme's palette so `base`-on-`accent` fails
+    # the 3:1 floor. Mimics chonk: cream base + electric-yellow accent.
+    data = json.loads((minimal_theme / "theme.json").read_text(encoding="utf-8"))
+    for entry in data["settings"]["color"]["palette"]:
+        if entry["slug"] == "accent":
+            entry["color"] = "#FFE600"
+    # The rule is scoped to `body.theme-cipher`, preceded by a sentinel
+    # comment — exactly the shape Phase FF produces. Even though the
+    # rule LOOKS like `background:accent;color:base` (which fails 1.12:1
+    # on this palette), it must NOT be evaluated because the body
+    # class `.theme-cipher` won't match on this theme.
+    data["styles"]["css"] = (
+        "/* wc-tells-phase-ff-hover-polarity-autoflip */"
+        "body.theme-cipher.theme-cipher .btn:hover{"
+        "background:var(--wp--preset--color--accent);"
+        "color:var(--wp--preset--color--base);}"
+    )
+    (minimal_theme / "theme.json").write_text(json.dumps(data), encoding="utf-8")
+    result = check.check_hover_state_legibility()
+    assert result.passed, (
+        f"Rule scoped to `body.theme-cipher` was evaluated against "
+        f"the current theme's palette: {result.details}"
+    )
