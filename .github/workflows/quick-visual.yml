@@ -85,12 +85,18 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-dev.txt
 
+      - name: Resolve changed scope
+        id: scope
+        run: python3 bin/changed-scope.py --base origin/main --format shell >> "$GITHUB_OUTPUT"
+
       - name: Install Python dependencies
+        if: steps.scope.outputs.all_themes_required != 'true' && steps.scope.outputs.has_themes == 'true'
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install -r requirements-dev.txt playwright==1.58.0 Pillow
 
       - name: Cache Playwright browsers
+        if: steps.scope.outputs.all_themes_required != 'true' && steps.scope.outputs.has_themes == 'true'
         id: playwright-cache
         uses: actions/cache@v5
         with:
@@ -98,14 +104,15 @@ jobs:
           key: playwright-chromium-${{ runner.os }}-1.58.0
 
       - name: Install Playwright Chromium
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        if: steps.scope.outputs.all_themes_required != 'true' && steps.scope.outputs.has_themes == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
         run: python3 -m playwright install --with-deps chromium
 
       - name: Install system deps for Playwright (cache hit case)
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        if: steps.scope.outputs.all_themes_required != 'true' && steps.scope.outputs.has_themes == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
         run: python3 -m playwright install-deps chromium
 
       - name: Restore Playground state cache (all themes)
+        if: steps.scope.outputs.all_themes_required != 'true' && steps.scope.outputs.has_themes == 'true'
         # A single runner touches every changed theme, so we cache the
         # whole tmp/playground-state tree with one key. The key
         # includes every theme's playground/** so adding a new theme
@@ -121,6 +128,7 @@ jobs:
             pg-state-v1-quick-
 
       - name: Quick shoot (changed + auto-routes + cached state)
+        if: steps.scope.outputs.all_themes_required != 'true' && steps.scope.outputs.has_themes == 'true'
         # Flags:
         #   --changed      : only touch themes diffed vs origin/main
         #   --auto-routes  : within each theme, only routes whose
@@ -146,6 +154,7 @@ jobs:
             --concurrency 1
 
       - name: Diff against baselines
+        if: steps.scope.outputs.all_themes_required != 'true' && steps.scope.outputs.has_themes == 'true'
         # `bin/snap.py diff` only emits diff PNGs for cells that were
         # actually shot in this invocation -- skipped (signature-
         # matched) cells aren't touched, so no noise.
