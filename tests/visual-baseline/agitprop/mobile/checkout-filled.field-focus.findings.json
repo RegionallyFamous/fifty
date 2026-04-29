@@ -1,0 +1,114 @@
+{
+  "findings": [],
+  "selectors": [
+    {
+      "selector": ".wc-block-checkout",
+      "count": 2,
+      "instances": [
+        {
+          "width": 342,
+          "height": 2651,
+          "visible": true,
+          "display": "block",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        },
+        {
+          "width": 342,
+          "height": 2611,
+          "visible": true,
+          "display": "grid",
+          "grid_template_columns": "342px",
+          "min_width": "0px",
+          "max_width": "none"
+        }
+      ]
+    },
+    {
+      "selector": ".wc-block-checkout__sidebar",
+      "count": 1,
+      "instances": [
+        {
+          "width": 342,
+          "height": 91,
+          "visible": true,
+          "display": "block",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        }
+      ]
+    },
+    {
+      "selector": ".wc-block-checkout__main",
+      "count": 1,
+      "instances": [
+        {
+          "width": 342,
+          "height": 2448,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "100%"
+        }
+      ]
+    },
+    {
+      "selector": ".wc-block-components-order-summary",
+      "count": 2,
+      "instances": [
+        {
+          "width": 340,
+          "height": 460,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        },
+        {
+          "width": 0,
+          "height": 0,
+          "visible": false,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        }
+      ]
+    },
+    {
+      "selector": "main.wp-block-group",
+      "count": 1,
+      "instances": [
+        {
+          "width": 390,
+          "height": 2811,
+          "visible": true,
+          "display": "block",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        }
+      ]
+    }
+  ],
+  "dom": {
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "scrollHeight": 2904
+  },
+  "bg_image_pairs": [],
+  "theme": "agitprop",
+  "viewport": "mobile",
+  "route": "checkout-filled.field-focus",
+  "url": "http://127.0.0.1:9402/checkout/?demo=cart",
+  "navigation_error": null,
+  "console": [],
+  "page_errors": [],
+  "network_failures": [],
+  "a11y_path": "tmp/snaps/agitprop/mobile/checkout-filled.field-focus.a11y.json"
+}
