@@ -374,7 +374,7 @@ def build_palette(palette_tags: list[str]) -> dict[str, str]:
         "primary": ink,
         "primary-hover": _shade(ink, -0.2),
         "accent": accent,
-        "accent-soft": _tint(accent, 0.55),
+        "accent-soft": _accent_soft_for_base(accent, base),
     }
 
 
@@ -390,6 +390,15 @@ def _hex_to_rgb(h: str) -> tuple[int, int, int]:
 def _rgb_to_hex(rgb: tuple[float, float, float]) -> str:
     r, g, b = (max(0, min(255, round(c))) for c in rgb)
     return f"#{r:02X}{g:02X}{b:02X}"
+
+
+def _relative_luminance(h: str) -> float:
+    r, g, b = (channel / 255 for channel in _hex_to_rgb(h))
+
+    def _lin(c: float) -> float:
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
+    return 0.2126 * _lin(r) + 0.7152 * _lin(g) + 0.0722 * _lin(b)
 
 
 def _tint(h: str, amount: float) -> str:
@@ -412,6 +421,20 @@ def _shade(h: str, amount: float) -> str:
         return _tint(h, -amount)
     r, g, b = _hex_to_rgb(h)
     return _rgb_to_hex((r * (1 - amount), g * (1 - amount), b * (1 - amount)))
+
+
+def _accent_soft_for_base(accent: str, base: str) -> str:
+    """Return an accent-soft token on the same luminance side as base."""
+    base_is_light = _relative_luminance(base) >= 0.5
+    candidates = (
+        (_tint(accent, amount) for amount in (0.65, 0.75, 0.85, 0.92, 1.0))
+        if base_is_light
+        else (_shade(accent, amount) for amount in (0.35, 0.5, 0.65, 0.8, 1.0))
+    )
+    for candidate in candidates:
+        if (_relative_luminance(candidate) >= 0.5) == base_is_light:
+            return candidate
+    return "#FFFFFF" if base_is_light else "#000000"
 
 
 def build_fonts(type_genre: str, type_specimen: str) -> dict[str, dict]:

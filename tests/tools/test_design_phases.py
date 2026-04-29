@@ -61,7 +61,9 @@ in a millisecond — the grep-the-source shape of
 from __future__ import annotations
 
 import ast
+import sys
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 DESIGN_PY = ROOT / "bin" / "design.py"
@@ -348,6 +350,7 @@ def test_prepublish_push_skips_every_snap_dependent_gate() -> None:
     NEVER replace them with `--no-verify` (rule #19).
     """
     required_env_keys = (
+        "FIFTY_DESIGN_PREPUBLISH",
         "FIFTY_SKIP_VISUAL_PUSH",
         "FIFTY_SKIP_EVIDENCE_FRESHNESS",
         "FIFTY_SKIP_BOOT_SMOKE",
@@ -390,6 +393,44 @@ def test_prepublish_push_skips_every_snap_dependent_gate() -> None:
         )
 
 
+def test_publish_push_skips_redundant_snap_dependent_gates() -> None:
+    """The final publish phase runs after design.py has already snapped,
+    checked, reported, and committed the generated theme. Re-running the
+    pre-push visual gate here can mutate generated allowlist files after
+    the commit and reject an otherwise green branch, so publish must set
+    the documented skip envs without using --no-verify.
+    """
+    src = DESIGN_PY.read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    publish_fn: ast.FunctionDef | None = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "_phase_publish":
+            publish_fn = node
+            break
+    assert publish_fn is not None
+    assigned_keys: set[str] = set()
+    for inner in ast.walk(publish_fn):
+        if (
+            isinstance(inner, ast.Assign)
+            and len(inner.targets) == 1
+            and isinstance(inner.targets[0], ast.Subscript)
+            and isinstance(inner.targets[0].value, ast.Name)
+            and inner.targets[0].value.id == "env"
+            and isinstance(inner.targets[0].slice, ast.Constant)
+            and isinstance(inner.targets[0].slice.value, str)
+        ):
+            assigned_keys.add(inner.targets[0].slice.value)
+
+    for key in (
+        "FIFTY_SKIP_VISUAL_PUSH",
+        "FIFTY_SKIP_EVIDENCE_FRESHNESS",
+        "FIFTY_SKIP_BOOT_SMOKE",
+    ):
+        assert key in assigned_keys
+    publish_src = ast.get_source_segment(src, publish_fn) or ""
+    assert "--no-verify" not in publish_src
+
+
 def test_prepublish_commit_skips_evidence_freshness() -> None:
     """The pre-snap scaffold commit itself runs the pre-commit hook.
 
@@ -401,6 +442,77 @@ def test_prepublish_commit_skips_evidence_freshness() -> None:
     src = DESIGN_PY.read_text(encoding="utf-8")
     assert 'commit_env["FIFTY_SKIP_EVIDENCE_FRESHNESS"] = "1"' in src
     assert 'subprocess.call([*git, "commit", "-m", msg], env=commit_env)' in src
+
+
+def test_sale_badge_text_contrast_repairs_after_palette_apply() -> None:
+    sys.path.insert(0, str(ROOT / "bin"))
+    import importlib
+
+    design = importlib.import_module("design")
+    importlib.reload(design)
+    theme_json: dict[str, Any] = {
+        "settings": {
+            "color": {
+                "palette": [
+                    {"slug": "base", "color": "#F5EFE6"},
+                    {"slug": "contrast", "color": "#0A0A0A"},
+                    {"slug": "accent", "color": "#C8281A"},
+                ]
+            }
+        },
+        "styles": {
+            "blocks": {
+                "woocommerce/product-sale-badge": {
+                    "color": {
+                        "background": "var(--wp--preset--color--accent)",
+                        "text": "var(--wp--preset--color--contrast)",
+                    }
+                }
+            }
+        },
+    }
+
+    design._repair_sale_badge_text_contrast(theme_json)
+
+    badge = theme_json["styles"]["blocks"]["woocommerce/product-sale-badge"]
+    assert badge["color"]["text"] == "var(--wp--preset--color--base)"
+
+
+def test_site_title_mobile_overflow_guard_is_appended_once() -> None:
+    sys.path.insert(0, str(ROOT / "bin"))
+    import importlib
+
+    design = importlib.import_module("design")
+    importlib.reload(design)
+    theme_json: dict[str, Any] = {"styles": {"css": "body{color:inherit}"}}
+
+    design._repair_site_title_mobile_overflow(theme_json)
+    design._repair_site_title_mobile_overflow(theme_json)
+
+    css = theme_json["styles"]["css"]
+    assert css.count("generated-site-title-mobile-overflow") == 1
+    assert ".wp-block-site-title,.wp-block-site-title a" in css
+    assert "overflow-wrap:anywhere" in css
+    assert ".wp-block-group:has(>.wp-block-site-title)" in css
+
+
+def test_product_reviews_mobile_overflow_guard_is_appended_once() -> None:
+    sys.path.insert(0, str(ROOT / "bin"))
+    import importlib
+
+    design = importlib.import_module("design")
+    importlib.reload(design)
+    theme_json: dict[str, Any] = {"styles": {"css": ""}}
+
+    design._repair_product_reviews_mobile_overflow(theme_json)
+    design._repair_product_reviews_mobile_overflow(theme_json)
+
+    css = theme_json["styles"]["css"]
+    assert css.count("generated-product-reviews-mobile-overflow") == 1
+    assert ".wp-block-woocommerce-product-reviews" in css
+    assert ".wp-block-woocommerce-product-reviews-title,#reviews" in css
+    assert ".comment-reply-title" in css
+    assert "white-space:normal" in css
 
 
 def test_skill_phases_match_code() -> None:

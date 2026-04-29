@@ -352,7 +352,10 @@ _CONTENT_RE = re.compile(
     re.DOTALL,
 )
 _PHP_STR_RE = re.compile(
-    r"""(?:__|_e|esc_html_e|esc_html__|esc_attr_e|esc_attr__)\(\s*['"]([^'"]+)['"]\s*[,)]"""
+    r"""(?:__|_e|esc_html_e|esc_html__|esc_attr_e|esc_attr__)\(\s*(?P<quote>['"])(?P<value>(?:\\.|(?! (?P=quote) ).)*) (?P=quote)\s*[,)]""".replace(
+        " ", ""
+    ),
+    re.DOTALL,
 )
 
 
@@ -364,7 +367,7 @@ def _extract_strings(text: str) -> list[str]:
         if s:
             out.append(s)
     for m in _PHP_STR_RE.finditer(text):
-        out.append(m.group(1))
+        out.append(m.group("value"))
     return out
 
 
@@ -472,7 +475,7 @@ def _rewrite_wc_microcopy_block(theme_root: Path, spec: dict, *, quiet: bool = F
     stop = src.index(end, start)
     block = src[start:stop]
     pair_re = re.compile(
-        r"(?P<prefix>'(?P<key>(?:[^'\\\\]|\\\\.)+)'\s*=>\s*)'(?P<value>(?:[^'\\\\]|\\\\.)*)'"
+        r"(?P<prefix>'(?P<key>(?:[^'\\]|\\.)+)'\s*=>\s*)'(?P<value>(?:[^'\\]|\\.)*)'"
     )
 
     rewrites = 0

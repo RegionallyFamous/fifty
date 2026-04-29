@@ -56,3 +56,23 @@ def test_generated_product_cards_are_perceptually_distinct(tmp_path: Path) -> No
 
     distance = bin(_ahash(first) ^ _ahash(second)).count("1")
     assert distance > 5
+
+
+def test_generated_hero_placeholders_are_theme_specific(tmp_path: Path) -> None:
+    gp = _load_module()
+    palette = {
+        "base": "#F5EFE6",
+        "surface": "#FFFFFF",
+        "accent": "#D8281A",
+        "border": "#B8B3AC",
+        "contrast": "#0A0A0A",
+    }
+    first = tmp_path / "agitprop.png"
+    second = tmp_path / "chonk.png"
+
+    gp._make_hero_placeholder("About", "wonders-page-about", "agitprop", palette, first)
+    gp._make_hero_placeholder("About", "wonders-page-about", "chonk", palette, second)
+
+    assert first.read_bytes() != second.read_bytes()
+    distance = bin(_ahash(first) ^ _ahash(second)).count("1")
+    assert distance > 2

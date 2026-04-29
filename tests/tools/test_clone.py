@@ -144,6 +144,58 @@ def test_clone_creates_new_theme_with_renamed_slug(
     assert (clone / "styles" / "warm.json").is_file()
 
 
+def test_clone_renames_non_obel_source_theme(
+    tmp_path: Path,
+    make_theme,
+) -> None:
+    """`--source chonk` must not leave Chonk branding in the clone."""
+    import os
+    import subprocess
+
+    src = make_theme(slug="chonk", title="Chonk")
+    (src / "functions.php").write_text(
+        """<?php
+/**
+ * Chonk theme bootstrap.
+ */
+add_action( 'init', 'chonk_boot' );
+function chonk_boot(): void {}
+""",
+        encoding="utf-8",
+    )
+
+    target_parent = tmp_path / "mono"
+    target_parent.mkdir()
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(BIN_DIR / "clone.py"),
+            "agitprop",
+            "--source",
+            str(src),
+            "--target",
+            str(target_parent),
+        ],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PYTHONPATH": str(BIN_DIR)},
+    )
+    assert result.returncode == 0, (
+        f"clone.py failed:\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+
+    clone = target_parent / "agitprop"
+    style = (clone / "style.css").read_text(encoding="utf-8")
+    functions = (clone / "functions.php").read_text(encoding="utf-8")
+
+    assert "Theme Name: Agitprop" in style
+    assert "Text Domain: agitprop" in style
+    assert "Agitprop theme bootstrap" in functions
+    assert "agitprop_boot" in functions
+    assert "chonk" not in (style + functions).lower()
+
+
 def test_clone_keeps_hyphenated_slug_but_sanitizes_php_identifiers(
     tmp_path: Path,
     sample_source: Path,

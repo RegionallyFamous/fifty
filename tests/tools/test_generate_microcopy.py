@@ -62,3 +62,37 @@ static $map = array(
     assert "'Estimated total' => 'Register sum" in text
     assert "'Proceed to Checkout' => 'To the register" in text
     assert "=> 'Total'" not in text
+
+
+def test_wc_microcopy_rewrite_handles_escaped_apostrophe_values(tmp_path: Path) -> None:
+    gm = _load_module()
+    theme = tmp_path / "agitprop"
+    theme.mkdir()
+    functions = theme / "functions.php"
+    functions.write_text(
+        """<?php
+// === BEGIN wc microcopy ===
+static $map = array(
+\t'Thank you. Your order has been received.' => 'ORDER RECEIVED. WE\\'RE ON IT.',
+);
+// === END wc microcopy ===
+""",
+        encoding="utf-8",
+    )
+
+    rewritten = gm._rewrite_wc_microcopy_block(theme, {"name": "Agitprop"}, quiet=True)
+    text = functions.read_text(encoding="utf-8")
+
+    assert rewritten == 1
+    assert "'Thank you. Your order has been received.' => 'Parcel record" in text
+    assert "ORDER RECEIVED" not in text
+
+
+def test_extract_strings_handles_php_escaped_apostrophes() -> None:
+    gm = _load_module()
+
+    strings = gm._extract_strings(
+        "<?php esc_html_e( 'GRAB ONE BEFORE THEY\\'RE GONE.', 'agitprop' ); ?>"
+    )
+
+    assert "GRAB ONE BEFORE THEY\\'RE GONE." in strings

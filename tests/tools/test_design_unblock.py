@@ -83,6 +83,22 @@ def test_known_categories_includes_all_primary_categories():
         assert expected in u.KNOWN_CATEGORIES
 
 
+def test_generated_docs_do_not_make_repair_plan_dirty():
+    u = _load_module()
+
+    dirty = u._unrelated_framework_files(
+        "agitprop",
+        [
+            "docs/agitprop/index.html",
+            "docs/concepts/index.html",
+            "tests/visual-baseline/agitprop/mobile/home.png",
+            "bin/check.py",
+        ],
+    )
+
+    assert dirty == ["bin/check.py"]
+
+
 def test_classify_common_static_failures():
     u = _load_module()
     assert (
@@ -458,6 +474,21 @@ def test_judge_progress_not_fixed_when_verification_failed_without_fingerprints(
     )
     assert decision == "not-improved"
     assert "Verification failed" in reason
+
+
+def test_parse_check_failures_accepts_indented_fail_lines():
+    u = _load_module()
+    failures = u._parse_check_failures(
+        "  [FAIL] [structural] No unpushed commits on current branch\n"
+        "         1 unpushed commit on origin/main\n"
+    )
+
+    assert failures == [
+        (
+            "No unpushed commits on current branch",
+            "1 unpushed commit on origin/main",
+        )
+    ]
 
 
 def test_collect_fingerprints_reruns_full_check_for_unknown(monkeypatch):
