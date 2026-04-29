@@ -493,6 +493,16 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--snap-viewports",
+        nargs="+",
+        default=None,
+        help=(
+            "Forward a viewport subset to `bin/snap.py shoot`, e.g. "
+            "`--snap-viewports mobile desktop`. Useful for proof runs that "
+            "need both responsive poles without shooting tablet/wide."
+        ),
+    )
+    p.add_argument(
         "--vision-budget",
         type=float,
         default=2.0,
@@ -1675,6 +1685,8 @@ def _phase_snap(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> No
     consumes — without it, FIFTY_REQUIRE_SNAP_EVIDENCE=1 in CI/pre-push will
     fail because the no-snap path is no longer a silent skip."""
     cmd = [sys.executable, str(ROOT / "bin" / "snap.py"), "shoot", spec.slug]
+    if args.snap_viewports:
+        cmd.extend(["--viewports", *args.snap_viewports])
     print(f"  [snap] {' '.join(cmd[1:])}")
     rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
     if rc != 0:

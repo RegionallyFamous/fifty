@@ -529,6 +529,14 @@ def test_design_runs_phase_invariants_after_each_phase() -> None:
     assert 'phase == "microcopy"' in src
 
 
+def test_snap_phase_accepts_viewport_subset() -> None:
+    src = DESIGN_PY.read_text(encoding="utf-8")
+
+    assert "--snap-viewports" in src
+    assert "args.snap_viewports" in src
+    assert 'cmd.extend(["--viewports", *args.snap_viewports])' in src
+
+
 def test_phase_invariants_use_factory_rule_rollout_modes() -> None:
     src = DESIGN_PY.read_text(encoding="utf-8")
 
