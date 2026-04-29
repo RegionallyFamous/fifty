@@ -78,13 +78,10 @@ The full persona spec is in [`AGENT-PERSONA.md`](./AGENT-PERSONA.md). The short 
 
 ## Documentation
 
-The full technical reference lives in the [wiki](https://github.com/RegionallyFamous/fifty/wiki). The five-stage factory — Ideate → Design → Verify → Self-heal → Ship — is walked through end-to-end in [How it works](https://github.com/RegionallyFamous/fifty/wiki/How-It-Works) (plain-language overview + mermaid diagram).
+The full technical reference lives in the [wiki](https://github.com/RegionallyFamous/fifty/wiki):
 
 | If you want to... | Read |
 |---|---|
-| Understand the pipeline end-to-end | [How it works](https://github.com/RegionallyFamous/fifty/wiki/How-It-Works) |
-| Ship one new theme | [Shipping a theme](https://github.com/RegionallyFamous/fifty/wiki/Shipping-a-Theme) |
-| Ship a batch of themes in one pass | [Batch playbook](https://github.com/RegionallyFamous/fifty/wiki/Batch-Playbook) |
 | Try a theme in WordPress Playground (full URL tables, blueprint internals) | [Getting Started](https://github.com/RegionallyFamous/fifty/wiki/Getting-Started) |
 | Install a theme into a real WordPress instance | [Getting Started → Local install](https://github.com/RegionallyFamous/fifty/wiki/Getting-Started#loading-themes-into-wordpress) |
 | Make your own theme variant from scratch | [Adding a Theme](https://github.com/RegionallyFamous/fifty/wiki/Adding-a-Theme) |

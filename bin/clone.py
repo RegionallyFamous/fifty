@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Clone Obel into a new theme folder, renaming all identifiers.
+"""Clone a source theme into a new theme folder, renaming all identifiers.
 
 Cross-platform replacement for the macOS-only `sed` example in README.md.
 Works on macOS, Linux, and Windows.
@@ -15,8 +15,8 @@ Examples:
     python3 bin/clone.py acme --target ~/Projects
 
 What this script does:
-  1. Copies the Obel theme folder to a new folder named NEW_NAME (lowercased).
-  2. Replaces "Obel" with "Acme" (title-case) and "obel" with "acme" (lowercase)
+  1. Copies the source theme folder to a new folder named NEW_NAME (lowercased).
+  2. Replaces the source title/slug with the new title/slug
      in every .php, .json, .html, .md, .txt, and .css file.
   3. Skips .git/, node_modules/, vendor/, and the bin/ folder.
   4. Skips binary files (screenshot.png, fonts).
@@ -170,7 +170,12 @@ def main() -> int:
     print(f"Cloning {source} -> {dest}")
     copy_tree(source, dest)
 
-    print(f"Renaming 'Obel' -> '{new_title}' and 'obel' -> '{new_lower}' in editable files...")
+    old_lower = source.name.lower()
+    old_title = title_case(old_lower)
+    print(
+        f"Renaming '{old_title}' -> '{new_title}' and "
+        f"'{old_lower}' -> '{new_lower}' in editable files..."
+    )
     changed = 0
     for path in dest.rglob("*"):
         if not path.is_file():
@@ -179,7 +184,7 @@ def main() -> int:
             continue
         if path.suffix.lower() not in EDITABLE_SUFFIXES:
             continue
-        if replace_in_file(path, "obel", new_lower, "Obel", new_title):
+        if replace_in_file(path, old_lower, new_lower, old_title, new_title):
             changed += 1
 
     # Reset readiness.json to "incubating" so the new theme doesn't

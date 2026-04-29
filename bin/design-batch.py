@@ -365,6 +365,10 @@ class RunnerOptions:
     # fails, the run still leaves a reviewable PR instead of only a local
     # worktree.
     progressive: bool = True
+    # --no-resume means "fresh proof", not just "ignore the old JSON
+    # report." Reusing a failed child worktree leaves the theme directory
+    # in place and design.py aborts during clone.
+    fresh_worktree: bool = False
     # Successful JSON/tool-rescue fixes indicate that the factory built
     # something it later had to repair. Keep the PR draft and do not
     # arm auto-merge until those fixes have deterministic coverage,
@@ -393,6 +397,13 @@ def _ensure_worktree(slug: str, opts: RunnerOptions) -> tuple[Path, str]:
     worktree exists already, leave it alone so resumability works."""
     branch = f"agent/batch-{opts.run_id}-{slug}"
     target = opts.worktree_parent / f"fifty-batch-{slug}"
+    if target.is_dir():
+        if opts.fresh_worktree and not opts.dry_run:
+            _git("worktree", "remove", "--force", str(target))
+        else:
+            return target, branch
+    if _git("branch", "--list", branch).stdout.strip() and not opts.dry_run:
+        _git("branch", "-D", branch)
     if target.is_dir():
         return target, branch
     if opts.dry_run:
@@ -726,7 +737,7 @@ def _commit_and_push(
     )
     if verify_md:
         body += "\n---\n\n" + verify_md
-    pr = subprocess.run(
+    pr = _run_gh_pr_create(
         [
             "gh",
             "pr",
@@ -737,13 +748,13 @@ def _commit_and_push(
             body,
             *label_args,
         ],
-        cwd=str(worktree),
-        capture_output=True,
-        text=True,
+        cwd=worktree,
     )
     if pr.returncode != 0:
-        raise RuntimeError(f"gh pr create failed (rc={pr.returncode}): {pr.stderr.strip()}")
-    pr_url = pr.stdout.strip().splitlines()[-1] if pr.stdout.strip() else None
+        stderr = _process_text(pr.stderr).strip()
+        raise RuntimeError(f"gh pr create failed (rc={pr.returncode}): {stderr}")
+    stdout = _process_text(pr.stdout).strip()
+    pr_url = stdout.splitlines()[-1] if stdout else None
     _post_pr_status_comment(
         worktree=worktree,
         pr_url=pr_url,
@@ -830,6 +841,38 @@ def _current_pr_url(worktree: Path, branch: str) -> str | None:
     return url or None
 
 
+def _run_gh_pr_create(args: list[str], *, cwd: Path) -> subprocess.CompletedProcess[Any]:
+    """Create a PR, retrying without labels if GitHub lacks one."""
+    pr = subprocess.run(args, cwd=str(cwd), capture_output=True, text=True)
+    if pr.returncode == 0 or "could not add label" not in pr.stderr:
+        return pr
+
+    stripped: list[str] = []
+    skip_next = False
+    for arg in args:
+        if skip_next:
+            skip_next = False
+            continue
+        if arg == "--label":
+            skip_next = True
+            continue
+        stripped.append(arg)
+
+    retry = subprocess.run(stripped, cwd=str(cwd), capture_output=True, text=True)
+    if retry.returncode == 0:
+        sys.stderr.write(
+            "[batch] WARN: gh pr create label fallback used; "
+            f"original stderr: {pr.stderr.strip()}\n"
+        )
+    return retry
+
+
+def _process_text(value: str | bytes | None) -> str:
+    if isinstance(value, bytes):
+        return value.decode(errors="replace")
+    return value or ""
+
+
 def _open_progressive_pr(
     *,
     worktree: Path,
@@ -877,13 +920,13 @@ def _open_progressive_pr(
             body,
             *_label_args(opts),
         ],
-        cwd=str(worktree),
-        capture_output=True,
-        text=True,
+        cwd=worktree,
     )
     if pr.returncode != 0:
-        raise RuntimeError(f"gh pr create failed (rc={pr.returncode}): {pr.stderr.strip()}")
-    pr_url = pr.stdout.strip().splitlines()[-1] if pr.stdout.strip() else None
+        stderr = _process_text(pr.stderr).strip()
+        raise RuntimeError(f"gh pr create failed (rc={pr.returncode}): {stderr}")
+    stdout = _process_text(pr.stdout).strip()
+    pr_url = stdout.splitlines()[-1] if stdout else None
     _post_pr_status_comment(
         worktree=worktree,
         pr_url=pr_url,
@@ -1069,6 +1112,20 @@ class _VerifyBundle:
     json_path: str | None = None
 
 
+_VERIFY_MUTABLE_FILES = ("tests/visual-baseline/heuristics-allowlist.json",)
+
+
+def _restore_verify_mutations(worktree: Path) -> None:
+    """Post-push verification is evidence, not a source mutation phase."""
+    subprocess.run(
+        ["git", "checkout", "--", *_VERIFY_MUTABLE_FILES],
+        cwd=str(worktree),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+
+
 def _run_verify_after_push(
     worktree: Path,
     slug: str,
@@ -1102,6 +1159,7 @@ def _run_verify_after_push(
             text=True,
         )
     except Exception as e:
+        _restore_verify_mutations(worktree)
         return _VerifyBundle(
             status="errored",
             md=f"### verify-theme: errored\n\n`{type(e).__name__}: {e}`\n",
@@ -1111,6 +1169,7 @@ def _run_verify_after_push(
     # treat "no stdout at all" as a hard error.
     raw = _run.stdout.strip()
     if not raw:
+        _restore_verify_mutations(worktree)
         return _VerifyBundle(
             status="errored",
             md=(
@@ -1121,6 +1180,7 @@ def _run_verify_after_push(
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
+        _restore_verify_mutations(worktree)
         return _VerifyBundle(
             status="errored",
             md=(
@@ -1135,6 +1195,7 @@ def _run_verify_after_push(
         capture_output=True,
         text=True,
     )
+    _restore_verify_mutations(worktree)
     md = md_run.stdout if md_run.stdout else ""
     return _VerifyBundle(status=overall, md=md, json_path=str(json_path))
 
@@ -1909,6 +1970,7 @@ def main(argv: list[str] | None = None) -> int:
         max_repair_rounds=args.max_repair_rounds,
         unblock_dry_run=args.unblock_dry_run,
         progressive=not args.single_shot,
+        fresh_worktree=args.no_resume,
         allow_unpromoted_factory_defects=args.allow_unpromoted_factory_defects,
     )
 

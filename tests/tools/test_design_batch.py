@@ -219,6 +219,25 @@ def test_batch_uses_progressive_build_then_dress_by_default(script_text: str) ->
     assert "progressive: bool = True" in script_text
     assert '"build"' in script_text
     assert '"dress"' in script_text
+
+
+def test_pr_create_retries_without_missing_labels(script_text: str) -> None:
+    assert "def _run_gh_pr_create" in script_text
+    assert "could not add label" in script_text
+    assert 'if arg == "--label"' in script_text
+
+
+def test_verify_restores_mutated_allowlist(script_text: str) -> None:
+    assert "_VERIFY_MUTABLE_FILES" in script_text
+    assert "tests/visual-baseline/heuristics-allowlist.json" in script_text
+    assert "_restore_verify_mutations(worktree)" in script_text
+
+
+def test_no_resume_forces_fresh_child_worktree(script_text: str) -> None:
+    assert "fresh_worktree: bool = False" in script_text
+    assert "fresh_worktree=args.no_resume" in script_text
+    assert '"worktree", "remove", "--force", str(target)' in script_text
+    assert '"branch", "-D", branch' in script_text
     assert "def _open_progressive_pr(" in script_text
     assert '"--draft"' in script_text
     assert "--single-shot" in script_text

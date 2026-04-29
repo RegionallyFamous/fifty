@@ -174,6 +174,12 @@ def test_build_palette_falls_back_when_no_neutral(c2s):
     assert pal["accent"] == c2s.PALETTE_TAG_TO_HEX["scarlet"]
 
 
+def test_build_palette_keeps_accent_soft_on_base_luminance_side(c2s):
+    pal = c2s.build_palette(["cream", "scarlet", "black"])
+    assert c2s._relative_luminance(pal["base"]) >= 0.5
+    assert c2s._relative_luminance(pal["accent-soft"]) >= 0.5
+
+
 def test_build_palette_non_neutral_only(c2s):
     """A concept of all-accent tags (no cream/ink) still produces a valid palette."""
     pal = c2s.build_palette(["lavender", "chrome", "lilac"])

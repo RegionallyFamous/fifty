@@ -76,6 +76,13 @@ if [ "${FIFTY_AGENT_RESCUE:-0}" = "1" ]; then
   exit 0
 fi
 
+if [ "${FIFTY_DESIGN_PREPUBLISH:-0}" = "1" ]; then
+  echo "▸ pre-push: design prepublish active (FIFTY_DESIGN_PREPUBLISH=1)."
+  echo "  Skipping local gates for the scaffold push; snap/check phases run"
+  echo "  immediately after the branch content is reachable on GitHub."
+  exit 0
+fi
+
 if git rev-parse --verify --quiet origin/main >/dev/null 2>&1; then
   scope_base="origin/main"
 else

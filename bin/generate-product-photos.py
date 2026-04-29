@@ -343,6 +343,70 @@ def _make_category_cover(
     img.save(str(dest), "JPEG", quality=quality)
 
 
+def _make_hero_placeholder(
+    title: str,
+    slug: str,
+    theme_slug: str,
+    palette: dict[str, str],
+    dest: Path,
+    size: int = 800,
+) -> None:
+    """Render a palette-derived PNG for seeded page/post hero art."""
+    base = _hex_to_rgb(palette.get("base", "#F8F5F0"))
+    surface = _hex_to_rgb(palette.get("surface", "#FFFFFF"))
+    accent = _hex_to_rgb(palette.get("accent", "#888888"))
+    contrast = _hex_to_rgb(palette.get("contrast", "#111111"))
+    border = _hex_to_rgb(palette.get("border", "#CCCCCC"))
+    seed = _slug_seed(f"{theme_slug}:{slug}")
+
+    img = Image.new("RGB", (size, size), color=base)
+    draw = ImageDraw.Draw(img)
+
+    stripe = max(34, size // 12)
+    for i in range(-size, size * 2, stripe):
+        color = accent if ((i // stripe) + seed) % 2 else _blend(base, accent, 0.22)
+        draw.polygon([(i, 0), (i + stripe, 0), (i - size, size), (i - size - stripe, size)], fill=color)
+
+    margin = size // 9
+    card = [margin, margin, size - margin, size - margin]
+    draw.rectangle(card, fill=surface, outline=border, width=3)
+
+    mark_size = size // 5
+    mark_x = margin + (seed % 5) * (size // 28)
+    mark_y = margin + (seed >> 3) % 5 * (size // 30)
+    if seed % 3 == 0:
+        draw.rectangle([mark_x, mark_y, mark_x + mark_size, mark_y + mark_size], fill=accent)
+    elif seed % 3 == 1:
+        draw.ellipse([mark_x, mark_y, mark_x + mark_size, mark_y + mark_size], fill=accent)
+    else:
+        draw.polygon(
+            [
+                (mark_x + mark_size / 2, mark_y),
+                (mark_x + mark_size, mark_y + mark_size),
+                (mark_x, mark_y + mark_size),
+            ],
+            fill=accent,
+        )
+
+    title_font = _find_font(max(34, size // 15))
+    label_font = _find_font(max(16, size // 34))
+    lines = _wrap_text(title, title_font, size - 2 * margin - size // 8, draw)
+    line_h = _text_size(draw, "Ag", title_font)[1]
+    gap = max(8, line_h // 4)
+    total_h = len(lines) * line_h + (len(lines) - 1) * gap
+    y = size // 2 - total_h // 2
+    for i, line in enumerate(lines):
+        w, _ = _text_size(draw, line, title_font)
+        draw.text(((size - w) // 2, y + i * (line_h + gap)), line, fill=contrast, font=title_font)
+
+    deck = f"{theme_slug.upper()} / {slug.removeprefix('wonders-').replace('-', ' ').upper()}"
+    w, _ = _text_size(draw, deck, label_font)
+    draw.text(((size - w) // 2, size - margin - size // 18), deck, fill=contrast, font=label_font)
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    img.save(str(dest), "PNG", optimize=True)
+
+
 # ---------------------------------------------------------------------------
 # Per-theme generation
 # ---------------------------------------------------------------------------
@@ -351,6 +415,12 @@ def _make_category_cover(
 def _product_name_from_slug(slug: str) -> str:
     """'bottled-morning' → 'Bottled Morning'."""
     return " ".join(w.capitalize() for w in slug.split("-"))
+
+
+def _hero_title_from_filename(filename: str) -> str:
+    stem = Path(filename).stem
+    stem = stem.removeprefix("wonders-page-").removeprefix("wonders-post-")
+    return " ".join(w.capitalize() for w in stem.split("-"))
 
 
 def _build_product_images_json(content_dir: Path, images_dir: Path) -> dict[str, str]:
@@ -492,6 +562,17 @@ def generate_photos_for_theme(
             if not quiet:
                 print(f"  [{slug}] generated {_rel(dest)}")
 
+    hero_files = sorted(images_dir.glob("wonders-page-*.png")) + sorted(
+        images_dir.glob("wonders-post-*.png")
+    )
+    for dest in hero_files:
+        if dest.exists() and not force:
+            continue
+        _make_hero_placeholder(_hero_title_from_filename(dest.name), dest.stem, slug, palette, dest)
+        written += 1
+        if not quiet:
+            print(f"  [{slug}] generated {_rel(dest)}")
+
     manifest = {
         "schema": 1,
         "theme": slug,
@@ -512,6 +593,7 @@ def generate_photos_for_theme(
                 for filename in sorted(cat_map.values())
                 if not (images_dir / filename).is_file()
             ],
+            "hero_placeholders": len(hero_files),
         },
         "products": [
             {
@@ -538,6 +620,15 @@ def generate_photos_for_theme(
                 "exists": (images_dir / filename).is_file(),
             }
             for name, filename in sorted(cat_map.items())
+        ],
+        "hero_placeholders": [
+            {
+                "filename": path.name,
+                "path": _rel(path),
+                "prompt": f"{slug} page/post hero placeholder generated from theme palette",
+                "exists": path.is_file(),
+            }
+            for path in hero_files
         ],
         "regeneration": {
             "all": f"python3 bin/generate-product-photos.py --theme {slug} --force",

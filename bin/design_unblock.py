@@ -245,11 +245,16 @@ def _changed_files(cwd: Path) -> list[str]:
     return files
 
 
-_FRAMEWORK_PREFIXES = ("bin/", ".githooks/", ".cursor/rules/", "playground/", "docs/")
+_FRAMEWORK_PREFIXES = ("bin/", ".githooks/", ".cursor/rules/", "playground/")
 
 
 def _unrelated_framework_files(slug: str, files: list[str]) -> list[str]:
     """Return framework-owned files that are NOT owned by the theme slug."""
+    # `bin/design.py` regenerates docs/ late in the pipeline so draft
+    # short URLs exist for failed builds too. Those generated redirects are
+    # safe to carry while repairing the theme; treating them as unrelated
+    # framework drift blocks the self-healing loop immediately after a
+    # failed commit hook.
     slug_prefixes = (f"{slug}/", f"tests/visual-baseline/{slug}/")
     unrelated: list[str] = []
     for path in files:
@@ -1358,7 +1363,7 @@ def _collect_fingerprints(slug: str, categories: list[str]) -> list[str]:
     return fps
 
 
-_FAIL_LINE = re.compile(r"^\[FAIL\]\s+\[[^\]]+\]\s+(.+?)\s*$")
+_FAIL_LINE = re.compile(r"^\s*\[FAIL\]\s+\[[^\]]+\]\s+(.+?)\s*$")
 
 
 def _parse_check_failures(stdout: str) -> list[tuple[str, str]]:

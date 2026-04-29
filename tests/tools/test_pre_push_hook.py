@@ -14,3 +14,11 @@ def test_pre_push_classifies_snap_infrastructure_timeouts() -> None:
     assert "No visual or accessibility findings were emitted" in src
     assert "visual or accessibility regressions" in src
     assert 'tee "$snap_check_log"' in src
+
+
+def test_pre_push_allows_design_prepublish_scaffold_push() -> None:
+    src = PRE_PUSH.read_text(encoding="utf-8")
+
+    assert "FIFTY_DESIGN_PREPUBLISH" in src
+    assert "design prepublish active" in src
+    assert "scaffold push" in src

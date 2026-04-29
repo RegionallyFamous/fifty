@@ -9,10 +9,10 @@ Invariants locked down here:
 1. `_PHASES_FOR_BUILD` and `_PHASES_FOR_DRESS` are both subsets of the
    full `PHASES` tuple. No subcommand may invent a phase.
 2. Every phase in either list has a real handler in `_PHASE_HANDLERS`.
-3. `build` excludes every phase that's specific to the content-fit
-   pass (`photos`, `microcopy`, `frontpage`, `vision-review`). A regression
-   here means `design.py build` would try to regenerate photos before
-   the spec-driven structural pass is green.
+3. `build` includes deterministic content scaffolding (`photos`,
+   `microcopy`, `frontpage`) before prepublish/snap so the early
+   artifact is screenshotable, but still excludes budgeted/slow
+   content judgment (`vision-review`).
 4. `dress` excludes every phase that's part of the structural
    bring-up (everything up to and including `prepublish`). A regression
    means `dress` would re-clone the theme, which is destructive.
@@ -21,6 +21,7 @@ Invariants locked down here:
    `design: dress <slug>`).
 6. The flat CLI (no subcommand) still runs the full `PHASES` tuple —
    protects the back-compat contract in the plan's acceptance criteria.
+7. Subcommands still honor `--from` / `--only` for repair-watch resumes.
 """
 
 from __future__ import annotations
@@ -106,18 +107,25 @@ def test_build_and_dress_phases_all_have_handlers() -> None:
             )
 
 
-def test_build_excludes_content_fit_phases() -> None:
-    """`build` is the structural step and must not try to regenerate
-    photos / microcopy / front-page / vision-review. Those belong to
-    `dress`; running them in `build` would waste budget and clobber
-    artifacts before the structural pass is green."""
-    build = set(_tuple_literal("_PHASES_FOR_BUILD"))
-    forbidden = {"photos", "microcopy", "frontpage", "vision-review"}
-    overlap = build & forbidden
-    assert not overlap, (
-        f"_PHASES_FOR_BUILD must NOT contain {sorted(forbidden)}; "
-        f"got overlap {sorted(overlap)}. These are dress-only phases."
+def test_build_includes_deterministic_content_scaffolding_before_snap() -> None:
+    """`build` must create a runnable artifact before the draft PR opens.
+
+    Photos, microcopy, and front-page diversification are deterministic
+    local phases, so running snap/check before them just creates an
+    artifact with known placeholder failures. Vision review remains
+    dress-only because it is budgeted and judgment-heavy.
+    """
+    build = _tuple_literal("_PHASES_FOR_BUILD")
+    required = {"photos", "microcopy", "frontpage"}
+    missing = required - set(build)
+    assert not missing, (
+        f"_PHASES_FOR_BUILD must contain deterministic content phases "
+        f"{sorted(required)} before snap; missing {sorted(missing)}."
     )
+    for phase in required:
+        assert build.index(phase) < build.index("prepublish")
+        assert build.index(phase) < build.index("snap")
+    assert "vision-review" not in build
 
 
 def test_dress_excludes_structural_bring_up_phases() -> None:
@@ -170,6 +178,15 @@ def test_flat_cli_full_pipeline_unchanged() -> None:
     )
     assert design._select_phases_for_subcommand("build") == design._PHASES_FOR_BUILD
     assert design._select_phases_for_subcommand("dress") == design._PHASES_FOR_DRESS
+
+
+def test_subcommand_resume_flags_are_honored() -> None:
+    src = DESIGN_PY.read_text(encoding="utf-8")
+
+    assert "args.from_phase not in subcommand_phases" in src
+    assert "start = subcommand_phases.index(args.from_phase)" in src
+    assert "phases_to_run = list(subcommand_phases[start:])" in src
+    assert "args.only not in subcommand_phases" in src
 
 
 def test_banners_include_next_step_hint() -> None:

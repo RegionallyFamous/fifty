@@ -269,6 +269,9 @@ _PHASES_FOR_BUILD = (
     "contrast",
     "seed",
     "sync",
+    "photos",
+    "microcopy",
+    "frontpage",
     "index",
     "prepublish",
     "snap",
@@ -660,12 +663,29 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
 
-    # Subcommands override `--from` / `--only` with a hardcoded
-    # allowlist. Flat CLI keeps using the existing _select_phases
-    # logic (preserves pre-split behaviour byte-identically).
+    # Subcommands default to a hardcoded allowlist, but still honor
+    # `--from` / `--only` when design-watch resumes after a repair.
+    # Flat CLI keeps using the existing _select_phases logic (preserves
+    # pre-split behaviour byte-identically).
     subcommand_phases = _select_phases_for_subcommand(subcommand)
     if subcommand_phases is not None:
-        phases_to_run = list(subcommand_phases)
+        if args.only:
+            if args.only not in subcommand_phases:
+                raise PhaseError(
+                    args.only,
+                    f"phase {args.only!r} is not part of `design.py {subcommand}`.",
+                )
+            phases_to_run = [args.only]
+        elif args.from_phase != "validate":
+            if args.from_phase not in subcommand_phases:
+                raise PhaseError(
+                    args.from_phase,
+                    f"phase {args.from_phase!r} is not part of `design.py {subcommand}`.",
+                )
+            start = subcommand_phases.index(args.from_phase)
+            phases_to_run = list(subcommand_phases[start:])
+        else:
+            phases_to_run = list(subcommand_phases)
     else:
         phases_to_run = _select_phases(args.from_phase, args.only)
     if args.skip_snap and not args.only:
@@ -785,6 +805,9 @@ def _phase_apply(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> N
 
     if spec.palette:
         apply_palette(theme_json, spec.palette)
+        _repair_sale_badge_text_contrast(theme_json)
+    _repair_site_title_mobile_overflow(theme_json)
+    _repair_product_reviews_mobile_overflow(theme_json)
     if spec.fonts:
         apply_fonts(theme_json, spec.fonts)
 
@@ -853,6 +876,92 @@ def _wcag_luminance_hex(hex_color: str) -> float | None:
         return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
 
     return 0.2126 * _lin(r) + 0.7152 * _lin(g) + 0.0722 * _lin(b)
+
+
+def _wcag_contrast_hex(hex_a: str, hex_b: str) -> float | None:
+    lum_a = _wcag_luminance_hex(hex_a)
+    lum_b = _wcag_luminance_hex(hex_b)
+    if lum_a is None or lum_b is None:
+        return None
+    lighter, darker = max(lum_a, lum_b), min(lum_a, lum_b)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def _palette_slug_map(theme_json: dict) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for entry in theme_json.get("settings", {}).get("color", {}).get("palette", []):
+        if not isinstance(entry, dict):
+            continue
+        slug = entry.get("slug")
+        color = entry.get("color")
+        if isinstance(slug, str) and isinstance(color, str):
+            out[slug] = color
+    return out
+
+
+def _repair_sale_badge_text_contrast(theme_json: dict) -> None:
+    """Choose a readable sale-badge text token after palette application."""
+    palette = _palette_slug_map(theme_json)
+    accent = palette.get("accent")
+    if not accent:
+        return
+    candidates = {
+        slug: ratio
+        for slug in ("contrast", "base")
+        if (color := palette.get(slug))
+        if (ratio := _wcag_contrast_hex(color, accent)) is not None
+    }
+    if not candidates:
+        return
+    best_slug, best_ratio = max(candidates.items(), key=lambda item: item[1])
+    if best_ratio < 4.5:
+        return
+    blocks = theme_json.setdefault("styles", {}).setdefault("blocks", {})
+    badge = blocks.setdefault("woocommerce/product-sale-badge", {})
+    color = badge.setdefault("color", {})
+    color["text"] = f"var(--wp--preset--color--{best_slug})"
+
+
+_SITE_TITLE_OVERFLOW_SENTINEL = "generated-site-title-mobile-overflow"
+_PRODUCT_REVIEWS_OVERFLOW_SENTINEL = "generated-product-reviews-mobile-overflow"
+
+
+def _repair_site_title_mobile_overflow(theme_json: dict) -> None:
+    """Prevent generated wordmarks from widening mobile layouts.
+
+    Source themes can carry very large display-wordmark treatment in
+    headers/footers. Once the source slug is replaced by an arbitrary
+    concept name, that single unbreakable word can become wider than the
+    mobile viewport. This guard keeps site-title blocks and their wrappers
+    shrinkable and allows emergency wrapping at character boundaries.
+    """
+    styles = theme_json.setdefault("styles", {})
+    existing = str(styles.get("css") or "")
+    if _SITE_TITLE_OVERFLOW_SENTINEL in existing:
+        return
+    guard = (
+        f"/* {_SITE_TITLE_OVERFLOW_SENTINEL} */ "
+        ".wp-block-site-title,.wp-block-site-title a{max-width:100%;min-width:0;"
+        "overflow-wrap:anywhere;word-break:normal} "
+        ".wp-block-group:has(>.wp-block-site-title){max-width:100%;min-width:0}"
+    )
+    styles["css"] = f"{existing.rstrip()} {guard}".strip()
+
+
+def _repair_product_reviews_mobile_overflow(theme_json: dict) -> None:
+    """Keep WooCommerce's reviews block from widening mobile PDPs."""
+    styles = theme_json.setdefault("styles", {})
+    existing = str(styles.get("css") or "")
+    if _PRODUCT_REVIEWS_OVERFLOW_SENTINEL in existing:
+        return
+    guard = (
+        f"/* {_PRODUCT_REVIEWS_OVERFLOW_SENTINEL} */ "
+        ".wp-block-woocommerce-product-reviews{max-width:100%;min-width:0;box-sizing:border-box} "
+        ".wp-block-woocommerce-product-reviews-title,#reviews,"
+        ".wp-block-woocommerce-product-review-form .comment-reply-title{max-width:100%;"
+        "overflow-wrap:anywhere;word-break:normal;white-space:normal}"
+    )
+    styles["css"] = f"{existing.rstrip()} {guard}".strip()
 
 
 def _warn_uncovered_polarity_slugs(theme_json: dict, spec: ValidatedSpec) -> None:
@@ -1131,15 +1240,10 @@ def _phase_photos(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> 
     PNGs at push time, and the snap finds broken-image findings on every
     product tile.
     """
-    script = ROOT / "bin" / "generate-product-photos.py"
-    if not script.is_file():
+    photo_script = ROOT / "bin" / "generate-product-photos.py"
+    if not photo_script.is_file():
         print("  [photos] WARN: bin/generate-product-photos.py missing; skipping.")
         return
-    cmd = [sys.executable, str(script), "--theme", spec.slug, "--force"]
-    print(f"  [photos] {' '.join(cmd[1:])}")
-    rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
-    if rc != 0:
-        raise PhaseError("photos", f"bin/generate-product-photos.py exited {rc}")
 
     hero_script = dest / "playground" / "generate-images.py"
     if hero_script.is_file():
@@ -1152,6 +1256,16 @@ def _phase_photos(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> 
         print(
             "  [photos] WARN: playground/generate-images.py missing; hero placeholders remain seeded."
         )
+
+    # Run the palette-derived generator last. Legacy per-theme scripts may
+    # clone a source theme's page/post PNGs byte-for-byte; this pass writes
+    # theme-specific product photos, category covers, and hero placeholders
+    # after any source-local generator has had its turn.
+    cmd = [sys.executable, str(photo_script), "--theme", spec.slug, "--force"]
+    print(f"  [photos] {' '.join(cmd[1:])}")
+    rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
+    if rc != 0:
+        raise PhaseError("photos", f"bin/generate-product-photos.py exited {rc}")
 
 
 def _phase_microcopy(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
@@ -1366,6 +1480,7 @@ def _phase_prepublish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace)
     #     populated branch and passes. Skipping here is redundant,
     #     not unsafe.
     env = os.environ.copy()
+    env["FIFTY_DESIGN_PREPUBLISH"] = "1"
     env["FIFTY_SKIP_VISUAL_PUSH"] = "1"
     env["FIFTY_SKIP_EVIDENCE_FRESHNESS"] = "1"
     env["FIFTY_SKIP_BOOT_SMOKE"] = "1"
@@ -1790,7 +1905,11 @@ def _phase_publish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) ->
             return
 
     print(f"  [publish] git push {remote} {branch}")
-    rc = subprocess.call([*git, "push", remote, branch])
+    env = os.environ.copy()
+    env["FIFTY_SKIP_VISUAL_PUSH"] = "1"
+    env["FIFTY_SKIP_EVIDENCE_FRESHNESS"] = "1"
+    env["FIFTY_SKIP_BOOT_SMOKE"] = "1"
+    rc = subprocess.call([*git, "push", remote, branch], env=env)
     if rc != 0:
         raise PhaseError(
             "publish",
