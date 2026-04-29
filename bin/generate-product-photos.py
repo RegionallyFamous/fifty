@@ -54,6 +54,7 @@ import argparse
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -319,6 +320,7 @@ def generate_photos_for_theme(
     content_dir = theme_root / "playground" / "content"
     product_images_json = content_dir / "product-images.json"
     category_images_json = content_dir / "category-images.json"
+    image_manifest_json = content_dir / "image-manifest.json"
 
     def _rel(p: Path) -> str:
         try:
@@ -393,6 +395,66 @@ def generate_photos_for_theme(
             written += 1
             if not quiet:
                 print(f"  [{slug}] generated {_rel(dest)}")
+
+    manifest = {
+        "schema": 1,
+        "theme": slug,
+        "generated_at": time.time(),
+        "generator": "bin/generate-product-photos.py",
+        "mode": "pillow-specimen-card",
+        "palette": palette,
+        "coverage": {
+            "products": len(product_map),
+            "categories": len(cat_map),
+            "missing_products": [
+                filename
+                for filename in sorted(product_map.values())
+                if not (images_dir / filename).is_file()
+            ],
+            "missing_categories": [
+                filename
+                for filename in sorted(cat_map.values())
+                if not (images_dir / filename).is_file()
+            ],
+        },
+        "products": [
+            {
+                "sku": sku,
+                "filename": filename,
+                "path": _rel(images_dir / filename),
+                "prompt": (
+                    f"{slug} brand-fit product photograph for {sku}; "
+                    "specimen-card fallback generated from theme palette"
+                ),
+                "exists": (images_dir / filename).is_file(),
+            }
+            for sku, filename in sorted(product_map.items())
+        ],
+        "categories": [
+            {
+                "name": name,
+                "filename": filename,
+                "path": _rel(images_dir / filename),
+                "prompt": (
+                    f"{slug} category cover for {name}; "
+                    "editorial cover generated from theme palette"
+                ),
+                "exists": (images_dir / filename).is_file(),
+            }
+            for name, filename in sorted(cat_map.items())
+        ],
+        "regeneration": {
+            "all": f"python3 bin/generate-product-photos.py --theme {slug} --force",
+            "seed": f"python3 bin/seed-playground-content.py --theme {slug}",
+        },
+    }
+    content_dir.mkdir(parents=True, exist_ok=True)
+    image_manifest_json.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    if not quiet:
+        print(f"  [{slug}] wrote {_rel(image_manifest_json)}")
 
     if not quiet:
         if written:

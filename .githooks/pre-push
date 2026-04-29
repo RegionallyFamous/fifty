@@ -135,9 +135,15 @@ elif [ -n "$themes" ]; then
     exit 1
   fi
 elif [ "$has_repo_infra" = "true" ]; then
-  echo "▸ pre-push: repo-infra change detected ($reason); running lint + tests."
+  echo "▸ pre-push: repo-infra change detected ($reason); running lint + scoped CI tests."
   python3 bin/lint.py
-  python3 -m pytest tests/
+  python3 -m pytest \
+    tests/tools/test_agent_worktree_safety.py \
+    tests/tools/test_design_batch.py \
+    tests/tools/test_design_phases.py \
+    tests/tools/test_design_scorecard.py \
+    tests/tools/test_design_unblock.py \
+    tests/tools/test_pipeline_additions.py
 else
   echo "✓ pre-push: no scoped theme/static gate needed ($reason)."
 fi

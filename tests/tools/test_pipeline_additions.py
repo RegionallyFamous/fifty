@@ -133,6 +133,12 @@ def test_generate_product_photos_creates_jpegs(tmp_path: Path) -> None:
     # variable parents DO get a photo
     assert "product-wo-left-sock.jpg" in jpeg_names
     assert len(jpegs) == 3
+    manifest = json.loads((theme / "playground" / "content" / "image-manifest.json").read_text())
+    assert manifest["coverage"]["products"] == 3
+    assert manifest["coverage"]["categories"] == 1
+    assert not manifest["coverage"]["missing_products"]
+    assert manifest["products"][0]["prompt"]
+    assert "regeneration" in manifest
 
 
 def test_generate_product_photos_idempotent(tmp_path: Path) -> None:

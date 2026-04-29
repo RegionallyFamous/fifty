@@ -10,7 +10,7 @@ loop:
 * `repair-plan.json` — one compact, reproducible repair packet per
   run.  It classifies each blocker (`product-photo-duplicate`,
   `hover-contrast`, `microcopy-duplicate`, `snap-a11y-color-contrast`,
-  `unknown`), computes a stable fingerprint for it, pins the evidence
+  `design-score-low`, `unknown`), computes a stable fingerprint for it, pins the evidence
   (snap crops, findings files, affected source files), and names a
   verification ladder (targeted checks first, then route-scoped snap,
   then a full rerun) so the agent never flies blind.
@@ -74,6 +74,7 @@ _CLASSIFIER_RULES: tuple[tuple[str, str, str | None], ...] = (
     ("placeholder-images", "product image", "woocommerce placeholder"),
     ("placeholder-images", "woocommerce placeholder", None),
     ("snap-evidence-stale", "snap evidence is fresh", None),
+    ("design-score-low", "design scorecard meets minimum", None),
 )
 
 KNOWN_CATEGORIES = frozenset(
@@ -84,6 +85,7 @@ KNOWN_CATEGORIES = frozenset(
         "snap-a11y-color-contrast",
         "placeholder-images",
         "snap-evidence-stale",
+        "design-score-low",
     }
 )
 
@@ -118,6 +120,7 @@ _DETAIL_EXTRACTORS: dict[str, re.Pattern[str]] = {
     ),
     "placeholder-images": re.compile(r"([a-z0-9-]+/playground/[^\s,;]+)"),
     "snap-evidence-stale": re.compile(r"(\S+\.(?:html|php|json|css))"),
+    "design-score-low": re.compile(r"([a-z_]+)\s+scored\s+(\d+)/(\d+)"),
 }
 
 
@@ -354,6 +357,16 @@ def _affected_files_for_category(
         for rel in pat.findall(detail):
             add(rel)
 
+    elif category == "design-score-low":
+        add(f"{slug}/theme.json")
+        add(f"{slug}/design-intent.md")
+        scorecards = sorted((ROOT / "tmp" / "runs").glob("*/design-score.json"))
+        for scorecard in scorecards[-3:]:
+            try:
+                add(str(scorecard.relative_to(ROOT)))
+            except ValueError:
+                pass
+
     # Snap findings usually implicate a template/part/pattern somewhere.
     # We can't safely guess which one; surface the rendered HTML as a
     # pointer so the LLM can trace back to the source.
@@ -439,6 +452,17 @@ def _verification_for_blocker(category: str, slug: str, snap_findings: list[Snap
     elif category == "placeholder-images":
         ladder.append(_snap_shoot_cmd(slug, ["shop", "category"]))
         ladder.append(_check_cmd(slug, ["no-woocommerce-placeholder"]))
+    elif category == "design-score-low":
+        ladder.append(_snap_shoot_cmd(slug, ["home", "shop", "product-simple", "cart-filled", "checkout-filled", "journal-post"]))
+        ladder.append(
+            [
+                sys.executable,
+                str(ROOT / "bin" / "design-scorecard.py"),
+                slug,
+                "--run-id",
+                os.environ.get("FIFTY_DESIGN_RUN_ID") or f"design-{slug}",
+            ]
+        )
 
     return ladder
 
@@ -446,7 +470,7 @@ def _verification_for_blocker(category: str, slug: str, snap_findings: list[Snap
 def _resume_phase_for(categories: list[str]) -> str:
     # Any visual blocker forces a re-snap + re-check; anything else can
     # be resumed at `check` after the LLM edits.
-    visual = {"snap-a11y-color-contrast", "placeholder-images"}
+    visual = {"snap-a11y-color-contrast", "placeholder-images", "design-score-low"}
     if any(c in visual for c in categories):
         return "snap"
     return "check"
@@ -464,7 +488,7 @@ def _full_verification_ladder(slug: str, categories: list[str]) -> list[list[str
         ]
     )
     # Then a scoped snap sweep if any visual blocker is present.
-    if any(c in {"snap-a11y-color-contrast", "placeholder-images"} for c in categories):
+    if any(c in {"snap-a11y-color-contrast", "placeholder-images", "design-score-low"} for c in categories):
         ladder.append(
             [
                 sys.executable,
@@ -675,6 +699,30 @@ def _collect_fingerprints(slug: str, categories: list[str]) -> list[str]:
     seen: set[str] = set()
     for cat in sorted(set(categories)):
         only = _CHECK_ONLY_BY_CATEGORY.get(cat)
+        if cat == "design-score-low":
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "bin" / "design-scorecard.py"),
+                    slug,
+                    "--run-id",
+                    os.environ.get("FIFTY_DESIGN_RUN_ID") or f"design-{slug}",
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if proc.returncode == 0:
+                continue
+            failures = _parse_check_failures(proc.stdout)
+            for title, detail in failures:
+                fp = blocker_fingerprint(_classify(title, detail), slug, detail)
+                if fp in seen:
+                    continue
+                seen.add(fp)
+                fps.append(fp)
+            continue
         if not only:
             continue
         proc = subprocess.run(

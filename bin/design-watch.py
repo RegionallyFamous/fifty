@@ -561,12 +561,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--auto-unblock",
         action="store_true",
+        default=True,
         help=(
             "When the run blocks on a known-fixable category, invoke "
             "`bin/design_unblock.py --apply --agentic` to let the LLM "
             "edit toward green, then resume the pipeline from the "
             "smallest safe phase. Bounded by --max-repair-rounds and "
-            "the unblocker's own attempt caps."
+            "the unblocker's own attempt caps. Default: on."
+        ),
+    )
+    parser.add_argument(
+        "--no-auto-unblock",
+        dest="auto_unblock",
+        action="store_false",
+        help=(
+            "Disable the default self-healing loop and only write the "
+            "run summary/status artifacts."
         ),
     )
     parser.add_argument(
@@ -652,6 +662,7 @@ def run_subprocess(
 ) -> int:
     env = dict(os.environ)
     env["PYTHONUNBUFFERED"] = "1"
+    env["FIFTY_DESIGN_RUN_ID"] = state.run_id
     proc = subprocess.Popen(
         state.command,
         cwd=state.cwd,
