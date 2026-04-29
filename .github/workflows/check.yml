@@ -501,51 +501,54 @@ jobs:
     #   vision pass before first merge" as a required check.
     #
     # What it does:
-    #   * On pull_request, resolve `new_themes` via visual-matrix.py
-    #     (empty list for a PR that doesn't add a theme).
-    #   * If the list is empty, pass immediately -- existing themes
-    #     keep their old advisory flow.
-    #   * If the list is non-empty, require the `vision-reviewed`
-    #     label on the PR. Present => green; absent => red with a
-    #     message that explains how to get the label.
+    #   * Preflight: query the PR's file list via `gh api` and grep
+    #     for added (`status=added`) top-level `<slug>/theme.json`
+    #     files. No checkout, no Python, ~3-5s.
+    #   * If none, exit 0 immediately — existing themes keep their
+    #     old advisory flow. This is the common case, so the job is
+    #     effectively invisible in CI.
+    #   * If any, require the `vision-reviewed` label on the PR.
+    #     Present => green; absent => red with a message that
+    #     explains how to get the label.
+    #
+    # Why the preflight is inlined (no checkout / python):
+    #   The job is a required status check, so we can't `if:` it out
+    #   of existence — GitHub would wait forever for the check that
+    #   never reports. The previous implementation ran `actions/
+    #   checkout@v6` + `actions/setup-python@v6` + a Python helper
+    #   that took ~31s on PRs that didn't touch any theme. The GH
+    #   REST API gives us the exact same signal in one HTTP call.
     #
     # Why not reuse vision-review.yml:
     #   That workflow is `pull_request.types: [labeled, ...]` and
-    #   does a ~12-min shoot+critique. This gate must be fast (~30s)
-    #   and must fire on every PR, label or no label, so a new
-    #   theme can't sneak in under a fresh PR that forgot to label.
+    #   does a ~12-min shoot+critique. This gate must be fast and
+    #   must fire on every PR, label or no label, so a new theme
+    #   can't sneak in under a fresh PR that forgot to label.
     name: vision-reviewed required for new themes
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-      - name: Resolve new themes on this PR
-        id: scope
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          INPUT_MODE: check-changed
-          BASE_REF: origin/main
-        run: python3 bin/visual-matrix.py
-      - name: Enforce vision-reviewed label on new-theme PRs
+      - name: Detect new themes + enforce label
         env:
           LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
-          IS_NEW_THEME: ${{ steps.scope.outputs.is_new_theme }}
-          NEW_THEMES: ${{ steps.scope.outputs.new_themes }}
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          if [ "$IS_NEW_THEME" != "true" ]; then
+          # A "new theme" is any top-level `<slug>/theme.json` with
+          # PR-files status == "added" (no subdirectory noise; the
+          # `jq` filter drops nested theme.jsons from node_modules
+          # or vendored fixtures).
+          new_themes=$(gh api "repos/$REPO/pulls/$PR/files" --paginate \
+            --jq '.[] | select(.status == "added") | .filename | select(test("^[^/]+/theme\\.json$"))' \
+            | sed 's#/theme.json$##' | sort -u | tr '\n' ' ')
+          new_themes=${new_themes% }
+          if [ -z "$new_themes" ]; then
             echo "No brand-new themes in this PR; vision gate is a no-op."
             exit 0
           fi
-          echo "This PR introduces brand-new theme(s): $NEW_THEMES"
+          echo "This PR introduces brand-new theme(s): $new_themes"
           # `LABELS` is a JSON array of strings like ["design","vision-reviewed"].
           # grep the raw string to stay dependency-free, same shape as
           # the gate in .github/workflows/vision-review.yml.
