@@ -59,6 +59,14 @@ def test_classify_known_titles_hit_specific_categories():
         u._classify("Recent snaps carry no serious axe-core errors", "8 NEW severity:error")
         == "snap-a11y-color-contrast"
     )
+    assert (
+        u._classify("Factory timeout guard", "Factory timeout: run exceeded 20:00")
+        == "factory-timeout"
+    )
+    assert (
+        u._classify("Factory stall guard", "Factory stall guard: no output for 05:00")
+        == "factory-stall"
+    )
 
 
 def test_classify_unknown_title_returns_unknown():
@@ -80,6 +88,8 @@ def test_known_categories_includes_all_primary_categories():
         "snap-a11y-color-contrast",
         "category-images",
         "design-score-low",
+        "factory-timeout",
+        "factory-stall",
     ):
         assert expected in u.KNOWN_CATEGORIES
 

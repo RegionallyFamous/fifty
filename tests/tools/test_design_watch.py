@@ -288,6 +288,28 @@ def test_run_subprocess_kills_overlong_child(tmp_path):
     assert rc == 124
     assert state.check_failures
     assert state.check_failures[0].title == "Factory timeout guard"
+    assert watch._runtime_guard_fired(state) is True
+
+
+def test_runtime_guard_fired_false_for_normal_check_failure():
+    watch = load_design_watch()
+    state = watch.WatchState(
+        run_id="normal",
+        started_at=time.time(),
+        command=["python3", "bin/design.py"],
+        cwd=str(REPO_ROOT),
+        phase_started_at=time.time(),
+        last_output_at=time.time(),
+        check_failures=[
+            watch.CheckFailure(
+                title="Recent snaps carry no serious axe-core errors",
+                detail="1 NEW severity:error",
+                summary="Recent screenshots found serious page issues.",
+                next_action="Fix the snap finding.",
+            )
+        ],
+    )
+    assert watch._runtime_guard_fired(state) is False
 
 
 def test_resume_design_args_replaces_from():

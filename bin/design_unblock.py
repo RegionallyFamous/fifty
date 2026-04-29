@@ -88,6 +88,8 @@ _CLASSIFIER_RULES: tuple[tuple[str, str, str | None], ...] = (
     ("category-images", "category-images.json", "category cover art"),
     ("snap-evidence-stale", "snap evidence is fresh", None),
     ("design-score-low", "design scorecard meets minimum", None),
+    ("factory-timeout", "factory timeout guard", None),
+    ("factory-stall", "factory stall guard", None),
 )
 
 KNOWN_CATEGORIES = frozenset(
@@ -105,6 +107,8 @@ KNOWN_CATEGORIES = frozenset(
         "category-images",
         "snap-evidence-stale",
         "design-score-low",
+        "factory-timeout",
+        "factory-stall",
     }
 )
 
@@ -142,6 +146,8 @@ _DETAIL_EXTRACTORS: dict[str, re.Pattern[str]] = {
     "category-images": re.compile(r"([a-z0-9-]+/playground/content/category-images\.json)"),
     "snap-evidence-stale": re.compile(r"(\S+\.(?:html|php|json|css))"),
     "design-score-low": re.compile(r"([a-z_]+)\s+scored\s+(\d+)/(\d+)"),
+    "factory-timeout": re.compile(r"(?:while|phase=)\s+([a-z0-9_-]+)"),
+    "factory-stall": re.compile(r"(?:while|phase=)\s+([a-z0-9_-]+)"),
 }
 
 
@@ -421,6 +427,14 @@ def _affected_files_for_category(
             except ValueError:
                 pass
 
+    elif category in {"factory-timeout", "factory-stall"}:
+        add("bin/design-watch.py")
+        add("bin/design.py")
+        add("bin/snap-vision-review.py")
+        add("bin/_vision_lib.py")
+        for rel in _latest_run_artifacts(slug):
+            add(rel)
+
     # Snap findings usually implicate a template/part/pattern somewhere.
     # We can't safely guess which one; surface the rendered HTML as a
     # pointer so the LLM can trace back to the source.
@@ -505,6 +519,27 @@ def _recipes_for_category(category: str) -> list[str]:
     }.get(category, [])
 
 
+def _latest_run_artifacts(slug: str, limit: int = 6) -> list[str]:
+    runs_dir = ROOT / "tmp" / "runs"
+    if not runs_dir.is_dir():
+        return []
+    candidates = sorted(
+        [p for p in runs_dir.glob(f"*{slug}*") if p.is_dir()],
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    out: list[str] = []
+    for run_dir in candidates[:limit]:
+        for name in ("STATUS.md", "summary.json", "events.jsonl"):
+            rel = run_dir / name
+            if rel.exists():
+                try:
+                    out.append(str(rel.relative_to(ROOT)))
+                except ValueError:
+                    out.append(str(rel))
+    return out
+
+
 def _allowed_commands_for_categories(categories: list[str]) -> list[str]:
     commands = {"check_quick", "check_only"}
     if any(
@@ -518,6 +553,8 @@ def _allowed_commands_for_categories(categories: list[str]) -> list[str]:
         }
     ):
         commands.add("snap_routes")
+        commands.add("snap_report")
+    if any(c in categories for c in {"factory-timeout", "factory-stall"}):
         commands.add("snap_report")
     if any(c in categories for c in {"product-photo-duplicate", "cross-theme-product-images"}):
         commands.add("generate_product_photos")
@@ -640,6 +677,8 @@ def _resume_phase_for(categories: list[str]) -> str:
     visual = {"snap-a11y-color-contrast", "placeholder-images", "design-score-low"}
     if any(c in visual for c in categories):
         return "snap"
+    if any(c in {"factory-timeout", "factory-stall"} for c in categories):
+        return "validate"
     return "check"
 
 
@@ -730,6 +769,13 @@ def _summary_to_blockers(summary: dict[str, Any]) -> list[Blocker]:
                 "as any other blocker (source/assets in the theme), but "
                 "the verification ladder is generic; double-check what "
                 "the check actually wants."
+            )
+        elif category in {"factory-timeout", "factory-stall"}:
+            blocker.notes.append(
+                "The watcher stopped a wedged or overlong child process. "
+                "Inspect STATUS.md, summary.json, and events.jsonl first; "
+                "prefer a small fix that makes the slow phase fail fast, "
+                "emit progress, narrow its scope, or resume safely."
             )
         blockers.append(blocker)
     return blockers
@@ -2098,8 +2144,14 @@ def _build_tool_rescue_prompt(
         "You are a bounded tool-using rescue agent for a WordPress block theme "
         "factory. You may propose exact file edits and structured broker "
         "actions, but you may not run raw shell commands. Work only inside the "
-        "active theme and generated per-theme artifacts. Never edit allowlists, "
-        "never use destructive git operations, and never bypass checks.\n\n"
+        "active theme and generated per-theme artifacts. For `factory-timeout` "
+        "or `factory-stall` blockers, your first job is diagnosis: inspect the "
+        "provided STATUS.md / summary.json / events.jsonl evidence, explain the "
+        "most likely stuck phase, and request only safe broker actions. Do not "
+        "edit framework files from this rescue loop; if a framework change is "
+        "needed, set `human_boundary` to `factory-tooling-change` with a clear "
+        "rationale. Never edit allowlists, never use destructive git operations, "
+        "and never bypass checks.\n\n"
         "Respond with exactly one JSON object:\n"
         "{\n"
         '  "rationale": "<diagnosis>",\n'

@@ -419,6 +419,13 @@ def classify_verdict(state: WatchState) -> str:
     return "blocked"
 
 
+def _runtime_guard_fired(state: WatchState) -> bool:
+    return any(
+        failure.title in {"Factory timeout guard", "Factory stall guard"}
+        for failure in state.check_failures
+    )
+
+
 def emit_status(
     state: WatchState,
     *,
@@ -1182,13 +1189,17 @@ def main(argv: list[str] | None = None) -> int:
     write_summary(summary_path, state)
 
     if watch_args.auto_unblock and classify_verdict(state) == "blocked" and state.check_failures:
-        repair_layers: list[str] = []
-        if not watch_args.no_recipes:
-            repair_layers.append("recipes")
-        if not watch_args.no_json_repair:
-            repair_layers.append("json-llm")
-        if not watch_args.no_tool_rescue:
-            repair_layers.append("tool-rescue")
+        repair_layers: list[str]
+        if _runtime_guard_fired(state):
+            repair_layers = [] if watch_args.no_tool_rescue else ["tool-rescue"]
+        else:
+            repair_layers = []
+            if not watch_args.no_recipes:
+                repair_layers.append("recipes")
+            if not watch_args.no_json_repair:
+                repair_layers.append("json-llm")
+            if not watch_args.no_tool_rescue:
+                repair_layers.append("tool-rescue")
         while state.repair_round < watch_args.max_repair_rounds:
             rc_unblock = 4
             resume_phase = "check"
