@@ -1,0 +1,246 @@
+{
+  "findings": [
+    {
+      "severity": "info",
+      "kind": "console-warn-budget",
+      "message": "24 console warnings on this cell (>10). Consider triaging.",
+      "count": 24,
+      "max": 10
+    }
+  ],
+  "selectors": [
+    {
+      "selector": "table.variations",
+      "count": 1,
+      "instances": [
+        {
+          "width": 477,
+          "height": 341,
+          "visible": true,
+          "display": "block",
+          "grid_template_columns": "none",
+          "min_width": "auto",
+          "max_width": "none"
+        }
+      ]
+    },
+    {
+      "selector": ".wo-swatch-wrap",
+      "count": 2,
+      "instances": [
+        {
+          "width": 294,
+          "height": 40,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        },
+        {
+          "width": 294,
+          "height": 40,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        }
+      ]
+    },
+    {
+      "selector": ".wo-swatch-group",
+      "count": 2,
+      "instances": [
+        {
+          "width": 294,
+          "height": 40,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "auto",
+          "max_width": "none"
+        },
+        {
+          "width": 294,
+          "height": 40,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "auto",
+          "max_width": "none"
+        }
+      ]
+    },
+    {
+      "selector": ".wo-swatch",
+      "count": 5,
+      "instances": [
+        {
+          "width": 86,
+          "height": 40,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "auto",
+          "max_width": "none"
+        },
+        {
+          "width": 98,
+          "height": 40,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "auto",
+          "max_width": "none"
+        },
+        {
+          "width": 85,
+          "height": 40,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "auto",
+          "max_width": "none"
+        },
+        {
+          "width": 40,
+          "height": 40,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "40px",
+          "max_width": "none"
+        }
+      ]
+    },
+    {
+      "selector": ".wp-block-post-featured-image",
+      "count": 1,
+      "instances": [
+        {
+          "width": 792,
+          "height": 792,
+          "visible": true,
+          "display": "block",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        }
+      ]
+    }
+  ],
+  "dom": {
+    "width": 1920,
+    "height": 1080,
+    "scrollWidth": 1920,
+    "scrollHeight": 2573
+  },
+  "bg_image_pairs": [],
+  "theme": "bodega",
+  "viewport": "wide",
+  "route": "product-variable",
+  "url": "http://127.0.0.1:9400/product/bottled-morning-variants/",
+  "navigation_error": null,
+  "console": [
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    }
+  ],
+  "page_errors": [],
+  "network_failures": [],
+  "a11y_path": "tmp/snaps/bodega/wide/product-variable.a11y.json"
+}

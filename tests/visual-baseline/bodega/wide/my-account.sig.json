@@ -1,0 +1,346 @@
+{
+  "version": 1,
+  "theme": "bodega",
+  "route": "my-account",
+  "deps": [
+    {
+      "path": "functions.php",
+      "sha": "b2e33c6b1a3f727b38f0e1f3333bc54253d06c4405d21d357ec40d2439139ba4"
+    },
+    {
+      "path": "parts/announcement-bar.html",
+      "sha": "fc6b4cabd80a32f8849bffd7a2b0d02395baa26aeb2d3625b0e3b941a72586be"
+    },
+    {
+      "path": "parts/footer.html",
+      "sha": "fe6b050312dc5a767528b10ac4f24bc610bd2aeef5e1aea437fe86bdf9f6c709"
+    },
+    {
+      "path": "parts/header.html",
+      "sha": "c5d54445514697e00987dce1e776ab4c4984fc32a3e989c3460c4fd318a993f9"
+    },
+    {
+      "path": "playground/blueprint.json",
+      "sha": "cb23830fe24a7045c9d7b416d10bdc86a44895aff6d7f524a12f1013573a7bdd"
+    },
+    {
+      "path": "playground/content/category-images.json",
+      "sha": "d9444432cbda41b96d3d7a45073705d0b1d3b003d9e8ae5efb58e96dff61c3ee"
+    },
+    {
+      "path": "playground/content/content.xml",
+      "sha": "5e59ad4c2edab984e35a1162923dad5ec8a99e605bd557787de084809eb51103"
+    },
+    {
+      "path": "playground/content/image-manifest.json",
+      "sha": "1c5b64b9da95634359faab4cf772df57b5b80135b5280b1fe8210f7c6a75925d"
+    },
+    {
+      "path": "playground/content/product-images.json",
+      "sha": "d1e488d599714acb14e5eeb650cb7d3456f4f3d575cbd7f9e462c1252f9e7817"
+    },
+    {
+      "path": "playground/content/products.csv",
+      "sha": "7f4c51106e95f033ef8f0ca4dfd1991e833826e627cc9cc6683fd2f46df9d25b"
+    },
+    {
+      "path": "playground/generate-images.py",
+      "sha": "eda2bb8e938eabff11cf27b6a961ad7f45c8eeb88dae9ea143229127f24c0f09"
+    },
+    {
+      "path": "playground/images/cat-curated-bundles.jpg",
+      "sha": "89df648ab5a9f67b92e7a9773063a63d56e27d0cdb8c4b357a127102c75278d6"
+    },
+    {
+      "path": "playground/images/cat-curiosities.jpg",
+      "sha": "e4e1decc32fd82a73afdf31bba11bd771e045eb5de980c7ae649bee8f8628b19"
+    },
+    {
+      "path": "playground/images/cat-digital-oddments.jpg",
+      "sha": "c18dcf812690f301831821ff9b73eb5b8827289bceda29840c4b8d3dacb0d8c6"
+    },
+    {
+      "path": "playground/images/cat-forbidden-snacks.jpg",
+      "sha": "6e1e7c9459a3b87bc85deb0e7de27b78d1e131a2b19017f8065ce3d13851735d"
+    },
+    {
+      "path": "playground/images/cat-impossibilities.jpg",
+      "sha": "009c2a2ce817e3bad7748ac9c6b7fc693e1d0c2323ed016560c08ffe4eefbd1e"
+    },
+    {
+      "path": "playground/images/cat-moods-feelings.jpg",
+      "sha": "b8a7a64e8c11bdee58ff69da02b41f7c1decb51550327f0e3acc2f05f5c69034"
+    },
+    {
+      "path": "playground/images/imaginary-deed.pdf",
+      "sha": "9bb670115886a144b00e86c4bf6f3dfb35eb15321a5ad7a03092703fe9052d16"
+    },
+    {
+      "path": "playground/images/imaginary-seal.png",
+      "sha": "e28598e0250353c8a9642f5e88581e7acbd31450673d1338c9d7b1fca8965328"
+    },
+    {
+      "path": "playground/images/lost-recipe.pdf",
+      "sha": "d3026c1cee466545a18211462d603b587f85d0956ca1f986f5f687951d22bebd"
+    },
+    {
+      "path": "playground/images/one-hand.wav",
+      "sha": "9eb78b4633d3bc4dfbaf9e86c0c91c3b9414f0c0ee975070419a7e66d6b720ba"
+    },
+    {
+      "path": "playground/images/product-wo-borrowed-nostalgia.jpg",
+      "sha": "456ad5467282dea705fbc38276a09168c718b949c6df390dc2f6e462ca95ba04"
+    },
+    {
+      "path": "playground/images/product-wo-bottled-morning.jpg",
+      "sha": "573401ac5553829bee50b1f6d0f6bd2fd0b3462e5b99822e93b89f5f1db42185"
+    },
+    {
+      "path": "playground/images/product-wo-chaos-seasoning.jpg",
+      "sha": "808565c9ec4e686b289bbfd068957982d89896223f53cdbb94d50c367fffdee4"
+    },
+    {
+      "path": "playground/images/product-wo-cosmic-mystery-box.jpg",
+      "sha": "4887851ee4c2d4aa3fdecac782716765564db66aa615aa82f58a6dabc09ff881"
+    },
+    {
+      "path": "playground/images/product-wo-deja-vu-session.jpg",
+      "sha": "1bb66594a7f2df1af527e526c944043c655f3fd6462d2e368750050b66307ac8"
+    },
+    {
+      "path": "playground/images/product-wo-discount-gravity.jpg",
+      "sha": "2820dace96b7932b0199ad660437125379a1023f7e49b636aee001da8ff2c5dc"
+    },
+    {
+      "path": "playground/images/product-wo-dread-repellent.jpg",
+      "sha": "9b6a2d24f37479f129d463da6e64c4d3d9c30a186288e5574dd77c1271ea07fd"
+    },
+    {
+      "path": "playground/images/product-wo-fog-in-bottle.jpg",
+      "sha": "52930c6b3134ab82c77c9dfcb8375e2bddf9e2cd94249a5fb1ab712a394893ad"
+    },
+    {
+      "path": "playground/images/product-wo-forbidden-honey.jpg",
+      "sha": "af2cdb2a701a5f21b29fd45fb1f588ac52c1f992432d76aaebe9b744ea2bed59"
+    },
+    {
+      "path": "playground/images/product-wo-gently-used-luck.jpg",
+      "sha": "221bb88216fcb9b2fd98b4118dcb6ae57d29cada66585068ca8842da31340f86"
+    },
+    {
+      "path": "playground/images/product-wo-handcrafted-echo.jpg",
+      "sha": "fc27c948c1a3c3ab2317a16a8ffa0e93aeaee7cb68fe2d3f5f7030988a010e27"
+    },
+    {
+      "path": "playground/images/product-wo-haunted-candle.jpg",
+      "sha": "4f16d6383bc5c0c2033b4c33ca30be923f667ea2cc95a418f422015854593423"
+    },
+    {
+      "path": "playground/images/product-wo-imaginary-deed.jpg",
+      "sha": "4f1525803f53da8999eed518bf185afc575109b742bbd9e3a5808dea5868e955"
+    },
+    {
+      "path": "playground/images/product-wo-interdim-bazaar.jpg",
+      "sha": "d1c7839127776508beb924952287d564d43f5c11514fdd6e05c2e1e3734ec6ce"
+    },
+    {
+      "path": "playground/images/product-wo-invisible-umbrella.jpg",
+      "sha": "7c26bebecd97486d3d95b1b04126193f864f52211d8c92313b8f58f06fd6ca69"
+    },
+    {
+      "path": "playground/images/product-wo-left-sock.jpg",
+      "sha": "e9097a26efe908a12b6c686fb78e796b1bd4c96b29181650712c4a768eed17f3"
+    },
+    {
+      "path": "playground/images/product-wo-lost-recipe-time.jpg",
+      "sha": "4b1b4634dee5890a9377dfb2ed31473ff6c1d0dfce6ca65c5095c65a8f1f052f"
+    },
+    {
+      "path": "playground/images/product-wo-memory-foam-memory.jpg",
+      "sha": "d6d15538bc44545e1ef1c7d1fd90d733e690b6df18ac5986b47d23104284aeec"
+    },
+    {
+      "path": "playground/images/product-wo-monday-kit.jpg",
+      "sha": "dd12dbb445f95b8f42cd4f0e022ccca7345c87eb27c187b5666656889a176a59"
+    },
+    {
+      "path": "playground/images/product-wo-moon-dust.jpg",
+      "sha": "8f061df8192bedd1e5a69feea72df704988c6447d33d9d1242723f2426e0db29"
+    },
+    {
+      "path": "playground/images/product-wo-one-hand-clapping.jpg",
+      "sha": "0404f6542789fea591105b2f1ae704f5345bcd59f3d4b5fcf20f5c2987721caa"
+    },
+    {
+      "path": "playground/images/product-wo-pocket-thunder.jpg",
+      "sha": "9dad34ac32bebc43a7f6765b1becfd48d0707d2feabfa9b4ffe8a35a179ed007"
+    },
+    {
+      "path": "playground/images/product-wo-portable-hole.jpg",
+      "sha": "07d946a36c093035f5c574029c73f2c221b7a9bc3f680c8023eb13d7e5c91485"
+    },
+    {
+      "path": "playground/images/product-wo-sensory-starter.jpg",
+      "sha": "b1213e5e4db120aac072f06c2e73b7f879aaf1d87c105f2b9725f5f75b24ba53"
+    },
+    {
+      "path": "playground/images/product-wo-silence-jar.jpg",
+      "sha": "03d8b7ce6600279e78552f40d68fc2b72e6d5c690c5ba4746f4fa85260eba492"
+    },
+    {
+      "path": "playground/images/product-wo-spare-key-nowhere.jpg",
+      "sha": "5fdd1f9a35c7b13baeae83985e67bfcc915e118be1f2248f85088a4648d9f17c"
+    },
+    {
+      "path": "playground/images/product-wo-spare-tuesday.jpg",
+      "sha": "6596f252ef63e9a9cd49e7649be86ff9db29036299a2da381565c42e3d8c8517"
+    },
+    {
+      "path": "playground/images/product-wo-tangible-wifi.jpg",
+      "sha": "85bc1f110d9c778c61b53cd7cf83f092f587457d5c05960313f3a29b8d74b201"
+    },
+    {
+      "path": "playground/images/product-wo-void-sampler.jpg",
+      "sha": "ff98a55f7b814e66b5037fa65c1060f341a047f1470f07a55f2fba87b85ee6be"
+    },
+    {
+      "path": "playground/images/product-wo-whispering-stone.jpg",
+      "sha": "5d18bb1a419166a54dc4b9e7c3681645ebbde4649ef7f48e8ad9872d69db24f0"
+    },
+    {
+      "path": "playground/images/wonders-page-about.png",
+      "sha": "66bf0c22b77c795e5b009e742ac1ec6a6376f09201fb6641da258c5cbedb9b98"
+    },
+    {
+      "path": "playground/images/wonders-page-contact.png",
+      "sha": "670d9b1332246ceff09e3237c4ca2e2c8cdacecba8f7364697e02dc48314846c"
+    },
+    {
+      "path": "playground/images/wonders-page-faq.png",
+      "sha": "b78fc32c147fbea32ab1282d3045baa2afce05d40262133f675344c22aa59a17"
+    },
+    {
+      "path": "playground/images/wonders-page-home.png",
+      "sha": "5f59deefb683a503dc183d0dfde3e03736b5c1b6ba1b5c4ad71321c3342dd0ac"
+    },
+    {
+      "path": "playground/images/wonders-page-journal.png",
+      "sha": "18cb9984fd13235ae5ddb559de3bac80fd2cb21750de6bea4c509a62f8353ea0"
+    },
+    {
+      "path": "playground/images/wonders-page-lookbook.png",
+      "sha": "28bbac01c1206f5a0e1aac24b17f949b5789f98e1bb6f06d1f2c0968bb628d9c"
+    },
+    {
+      "path": "playground/images/wonders-page-privacy-policy.png",
+      "sha": "8ee8863b46cb71c82317e76a35ab39a7de63d9e68db58e15e360e0941373c915"
+    },
+    {
+      "path": "playground/images/wonders-page-shipping-returns.png",
+      "sha": "f18ce8a434032f7125fb3b5db4ab61ff462c076257259dd201d5515066182162"
+    },
+    {
+      "path": "playground/images/wonders-post-behind-the-scenes-bottling-mondays.png",
+      "sha": "c15116f307d2b3349ef0a39c25c82c46416ad814353f2cb5ff6f9a6e41cf1b02"
+    },
+    {
+      "path": "playground/images/wonders-post-caring-for-your-portable-hole.png",
+      "sha": "651d1885b9b33e326abf4b5d1aebbb668daff1b096ee36aa8f9a875cb913080e"
+    },
+    {
+      "path": "playground/images/wonders-post-carl-on-the-moon.png",
+      "sha": "82b6b78f522cdd587601f2a9be405ca05959c7c20aab446d540c105ed20ac753"
+    },
+    {
+      "path": "playground/images/wonders-post-chaos-seasoning-recipe-roundup.png",
+      "sha": "aa4a641e96e963d03b36688f054a631d5b0fc115ea19962d159fb60e916a3653"
+    },
+    {
+      "path": "playground/images/wonders-post-fog-season.png",
+      "sha": "2dc3355644a8ff091d3eeefa2a38b6dedc763d9d87be3321f758341647b86c7f"
+    },
+    {
+      "path": "playground/images/wonders-post-forbidden-honey-what-does-forbidden-mean.png",
+      "sha": "1f4aa5df7fb695c791dc20574973d0f4a236fc57602ca8bdcab3e1e92fd6d468"
+    },
+    {
+      "path": "playground/images/wonders-post-hidden-gems-5-overlooked-products.png",
+      "sha": "b5a760de2f0c08134ad511bb1e93ab61cfeb28d9e7bceafc8036a5792379d073"
+    },
+    {
+      "path": "playground/images/wonders-post-how-to-apply-existential-dread-repellent.png",
+      "sha": "b72c2d2065d5c146ebc31d8dff8bd9037395eed030e227f972be6f66eaff5f22"
+    },
+    {
+      "path": "playground/images/wonders-post-imaginary-ownership-beginners.png",
+      "sha": "5eb89ce3ebe8347cac809f2c73935056eb14585019ec8d3112e482a773f803d1"
+    },
+    {
+      "path": "playground/images/wonders-post-interview-with-carl.png",
+      "sha": "d2a99b91c6fdc9c6ac6106158b4be46b3219e62fe682e32be1d2ae8f8bc6591a"
+    },
+    {
+      "path": "playground/images/wonders-post-invisible-umbrella-spotlight.png",
+      "sha": "7cd5a42144b5d0cf0399f8ef206468ca3263b752415053e900974f9a5fba3a97"
+    },
+    {
+      "path": "playground/images/wonders-post-memoirs-of-a-left-sock.png",
+      "sha": "48a5c973af3a05917968b200e6e929cb052ee7235251e877f8265125cc597ddf"
+    },
+    {
+      "path": "playground/images/wonders-post-mildly-haunted-candle-faq.png",
+      "sha": "7aab17d06c0561b84e8228fe7854126543caa4a92364ff50432f1be61dec746e"
+    },
+    {
+      "path": "playground/images/wonders-post-philosophy-of-bottled-monday-morning.png",
+      "sha": "cbf6dde5e55661b678f79c9ec90f647d6a22f148c3ba152334805b2fe79ff991"
+    },
+    {
+      "path": "playground/images/wonders-post-pocket-thunder-safety.png",
+      "sha": "30448884c5341642ee5bdce5967472836584fa777935bbd2f3708e8b052e5534"
+    },
+    {
+      "path": "playground/images/wonders-post-spare-tuesday-field-guide.png",
+      "sha": "0fc11ea8a852592ca08ff2cb4119bc87de6b3f119894570bb4f6052bb790e72e"
+    },
+    {
+      "path": "playground/images/wonders-post-tangible-wifi-30-day-review.png",
+      "sha": "163180588299c117a8d9d2fe2cf098bc621969190dd873d969dcc0a50583ab9e"
+    },
+    {
+      "path": "playground/images/wonders-post-the-art-of-artisanal-silence.png",
+      "sha": "75cd3ede664240b9c25063da59897a7131ec90321137705367f7497b456e0b8b"
+    },
+    {
+      "path": "playground/images/wonders-post-welcome-to-wonders-and-oddities.png",
+      "sha": "ad0c8f19c014b2663e7dc000c54801ce376a8dde9bd61da88f71efe3cc82f4ae"
+    },
+    {
+      "path": "playground/images/wonders-post-year-one-abridged.png",
+      "sha": "cd5296ccd4995abc0f20787fbbe4d0fe2d5bebac23b5a87e8527b30c12e5ffdd"
+    },
+    {
+      "path": "styles/dark.json",
+      "sha": "3e6bbdcb1567a9a4fc3886a55acfe10455bb9588c412115d3fcda1e6a11e3208"
+    },
+    {
+      "path": "styles/editorial.json",
+      "sha": "83e4f8c5742ec0efd9c6cea81c0426950e3f675fadc1b2300057c0ed14452bcc"
+    },
+    {
+      "path": "styles/high-contrast.json",
+      "sha": "34cd08bc48250ee53671c79d8eb28e2b816ba0157ffb7cda6f891e24ca0d32d4"
+    },
+    {
+      "path": "templates/page-my-account.html",
+      "sha": "cb61a1da0c8fd77a4b7b514f1fc06af82b2f093e627a0d96722a68cf48b8d7e1"
+    },
+    {
+      "path": "theme.json",
+      "sha": "3ab45bac53d85789efd7d200efbb381868771e91324378339ea34977ca476569"
+    }
+  ],
+  "snap_py_sha": "4129c0dd3130ffe2ad56e6573143ba886678a6f040857db5f85a1dd0b5cd7b88",
+  "snap_config_sha": "1c6e396b767e0262f5e9c53e52d20ead16e2b127b020edb767be1c7e3efb91ec",
+  "playground_cli": "@wp-playground/cli@3.1.20"
+}

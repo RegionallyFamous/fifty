@@ -1,0 +1,215 @@
+{
+  "findings": [
+    {
+      "severity": "info",
+      "kind": "wc-banner-info",
+      "message": "No order has been made yet.\nBROWSE PRODUCTS",
+      "selector": ".wc-block-components-notice-banner.is-info",
+      "crop_path": "tmp/snaps/bodega/tablet/my-account-orders.wc-banner-info.0.crop.jpg"
+    },
+    {
+      "severity": "info",
+      "kind": "inspect-selector-missing",
+      "message": "Selector `.woocommerce-orders-table` matched 0 elements on this page.",
+      "selector": ".woocommerce-orders-table"
+    },
+    {
+      "severity": "info",
+      "kind": "inspect-selector-missing",
+      "message": "Selector `.woocommerce-MyAccount-orders` matched 0 elements on this page.",
+      "selector": ".woocommerce-MyAccount-orders"
+    },
+    {
+      "severity": "info",
+      "kind": "a11y-aria-allowed-role",
+      "message": "ARIA role should be appropriate for the element (8 node(s)) \u2014 first: #wp-admin-bar-wp-logo",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/aria-allowed-role?application=axeAPI",
+      "axe_impact": "minor",
+      "axe_node_count": 8,
+      "axe_first_selectors": [
+        "#wp-admin-bar-wp-logo",
+        "#wp-admin-bar-site-name",
+        "#wp-admin-bar-site-editor"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/bodega/tablet/my-account-orders.a11y-aria-allowed-role.0.crop.jpg"
+    },
+    {
+      "severity": "warn",
+      "kind": "a11y-region",
+      "message": "All page content should be contained by landmarks (1 node(s)) \u2014 first: #wp-skip-link",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/region?application=axeAPI",
+      "axe_impact": "moderate",
+      "axe_node_count": 1,
+      "axe_first_selectors": [
+        "#wp-skip-link"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/bodega/tablet/my-account-orders.a11y-region.0.crop.jpg"
+    },
+    {
+      "severity": "info",
+      "kind": "console-warn-budget",
+      "message": "18 console warnings on this cell (>10). Consider triaging.",
+      "count": 18,
+      "max": 10
+    }
+  ],
+  "selectors": [
+    {
+      "selector": ".woocommerce-account .woocommerce",
+      "count": 2,
+      "instances": [
+        {
+          "width": 705,
+          "height": 14,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "1440px"
+        },
+        {
+          "width": 705,
+          "height": 511,
+          "visible": true,
+          "display": "grid",
+          "grid_template_columns": "705.281px",
+          "min_width": "0px",
+          "max_width": "100%"
+        }
+      ]
+    },
+    {
+      "selector": ".woocommerce-MyAccount-navigation",
+      "count": 1,
+      "instances": [
+        {
+          "width": 705,
+          "height": 420,
+          "visible": true,
+          "display": "block",
+          "grid_template_columns": "none",
+          "min_width": "auto",
+          "max_width": "100%"
+        }
+      ]
+    },
+    {
+      "selector": ".woocommerce-MyAccount-content",
+      "count": 1,
+      "instances": [
+        {
+          "width": 705,
+          "height": 60,
+          "visible": true,
+          "display": "block",
+          "grid_template_columns": "none",
+          "min_width": "auto",
+          "max_width": "100%"
+        }
+      ]
+    },
+    {
+      "selector": ".woocommerce-orders-table",
+      "count": 0,
+      "instances": [],
+      "missing": true
+    },
+    {
+      "selector": ".woocommerce-MyAccount-orders",
+      "count": 0,
+      "instances": [],
+      "missing": true
+    }
+  ],
+  "dom": {
+    "width": 768,
+    "height": 1024,
+    "scrollWidth": 768,
+    "scrollHeight": 2296
+  },
+  "bg_image_pairs": [],
+  "theme": "bodega",
+  "viewport": "tablet",
+  "route": "my-account-orders",
+  "url": "http://127.0.0.1:9400/my-account/orders/",
+  "navigation_error": null,
+  "console": [
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/sans-600.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/bodega/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    }
+  ],
+  "page_errors": [],
+  "network_failures": [],
+  "a11y_path": "tmp/snaps/bodega/tablet/my-account-orders.a11y.json"
+}
