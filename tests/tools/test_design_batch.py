@@ -223,6 +223,8 @@ def test_batch_reports_rescue_layers(script_text: str) -> None:
     assert "human_boundary" in script_text
     assert "rescue_artifacts" in script_text
     assert "def _read_rescue_summary(" in script_text
+    assert "external-rate-limit" in script_text
+    assert "missing-api-key" in script_text
 
 
 def test_verify_invocation_uses_snap(script_text: str) -> None:

@@ -518,6 +518,13 @@ def _read_rescue_summary(worktree: Path, run_id: str | None) -> dict[str, Any]:
         )
         if path.exists()
     ]
+    if human_boundary is None:
+        status_path = run_dir / "STATUS.md"
+        status_text = status_path.read_text(encoding="utf-8", errors="replace") if status_path.is_file() else ""
+        if "Too Many Requests" in status_text or "HTTPError 429" in status_text:
+            human_boundary = "external-rate-limit"
+        elif "ApiKeyMissingError" in status_text or "ANTHROPIC_API_KEY" in status_text:
+            human_boundary = "missing-api-key"
     return {
         "recipes_used": sorted(recipes),
         "json_repair_used": "json-llm" in layers or any(
