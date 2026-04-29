@@ -381,3 +381,22 @@ def test_auto_commit_workflows_use_pat_with_fallback(wf_name: str, purpose: str)
         f"stalled PRs look like automation bugs rather than missing "
         f"secrets."
     )
+
+
+def test_visual_aggregate_wraps_single_artifact_viewport_dirs() -> None:
+    """visual.yml must handle one-theme artifact extraction.
+
+    actions/download-artifact@v7 can extract a single `snap-<theme>`
+    artifact directly into `tmp/snaps/`, yielding `tmp/snaps/desktop/`
+    instead of `tmp/snaps/snap-<theme>/desktop/`. Without the explicit
+    wrapper, `bin/snap.py report --strict` sees no
+    `tmp/snaps/<theme>/<viewport>/...` tree and fails with "No snaps
+    to report on."
+    """
+    raw = (REPO_ROOT / ".github" / "workflows" / "visual.yml").read_text()
+
+    assert "THEMES_JSON: ${{ needs.setup.outputs.themes }}" in raw
+    assert "viewport_dirs=()" in raw
+    assert "Downloaded bare viewport snap dirs for multiple themes" in raw
+    assert "theme_count=$(python3 -c" in raw
+    assert 'mv "$d" "tmp/snaps/$theme/"' in raw

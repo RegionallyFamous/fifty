@@ -431,6 +431,8 @@ jobs:
         # `tmp/snaps/aero/desktop/home.png`. Strip the `snap-` prefix
         # so downstream tools (which expect the canonical
         # tmp/snaps/<theme>/<viewport>/<route>.png layout) just work.
+        env:
+          THEMES_JSON: ${{ needs.setup.outputs.themes }}
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -440,8 +442,37 @@ jobs:
             # failed mid-flight), wipe it before moving — `mv` over an
             # existing dir is undefined.
             rm -rf "tmp/snaps/$theme"
-            mv "$d" "tmp/snaps/$theme"
+            if [ -d "$d/tmp/snaps/$theme" ]; then
+              mv "$d/tmp/snaps/$theme" "tmp/snaps/$theme"
+              rm -rf "$d"
+            else
+              mv "$d" "tmp/snaps/$theme"
+            fi
           done
+
+          # actions/download-artifact@v7 extracts a single matched
+          # artifact directly into `path` even with merge-multiple:false.
+          # In that case we see `tmp/snaps/desktop/`, `mobile/`, etc.
+          # and must wrap those viewport dirs in the only matrix theme.
+          viewport_dirs=()
+          for v in mobile tablet desktop wide; do
+            if [ -d "tmp/snaps/$v" ]; then
+              viewport_dirs+=("tmp/snaps/$v")
+            fi
+          done
+          if [ "${#viewport_dirs[@]}" -gt 0 ]; then
+            theme_count=$(python3 -c 'import json,os; print(len(json.loads(os.environ["THEMES_JSON"])))')
+            if [ "$theme_count" != "1" ]; then
+              echo "::error::Downloaded bare viewport snap dirs for multiple themes; cannot infer owner."
+              exit 1
+            fi
+            theme=$(python3 -c 'import json,os; print(json.loads(os.environ["THEMES_JSON"])[0])')
+            rm -rf "tmp/snaps/$theme"
+            mkdir -p "tmp/snaps/$theme"
+            for d in "${viewport_dirs[@]}"; do
+              mv "$d" "tmp/snaps/$theme/"
+            done
+          fi
           echo "Aggregated themes:"
           ls -d tmp/snaps/*/ 2>/dev/null || echo "  (none)"
 
