@@ -1330,11 +1330,11 @@ def agentic_repair(
     # Resolve the LLM helper lazily so `design_unblock.py` can run in
     # contexts without the vision lib available (tests, dry triage).
     try:
-        from _vision_lib import (  # noqa: WPS433
+        from _vision_lib import (
             ApiKeyMissingError,
             text_completion,
         )
-    except Exception:  # noqa: BLE001
+    except Exception:
         print("refusing to --agentic: bin/_vision_lib.py is unavailable", file=sys.stderr)
         return 5
 
@@ -1414,7 +1414,7 @@ def agentic_repair(
         except ApiKeyMissingError as exc:
             print(f"refusing to --agentic: {exc}", file=sys.stderr)
             return 5
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # A transient API failure is a stop; the operator should retry.
             record = AttemptRecord(
                 at=time.time(),

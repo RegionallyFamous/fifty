@@ -85,6 +85,28 @@ def test_compute_push_threads_event_before_base_to_shoot_jobs(vm, monkeypatch):
     assert scope.base_ref == "deadbeef-before-sha"
 
 
+def test_compute_pr_framework_change_does_not_shoot_all_themes(vm, monkeypatch):
+    monkeypatch.setattr(vm, "_new_themes", lambda base: [])
+    monkeypatch.setattr(vm, "_changed_themes", lambda base: None)
+    monkeypatch.setattr(vm, "discover_themes", lambda: ["aero", "obel"])
+
+    scope = vm.compute(event="pull_request", input_mode="", input_themes="", base_ref="origin/main")
+
+    assert scope.mode == "check-changed"
+    assert scope.themes == []
+    assert not scope.do_full_shoot
+
+
+def test_compute_push_framework_change_still_shoots_fleet(vm, monkeypatch):
+    monkeypatch.setattr(vm, "_new_themes", lambda base: [])
+    monkeypatch.setattr(vm, "_changed_themes", lambda base: None)
+    monkeypatch.setattr(vm, "discover_themes", lambda: ["aero", "obel"])
+
+    scope = vm.compute(event="push", input_mode="", input_themes="", base_ref="before-sha")
+
+    assert scope.themes == ["aero", "obel"]
+
+
 def test_compute_regenerate_gallery_still_sets_new_themes(vm, monkeypatch):
     monkeypatch.setattr(vm, "_new_themes", lambda base: ["fresh"])
     monkeypatch.setattr(vm, "discover_themes", lambda: ["aero", "fresh"])

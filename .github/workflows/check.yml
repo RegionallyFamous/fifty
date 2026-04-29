@@ -31,6 +31,9 @@ on:
     # vision-review.yml) would never re-run this workflow and the
     # required check would stay red until the next push.
     types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 9 * * *'
 
 # Design note: most jobs in this workflow are code-only — they don't
 # depend on PR labels at all. Re-running them on every label change
@@ -48,14 +51,55 @@ concurrency:
   group: check-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
-  theme-gate:
-    name: bin/check.py --all --offline
+  resolve-scope:
+    name: resolve changed scope
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     if: >
       github.event_name != 'pull_request' ||
       github.event.action != 'labeled'
+    outputs:
+      themes: ${{ steps.scope.outputs.themes }}
+      has_themes: ${{ steps.scope.outputs.has_themes }}
+      all_themes_required: ${{ steps.scope.outputs.all_themes_required }}
+      reason: ${{ steps.scope.outputs.reason }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - id: scope
+        name: Classify changed paths
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            python3 bin/changed-scope.py --base origin/main --format shell > /tmp/scope.env
+          else
+            # Push-to-main, scheduled and manual runs are fleet-health territory.
+            echo "themes=" > /tmp/scope.env
+            echo "has_themes=false" >> /tmp/scope.env
+            echo "all_themes_required=true" >> /tmp/scope.env
+            echo "reason=fleet health event" >> /tmp/scope.env
+          fi
+          cat /tmp/scope.env
+          cat /tmp/scope.env >> "$GITHUB_OUTPUT"
+
+  theme-gate:
+    name: scoped theme gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: resolve-scope
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.action != 'labeled' &&
+      needs.resolve-scope.outputs.all_themes_required != 'true'
     # FIFTY_ALLOW_BASELINE_FAILURES=1 on PRs (NOT on push-to-main) tells
     # bin/check.py to consult tests/check-baseline-failures.json and
     # demote any (theme, check-title) pair already failing on main from
@@ -73,6 +117,26 @@ jobs:
           # The front-page-uniqueness check compares every theme's
           # structural fingerprint; it wants the full tree, not a
           # shallow clone.
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Run changed-theme gate
+        run: python3 bin/check.py --changed --changed-base origin/main --offline
+
+  fleet-health:
+    name: fleet health (explicit all themes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: >
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
+    env:
+      FIFTY_ALLOW_BASELINE_FAILURES: '0'
+    steps:
+      - uses: actions/checkout@v6
+        with:
           fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
@@ -97,9 +161,13 @@ jobs:
     name: bin/check.py --offline (snap evidence required)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    needs: resolve-scope
     if: >
       github.event_name != 'pull_request' ||
-      github.event.action != 'labeled'
+      (
+        github.event.action != 'labeled' &&
+        needs.resolve-scope.outputs.all_themes_required != 'true'
+      )
     steps:
       - uses: actions/checkout@v6
         with:
@@ -128,22 +196,7 @@ jobs:
       - name: Detect changed themes
         id: changed
         run: |
-          # `bin/snap.py shoot --changed` returns themes touched by
-          # uncommitted + origin/main..HEAD diff (with framework-wide
-          # bin/* changes falling back to all themes via its own
-          # heuristic). We need to know the count BEFORE shooting so
-          # we can skip the evidence-required gate on PRs that don't
-          # touch any theme (where requiring evidence for every theme
-          # would be a false positive — the runner has no snaps).
-          set +e
-          themes="$(python3 -c '
-          import sys, pathlib
-          sys.path.insert(0, "bin")
-          from snap import _changed_themes
-          out = _changed_themes("origin/main") or []
-          print(" ".join(out))
-          ')"
-          set -e
+          themes="${{ needs.resolve-scope.outputs.themes }}"
           echo "themes=$themes" >> "$GITHUB_OUTPUT"
           if [ -z "$themes" ]; then
             echo "has_themes=false" >> "$GITHUB_OUTPUT"
@@ -484,6 +537,9 @@ jobs:
           LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
           IS_NEW_THEME: ${{ steps.scope.outputs.is_new_theme }}
           NEW_THEMES: ${{ steps.scope.outputs.new_themes }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
         run: |
           if [ "$IS_NEW_THEME" != "true" ]; then
             echo "No brand-new themes in this PR; vision gate is a no-op."
@@ -497,9 +553,22 @@ jobs:
             echo "`vision-reviewed` label present -- gate passes."
             exit 0
           fi
+          if ! echo "$LABELS" | grep -q '"design"'; then
+            echo "Missing 'design' label; trying to apply it so vision-review.yml can run."
+            if gh label list --repo "$REPO" --json name \
+              | python3 -c 'import json,sys; print("yes" if any(x.get("name")=="design" for x in json.load(sys.stdin)) else "no")' \
+              | grep -q '^no$'; then
+              gh label create design --repo "$REPO" --color 7b61ff --description "Run automated design/vision critique" || true
+            fi
+            if gh pr edit "$PR" --repo "$REPO" --add-label design; then
+              echo "::notice::Applied 'design'. vision-review.yml should run next and add 'vision-reviewed' + 'ready-for-baseline' when clean."
+            else
+              echo "::warning::Could not apply 'design'. A human or agent with label permission must add it to trigger vision-review.yml."
+            fi
+          fi
           echo "::error::This PR adds a brand-new theme but is missing the"
-          echo "         'vision-reviewed' label. Apply the 'design' label"
-          echo "         to trigger .github/workflows/vision-review.yml, or"
+          echo "         'vision-reviewed' label. The gate attempted to apply"
+          echo "         'design' so .github/workflows/vision-review.yml can run, or"
           echo "         ask a human reviewer to add 'vision-reviewed'"
           echo "         manually after a design pass. Existing themes"
           echo "         stay on the advisory path and are not affected."
@@ -535,7 +604,6 @@ jobs:
     name: build docs/snaps/ gallery
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: theme-gate
     if: >
       github.event_name != 'pull_request' ||
       github.event.action != 'labeled'

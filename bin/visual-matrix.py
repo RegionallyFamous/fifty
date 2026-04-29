@@ -172,8 +172,11 @@ def compute(
     # which themes actually need re-shooting.
     affected = _changed_themes(base_ref)
     if affected is None:
-        # framework-wide change (bin/* touched) → shoot everything
-        themes = discover_themes()
+        # Framework-wide change. Push-to-main still gets the fleet visual
+        # sweep, but PRs must not require every old theme's visuals just
+        # because tooling changed. Use workflow_dispatch when an operator
+        # explicitly wants broad validation before merge.
+        themes = [] if event == "pull_request" else discover_themes()
     elif not affected:
         # docs-only / tooling-only change → matrix is empty, downstream
         # jobs skip via `if: needs.setup.outputs.has_themes == 'true'`.
