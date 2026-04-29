@@ -8,7 +8,8 @@ PR head SHA; snap.py rewrites the blueprint at prep time so the PR's
 own content sideloads.
 
 These tests lock in the exact substitution behaviour:
-    * unset env                → no change
+    * unset env + unpublished  → no change
+    * unset env + pushed branch→ rewrite to the branch
     * env == "main"            → no change (production URL already correct)
     * env == "<sha>"           → every main-branch URL rewrites to the sha
     * pure text replace        → works inside inline PHP `"data"` strings
@@ -65,8 +66,24 @@ def retarget():
 
 def test_noop_when_env_unset(retarget, monkeypatch):
     monkeypatch.delenv("FIFTY_CONTENT_REF", raising=False)
+    monkeypatch.setitem(
+        retarget.__globals__,
+        "_auto_detect_content_ref",
+        lambda: (None, "unpublished"),
+    )
     payload = "https://raw.githubusercontent.com/RegionallyFamous/fifty/main/x.csv"
     assert retarget(payload) == payload
+
+
+def test_rewrites_to_pushed_branch_when_env_unset(retarget, monkeypatch):
+    monkeypatch.delenv("FIFTY_CONTENT_REF", raising=False)
+    monkeypatch.setitem(
+        retarget.__globals__,
+        "_auto_detect_content_ref",
+        lambda: ("agent/scoped-ci-gates", "branch"),
+    )
+    payload = "https://raw.githubusercontent.com/RegionallyFamous/fifty/main/x.csv"
+    assert retarget(payload, _verbose=False).endswith("/agent/scoped-ci-gates/x.csv")
 
 
 def test_noop_when_env_is_main(retarget, monkeypatch):

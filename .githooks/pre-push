@@ -69,7 +69,45 @@ if [ "$saw_any" = "1" ] && [ "$delete_only" = "1" ]; then
   exit 0
 fi
 
-echo "▸ pre-push: bin/check.py --all --offline"
+if [ "${FIFTY_AGENT_RESCUE:-0}" = "1" ]; then
+  echo "▸ pre-push: AGENT RESCUE active (FIFTY_AGENT_RESCUE=1)."
+  echo "  Skipping local scoped/static/visual gates so this repair branch"
+  echo "  can reach GitHub; CI remains authoritative before merge."
+  exit 0
+fi
+
+if git rev-parse --verify --quiet origin/main >/dev/null 2>&1; then
+  scope_base="origin/main"
+else
+  scope_base=""
+fi
+
+echo "▸ pre-push: resolving changed scope${scope_base:+ vs $scope_base}"
+scope_cmd=(python3 bin/changed-scope.py --format shell)
+if [ -n "$scope_base" ]; then
+  scope_cmd+=(--base "$scope_base")
+fi
+scope="$("${scope_cmd[@]}")"
+themes="$(printf '%s\n' "$scope" | sed -n 's/^themes=//p')"
+all_themes_required="$(printf '%s\n' "$scope" | sed -n 's/^all_themes_required=//p')"
+has_repo_infra="$(printf '%s\n' "$scope" | sed -n 's/^has_repo_infra_changes=//p')"
+docs_only="$(printf '%s\n' "$scope" | sed -n 's/^docs_only=//p')"
+reason="$(printf '%s\n' "$scope" | sed -n 's/^reason=//p')"
+
+if [ "$docs_only" = "true" ]; then
+  echo "✓ pre-push: docs/mockups-only change; theme gate skipped."
+elif [ "$all_themes_required" = "true" ]; then
+  echo "▸ pre-push: framework change detected ($reason); running lint + scoped CI tests."
+  echo "  Not running all-theme local checks; explicit fleet-health CI/manual"
+  echo "  runs own that broader signal."
+  python3 bin/lint.py
+  python3 -m pytest \
+    tests/tools/test_changed_scope.py \
+    tests/tools/test_snap_changed_scope.py \
+    tests/tools/test_snap_content_ref.py \
+    tests/check_py/test_check_gate_taxonomy.py
+elif [ -n "$themes" ]; then
+  echo "▸ pre-push: bin/check.py --changed --offline ($reason)"
 # FIFTY_SKIP_UNPUSHED_CHECK=1 tells `bin/check.py` to skip its
 # `check_no_unpushed_commits` check ONLY in this hook context. That
 # check correctly fails for any commit that hasn't reached origin
@@ -84,13 +122,24 @@ echo "▸ pre-push: bin/check.py --all --offline"
 # pre-existing debt doesn't block unrelated feature pushes. New
 # regressions not listed in `tests/check-baseline-failures.json`
 # still block. CI's theme-gate sets the same env var for parity.
-if ! FIFTY_SKIP_UNPUSHED_CHECK=1 FIFTY_ALLOW_BASELINE_FAILURES=1 \
-     python3 bin/check.py --all --offline; then
-  echo
-  echo "✘ pre-push blocked: bin/check.py reported failures above."
-  echo "  Fix locally, commit, then re-push. Don't bypass — CI runs"
-  echo "  the same gate and will turn the PR red."
-  exit 1
+  check_cmd=(python3 bin/check.py --changed --offline)
+  if [ -n "$scope_base" ]; then
+    check_cmd+=(--changed-base "$scope_base")
+  fi
+  if ! FIFTY_SKIP_UNPUSHED_CHECK=1 FIFTY_ALLOW_BASELINE_FAILURES=1 \
+       "${check_cmd[@]}"; then
+    echo
+    echo "✘ pre-push blocked: scoped theme checks reported failures above."
+    echo "  Fix locally, commit, then re-push. For auditable repair pushes,"
+    echo "  use FIFTY_AGENT_RESCUE=1 and let CI arbitrate."
+    exit 1
+  fi
+elif [ "$has_repo_infra" = "true" ]; then
+  echo "▸ pre-push: repo-infra change detected ($reason); running lint + tests."
+  python3 bin/lint.py
+  python3 -m pytest tests/
+else
+  echo "✓ pre-push: no scoped theme/static gate needed ($reason)."
 fi
 
 echo "▸ pre-push: append-wc-overrides.py drift check"
@@ -234,6 +283,13 @@ else
   fi
 fi
 
+if [ "$all_themes_required" = "true" ]; then
+  echo "▸ pre-push: visual gate skipped for framework-wide local push."
+  echo "  Run fleet-health / visual workflow explicitly when broad rendering validation is desired."
+  echo "✓ pre-push: all gates green."
+  exit 0
+fi
+
 echo "▸ pre-push: bin/snap.py check --changed (visual + axe gate)"
 # Phase 1 (`phase1-prepush-visual`) of the closed-loop plan: pre-push
 # now boots Playground for any theme touched by the diff and runs
@@ -251,8 +307,12 @@ echo "▸ pre-push: bin/snap.py check --changed (visual + axe gate)"
 if [ "${FIFTY_SKIP_VISUAL_PUSH:-0}" = "1" ]; then
   echo "  SKIPPED (FIFTY_SKIP_VISUAL_PUSH=1)."
 else
+  snap_check_cmd=(python3 bin/snap.py check --changed)
+  if [ -n "$scope_base" ]; then
+    snap_check_cmd+=(--changed-base "$scope_base")
+  fi
   if ! FIFTY_SKIP_UNPUSHED_CHECK=1 FIFTY_SKIP_EVIDENCE_FRESHNESS=1 \
-        python3 bin/snap.py check --changed; then
+        "${snap_check_cmd[@]}"; then
     echo
     echo "✘ pre-push blocked: bin/snap.py check --changed reported"
     echo "  visual or accessibility regressions. Fix locally, re-snap,"

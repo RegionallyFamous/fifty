@@ -33,7 +33,36 @@ if git diff --cached --quiet; then
   exit 0
 fi
 
-echo "▸ pre-commit: bin/check.py --all --offline (catches !important leaks, hex drift, microcopy collisions, layout duplication, …)"
+if [ "${FIFTY_AGENT_RESCUE:-0}" = "1" ]; then
+  echo "▸ pre-commit: AGENT RESCUE active (FIFTY_AGENT_RESCUE=1)."
+  echo "  Skipping local scoped gate so the repair branch can be committed;"
+  echo "  CI remains authoritative and must pass before merge."
+  exit 0
+fi
+
+echo "▸ pre-commit: resolving staged scope"
+scope="$(python3 bin/changed-scope.py --staged --format shell)"
+themes="$(printf '%s\n' "$scope" | sed -n 's/^themes=//p')"
+all_themes_required="$(printf '%s\n' "$scope" | sed -n 's/^all_themes_required=//p')"
+has_repo_infra="$(printf '%s\n' "$scope" | sed -n 's/^has_repo_infra_changes=//p')"
+docs_only="$(printf '%s\n' "$scope" | sed -n 's/^docs_only=//p')"
+reason="$(printf '%s\n' "$scope" | sed -n 's/^reason=//p')"
+
+if [ "$docs_only" = "true" ]; then
+  echo "✓ pre-commit: docs/mockups-only change; theme gate skipped."
+elif [ "$all_themes_required" = "true" ]; then
+  echo "▸ pre-commit: framework change detected ($reason); running lint smoke."
+  echo "  Fleet-health remains available in CI/manual runs; local commit will not"
+  echo "  require snap evidence for every old theme."
+  if ! python3 bin/lint.py; then
+    echo
+    echo "✘ pre-commit blocked: lint failed for framework changes."
+    echo "  Use FIFTY_AGENT_RESCUE=1 only for repair commits that need CI arbitration."
+    exit 1
+  fi
+  echo "✓ pre-commit: framework lint passed."
+elif [ -n "$themes" ]; then
+  echo "▸ pre-commit: bin/check.py --changed --staged --offline ($reason)"
 # FIFTY_SKIP_UNPUSHED_CHECK=1 silences the `check_no_unpushed_commits`
 # check inside this hook only. That check is designed to catch "agent
 # committed a fix but never pushed it" in CI / standalone runs, but
@@ -54,17 +83,27 @@ echo "▸ pre-commit: bin/check.py --all --offline (catches !important leaks, he
 # JSON) still block normally. CI on `main` is the source of truth
 # for what debt exists; see the JSON's `_doc` field for the
 # regeneration workflow.
-if ! FIFTY_SKIP_UNPUSHED_CHECK=1 FIFTY_ALLOW_BASELINE_FAILURES=1 \
-     python3 bin/check.py --all --offline; then
-  echo
-  echo "✘ pre-commit blocked: bin/check.py reported failures above."
-  echo "  Fix the failures and re-stage, or pass --no-verify if you"
-  echo "  know why (the pre-push hook + CI will still run the same"
-  echo "  gate, so don't expect --no-verify to land your commit on main)."
-  exit 1
+  if ! FIFTY_SKIP_UNPUSHED_CHECK=1 FIFTY_ALLOW_BASELINE_FAILURES=1 \
+       python3 bin/check.py --changed --staged --offline; then
+    echo
+    echo "✘ pre-commit blocked: scoped theme checks reported failures above."
+    echo "  Fix the failures and re-stage, or use FIFTY_AGENT_RESCUE=1"
+    echo "  for an auditable repair commit that CI will arbitrate."
+    exit 1
+  fi
+  echo "✓ pre-commit: scoped theme gate passed."
+elif [ "$has_repo_infra" = "true" ]; then
+  echo "▸ pre-commit: repo-infra change detected ($reason); running lint smoke."
+  if ! python3 bin/lint.py; then
+    echo
+    echo "✘ pre-commit blocked: lint failed for repo-infra changes."
+    echo "  Use FIFTY_AGENT_RESCUE=1 only for repair commits that need CI arbitration."
+    exit 1
+  fi
+  echo "✓ pre-commit: repo-infra lint passed."
+else
+  echo "✓ pre-commit: no theme or repo-infra gate needed ($reason)."
 fi
-
-echo "✓ pre-commit: all themes pass."
 
 # ---------------------------------------------------------------------------
 # Boot-fatal smoke gate MOVED to pre-push

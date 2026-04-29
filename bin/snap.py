@@ -104,6 +104,11 @@ from pathlib import Path
 # Add `bin/` to sys.path so we can import snap_config when running this
 # file from the repo root (the most common invocation).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _lib import (
+    RENDER_AFFECTING_FRAMEWORK_FILES,
+    RENDER_AFFECTING_FRAMEWORK_PREFIXES,
+    classify_changed_paths,
+)
 from snap_config import (
     A11Y_SUPPRESSIONS,
     BUDGETS,
@@ -184,21 +189,11 @@ RESET = "\033[0m" if _C else ""
 # documentation generators, concept-pipeline helpers — they don't touch
 # the runtime that produces the PNGs.
 # ---------------------------------------------------------------------------
-SNAP_AFFECTING_FRAMEWORK_FILES: frozenset[str] = frozenset({
-    "bin/snap.py",
-    "bin/snap_config.py",
-    "bin/append-wc-overrides.py",
-    "bin/sync-playground.py",
-    "bin/_lib.py",
-    "package.json",
-    "package-lock.json",
-})
+SNAP_AFFECTING_FRAMEWORK_FILES = RENDER_AFFECTING_FRAMEWORK_FILES
 
 # Path prefixes whose children are all framework-affecting. Matched with
 # startswith() against each git-diff path (POSIX-separated).
-SNAP_AFFECTING_FRAMEWORK_PREFIXES: tuple[str, ...] = (
-    "playground/",  # shared playground/*.php inlined into every blueprint
-)
+SNAP_AFFECTING_FRAMEWORK_PREFIXES = RENDER_AFFECTING_FRAMEWORK_PREFIXES
 
 
 def _is_framework_file(path: str) -> bool:
@@ -242,32 +237,18 @@ def _changed_themes(base: str | None = None) -> list[str] | None:
     otherwise be invisible to every per-PR gate until it was promoted
     via `first-baseline.yml`, creating a chicken-and-egg cycle.
     """
-    known = set(discover_themes(stages=("shipping", "incubating")))
     paths = _diff_paths(base)
     if paths is None:
         # git not installed -- can't be smart, fall back to "all".
         return None
-    if not paths:
-        return []
-
-    affected: set[str] = set()
-    for p in paths:
-        parts = p.split("/")
-        head = parts[0]
-        if head in known:
-            affected.add(head)
-            continue
-        if head == "tests" and len(parts) >= 3 and parts[1] == "visual-baseline":
-            if parts[2] in known:
-                affected.add(parts[2])
-            continue
-        # Narrow framework-level allowlist: only files that can actually
-        # shift rendered pixels for every theme. Editing unrelated bin/*
-        # tooling (audit scripts, doc generators) no longer triggers a
-        # full all-themes reshoot -- the nightly sweep is the safety net.
-        if _is_framework_file(p):
-            return None
-    return sorted(affected)
+    scope = classify_changed_paths(
+        paths,
+        theme_stages=("shipping", "incubating"),
+        known_themes=discover_themes(stages=("shipping", "incubating")),
+    )
+    if scope.all_themes_required:
+        return None
+    return list(scope.themes)
 
 
 def _diff_paths(base: str | None) -> set[str] | None:
