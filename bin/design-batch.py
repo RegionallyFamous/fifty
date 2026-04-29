@@ -120,6 +120,7 @@ from typing import Any
 UTC = getattr(dt, "UTC", dt.timezone.utc)  # noqa: UP017
 
 ROOT = Path(__file__).resolve().parents[1]
+BATCH_VISION_LEDGER = ROOT / "tmp" / "vision-spend.jsonl"
 sys.path.insert(0, str(ROOT / "bin"))
 
 
@@ -463,6 +464,11 @@ def _run_design_cmd(
     # collide. The port-base var is read by bin/snap.py; if it's not
     # honored (older snap.py versions), concurrency=1 still works.
     env["FIFTY_PLAYGROUND_PORT_BASE"] = str(opts.port_base)
+    # Share one ledger across child worktrees so the batch-level budget
+    # probe includes real API calls from every theme. Without this each
+    # worktree writes tmp/vision-spend.jsonl under its own root and the
+    # orchestrator incorrectly sees $0 spent.
+    env["FIFTY_VISION_LEDGER"] = str(BATCH_VISION_LEDGER)
     if opts.dry_run:
         # Simulate without shelling out. Return a successful process.
         return subprocess.CompletedProcess(
@@ -1303,7 +1309,7 @@ def _run_verify_after_push(
 def _budget_remaining(cap_usd: float) -> float:
     """Return remaining USD before the daily cap is breached. Negative
     means we're already over."""
-    spent = _vision_lib().today_spend_usd()
+    spent = _vision_lib().today_spend_usd(path=BATCH_VISION_LEDGER)
     return cap_usd - spent
 
 
@@ -1369,7 +1375,7 @@ def run_theme(
         return outcome
 
     started = time.monotonic()
-    pre_spend = _vision_lib().today_spend_usd()
+    pre_spend = _vision_lib().today_spend_usd(path=BATCH_VISION_LEDGER)
     try:
         worktree, branch = _ensure_worktree(pre_slug, opts)
         outcome.worktree = str(worktree)
@@ -1587,7 +1593,10 @@ def run_theme(
         return outcome
     finally:
         outcome.elapsed_s = round(time.monotonic() - started, 1)
-        outcome.vision_cost_usd = round(_vision_lib().today_spend_usd() - pre_spend, 4)
+        outcome.vision_cost_usd = round(
+            _vision_lib().today_spend_usd(path=BATCH_VISION_LEDGER) - pre_spend,
+            4,
+        )
         with report_lock:
             report.recompute_totals()
             report.write(report_path)

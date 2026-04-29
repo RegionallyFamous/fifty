@@ -593,3 +593,11 @@ def test_skip_commit_drops_final_commit_and_publish_only() -> None:
     assert drop_set == {"commit", "publish"}, (
         f"expected {{'commit', 'publish'}} only, got {drop_set!r}"
     )
+
+
+def test_vision_review_phase_has_wall_clock_timeout() -> None:
+    """Direct `design.py dress` runs must not hang forever in vision review."""
+    src = DESIGN_PY.read_text(encoding="utf-8")
+    assert "FIFTY_VISION_REVIEW_TIMEOUT_SECONDS" in src
+    assert "subprocess.TimeoutExpired" in src
+    assert "bin/snap-vision-review.py exceeded" in src

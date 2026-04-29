@@ -166,3 +166,28 @@ def test_vision_phases_tuple_matches_cli_choices() -> None:
     argparse."""
     mod = _vision_lib()
     assert mod.VISION_PHASES == ("structural", "content", "all")
+
+
+def test_vision_ledger_path_can_be_shared_via_env(monkeypatch, tmp_path) -> None:
+    """Batch worktrees share one root ledger through FIFTY_VISION_LEDGER."""
+    ledger = tmp_path / "shared-vision-spend.jsonl"
+    monkeypatch.setenv("FIFTY_VISION_LEDGER", str(ledger))
+    sys.modules.pop("_vision_lib", None)
+    try:
+        mod = _vision_lib()
+        assert ledger == mod.DEFAULT_LEDGER_PATH
+    finally:
+        sys.modules.pop("_vision_lib", None)
+
+
+def test_ledger_entry_keeps_human_probe_aliases() -> None:
+    mod = _vision_lib()
+    row = mod.LedgerEntry(
+        timestamp_iso="2026-04-29T12:00:00+00:00",
+        model="claude",
+        input_tokens=1000,
+        output_tokens=100,
+        cost_usd=0.1234567,
+    ).as_dict()
+    assert row["timestamp"] == row["date"]
+    assert row["cost_usd"] == row["usd"] == 0.123457

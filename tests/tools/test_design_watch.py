@@ -254,6 +254,40 @@ def test_watch_parser_exposes_auto_unblock_flags():
     assert args.no_recipes is True
     assert args.no_json_repair is True
     assert args.no_tool_rescue is True
+    defaults, _ = parser.parse_known_args(["--", "--spec", "tmp/specs/agave.json"])
+    assert defaults.max_elapsed_seconds == 1200.0
+    assert defaults.kill_stall_seconds == 300.0
+
+
+def test_run_subprocess_kills_overlong_child(tmp_path):
+    watch = load_design_watch()
+    now = time.time()
+    state = watch.WatchState(
+        run_id="timeout-demo",
+        started_at=now,
+        command=[sys.executable, "-c", "import time; time.sleep(30)"],
+        cwd=str(REPO_ROOT),
+        slug="timeout-demo",
+        phase_started_at=now,
+        last_output_at=now,
+        last_heartbeat_at=now,
+    )
+
+    rc = watch.run_subprocess(
+        state,
+        event_path=tmp_path / "events.jsonl",
+        status_path=tmp_path / "STATUS.md",
+        summary_path=tmp_path / "summary.json",
+        heartbeat_seconds=60.0,
+        stall_seconds=60.0,
+        kill_stall_seconds=60.0,
+        max_elapsed_seconds=0.2,
+        verbose=False,
+    )
+
+    assert rc == 124
+    assert state.check_failures
+    assert state.check_failures[0].title == "Factory timeout guard"
 
 
 def test_resume_design_args_replaces_from():

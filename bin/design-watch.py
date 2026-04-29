@@ -13,6 +13,7 @@ import json
 import os
 import re
 import selectors
+import signal
 import subprocess
 import sys
 import time
@@ -689,6 +690,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--heartbeat-seconds", type=float, default=30.0)
     parser.add_argument("--stall-seconds", type=float, default=120.0)
+    parser.add_argument(
+        "--kill-stall-seconds",
+        type=float,
+        default=300.0,
+        help=(
+            "Hard-stop the child process after this many seconds with no output "
+            "(default 300). Use <=0 to disable."
+        ),
+    )
+    parser.add_argument(
+        "--max-elapsed-seconds",
+        type=float,
+        default=1200.0,
+        help=(
+            "Hard-stop the child process after this many seconds total "
+            "(default 1200 / 20 minutes). Use <=0 to disable."
+        ),
+    )
     parser.add_argument("--run-id", default=None)
     parser.add_argument("--jsonl", type=Path, default=None, help="Override event JSONL path.")
     parser.add_argument("--summary", type=Path, default=None, help="Override summary JSON path.")
@@ -810,6 +829,8 @@ def run_subprocess(
     summary_path: Path,
     heartbeat_seconds: float,
     stall_seconds: float,
+    kill_stall_seconds: float,
+    max_elapsed_seconds: float,
     verbose: bool,
 ) -> int:
     env = dict(os.environ)
@@ -823,6 +844,7 @@ def run_subprocess(
         text=True,
         bufsize=1,
         env=env,
+        start_new_session=True,
     )
     assert proc.stdout is not None
     selector = selectors.DefaultSelector()
@@ -866,6 +888,86 @@ def run_subprocess(
             )
             state.last_stall_at = now
             write_event(event_path, {"type": "stall", "phase": state.current_phase})
+        if max_elapsed_seconds > 0 and now - state.started_at >= max_elapsed_seconds:
+            elapsed = format_elapsed(now - state.started_at)
+            reason = (
+                f"Factory timeout: run exceeded {format_elapsed(max_elapsed_seconds)} "
+                f"total while {PHASE_LABELS.get(state.current_phase, state.current_phase)}."
+            )
+            _terminate_child(proc, reason=reason)
+            state.check_failures.append(
+                CheckFailure(
+                    title="Factory timeout guard",
+                    detail=reason,
+                    summary=(
+                        f"The run took {elapsed}, over the 20 minute safety cap. "
+                        "The factory stopped it instead of letting it burn the queue."
+                    ),
+                    next_action=(
+                        "Inspect the current STATUS.md and fix the slow or wedged phase "
+                        "before resuming the batch."
+                    ),
+                )
+            )
+            write_event(
+                event_path,
+                {
+                    "type": "timeout_kill",
+                    "kind": "max_elapsed",
+                    "phase": state.current_phase,
+                    "elapsed_s": round(now - state.started_at, 3),
+                    "reason": reason,
+                },
+            )
+            emit_status(
+                state,
+                status_path=status_path,
+                event_path=event_path,
+                summary_path=summary_path,
+            )
+            selector.close()
+            proc.stdout.close()
+            return 124
+        if kill_stall_seconds > 0 and now - state.last_output_at >= kill_stall_seconds:
+            quiet_for = format_elapsed(now - state.last_output_at)
+            reason = (
+                f"Factory stall guard: no output for {quiet_for} while "
+                f"{PHASE_LABELS.get(state.current_phase, state.current_phase)}."
+            )
+            _terminate_child(proc, reason=reason)
+            state.check_failures.append(
+                CheckFailure(
+                    title="Factory stall guard",
+                    detail=reason,
+                    summary=(
+                        f"The run produced no output for {quiet_for}. "
+                        "The factory stopped it instead of waiting indefinitely."
+                    ),
+                    next_action=(
+                        "Inspect the child phase logs and make the stalled phase fail fast "
+                        "or emit progress before resuming the batch."
+                    ),
+                )
+            )
+            write_event(
+                event_path,
+                {
+                    "type": "timeout_kill",
+                    "kind": "stall",
+                    "phase": state.current_phase,
+                    "quiet_s": round(now - state.last_output_at, 3),
+                    "reason": reason,
+                },
+            )
+            emit_status(
+                state,
+                status_path=status_path,
+                event_path=event_path,
+                summary_path=summary_path,
+            )
+            selector.close()
+            proc.stdout.close()
+            return 124
 
     for line in proc.stdout:
         process_output_line(
@@ -876,7 +978,35 @@ def run_subprocess(
             line,
             verbose=verbose,
         )
+    selector.close()
+    proc.stdout.close()
     return int(proc.returncode or 0)
+
+
+def _terminate_child(proc: subprocess.Popen[str], *, reason: str) -> None:
+    """Terminate the child process group, escalating if it ignores SIGTERM."""
+    sys.stderr.write(f"[design-watch] WARN: {reason} Sending SIGTERM.\n")
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    except Exception:
+        proc.terminate()
+    try:
+        proc.wait(timeout=10)
+        return
+    except subprocess.TimeoutExpired:
+        sys.stderr.write("[design-watch] WARN: child ignored SIGTERM; sending SIGKILL.\n")
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        return
+    except Exception:
+        proc.kill()
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        pass
 
 
 def _resume_design_args(design_args: list[str], from_phase: str) -> list[str]:
@@ -1035,6 +1165,8 @@ def main(argv: list[str] | None = None) -> int:
                 summary_path,
                 watch_args.heartbeat_seconds,
                 watch_args.stall_seconds,
+                watch_args.kill_stall_seconds,
+                watch_args.max_elapsed_seconds,
                 watch_args.verbose,
             )
     finally:
@@ -1133,6 +1265,8 @@ def main(argv: list[str] | None = None) -> int:
                     summary_path,
                     watch_args.heartbeat_seconds,
                     watch_args.stall_seconds,
+                    watch_args.kill_stall_seconds,
+                    watch_args.max_elapsed_seconds,
                     watch_args.verbose,
                 )
             finally:

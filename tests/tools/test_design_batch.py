@@ -236,6 +236,13 @@ def test_verify_restores_mutated_allowlist(script_text: str) -> None:
     assert "_restore_verify_mutations(worktree)" in script_text
 
 
+def test_batch_forces_shared_vision_ledger(script_text: str) -> None:
+    """Every child worktree must write vision spend into one shared ledger."""
+    assert 'BATCH_VISION_LEDGER = ROOT / "tmp" / "vision-spend.jsonl"' in script_text
+    assert 'env["FIFTY_VISION_LEDGER"] = str(BATCH_VISION_LEDGER)' in script_text
+    assert "today_spend_usd(path=BATCH_VISION_LEDGER)" in script_text
+
+
 def test_no_resume_forces_fresh_child_worktree(script_text: str) -> None:
     assert "fresh_worktree: bool = False" in script_text
     assert "fresh_worktree=args.no_resume" in script_text

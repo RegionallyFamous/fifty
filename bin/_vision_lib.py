@@ -130,8 +130,11 @@ DEFAULT_DAILY_BUDGET_USD = float(os.environ.get("FIFTY_VISION_DAILY_BUDGET", "20
 MAX_IMAGE_DIMENSION_PX = 7500
 MAX_IMAGE_BYTES = 3_700_000
 
-# Cost ledger location. Per-call append-only JSONL.
-DEFAULT_LEDGER_PATH = Path("tmp/vision-spend.jsonl")
+# Cost ledger location. Per-call append-only JSONL. Batch runs set an
+# absolute FIFTY_VISION_LEDGER so every per-theme worktree writes into
+# one shared budget ledger instead of each worktree silently spending
+# against its own local tmp/ file.
+DEFAULT_LEDGER_PATH = Path(os.environ.get("FIFTY_VISION_LEDGER", "tmp/vision-spend.jsonl"))
 
 # Prompt version. Bump when the system prompt or schema changes; this
 # becomes part of the per-PNG cache fingerprint so a prompt iteration
@@ -332,10 +335,14 @@ class LedgerEntry:
     def as_dict(self) -> dict:
         return {
             "timestamp": self.timestamp_iso,
+            # Back-compat aliases for quick jq/python probes humans write
+            # during live runs. `timestamp` / `cost_usd` remain canonical.
+            "date": self.timestamp_iso,
             "model": self.model,
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
             "cost_usd": round(self.cost_usd, 6),
+            "usd": round(self.cost_usd, 6),
             "png_path": self.png_path,
             "theme": self.theme,
             "route": self.route,

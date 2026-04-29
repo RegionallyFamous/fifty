@@ -1719,7 +1719,15 @@ def _phase_vision_review(spec: ValidatedSpec, dest: Path, args: argparse.Namespa
         f"  [vision-review] {' '.join(cmd[1:])} "
         f"(budget=${args.vision_budget:.2f}, phase={vision_phase})"
     )
-    rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT), env=env)
+    timeout_s = float(os.environ.get("FIFTY_VISION_REVIEW_TIMEOUT_SECONDS", "1200"))
+    try:
+        proc = subprocess.run(cmd, cwd=str(MONOREPO_ROOT), env=env, timeout=timeout_s)
+    except subprocess.TimeoutExpired as exc:
+        raise PhaseError(
+            "vision-review",
+            f"bin/snap-vision-review.py exceeded {timeout_s:.0f}s timeout",
+        ) from exc
+    rc = proc.returncode
     if rc != 0:
         raise PhaseError("vision-review", f"bin/snap-vision-review.py exited {rc}")
 
