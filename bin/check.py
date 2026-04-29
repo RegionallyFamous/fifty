@@ -10844,7 +10844,15 @@ def main() -> int:
 
     if args.changed:
         scope = resolve_changed_scope(base=args.changed_base, staged=args.staged)
-        if not scope.themes:
+        if scope.all_themes_required:
+            print(
+                "Changed-scope theme gate: framework change detected "
+                f"({scope.reason}); skipping per-theme checks. Run "
+                "`bin/check.py --all` or the fleet-health workflow when "
+                "explicit all-theme validation is desired."
+            )
+            static_rc = 0
+        elif not scope.themes:
             print(f"Changed-scope theme gate: no themes to check ({scope.reason}).")
             static_rc = 0
         else:

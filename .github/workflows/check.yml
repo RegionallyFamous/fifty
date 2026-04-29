@@ -98,7 +98,8 @@ jobs:
     needs: resolve-scope
     if: >
       github.event_name == 'pull_request' &&
-      github.event.action != 'labeled'
+      github.event.action != 'labeled' &&
+      needs.resolve-scope.outputs.all_themes_required != 'true'
     # FIFTY_ALLOW_BASELINE_FAILURES=1 on PRs (NOT on push-to-main) tells
     # bin/check.py to consult tests/check-baseline-failures.json and
     # demote any (theme, check-title) pair already failing on main from
@@ -163,7 +164,10 @@ jobs:
     needs: resolve-scope
     if: >
       github.event_name != 'pull_request' ||
-      github.event.action != 'labeled'
+      (
+        github.event.action != 'labeled' &&
+        needs.resolve-scope.outputs.all_themes_required != 'true'
+      )
     steps:
       - uses: actions/checkout@v6
         with:
