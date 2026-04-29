@@ -75,6 +75,7 @@ sys.path.insert(0, str(ROOT / "bin"))
 
 from _design_lib import (  # noqa: E402
     KNOWN_FONT_SLUGS,
+    validate_generation_safety,
     validate_spec,
 )
 
@@ -555,11 +556,15 @@ def write_spec(spec: dict, out_path: Path) -> None:
     if errors:
         joined = "; ".join(f"{e.path}: {e.message}" for e in errors)
         raise ConceptToSpecError(f"spec failed validation: {joined}")
+    assert validated is not None
+    safety_errors = validate_generation_safety(validated)
+    if safety_errors:
+        joined = "; ".join(f"{e.path}: {e.message}" for e in safety_errors)
+        raise ConceptToSpecError(f"spec failed generation safety validation: {joined}")
     # ValidatedSpec has a `.as_dict()` when validate_spec populates it;
     # but we already have a JSON-shaped dict and validation just
     # confirmed it. Write the source dict so the emitted file matches
     # what we constructed 1:1.
-    _ = validated
     out_path.parent.mkdir(parents=True, exist_ok=True)
     payload = json.dumps(spec, indent=2, ensure_ascii=False) + "\n"
     out_path.write_text(payload, encoding="utf-8")
@@ -818,10 +823,17 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {e}", file=sys.stderr)
         return 1
 
-    errors, _ = validate_spec(spec)
+    errors, validated = validate_spec(spec)
     if errors:
         print("spec failed validation after generation:", file=sys.stderr)
         for err in errors:
+            print(f"  {err.path}: {err.message}", file=sys.stderr)
+        return 1
+    assert validated is not None
+    safety_errors = validate_generation_safety(validated)
+    if safety_errors:
+        print("spec failed generation safety validation after generation:", file=sys.stderr)
+        for err in safety_errors:
             print(f"  {err.path}: {err.message}", file=sys.stderr)
         return 1
 

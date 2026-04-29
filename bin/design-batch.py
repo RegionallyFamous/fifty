@@ -186,6 +186,7 @@ class ThemeOutcome:
     factory_defects: list[dict[str, Any]] = field(default_factory=list)
     factory_defect_artifacts: list[str] = field(default_factory=list)
     needs_tooling_count: int = 0
+    prevention_groups: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -211,12 +212,16 @@ class RunReport:
             "budget_capped": 0,
             "vision_cost_usd": 0.0,
             "elapsed_s": 0.0,
+            "prevention_groups": {},
         }
         for t in self.themes:
             if t.status in totals:
                 totals[t.status] += 1
             totals["vision_cost_usd"] += t.vision_cost_usd
             totals["elapsed_s"] += t.elapsed_s
+            groups = totals["prevention_groups"]
+            for layer, count in t.prevention_groups.items():
+                groups[layer] = groups.get(layer, 0) + count
         self.totals = totals
 
 
@@ -548,6 +553,7 @@ def _read_rescue_summary(worktree: Path, run_id: str | None) -> dict[str, Any]:
             "factory_defects": [],
             "factory_defect_artifacts": [],
             "needs_tooling_count": 0,
+            "prevention_groups": {},
         }
     run_dir = worktree / "tmp" / "runs" / run_id
     attempts_path = run_dir / "repair-attempts.jsonl"
@@ -600,6 +606,10 @@ def _read_rescue_summary(worktree: Path, run_id: str | None) -> dict[str, Any]:
     needs_tooling_count = sum(
         1 for defect in defects if defect.get("tooling_status") == "needs-tooling"
     )
+    prevention_groups: dict[str, int] = {}
+    for defect in defects:
+        key = str(defect.get("prevention_layer") or defect.get("promotion_target") or "unknown")
+        prevention_groups[key] = prevention_groups.get(key, 0) + 1
     if human_boundary is None:
         status_path = run_dir / "STATUS.md"
         status_text = (
@@ -627,6 +637,7 @@ def _read_rescue_summary(worktree: Path, run_id: str | None) -> dict[str, Any]:
         "factory_defects": defects,
         "factory_defect_artifacts": defect_artifacts,
         "needs_tooling_count": needs_tooling_count,
+        "prevention_groups": prevention_groups,
     }
 
 
@@ -635,11 +646,15 @@ def _combine_rescue_summaries(*summaries: dict[str, Any]) -> dict[str, Any]:
     defects: list[dict[str, Any]] = []
     defect_artifacts: list[str] = []
     rescue_artifacts: list[str] = []
+    prevention_groups: dict[str, int] = {}
     for summary in summaries:
         recipes.update(str(recipe) for recipe in summary.get("recipes_used") or [])
         defects.extend(summary.get("factory_defects") or [])
         defect_artifacts.extend(summary.get("factory_defect_artifacts") or [])
         rescue_artifacts.extend(summary.get("rescue_artifacts") or [])
+        for layer, count in (summary.get("prevention_groups") or {}).items():
+            key = str(layer)
+            prevention_groups[key] = prevention_groups.get(key, 0) + int(count)
     human_boundary = next(
         (
             summary.get("human_boundary")
@@ -661,6 +676,7 @@ def _combine_rescue_summaries(*summaries: dict[str, Any]) -> dict[str, Any]:
         "needs_tooling_count": sum(
             1 for defect in defects if defect.get("tooling_status") == "needs-tooling"
         ),
+        "prevention_groups": prevention_groups,
     }
 
 
@@ -675,6 +691,7 @@ def _apply_rescue_summary(outcome: ThemeOutcome, summary: dict[str, Any]) -> Non
     outcome.factory_defects = list(summary.get("factory_defects") or [])
     outcome.factory_defect_artifacts = list(summary.get("factory_defect_artifacts") or [])
     outcome.needs_tooling_count = int(summary.get("needs_tooling_count") or 0)
+    outcome.prevention_groups = dict(summary.get("prevention_groups") or {})
 
 
 def _commit_and_push(
@@ -844,7 +861,10 @@ def _current_pr_url(worktree: Path, branch: str) -> str | None:
 def _run_gh_pr_create(args: list[str], *, cwd: Path) -> subprocess.CompletedProcess[Any]:
     """Create a PR, retrying without labels if GitHub lacks one."""
     pr = subprocess.run(args, cwd=str(cwd), capture_output=True, text=True)
-    if pr.returncode == 0 or "could not add label" not in pr.stderr:
+    original_output = "\n".join(
+        part for part in (_process_text(pr.stdout), _process_text(pr.stderr)) if part
+    )
+    if pr.returncode == 0 or "could not add label" not in original_output:
         return pr
 
     stripped: list[str] = []
@@ -862,7 +882,7 @@ def _run_gh_pr_create(args: list[str], *, cwd: Path) -> subprocess.CompletedProc
     if retry.returncode == 0:
         sys.stderr.write(
             "[batch] WARN: gh pr create label fallback used; "
-            f"original stderr: {pr.stderr.strip()}\n"
+            f"original output: {original_output.strip()}\n"
         )
     return retry
 

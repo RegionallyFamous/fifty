@@ -515,6 +515,28 @@ def test_product_reviews_mobile_overflow_guard_is_appended_once() -> None:
     assert "white-space:normal" in css
 
 
+def test_design_runs_phase_invariants_after_each_phase() -> None:
+    src = DESIGN_PY.read_text(encoding="utf-8")
+
+    assert "def _run_phase_invariants" in src
+    assert "handler(spec, dest, args)" in src
+    assert "_run_phase_invariants(spec, dest, phase)" in src
+    assert 'phase == "clone"' in src
+    assert 'phase == "apply"' in src
+    assert 'phase == "seed"' in src
+    assert 'phase == "sync"' in src
+    assert 'phase == "photos"' in src
+    assert 'phase == "microcopy"' in src
+
+
+def test_phase_invariants_use_factory_rule_rollout_modes() -> None:
+    src = DESIGN_PY.read_text(encoding="utf-8")
+
+    assert "from factory_rules import get_rule" in src
+    assert 'mode == "report-only"' in src
+    assert 'mode == "disabled"' in src
+
+
 def test_skill_phases_match_code() -> None:
     """The design-theme SKILL documents the phase pipeline in a
     Markdown table; when an agent reads the skill to plan work, the

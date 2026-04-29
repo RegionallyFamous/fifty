@@ -78,6 +78,7 @@ def test_known_categories_includes_all_primary_categories():
         "hero-placeholders-duplicate",
         "screenshot-duplicate",
         "snap-a11y-color-contrast",
+        "category-images",
         "design-score-low",
     ):
         assert expected in u.KNOWN_CATEGORIES
@@ -135,6 +136,13 @@ def test_classify_common_static_failures():
             "new, obel share identical screenshot.png",
         )
         == "screenshot-duplicate"
+    )
+    assert (
+        u._classify(
+            "`playground/content/category-images.json` covers category cover art",
+            "agitprop/playground/content/category-images.json is not tracked",
+        )
+        == "category-images"
     )
 
 
@@ -345,10 +353,16 @@ def test_successful_json_repair_emits_factory_defect_candidate(tmp_path):
         for line in (run_dir / "factory-defects.jsonl").read_text(encoding="utf-8").splitlines()
     ]
     assert len(defects) == 1
-    assert defects[0]["schema_version"] == 1
+    assert defects[0]["schema_version"] == 2
     assert defects[0]["category"] == "hover-contrast"
-    assert defects[0]["promotion_target"] == "design-phase"
+    assert defects[0]["promotion_target"] == "spec-rule"
     assert defects[0]["tooling_status"] == "needs-tooling"
+    assert defects[0]["prevention_layer"] == "spec"
+    assert defects[0]["prevention_phase"] == "validate"
+    assert defects[0]["owner"] == "bin/_design_lib.py"
+    assert defects[0]["fixture"] == "tests/tools/test_design_lib.py"
+    assert defects[0]["promotion_status"] == "needs-promotion"
+    assert defects[0]["first_seen_run_id"] == "test"
     assert defects[0]["resolved_fingerprints"] == [plan.blockers[0].fingerprint]
 
 
@@ -384,6 +398,9 @@ def test_successful_recipe_repair_is_recorded_as_covered(tmp_path):
 
     defect = json.loads((run_dir / "factory-defects.jsonl").read_text(encoding="utf-8"))
     assert defect["tooling_status"] == "covered-by-recipe"
+    assert defect["promotion_status"] == "covered-by-recipe"
+    assert defect["prevention_layer"] == "phase"
+    assert defect["prevention_phase"] == "photos"
     assert defect["recipes"] == ["generate_product_photos"]
 
 
