@@ -1,0 +1,45 @@
+{
+  "slug": "butcher",
+  "name": "Butcher",
+  "tagline": "white tile, oxblood, butcher paper, bone-handle knives",
+  "voice": "pre-1950 food store: warm, direct, no exclamation marks.",
+  "source": "lysholm",
+  "palette": {
+    "base": "#ffffff",
+    "surface": "#ffffff",
+    "subtle": "#ffffff",
+    "muted": "#ffffff",
+    "border": "#bfbfbf",
+    "tertiary": "#13100d",
+    "secondary": "#191612",
+    "contrast": "#1f1b16",
+    "primary": "#1f1b16",
+    "primary-hover": "#4c4945",
+    "accent": "#4a1a1f",
+    "accent-soft": "#d2c6c7"
+  },
+  "fonts": {
+    "display": {
+      "family": "Caslon Antique",
+      "fallback": "Georgia, 'Times New Roman', serif",
+      "google_font": true,
+      "weights": [
+        400,
+        700
+      ]
+    },
+    "sans": {
+      "family": "Inter",
+      "fallback": "-apple-system, BlinkMacSystemFont, sans-serif",
+      "google_font": true,
+      "weights": [
+        400,
+        600
+      ]
+    }
+  },
+  "layout_hints": [
+    "full-bleed hero photograph with short overlaid tagline",
+    "product category cards immediately below"
+  ]
+}
