@@ -1406,17 +1406,29 @@ def main(argv: list[str] | None = None) -> int:
                 write_status(status_path, state, event_path=event_path, summary_path=summary_path)
                 # Exit codes from design_unblock.py:
                 #   0 = fixed / improved, resume OK
-                #   2 = worktree dirty, stop
-                #   3 = worse, stop
+                #   2 = worktree dirty, stop immediately
+                #   3 = worse, escalate to next (stronger) layer; hard-stop
+                #       only if tool-rescue already ran or isn't available
                 #   4 = stopped (cap or streak), try next layer
                 #   5 = dry-run / API missing, try next layer unless dry-run
                 if rc_unblock == 0:
                     break
-                if rc_unblock in (2, 3) or watch_args.unblock_dry_run:
+                if rc_unblock == 2 or watch_args.unblock_dry_run:
                     break
-                # A non-improving JSON pass should fall through to the
-                # stronger tool-rescue layer; the final layer handles
-                # escalation below.
+                if rc_unblock == 3:
+                    # A "worse" result from an early layer (recipes, json-llm)
+                    # means the approach was wrong, not that all repair is
+                    # hopeless. Fall through to the next stronger layer
+                    # (tool-rescue) so the LLM always gets a turn before the
+                    # run is handed to a human. Only break if this IS the last
+                    # (or only) layer in the list.
+                    remaining = repair_layers[repair_layers.index(layer) + 1:]
+                    if not remaining or watch_args.no_tool_rescue:
+                        break
+                    # continue — the for-loop will advance to the next layer
+                    continue
+                # A non-improving JSON pass (rc 4/5) should fall through to the
+                # stronger tool-rescue layer; the final layer handles escalation.
             if rc_unblock != 0:
                 state.repair_stop_reason = {
                     2: "Worktree has unrelated framework changes.",

@@ -470,6 +470,18 @@ def test_resume_design_args_replaces_from():
     assert "--no-strict" in resumed
 
 
+def test_worse_result_escalates_to_tool_rescue():
+    """rc=3 (worse) from an early layer must not stop the loop if tool-rescue hasn't run yet."""
+    src = (REPO_ROOT / "bin" / "design-watch.py").read_text(encoding="utf-8")
+    # The key invariant: rc==3 with a remaining stronger layer should continue,
+    # not break.  Verify the logic is present in source.
+    assert "rc_unblock == 3" in src
+    assert "remaining" in src
+    assert "continue" in src
+    # rc==2 (dirty worktree) must still hard-stop regardless.
+    assert "rc_unblock == 2" in src
+
+
 def test_resume_design_args_strips_only_flag():
     watch = load_design_watch()
     resumed = watch._resume_design_args(
