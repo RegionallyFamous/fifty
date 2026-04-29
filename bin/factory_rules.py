@@ -145,6 +145,32 @@ RULES: dict[str, PreventionRule] = {
         fixture="tests/tools/test_design_scorecard.py",
         manual_review_reason="Design score has judgment-heavy components; keep rendered evidence.",
     ),
+    "factory-timeout": PreventionRule(
+        category="factory-timeout",
+        layer="manual-review",
+        phase="watch",
+        owner="bin/design-watch.py",
+        mode="hard-fail",
+        fixture="tests/tools/test_design_watch.py",
+        manual_review_reason=(
+            "A wall-clock timeout can implicate Playground, API, CI, or factory tooling; "
+            "tool-rescue should inspect run artifacts before a deterministic prevention "
+            "rule is promoted."
+        ),
+    ),
+    "factory-stall": PreventionRule(
+        category="factory-stall",
+        layer="manual-review",
+        phase="watch",
+        owner="bin/design-watch.py",
+        mode="hard-fail",
+        fixture="tests/tools/test_design_watch.py",
+        manual_review_reason=(
+            "A no-output stall can be a transient external hang or a missing heartbeat; "
+            "tool-rescue should inspect run artifacts before a deterministic prevention "
+            "rule is promoted."
+        ),
+    ),
     "unknown": PreventionRule(
         category="unknown",
         layer="manual-review",
