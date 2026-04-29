@@ -1,0 +1,109 @@
+{
+  "findings": [
+    {
+      "severity": "info",
+      "kind": "console-warn-budget",
+      "message": "16 console warnings on this cell (>10). Consider triaging.",
+      "count": 16,
+      "max": 10
+    }
+  ],
+  "selectors": [
+    {
+      "selector": ".wc-block-cart",
+      "count": 1,
+      "instances": [
+        {
+          "width": 1440,
+          "height": 857,
+          "visible": true,
+          "display": "grid",
+          "grid_template_columns": "872px 480px",
+          "min_width": "0px",
+          "max_width": "1520px"
+        }
+      ]
+    }
+  ],
+  "dom": {
+    "width": 1920,
+    "height": 1080,
+    "scrollWidth": 1920,
+    "scrollHeight": 2082
+  },
+  "bg_image_pairs": [],
+  "theme": "batik",
+  "viewport": "wide",
+  "route": "cart-empty",
+  "url": "http://127.0.0.1:9400/cart/",
+  "navigation_error": null,
+  "console": [
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/batik/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/batik/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/batik/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/batik/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/batik/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/batik/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/batik/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9400/wp-content/themes/batik/assets/fonts/display-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    }
+  ],
+  "page_errors": [],
+  "network_failures": [],
+  "a11y_path": "tmp/snaps/batik/wide/cart-empty.a11y.json"
+}
