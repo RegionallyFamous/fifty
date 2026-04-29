@@ -1909,12 +1909,41 @@ def _maybe_reexec_under_top_watch(
         "--run-id",
         f"batch-{run_id}-watch",
         "--no-auto-unblock",
+        "--max-elapsed-seconds",
+        str(_top_watch_max_elapsed_seconds(args)),
         "--script",
         str(ROOT / "bin" / "design-batch.py"),
         "--",
         *forwarded,
     ]
     os.execve(sys.executable, cmd, env)
+
+
+def _top_watch_max_elapsed_seconds(args: argparse.Namespace) -> int:
+    """Return a batch-sized wall-clock cap for the top-level watchdog.
+
+    Per-theme design-watch children keep the tight stall guard. The
+    parent batch watcher needs a larger wall-clock budget because a
+    single theme can legitimately spend 20+ minutes in screenshot and
+    vision review while still emitting progress.
+    """
+
+    theme_count = 1
+    concept_slugs = getattr(args, "concept_slugs", "") or ""
+    if concept_slugs:
+        theme_count = len([slug for slug in concept_slugs.split(",") if slug.strip()])
+    elif getattr(args, "limit", None):
+        theme_count = max(1, int(args.limit))
+    elif getattr(args, "manifest", None):
+        try:
+            raw = json.loads(Path(args.manifest).read_text(encoding="utf-8"))
+            theme_count = max(1, len(raw.get("themes") or []))
+        except (OSError, json.JSONDecodeError, TypeError):
+            theme_count = 1
+
+    concurrency = max(1, min(int(getattr(args, "concurrency", 1) or 1), HARD_CONCURRENCY_CAP))
+    waves = max(1, (theme_count + concurrency - 1) // concurrency)
+    return min(8 * 60 * 60, max(90 * 60, waves * 90 * 60 + 15 * 60))
 
 
 def _resolve_concurrency(cli: int | None, manifest: dict[str, Any]) -> int:

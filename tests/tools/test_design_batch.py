@@ -214,9 +214,17 @@ def test_batch_cli_reexecs_under_top_level_watchdog(script_text: str) -> None:
     assert '"--script",' in script_text
     assert 'str(ROOT / "bin" / "design-batch.py")' in script_text
     assert '"--no-auto-unblock"' in script_text
+    assert '"--max-elapsed-seconds",' in script_text
+    assert "str(_top_watch_max_elapsed_seconds(args))" in script_text
     assert "os.execve(sys.executable, cmd, env)" in script_text
     assert "if argv is None:" in script_text
     assert "_maybe_reexec_under_top_watch(raw_argv, args=args, run_id=run_id)" in script_text
+
+
+def test_batch_top_watch_uses_batch_sized_timeout(script_text: str) -> None:
+    assert "def _top_watch_max_elapsed_seconds(" in script_text
+    assert "waves * 90 * 60 + 15 * 60" in script_text
+    assert "min(8 * 60 * 60" in script_text
 
 
 def test_batch_uses_progressive_build_then_dress_by_default(script_text: str) -> None:
