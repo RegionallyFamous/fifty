@@ -502,7 +502,6 @@ def _full_verification_ladder(slug: str, categories: list[str]) -> list[list[str
                 sys.executable,
                 str(ROOT / "bin" / "snap.py"),
                 "report",
-                "--theme",
                 slug,
             ]
         )
@@ -699,6 +698,29 @@ def _collect_fingerprints(slug: str, categories: list[str]) -> list[str]:
     seen: set[str] = set()
     for cat in sorted(set(categories)):
         only = _CHECK_ONLY_BY_CATEGORY.get(cat)
+        if cat == "unknown":
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "bin" / "check.py"),
+                    slug,
+                    "--quick",
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if proc.returncode == 0:
+                continue
+            failures = _parse_check_failures(proc.stdout)
+            for title, detail in failures:
+                fp = blocker_fingerprint(_classify(title, detail), slug, detail)
+                if fp in seen:
+                    continue
+                seen.add(fp)
+                fps.append(fp)
+            continue
         if cat == "design-score-low":
             proc = subprocess.run(
                 [
