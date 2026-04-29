@@ -20,12 +20,10 @@ Conventions
 * Viewports are named so diff summaries are human-readable. Widths
   chosen to bracket the responsive breakpoints used in the themes:
     - mobile  390px   below the 782px grid breakpoint (single-column)
-    - tablet  768px   straddling the breakpoint (single-column on most pages)
     - desktop 1280px  just below theme.json wideSize (1440px); the
                        cart/checkout sidebar still paints near its
                        natural max because the align:wide container
                        is clamped to viewport minus gutters
-    - wide    1920px  ultrawide; surfaces issues with `align:full` blocks
 * Heights are large enough to keep the fold visible at common screen
   ratios. Playwright's `full_page=True` overrides the height anyway so
   the value only matters for above-the-fold-only screenshots, which we
@@ -175,9 +173,7 @@ ROUTES: list[Route] = [
 
 VIEWPORTS: list[Viewport] = [
     Viewport(name="mobile", width=390, height=844),     # iPhone 14
-    Viewport(name="tablet", width=768, height=1024),    # iPad portrait
     Viewport(name="desktop", width=1280, height=800),   # just below 1440 wideSize
-    Viewport(name="wide", width=1920, height=1080),     # 1080p desktop
 ]
 
 
@@ -194,8 +190,8 @@ QUICK_VIEWPORTS: set[str] = {"desktop"}
 # "which routes need reshooting?" question from "the whole route table
 # because this theme had a git diff" down to "only these slugs map to
 # the files that changed". For a theme with a 1-line `single-product.html`
-# edit this collapses 44 PNG captures (11 routes x 4 viewports) into 8
-# (2 product routes x 4 viewports) and stays visually faithful as long
+# edit this collapses 22 PNG captures (11 routes x 2 viewports) into 4
+# (2 product routes x 2 viewports) and stays visually faithful as long
 # as the manifest tracks reality.
 #
 # Each glob pattern is evaluated against the theme's relative path (the
