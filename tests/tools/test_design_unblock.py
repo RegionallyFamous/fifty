@@ -290,6 +290,20 @@ def test_judge_progress_not_improved_when_unchanged(monkeypatch):
     assert decision == "not-improved"
 
 
+def test_judge_progress_not_fixed_when_verification_failed_without_fingerprints(monkeypatch):
+    u = _load_module()
+    monkeypatch.setattr(u, "_snap_error_count", lambda slug: 0)
+    decision, reason = u._judge_progress(
+        ["a"],
+        [],
+        slug="agave",
+        snap_errors_before=0,
+        verification_failed=True,
+    )
+    assert decision == "not-improved"
+    assert "Verification failed" in reason
+
+
 def test_collect_fingerprints_reruns_full_check_for_unknown(monkeypatch):
     u = _load_module()
 
