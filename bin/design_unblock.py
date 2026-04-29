@@ -621,7 +621,17 @@ def _latest_run_artifacts(slug: str, limit: int = 6) -> list[str]:
 
 
 def _allowed_commands_for_categories(categories: list[str]) -> list[str]:
-    commands = {"check_quick", "check_only"}
+    commands = {
+        "check_quick",
+        "check_only",
+        "check_full",
+        "append_wc_overrides",
+        "git_diff",
+        # Inspection actions — always available so the LLM can gather context.
+        "read_file",
+        "read_snap_findings",
+        "read_png",
+    }
     if any(
         c in categories
         for c in {
@@ -1307,6 +1317,17 @@ def broker_action_to_argv(
         if not rel.startswith(f"{slug}/") or ".." in rel or not rel.endswith(".php"):
             raise ValueError(f"unsafe php lint path: {rel!r}")
         return ["php", "-l", str(ROOT / rel)]
+    if action == "append_wc_overrides":
+        # Re-run the WC override generator for this theme. Idempotent; fixes
+        # cascade failures and contrast issues in generated CSS.
+        return [sys.executable, str(ROOT / "bin" / "append-wc-overrides.py"), slug]
+    if action == "check_full":
+        # Full (non-quick) check — runs every gate including ones that --quick skips.
+        return [sys.executable, str(ROOT / "bin" / "check.py"), slug]
+    if action == "git_diff":
+        # Return the current worktree diff so the LLM can see what has already
+        # changed and avoid duplicating or reverting prior edits.
+        return ["git", "-C", str(ROOT), "diff", "--", slug]
     raise ValueError(f"unsupported broker action: {action}")
 
 
@@ -2242,6 +2263,79 @@ def _apply_llm_edits(
     return applied, rejected
 
 
+_INSPECTION_ACTIONS: frozenset[str] = frozenset(
+    {"read_file", "read_snap_findings", "read_png"}
+)
+
+_MAX_READ_FILE_BYTES = 40_000  # ~10k tokens; enough for theme.json or functions.php
+
+
+def _run_inspection_action(
+    slug: str, action: str, payload: dict[str, Any]
+) -> dict[str, Any]:
+    """Execute a read-only inspection action and return its content as a string.
+
+    These actions never mutate the worktree. They exist so the LLM can gather
+    evidence (file content, snap findings, screenshots) before proposing edits.
+    """
+    _validate_slug(slug)
+    if action == "read_file":
+        rel = str(payload.get("path") or "").lstrip("./")
+        # Must be inside the theme dir or tmp/snaps/<slug>/; no traversal.
+        allowed_prefixes = (f"{slug}/", f"tmp/snaps/{slug}/")
+        if not any(rel.startswith(p) for p in allowed_prefixes) or ".." in rel:
+            return {"action": action, "ok": False, "error": f"path {rel!r} not allowed"}
+        path = ROOT / rel
+        if not path.is_file():
+            return {"action": action, "ok": False, "error": f"{rel} not found"}
+        raw = path.read_bytes()[:_MAX_READ_FILE_BYTES]
+        try:
+            content = raw.decode("utf-8", errors="replace")
+        except Exception:
+            content = repr(raw[:200])
+        return {"action": action, "ok": True, "path": rel, "content": content}
+
+    if action == "read_snap_findings":
+        route = str(payload.get("route") or "home")
+        viewport = str(payload.get("viewport") or "desktop")
+        _validate_safe_args([route, viewport], label="snap findings")
+        findings_path = ROOT / "tmp" / "snaps" / slug / viewport / f"{route}.findings.json"
+        if not findings_path.is_file():
+            return {
+                "action": action,
+                "ok": False,
+                "error": f"findings not found: {findings_path.relative_to(ROOT)}",
+            }
+        raw = findings_path.read_bytes()[:_MAX_READ_FILE_BYTES]
+        content = raw.decode("utf-8", errors="replace")
+        return {
+            "action": action,
+            "ok": True,
+            "path": str(findings_path.relative_to(ROOT)),
+            "content": content,
+        }
+
+    if action == "read_png":
+        rel = str(payload.get("path") or "").lstrip("./")
+        if not rel.startswith(f"tmp/snaps/{slug}/") or ".." in rel or not rel.endswith(".png"):
+            return {"action": action, "ok": False, "error": f"path {rel!r} not allowed"}
+        path = ROOT / rel
+        if not path.is_file():
+            return {"action": action, "ok": False, "error": f"{rel} not found"}
+        import base64
+
+        data = base64.b64encode(path.read_bytes()).decode("ascii")
+        return {
+            "action": action,
+            "ok": True,
+            "path": rel,
+            "base64_png": data,
+            "size_bytes": path.stat().st_size,
+        }
+
+    return {"action": action, "ok": False, "error": f"unknown inspection action: {action}"}
+
+
 def _run_rescue_actions(
     slug: str,
     allowed: list[str],
@@ -2260,7 +2354,10 @@ def _run_rescue_actions(
             rejected.append(f"action {name!r} payload must be an object")
             continue
         try:
-            results.append(run_broker_action(slug, name, payload))
+            if name in _INSPECTION_ACTIONS:
+                results.append(_run_inspection_action(slug, name, payload))
+            else:
+                results.append(run_broker_action(slug, name, payload))
         except ValueError as exc:
             rejected.append(str(exc))
     return results, rejected
@@ -2271,28 +2368,58 @@ def _build_tool_rescue_prompt(
 ) -> tuple[str, str]:
     system = (
         "You are a bounded tool-using rescue agent for a WordPress block theme "
-        "factory. You may propose exact file edits and structured broker "
-        "actions, but you may not run raw shell commands. Work only inside the "
-        "active theme and generated per-theme artifacts. For `factory-timeout` "
-        "or `factory-stall` blockers, your first job is diagnosis: inspect the "
-        "provided STATUS.md / summary.json / events.jsonl evidence, explain the "
-        "most likely stuck phase, and request only safe broker actions. Do not "
-        "edit framework files from this rescue loop; if a framework change is "
-        "needed, set `human_boundary` to `factory-tooling-change` with a clear "
-        "rationale. Never edit allowlists, never use destructive git operations, "
-        "and never bypass checks. This repo intentionally has no theme CSS files "
-        "such as `<slug>/styles.css` or `<slug>/assets/css/*.css`; theme CSS lives "
-        "in `<slug>/theme.json` under `styles.css` or block `css` entries.\n\n"
-        "Respond with exactly one JSON object:\n"
+        "factory. You may propose exact file edits and structured broker actions, "
+        "but you may not run raw shell commands. Work only inside the active theme "
+        "and generated per-theme artifacts. Do not edit framework files (bin/, "
+        ".githooks/, .cursor/rules/); if a framework change is needed, set "
+        "`human_boundary` to `factory-tooling-change` with a clear rationale. "
+        "Never edit allowlists, never use destructive git operations, and never "
+        "bypass checks. CSS lives in `<slug>/theme.json` under `styles.css` or "
+        "block `css` entries — there are no `<slug>/styles.css` files.\n\n"
+        "## Two-phase protocol\n\n"
+        "### Phase 1 — Inspection (optional)\n"
+        "If you need to read files before deciding what to change, respond with:\n"
+        '{"phase": "inspect", "rationale": "<why you need these>", '
+        '"inspect": [{"action": "read_file", "payload": {"path": "<slug>/theme.json"}}]}\n'
+        "The system will run your inspection actions and send you the results in a "
+        "follow-up prompt. Only use this phase when the provided snippets are "
+        "insufficient — it costs an extra API call.\n\n"
+        "### Phase 2 — Act (always required)\n"
+        "Respond with:\n"
         "{\n"
-        '  "rationale": "<diagnosis>",\n'
+        '  "rationale": "<diagnosis and approach>",\n'
         '  "done": false,\n'
         '  "human_boundary": null,\n'
-        '  "actions": [{"action": "check_quick", "payload": {}}],\n'
+        '  "actions": [{"action": "<name>", "payload": {}}],\n'
         '  "edits": [{"path": "<slug>/<file>", "old_string": "...", "new_string": "..."}]\n'
-        "}\n"
+        "}\n\n"
+        "## Available broker actions\n\n"
+        "### Mutation actions (change the worktree)\n"
+        "- `check_quick` — run `check.py <slug> --quick` (fast gate)\n"
+        "- `check_full` — run `check.py <slug>` (full gate; slower but catches more)\n"
+        "- `check_only` — `{\"only\": [\"<check-alias>\"]}` run one specific check\n"
+        "- `snap_routes` — `{\"routes\": [...], \"viewports\": [\"mobile\",\"desktop\"]}` re-shoot pages\n"
+        "- `snap_report` — regenerate the snap review.md\n"
+        "- `append_wc_overrides` — re-run `bin/append-wc-overrides.py <slug>` to "
+        "regenerate WC cascade-fix CSS (idempotent). Use this first for any "
+        "color-contrast, form-input-chrome, or WC selector specificity failure.\n"
+        "- `generate_product_photos` — regenerate missing/duplicate product images\n"
+        "- `build_screenshot` — rebuild the WP admin Themes card screenshot\n"
+        "- `sync_playground` — re-inline mu-plugins into blueprint.json\n"
+        "- `build_index` — rebuild theme INDEX.md\n"
+        "- `design_scorecard` — run the design scorecard\n"
+        "- `php_lint` — `{\"path\": \"<slug>/functions.php\"}` lint a PHP file\n"
+        "- `git_diff` — return the current worktree diff (read-only despite the name)\n\n"
+        "### Inspection actions (read-only, for phase 1)\n"
+        "- `read_file` — `{\"path\": \"<slug>/theme.json\"}` read any file inside "
+        "the theme dir or `tmp/snaps/<slug>/`. Max 40 KB returned.\n"
+        "- `read_snap_findings` — `{\"route\": \"home\", \"viewport\": \"desktop\"}` "
+        "return the full findings.json for one (route, viewport) cell.\n"
+        "- `read_png` — `{\"path\": \"tmp/snaps/<slug>/desktop/home.png\"}` return "
+        "the PNG as base64 for visual inspection. Use sparingly.\n\n"
         "Use `human_boundary` only for credentials, budget cap, destructive "
-        "approval, external outage, or genuinely ambiguous design judgment."
+        "approval, external outage, or genuinely ambiguous design judgment that "
+        "cannot be resolved by reading more evidence."
     )
     blockers_text: list[str] = []
     snippets: list[str] = []
@@ -2666,18 +2793,72 @@ def tool_rescue(
             append_attempt(run_dir, record)
             return 5
 
+        rescue_model = (
+            model
+            or os.environ.get("FIFTY_RESCUE_MODEL")
+            or os.environ.get("FIFTY_UNBLOCK_MODEL")
+            or "claude-sonnet-4-6"
+        )
+
         try:
-            resp = text_completion(
+            # ── Stage 1: optional inspection turn ───────────────────────────
+            # The LLM may respond with {"phase": "inspect", "inspect": [...]}
+            # to request file reads / snap findings / screenshots before
+            # committing to edits. We run those read-only actions and fold the
+            # results back into a second prompt so the LLM has full context.
+            inspection_context = ""
+            resp1 = text_completion(
                 system_prompt=system,
                 user_prompt=user,
-                model=model
-                or os.environ.get("FIFTY_RESCUE_MODEL")
-                or os.environ.get("FIFTY_UNBLOCK_MODEL")
-                or "claude-sonnet-4-6",
-                label="design-tool-rescue",
-                max_output_tokens=10000,
+                model=rescue_model,
+                label="design-tool-rescue-inspect",
+                max_output_tokens=4000,
             )
-            parsed = _parse_tool_rescue_response(resp.raw_text)
+            try:
+                stage1 = _parse_tool_rescue_response(resp1.raw_text)
+            except Exception:
+                stage1 = {}
+
+            if stage1.get("phase") == "inspect" and stage1.get("inspect"):
+                insp_results, insp_rejected = _run_rescue_actions(
+                    plan.slug,
+                    plan.allowed_commands,
+                    stage1["inspect"],
+                )
+                parts: list[str] = []
+                for r in insp_results:
+                    act = r.get("action", "")
+                    if r.get("ok") is False:
+                        parts.append(f"[{act}] ERROR: {r.get('error')}")
+                    elif "content" in r:
+                        path_label = r.get("path", act)
+                        parts.append(f"[{act}] {path_label}:\n```\n{r['content'][:8000]}\n```")
+                    elif "base64_png" in r:
+                        parts.append(
+                            f"[{act}] {r.get('path')} — "
+                            f"{r.get('size_bytes', 0)} bytes (base64 omitted from text log)"
+                        )
+                    else:
+                        parts.append(f"[{act}] returncode={r.get('returncode')} stdout={r.get('stdout','')[:2000]}")
+                for rej in insp_rejected:
+                    parts.append(f"[rejected] {rej}")
+                inspection_context = (
+                    "\n\n## Inspection results\n\n" + "\n\n---\n\n".join(parts)
+                    if parts
+                    else ""
+                )
+                # Stage 2: actual edit/action call with inspection context
+                resp2 = text_completion(
+                    system_prompt=system,
+                    user_prompt=user + inspection_context + "\n\nNow propose your edits/actions.",
+                    model=rescue_model,
+                    label="design-tool-rescue",
+                    max_output_tokens=10000,
+                )
+                parsed = _parse_tool_rescue_response(resp2.raw_text)
+            else:
+                # No inspection requested — treat stage1 response as the final answer.
+                parsed = stage1 if stage1 else _parse_tool_rescue_response(resp1.raw_text)
         except ApiKeyMissingError as exc:
             print(f"refusing to --tool-rescue: {exc}", file=sys.stderr)
             return 5

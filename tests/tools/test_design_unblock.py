@@ -718,7 +718,7 @@ def test_tool_rescue_prompt_guides_css_edits_to_theme_json(tmp_path, monkeypatch
         ],
     )
 
-    assert "no theme CSS files" in system
+    assert "no `<slug>/styles.css` files" in system
     assert "<slug>/theme.json" in system
     assert "agave/theme.json" in user
     assert ".button:hover" in user
@@ -1227,3 +1227,124 @@ def test_cli_help_runs():
     assert result.returncode == 0
     assert "--apply" in result.stdout
     assert "--agentic" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# New broker actions and inspection layer
+# ---------------------------------------------------------------------------
+
+
+def test_broker_action_append_wc_overrides():
+    u = _load_module()
+    argv = u.broker_action_to_argv("obel", "append_wc_overrides", {})
+    assert "append-wc-overrides.py" in " ".join(argv)
+    assert "obel" in argv
+
+
+def test_broker_action_check_full():
+    u = _load_module()
+    argv = u.broker_action_to_argv("obel", "check_full", {})
+    assert "check.py" in " ".join(argv)
+    assert "--quick" not in argv
+    assert "obel" in argv
+
+
+def test_broker_action_git_diff():
+    u = _load_module()
+    argv = u.broker_action_to_argv("obel", "git_diff", {})
+    assert "git" in argv[0]
+    assert "diff" in argv
+    assert "obel" in argv
+
+
+def test_inspection_read_file_within_theme(tmp_path, monkeypatch):
+    u = _load_module()
+    # Patch ROOT so the theme dir resolves to tmp_path/obel
+    theme_dir = tmp_path / "obel"
+    theme_dir.mkdir()
+    target = theme_dir / "theme.json"
+    target.write_text('{"slug": "obel"}', encoding="utf-8")
+    monkeypatch.setattr(u, "ROOT", tmp_path)
+    result = u._run_inspection_action("obel", "read_file", {"path": "obel/theme.json"})
+    assert result["ok"] is True
+    assert '{"slug": "obel"}' in result["content"]
+
+
+def test_inspection_read_file_blocks_traversal(tmp_path, monkeypatch):
+    u = _load_module()
+    monkeypatch.setattr(u, "ROOT", tmp_path)
+    result = u._run_inspection_action("obel", "read_file", {"path": "../etc/passwd"})
+    assert result["ok"] is False
+    assert "not allowed" in result["error"]
+
+
+def test_inspection_read_snap_findings(tmp_path, monkeypatch):
+    u = _load_module()
+    findings_dir = tmp_path / "tmp" / "snaps" / "obel" / "desktop"
+    findings_dir.mkdir(parents=True)
+    f = findings_dir / "home.findings.json"
+    f.write_text('[{"kind": "color-contrast"}]', encoding="utf-8")
+    monkeypatch.setattr(u, "ROOT", tmp_path)
+    result = u._run_inspection_action(
+        "obel", "read_snap_findings", {"route": "home", "viewport": "desktop"}
+    )
+    assert result["ok"] is True
+    assert "color-contrast" in result["content"]
+
+
+def test_inspection_read_file_not_allowed_outside_theme(tmp_path, monkeypatch):
+    u = _load_module()
+    (tmp_path / "bin").mkdir()
+    secret = tmp_path / "bin" / "check.py"
+    secret.write_text("# secret", encoding="utf-8")
+    monkeypatch.setattr(u, "ROOT", tmp_path)
+    result = u._run_inspection_action("obel", "read_file", {"path": "bin/check.py"})
+    assert result["ok"] is False
+
+
+def test_new_actions_in_allowed_commands():
+    u = _load_module()
+    allowed = u._allowed_commands_for_categories([])
+    for action in (
+        "check_full",
+        "append_wc_overrides",
+        "git_diff",
+        "read_file",
+        "read_snap_findings",
+        "read_png",
+    ):
+        assert action in allowed, f"{action} missing from allowed_commands"
+
+
+def test_tool_rescue_prompt_documents_new_actions():
+    u = _load_module()
+    import re
+    import time
+
+    plan = u.RepairPlan(
+        run_id="test-run",
+        slug="obel",
+        run_dir="/tmp/test",
+        worktree_root="/tmp/test",
+        generated_at=time.time(),
+        resume_phase="check",
+        worktree_clean=True,
+        worktree_unrelated_files=[],
+        blockers=[],
+        recommended_recipes=[],
+        allowed_commands=u._allowed_commands_for_categories([]),
+        verification_ladder=[],
+    )
+    system, _ = u._build_tool_rescue_prompt(plan, [])
+    for phrase in (
+        "append_wc_overrides",
+        "check_full",
+        "git_diff",
+        "read_file",
+        "read_snap_findings",
+        "read_png",
+        "Phase 1",
+        "Phase 2",
+        "phase.*inspect",
+    ):
+        assert re.search(phrase, system, re.IGNORECASE), f"prompt missing: {phrase!r}"
