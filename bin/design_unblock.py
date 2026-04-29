@@ -982,7 +982,7 @@ def apply_recipes(
     plan = build_repair_plan(run_dir)
     existing_attempts = _read_attempt_count(run_dir)
     attempt_number = existing_attempts + 1
-    if attempt_number > max_attempts or _non_improving_streak(run_dir) >= max_non_improving:
+    if attempt_number > max_attempts or _non_improving_streak(run_dir, layer="recipe") >= max_non_improving:
         record = AttemptRecord(
             at=time.time(),
             attempt=attempt_number,
@@ -1354,7 +1354,7 @@ def _read_attempt_count(run_dir: Path) -> int:
         return sum(1 for line in fh if line.strip())
 
 
-def _non_improving_streak(run_dir: Path) -> int:
+def _non_improving_streak(run_dir: Path, *, layer: str | None = None) -> int:
     path = run_dir / "repair-attempts.jsonl"
     if not path.is_file():
         return 0
@@ -1366,6 +1366,10 @@ def _non_improving_streak(run_dir: Path) -> int:
             rec = json.loads(line)
         except json.JSONDecodeError:
             continue
+        if layer is not None:
+            verification = rec.get("verification") or {}
+            if not isinstance(verification, dict) or verification.get("layer") != layer:
+                continue
         if rec.get("decision") == "improved" or rec.get("decision") == "fixed":
             streak = 0
         else:
@@ -1938,7 +1942,7 @@ def agentic_repair(
         attempt_number += 1
 
         # Check non-improving streak before each attempt.
-        if _non_improving_streak(run_dir) >= max_non_improving:
+        if _non_improving_streak(run_dir, layer="json-llm") >= max_non_improving:
             record = AttemptRecord(
                 at=time.time(),
                 attempt=attempt_number,
@@ -1951,7 +1955,7 @@ def agentic_repair(
                 after=[b.fingerprint for b in plan.blockers],
                 touched_files=[],
                 commands=[],
-                verification={},
+                verification={"layer": "json-llm", "human_boundary": "non-improving-streak"},
                 notes=["agentic repair stopped on non-improving streak"],
             )
             append_attempt(run_dir, record)
@@ -1976,7 +1980,7 @@ def agentic_repair(
                 after=[b.fingerprint for b in plan.blockers],
                 touched_files=[],
                 commands=[],
-                verification={},
+                verification={"layer": "json-llm", "human_boundary": "missing-api-key"},
                 notes=["dry-run agentic repair; no edits applied"],
             )
             append_attempt(run_dir, record)
@@ -2005,7 +2009,7 @@ def agentic_repair(
                 after=[b.fingerprint for b in plan.blockers],
                 touched_files=[],
                 commands=[],
-                verification={},
+                verification={"layer": "json-llm"},
                 notes=[repr(exc)],
             )
             append_attempt(run_dir, record)
@@ -2024,7 +2028,7 @@ def agentic_repair(
                 after=before,
                 touched_files=[],
                 commands=[],
-                verification={"raw_tail": resp.raw_text[:2000]},
+                verification={"layer": "json-llm", "raw_tail": resp.raw_text[:2000]},
                 notes=["LLM returned malformed JSON"],
             )
             append_attempt(run_dir, record)
@@ -2037,6 +2041,7 @@ def agentic_repair(
         snap_errors_before = _snap_error_count(plan.slug)
         commands_run: list[list[str]] = []
         verification_log: dict[str, Any] = {
+            "layer": "json-llm",
             "ladder": [],
             "llm_rationale": parsed.get("rationale", "")[:800],
             "llm_done": bool(parsed.get("done")),
@@ -2110,7 +2115,7 @@ def agentic_repair(
         after=[b.fingerprint for b in plan.blockers],
         touched_files=[],
         commands=[],
-        verification={},
+        verification={"layer": "json-llm", "human_boundary": "attempt-cap"},
         notes=["agentic repair stopped on attempt cap"],
     )
     append_attempt(run_dir, record)
@@ -2151,7 +2156,7 @@ def tool_rescue(
     attempt_number = len(attempt_history)
     while attempt_number < max_attempts:
         attempt_number += 1
-        if _non_improving_streak(run_dir) >= max_non_improving:
+        if _non_improving_streak(run_dir, layer="tool-rescue") >= max_non_improving:
             record = AttemptRecord(
                 at=time.time(),
                 attempt=attempt_number,

@@ -567,6 +567,25 @@ def test_run_rescue_actions_rejects_disallowed_broker_action(monkeypatch):
     assert not called
 
 
+def test_non_improving_streak_can_be_layer_scoped(tmp_path: Path):
+    u = _load_module()
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    records = [
+        {"decision": "not-improved", "verification": {"layer": "recipe"}},
+        {"decision": "not-improved", "verification": {"layer": "json-llm"}},
+        {"decision": "not-improved", "verification": {"layer": "json-llm"}},
+    ]
+    (run_dir / "repair-attempts.jsonl").write_text(
+        "\n".join(json.dumps(record) for record in records) + "\n",
+        encoding="utf-8",
+    )
+
+    assert u._non_improving_streak(run_dir) == 3
+    assert u._non_improving_streak(run_dir, layer="json-llm") == 2
+    assert u._non_improving_streak(run_dir, layer="tool-rescue") == 0
+
+
 # ---------------------------------------------------------------------------
 # Edit safety (the core of "LLM can edit until green, safely")
 # ---------------------------------------------------------------------------
