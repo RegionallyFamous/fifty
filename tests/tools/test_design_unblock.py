@@ -290,6 +290,32 @@ def test_judge_progress_not_improved_when_unchanged(monkeypatch):
     assert decision == "not-improved"
 
 
+def test_collect_fingerprints_reruns_full_check_for_unknown(monkeypatch):
+    u = _load_module()
+
+    class Proc:
+        returncode = 1
+        stdout = (
+            "[FAIL] [agave] PHP syntax (functions.php + patterns/*.php)\n"
+            "         functions.php: PHP Parse error: unexpected token\n"
+        )
+
+    monkeypatch.setattr(u.subprocess, "run", lambda *args, **kwargs: Proc())
+
+    fps = u._collect_fingerprints("agave", ["unknown"])
+
+    assert fps
+    assert fps[0].startswith("unknown:agave:")
+
+
+def test_full_verification_ladder_uses_positional_snap_report():
+    u = _load_module()
+    ladder = u._full_verification_ladder("agave", ["placeholder-images"])
+    report_cmd = next(cmd for cmd in ladder if "snap.py" in cmd[1] and "report" in cmd)
+    assert report_cmd[-2:] == ["report", "agave"]
+    assert "--theme" not in report_cmd
+
+
 # ---------------------------------------------------------------------------
 # Edit safety (the core of "LLM can edit until green, safely")
 # ---------------------------------------------------------------------------
