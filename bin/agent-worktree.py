@@ -59,6 +59,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 WORKTREES_ROOT = Path.home() / ".cursor" / "worktrees"
@@ -272,6 +273,41 @@ def _gh_pr_state(branch: str) -> str | None:
         return None
 
 
+def _backup_branch_before_prune(branch: str, worktree: Path | None) -> list[str]:
+    """Create reversible breadcrumbs before deleting a local worktree.
+
+    Returns human-readable notes describing the backup actions. Failure to
+    create a backup is reported as a note rather than raised; prune should
+    still attempt the safe path and surface warnings to the operator.
+    """
+    notes: list[str] = []
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    backup_tag = f"backup/{branch.replace('/', '-')}-{stamp}"
+    tag_res = _git("tag", backup_tag, branch, check=False)
+    if tag_res.returncode == 0:
+        notes.append(f"backup tag: {backup_tag}")
+    else:
+        notes.append(f"backup tag failed: {tag_res.stderr.strip()}")
+
+    if worktree and worktree.exists():
+        status = _git("status", "--porcelain", cwd=worktree, check=False).stdout
+        if status.strip():
+            stash_res = _git(
+                "stash",
+                "push",
+                "-u",
+                "-m",
+                f"agent-worktree-prune {branch} {stamp}",
+                cwd=worktree,
+                check=False,
+            )
+            if stash_res.returncode == 0:
+                notes.append("dirty worktree stashed")
+            else:
+                notes.append(f"stash failed: {stash_res.stderr.strip()}")
+    return notes
+
+
 def cmd_prune(args: argparse.Namespace) -> int:
     """Remove local worktrees (and optionally remote branches) that are done.
 
@@ -352,7 +388,10 @@ def cmd_prune(args: argparse.Namespace) -> int:
             if dry:
                 print(f"  would remove worktree: {wt_path}  {label}")
             else:
-                rm = _git("worktree", "remove", "--force", str(wt_path), check=False)
+                backup_notes = _backup_branch_before_prune(branch, wt_path)
+                for note in backup_notes:
+                    print(f"  safety: {branch}: {note}")
+                rm = _git("worktree", "remove", str(wt_path), check=False)
                 if rm.returncode == 0:
                     print(f"  removed worktree: {wt_path}  {label}")
                     removed_worktrees.append(str(wt_path))

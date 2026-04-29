@@ -71,8 +71,20 @@ def test_known_categories_includes_all_primary_categories():
         "hover-contrast",
         "microcopy-duplicate",
         "snap-a11y-color-contrast",
+        "design-score-low",
     ):
         assert expected in u.KNOWN_CATEGORIES
+
+
+def test_classify_design_scorecard_failure():
+    u = _load_module()
+    assert (
+        u._classify(
+            "Design scorecard meets minimum",
+            "hierarchy scored 52/70; weak findings recorded",
+        )
+        == "design-score-low"
+    )
 
 
 # ---------------------------------------------------------------------------

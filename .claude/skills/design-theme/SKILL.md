@@ -130,13 +130,14 @@ snapshots the canonical list and fails loudly on drift.
 | 11 | **prepublish** | Scoped `git add <slug>/` + commit + push so `raw.githubusercontent.com` can serve playground assets before snap | Skipped with `--skip-publish`; snap will 404 without it on a fresh theme |
 | 12 | **snap** | `bin/snap.py shoot <slug>` | Skipped with `--skip-snap`; leaves no screenshot evidence |
 | 13 | **vision-review** | `bin/snap-vision-review.py` against each cell — LLM critique against `<slug>/design-intent.md` | Skipped silently when `ANTHROPIC_API_KEY` is unset; in a release pipeline treat the skip as a WARN, not a PASS |
-| 14 | **baseline** | `bin/snap.py baseline <slug>` (writes `tests/visual-baseline/<slug>/`) | Hard fail |
-| 15 | **screenshot** | `bin/build-theme-screenshots.py <slug>` replaces the WP admin card screenshot with a crop of this theme's home page | Hard fail |
-| 16 | **check** | `bin/check.py <slug> --quick` | **Strict by default** — any failure aborts. `--no-strict` demotes to a warning (prototype-only; never ship in that mode) |
-| 17 | **report** | `bin/snap.py report <slug>` prints the tiered `STATUS: PASS/WARN/FAIL` | Non-pass aborts unless `--no-strict` |
-| 18 | **redirects** | `bin/build-redirects.py` regenerates the `docs/<slug>/` short-URL redirectors | Hard fail |
-| 19 | **commit** | Stages `<slug>/` + generated artifacts and creates one `design: ship <slug>` commit | Skipped with `--skip-commit`; runs only if every earlier phase was green |
-| 20 | **publish** | `git push` of the freshly-created commit | Skipped with `--skip-publish` |
+| 14 | **scorecard** | `bin/design-scorecard.py <slug>` writes `tmp/runs/<run-id>/design-score.json` + contact sheet from snap/vision findings | Hard fail below threshold; feeds `design_unblock.py` |
+| 15 | **baseline** | `bin/snap.py baseline <slug>` (writes `tests/visual-baseline/<slug>/`) | Hard fail |
+| 16 | **screenshot** | `bin/build-theme-screenshots.py <slug>` replaces the WP admin card screenshot with a crop of this theme's home page | Hard fail |
+| 17 | **check** | `bin/check.py <slug> --quick` | **Strict by default** — any failure aborts. `--no-strict` demotes to a warning (prototype-only; never ship in that mode) |
+| 18 | **report** | `bin/snap.py report <slug>` prints the tiered `STATUS: PASS/WARN/FAIL` | Non-pass aborts unless `--no-strict` |
+| 19 | **redirects** | `bin/build-redirects.py` regenerates the `docs/<slug>/` short-URL redirectors | Hard fail |
+| 20 | **commit** | Stages `<slug>/` + generated artifacts and creates one `design: ship <slug>` commit | Skipped with `--skip-commit`; runs only if every earlier phase was green |
+| 21 | **publish** | `git push` of the freshly-created commit | Skipped with `--skip-publish` |
 
 **Strict is the default.** `bin/design.py` ships with `strict=True` as of
 Spring 2026. A `STATUS: PASS` at phase 16 (`check`) and a `STATUS: PASS`
@@ -186,7 +187,7 @@ python3 bin/design.py dress <slug>
 ```
 
 - **`design.py build`** runs the deterministic structural phases — `validate, clone, apply, contrast, seed, sync, index, prepublish, snap, baseline, screenshot, check, report, redirects, commit, publish`. The `check` phase runs with `--phase structural`, which skips the 10 content-fit checks (product-image diversity, per-theme microcopy uniqueness, front-page fingerprint, etc.) that only pass AFTER `dress` has regenerated per-theme photography and microcopy. It does NOT call a vision model. Re-running `build` after a CSS / token / markup tweak is the tight inner loop (5–10 min).
-- **`design.py dress`** runs the content-fit phases — `photos, microcopy, frontpage, snap, vision-review, check, report, commit, publish`. The `check` phase runs with `--phase all` (every check must pass before promotion), and `vision-review` runs with `--phase content` so the reviewer focuses on the catalogue-fit lens (photography-mismatch, color-clash, brand-violation, mockup-divergent) instead of re-grading structural complaints that `build` already gated. This is the outer loop that burns vision-review budget (≈ $0.30 / run).
+- **`design.py dress`** runs the content-fit phases — `photos, microcopy, frontpage, snap, vision-review, scorecard, check, report, commit, publish`. The `check` phase runs with `--phase all` (every check must pass before promotion), and `vision-review` runs with `--phase content` so the reviewer focuses on the catalogue-fit lens (photography-mismatch, color-clash, brand-violation, mockup-divergent) instead of re-grading structural complaints that `build` already gated. `scorecard` converts that evidence into a repairable design-quality artifact. This is the outer loop that burns vision-review budget (≈ $0.30 / run).
 - **`dress`** requires the theme to already exist on disk — preflight checks for `<slug>/theme.json` and `<slug>/playground/blueprint.json` and exits 2 with a "run build first" message if either is missing.
 - Each subcommand emits its own verdict banner on green (`BUILD OK — ...` / `DRESS OK — ...`) and lands its own commit (`design: build <slug> (structurally sound)` / `design: dress <slug> (content-fit)`).
 

@@ -201,6 +201,21 @@ def test_runner_options_has_run_verify_snap_field(script_text: str) -> None:
     )
 
 
+def test_batch_uses_self_healing_watch_by_default(script_text: str) -> None:
+    assert "self_heal: bool = True" in script_text
+    assert '"bin/design-watch.py"' in script_text
+    assert "--max-repair-rounds" in script_text
+    assert "--no-self-heal" in script_text
+
+
+def test_batch_posts_visible_autonomy_pr_comment(script_text: str) -> None:
+    assert "def _post_pr_status_comment(" in script_text
+    assert '"gh", "pr", "comment", pr_url' in script_text
+    assert "Agent rescue used" in script_text
+    assert "Human input required" in script_text
+    assert "Next action" in script_text
+
+
 def test_verify_invocation_uses_snap(script_text: str) -> None:
     """`_run_verify_after_push` MUST conditionally append `--snap`.
 

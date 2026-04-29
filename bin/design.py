@@ -217,6 +217,7 @@ PHASES = (
     "prepublish",
     "snap",
     "vision-review",
+    "scorecard",
     "baseline",
     "screenshot",
     "check",
@@ -285,6 +286,7 @@ _PHASES_FOR_DRESS = (
     "frontpage",
     "snap",
     "vision-review",
+    "scorecard",
     "check",
     "report",
     "commit",
@@ -672,7 +674,7 @@ def main(argv: list[str] | None = None) -> int:
         phases_to_run = [
             p
             for p in phases_to_run
-            if p not in {"snap", "vision-review", "baseline", "screenshot", "report"}
+            if p not in {"snap", "vision-review", "scorecard", "baseline", "screenshot", "report"}
         ]
     if args.skip_commit and not args.only:
         # --skip-commit implies --skip-publish (can't push a commit that
@@ -1405,6 +1407,32 @@ def _phase_baseline(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -
         raise PhaseError("baseline", f"bin/snap.py baseline exited {rc}")
 
 
+def _phase_scorecard(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
+    """Write tmp/runs/<run-id>/design-score.json from snap/vision findings.
+
+    This turns taste feedback into a first-class pipeline signal. Low scores
+    print a normal [FAIL] line before the phase raises, so design-watch can
+    hand the blocker to design_unblock.py instead of leaving a human to infer
+    what "looks weak" means from raw logs.
+    """
+    script = ROOT / "bin" / "design-scorecard.py"
+    if not script.is_file():
+        print("  [scorecard] WARN: bin/design-scorecard.py missing; skipping.")
+        return
+    run_id = os.environ.get("FIFTY_DESIGN_RUN_ID") or f"design-{spec.slug}"
+    cmd = [
+        sys.executable,
+        str(script),
+        spec.slug,
+        "--run-id",
+        run_id,
+    ]
+    print(f"  [scorecard] {' '.join(cmd[1:])}")
+    rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
+    if rc != 0:
+        raise PhaseError("scorecard", f"bin/design-scorecard.py exited {rc}")
+
+
 def _phase_screenshot(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
     """Run `bin/build-theme-screenshots.py <slug>` to derive the theme's
     WordPress admin `screenshot.png` from the freshly promoted baseline.
@@ -1730,6 +1758,7 @@ _PHASE_HANDLERS = {
     "prepublish": _phase_prepublish,
     "snap": _phase_snap,
     "vision-review": _phase_vision_review,
+    "scorecard": _phase_scorecard,
     "baseline": _phase_baseline,
     "screenshot": _phase_screenshot,
     "check": _phase_check,

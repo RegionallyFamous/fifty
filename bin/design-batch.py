@@ -167,6 +167,10 @@ class ThemeOutcome:
     # JSON written by `bin/verify-theme.py` when we have it.
     verify_status: str | None = None
     verify_report_path: str | None = None
+    design_run_id: str | None = None
+    design_status_path: str | None = None
+    next_action: str | None = None
+    rescue_used: bool = False
 
 
 @dataclass
@@ -329,6 +333,14 @@ class RunnerOptions:
     # at orchestration time, not just at branch-protection time). Flip
     # to True only for explicit one-off rescue runs.
     arm_auto_merge_on_failure: bool = False
+    # Run each theme through bin/design-watch.py, which records
+    # tmp/runs/<run-id>/STATUS.md and invokes design_unblock.py by
+    # default on known repairable blockers. This is the default because
+    # the batch runner's promise is "walk away, come back to PRs", not
+    # "watch design.py fail and manually resume it."
+    self_heal: bool = True
+    max_repair_rounds: int = 3
+    unblock_dry_run: bool = False
 
 
 def _git(*args: str, cwd: Path | None = None, check: bool = True) -> subprocess.CompletedProcess:
@@ -366,15 +378,33 @@ def _run_design(
     entry: ManifestEntry,
     worktree: Path,
     opts: RunnerOptions,
+    pre_slug: str,
 ) -> subprocess.CompletedProcess:
     """Invoke `bin/design.py` inside the worktree. Returns the
     completed process (caller inspects rc + stdout/stderr)."""
-    cmd: list[str] = [sys.executable, "bin/design.py"]
+    design_cmd: list[str] = []
     if entry.prompt:
-        cmd.extend(["--prompt", entry.prompt])
+        design_cmd.extend(["--prompt", entry.prompt])
     elif entry.spec_path:
-        cmd.extend(["--spec", str(entry.spec_path)])
-    cmd.extend(opts.extra_design_args)
+        design_cmd.extend(["--spec", str(entry.spec_path)])
+    design_cmd.extend(opts.extra_design_args)
+
+    design_run_id = f"batch-{opts.run_id}-{pre_slug}"
+    if opts.self_heal:
+        cmd = [
+            sys.executable,
+            "bin/design-watch.py",
+            "--run-id",
+            design_run_id,
+            "--max-repair-rounds",
+            str(opts.max_repair_rounds),
+        ]
+        if opts.unblock_dry_run:
+            cmd.append("--unblock-dry-run")
+        cmd.extend(["--", *design_cmd])
+    else:
+        cmd = [sys.executable, "bin/design.py", *design_cmd]
+
     env = os.environ.copy()
     # Each worker gets its own Playground port so concurrency doesn't
     # collide. The port-base var is read by bin/snap.py; if it's not
@@ -511,6 +541,15 @@ def _commit_and_push(
             f"gh pr create failed (rc={pr.returncode}): {pr.stderr.strip()}"
         )
     pr_url = pr.stdout.strip().splitlines()[-1] if pr.stdout.strip() else None
+    _post_pr_status_comment(
+        worktree=worktree,
+        pr_url=pr_url,
+        slug=slug,
+        opts=opts,
+        phase="opened",
+        verify_status=verify_status,
+        verify_report_path=verify_path,
+    )
 
     # Arm auto-merge so the PR lands the moment all required checks
     # pass -- without this, the batch produces N open PRs that each
@@ -558,6 +597,52 @@ def _commit_and_push(
         pushed=True,
         verify_status=verify_status,
         verify_report_path=verify_path,
+    )
+
+
+def _post_pr_status_comment(
+    *,
+    worktree: Path,
+    pr_url: str | None,
+    slug: str,
+    opts: RunnerOptions,
+    phase: str,
+    verify_status: str | None = None,
+    verify_report_path: str | None = None,
+    human_required: bool = False,
+    next_action: str | None = None,
+) -> None:
+    """Best-effort visible run status for autonomous PRs.
+
+    The batch report is machine-readable, but a reviewer usually lands on
+    the PR first. Keep a compact breadcrumb there: current phase, repair
+    mode, verify status, rescue usage, and the next action. This is
+    intentionally non-fatal; PR creation succeeded, so a comment outage
+    must not abort the batch.
+    """
+    if not pr_url or not opts.open_prs or opts.dry_run:
+        return
+    body = (
+        "## Autonomous Theme Factory\n\n"
+        f"- Theme: `{slug}`\n"
+        f"- Run: `{opts.run_id}`\n"
+        f"- Phase: `{phase}`\n"
+        f"- Self-healing: `{'on' if opts.self_heal else 'off'}` "
+        f"(max rounds: `{opts.max_repair_rounds}`)\n"
+        f"- Verify status: `{verify_status or 'pending'}`\n"
+        f"- Human input required: `{'yes' if human_required else 'no'}`\n"
+        f"- Agent rescue used: `{'yes' if os.environ.get('FIFTY_AGENT_RESCUE') else 'no'}`\n"
+    )
+    if verify_report_path:
+        body += f"- Verify report: `{verify_report_path}`\n"
+    if next_action:
+        body += f"- Next action: {next_action}\n"
+    subprocess.run(
+        ["gh", "pr", "comment", pr_url, "--body", body],
+        cwd=str(worktree),
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
 
@@ -724,12 +809,21 @@ def run_theme(
         worktree, branch = _ensure_worktree(pre_slug, opts)
         outcome.worktree = str(worktree)
         outcome.branch = branch
-        proc = _run_design(entry, worktree, opts)
+        outcome.rescue_used = bool(os.environ.get("FIFTY_AGENT_RESCUE"))
+        outcome.design_run_id = f"batch-{opts.run_id}-{pre_slug}"
+        outcome.design_status_path = str(
+            worktree / "tmp" / "runs" / outcome.design_run_id / "STATUS.md"
+        )
+        proc = _run_design(entry, worktree, opts, pre_slug)
         if proc.returncode != 0:
             outcome.status = "failed"
             outcome.error = (
                 f"bin/design.py exited {proc.returncode}; worktree "
                 f"left intact at {worktree} for inspection."
+            )
+            outcome.next_action = (
+                f"Open `{outcome.design_status_path}` and resume the worktree "
+                "after the reported blocker is repaired."
             )
             return outcome
         slug = _resolve_slug_after_design(entry, worktree, pre_slug)
@@ -748,12 +842,25 @@ def run_theme(
                 "bin/verify-theme.py reported failures after push; "
                 f"see {result.verify_report_path or '<no report>'}."
             )
+            outcome.next_action = (
+                "Fix the verify-theme failures on the PR branch, then rerun "
+                f"`python3 bin/verify-theme.py {slug} --strict --snap`."
+            )
         else:
             outcome.status = "passed"
+            outcome.next_action = (
+                "Wait for required GitHub checks; auto-merge is armed if allowed."
+                if opts.arm_auto_merge
+                else "Review the PR and merge when required checks are green."
+            )
         return outcome
     except Exception as e:
         outcome.status = "failed"
         outcome.error = f"{type(e).__name__}: {e}"
+        outcome.next_action = (
+            "Inspect the worktree and batch report; rerun with --retry-failed "
+            "after the blocker is resolved."
+        )
         return outcome
     finally:
         outcome.elapsed_s = round(time.monotonic() - started, 1)
@@ -930,6 +1037,32 @@ def _build_parser() -> argparse.ArgumentParser:
             "to look at the failing gate before the PR can land. Only "
             "use this for explicit rescue runs where you've already "
             "decided the failures are acceptable."
+        ),
+    )
+    p.add_argument(
+        "--no-self-heal",
+        action="store_true",
+        help=(
+            "Call bin/design.py directly instead of the default "
+            "bin/design-watch.py self-healing wrapper. Use only when "
+            "debugging the watcher itself."
+        ),
+    )
+    p.add_argument(
+        "--max-repair-rounds",
+        type=int,
+        default=3,
+        help=(
+            "Maximum design_unblock.py repair/resume rounds per theme "
+            "when self-healing is enabled. Default: 3."
+        ),
+    )
+    p.add_argument(
+        "--unblock-dry-run",
+        action="store_true",
+        help=(
+            "Let design-watch.py emit repair packets but stop before "
+            "calling the LLM. Useful for rehearsal runs without API spend."
         ),
     )
     p.add_argument(
@@ -1189,12 +1322,16 @@ def main(argv: list[str] | None = None) -> int:
         run_verify_snap=not args.no_verify_snap,
         arm_auto_merge=not args.no_auto_merge,
         arm_auto_merge_on_failure=args.arm_auto_merge_on_failure,
+        self_heal=not args.no_self_heal,
+        max_repair_rounds=args.max_repair_rounds,
+        unblock_dry_run=args.unblock_dry_run,
     )
 
     print(
         f"[batch] run-id={run_id} themes={len(entries)} "
         f"concurrency={concurrency} daily-cap=${daily_cap:.2f} "
-        f"worktree-parent={worktree_parent} dry-run={args.dry_run}",
+        f"worktree-parent={worktree_parent} dry-run={args.dry_run} "
+        f"self-heal={not args.no_self_heal}",
         file=sys.stderr,
     )
 
