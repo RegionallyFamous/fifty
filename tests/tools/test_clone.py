@@ -50,6 +50,20 @@ def sample_source(tmp_path: Path, make_theme) -> Path:
         '{"$schema":"x","version":3,"title":"Warm"}\n',
         encoding="utf-8",
     )
+    (src / "functions.php").write_text(
+        """<?php
+add_action( 'woocommerce_account_dashboard', 'obel_render_account_dashboard' );
+if ( ! function_exists( 'obel_render_account_dashboard' ) ) {
+\tfunction obel_render_account_dashboard(): void {}
+}
+if ( ! function_exists( 'obel_swatches_color_map' ) ) {
+\tfunction obel_swatches_color_map(): array {
+\t\treturn array();
+\t}
+}
+""",
+        encoding="utf-8",
+    )
     # Source's readiness.json is shipping — clone.py must rewrite this
     # to incubating on the destination so new themes don't fraudulently
     # claim shipping status before they've been reviewed + baselined.
@@ -128,6 +142,46 @@ def test_clone_creates_new_theme_with_renamed_slug(
     )
     # Non-skipped style variation IS copied.
     assert (clone / "styles" / "warm.json").is_file()
+
+
+def test_clone_keeps_hyphenated_slug_but_sanitizes_php_identifiers(
+    tmp_path: Path,
+    sample_source: Path,
+) -> None:
+    """Hyphenated slugs are valid theme slugs but invalid PHP identifiers."""
+    import os
+    import subprocess
+
+    target_parent = tmp_path / "mono"
+    target_parent.mkdir()
+
+    cmd = [
+        sys.executable,
+        str(BIN_DIR / "clone.py"),
+        "midcentury-emporium",
+        "--source",
+        str(sample_source),
+        "--target",
+        str(target_parent),
+    ]
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PYTHONPATH": str(BIN_DIR)},
+    )
+    assert result.returncode == 0, (
+        f"clone.py failed:\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+
+    clone = target_parent / "midcentury-emporium"
+    style = (clone / "style.css").read_text(encoding="utf-8")
+    functions = (clone / "functions.php").read_text(encoding="utf-8")
+
+    assert "Text Domain: midcentury-emporium" in style
+    assert "midcentury_emporium_render_account_dashboard" in functions
+    assert "midcentury_emporium_swatches_color_map" in functions
+    assert "midcentury-emporium_render_account_dashboard" not in functions
 
 
 def test_clone_writes_incubating_readiness(

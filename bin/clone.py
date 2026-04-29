@@ -96,13 +96,26 @@ def copy_tree(src: Path, dst: Path) -> None:
     shutil.copytree(src, dst, ignore=ignore)
 
 
-def replace_in_file(path: Path, old_lower: str, new_lower: str, old_title: str, new_title: str) -> bool:
+def php_identifier_prefix(slug: str) -> str:
+    """Return a slug-derived prefix that is valid inside PHP identifiers."""
+    return re.sub(r"[^A-Za-z0-9_]", "_", slug)
+
+
+def replace_in_file(
+    path: Path, old_lower: str, new_lower: str, old_title: str, new_title: str
+) -> bool:
     try:
         text = path.read_text(encoding="utf-8")
     except (UnicodeDecodeError, PermissionError):
         return False
 
-    new_text = text.replace(old_title, new_title).replace(old_lower, new_lower)
+    new_text = text.replace(old_title, new_title)
+    if path.suffix.lower() == ".php":
+        # `obel_foo` is a PHP function/callback prefix, not a URL slug.
+        # Hyphenated theme slugs must stay hyphenated in text domains and
+        # classes, but PHP identifiers need underscores.
+        new_text = new_text.replace(f"{old_lower}_", f"{php_identifier_prefix(new_lower)}_")
+    new_text = new_text.replace(old_lower, new_lower)
 
     if new_text != text:
         path.write_text(new_text, encoding="utf-8")
@@ -114,7 +127,9 @@ def main() -> int:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from _lib import MONOREPO_ROOT
 
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("new_name", help="New theme slug (lowercase, e.g. 'acme')")
     parser.add_argument(
         "--target",
@@ -191,9 +206,7 @@ def main() -> int:
                 "design review."
             ),
         }
-        readiness_path.write_text(
-            json.dumps(readiness_doc, indent=2) + "\n", encoding="utf-8"
-        )
+        readiness_path.write_text(json.dumps(readiness_doc, indent=2) + "\n", encoding="utf-8")
         try:
             display = readiness_path.relative_to(MONOREPO_ROOT)
         except ValueError:

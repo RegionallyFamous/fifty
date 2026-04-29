@@ -41,6 +41,7 @@ Exit codes
     1   --check mode: rewrites would be applied (so check fails).
     2   Rewrite failed (file i/o error, palette missing, etc.).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -64,12 +65,68 @@ _BLOCK_CLOSE_RE = re.compile(
 )
 _TEXTCOLOR_RE = re.compile(r'"textColor"\s*:\s*"([a-z0-9-]+)"')
 _BGCOLOR_RE = re.compile(r'"backgroundColor"\s*:\s*"([a-z0-9-]+)"')
+_HTML_TAG_RE = re.compile(r"\s*<([a-z0-9]+)\b([^>]*)>", re.IGNORECASE)
+_CLASS_ATTR_RE = re.compile(r'class="([^"]*)"')
+_TEXT_COLOR_CLASS_RE = re.compile(
+    r"\bhas-(?!text-color\b)(?![a-z0-9-]+-background-color\b)(?![a-z0-9-]+-border-color\b)([a-z0-9-]+)-color\b"
+)
 
 # Same NON_TEXT_BLOCKS set as check_block_text_contrast.
 _NON_TEXT_BLOCKS = {
-    "spacer", "image", "gallery", "cover", "embed",
-    "video", "audio", "separator", "html",
+    "spacer",
+    "image",
+    "gallery",
+    "cover",
+    "embed",
+    "video",
+    "audio",
+    "separator",
+    "html",
 }
+
+
+def _sync_rendered_text_color_classes(text: str) -> tuple[str, int]:
+    """Align saved HTML text-color classes with each block's textColor attr."""
+    rewrites: list[tuple[int, int, str]] = []
+
+    for m_open in _BLOCK_OPEN_RE.finditer(text):
+        block_json = m_open.group(2) or ""
+        t_match = _TEXTCOLOR_RE.search(block_json)
+        if t_match is None:
+            continue
+
+        html_match = _HTML_TAG_RE.match(text, m_open.end())
+        if html_match is None:
+            continue
+
+        tag_start = html_match.start()
+        tag_end = html_match.end()
+        tag = text[tag_start:tag_end]
+        class_match = _CLASS_ATTR_RE.search(tag)
+        if class_match is None or "has-text-color" not in class_match.group(1).split():
+            continue
+
+        desired = f"has-{t_match.group(1)}-color"
+        classes = class_match.group(1)
+        if desired in classes.split():
+            continue
+
+        if _TEXT_COLOR_CLASS_RE.search(classes):
+            new_classes = _TEXT_COLOR_CLASS_RE.sub(desired, classes, count=1)
+        else:
+            new_classes = f"{classes} {desired}".strip()
+
+        class_start = tag_start + class_match.start(1)
+        class_end = tag_start + class_match.end(1)
+        rewrites.append((class_start, class_end, new_classes))
+
+    if not rewrites:
+        return text, 0
+
+    new_text = text
+    for start, end, replacement in sorted(rewrites, key=lambda s: s[0], reverse=True):
+        new_text = new_text[:start] + replacement + new_text[end:]
+    return new_text, len(rewrites)
 
 
 def _rewrite_file(
@@ -153,8 +210,12 @@ def _rewrite_file(
                         palette[eff_bg],
                         palette,
                         candidates=(
-                            "contrast", "base", "secondary", "tertiary",
-                            "accent", "accent-2",
+                            "contrast",
+                            "base",
+                            "secondary",
+                            "tertiary",
+                            "accent",
+                            "accent-2",
                         ),
                         min_ratio=min_ratio,
                     )
@@ -239,13 +300,15 @@ def _rewrite_file(
                 name_stack.pop()
             pos = m_close.end()  # type: ignore[union-attr]
 
-    # Splice rewrites from tail to head.
-    if not rewrites:
-        return text, messages
-
     new_text = text
-    for start, end, replacement in sorted(rewrites, key=lambda s: s[0], reverse=True):
-        new_text = new_text[:start] + replacement + new_text[end:]
+    if rewrites:
+        # Splice rewrites from tail to head.
+        for start, end, replacement in sorted(rewrites, key=lambda s: s[0], reverse=True):
+            new_text = new_text[:start] + replacement + new_text[end:]
+
+    new_text, synced = _sync_rendered_text_color_classes(new_text)
+    if synced:
+        messages.append(f"sync {synced} rendered text-color class(es) with textColor attrs")
 
     return new_text, messages
 
@@ -278,9 +341,7 @@ def _rewrite_css_hover_contrast(
         re.DOTALL,
     )
     _color_var_re = re.compile(r"(?<![a-z-])color\s*:\s*var\(--([a-z0-9-]+)\)")
-    _bg_var_re = re.compile(
-        r"background(?:-color)?\s*:\s*var\(--([a-z0-9-]+)\)"
-    )
+    _bg_var_re = re.compile(r"background(?:-color)?\s*:\s*var\(--([a-z0-9-]+)\)")
 
     messages: list[str] = []
     rewrites: list[tuple[int, int, str]] = []
@@ -331,9 +392,7 @@ def _rewrite_css_hover_contrast(
 
         # Splice: rewrite the color var inside the body
         new_body = _color_var_re.sub(
-            lambda mc, ns=new_slug: mc.group(0).replace(
-                f"var(--{mc.group(1)})", f"var(--{ns})"
-            ),
+            lambda mc, ns=new_slug: mc.group(0).replace(f"var(--{mc.group(1)})", f"var(--{ns})"),
             body,
             count=1,
         )
@@ -378,9 +437,7 @@ def _run_theme_css_contrast(
     if not css_original:
         return 0
 
-    new_css, messages = _rewrite_css_hover_contrast(
-        css_original, palette, min_ratio=min_ratio
-    )
+    new_css, messages = _rewrite_css_hover_contrast(css_original, palette, min_ratio=min_ratio)
     if not messages:
         return 0
 
@@ -391,8 +448,7 @@ def _run_theme_css_contrast(
 
     if new_css != css_original and not check_only:
         tj["styles"]["css"] = new_css
-        tj_path.write_text(json.dumps(tj, indent="\t", ensure_ascii=False) + "\n",
-                           encoding="utf-8")
+        tj_path.write_text(json.dumps(tj, indent="\t", ensure_ascii=False) + "\n", encoding="utf-8")
 
     return 1
 
@@ -408,8 +464,7 @@ def _run_theme(
     """Return number of files that changed (or would change)."""
     palette = load_palette(theme_root / "theme.json")
     if not palette:
-        print(f"{theme_root.name}: palette missing or empty — skipping",
-              file=sys.stderr)
+        print(f"{theme_root.name}: palette missing or empty — skipping", file=sys.stderr)
         return 0
 
     total_changes = 0
@@ -453,27 +508,32 @@ def _run_theme(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("theme", nargs="?", default=None,
-                        help="Theme directory name (or cwd if it has theme.json).")
-    parser.add_argument("--all", action="store_true",
-                        help="Run against every theme in the monorepo.")
-    parser.add_argument("--check", action="store_true",
-                        help="Dry-run: exit 1 if any file would change.")
-    parser.add_argument("--quiet", action="store_true",
-                        help="Only print a per-theme summary.")
-    parser.add_argument("--min-ratio", type=float, default=4.5,
-                        help="WCAG contrast floor. Default 4.5 (AA Normal).")
+    parser.add_argument(
+        "theme", nargs="?", default=None, help="Theme directory name (or cwd if it has theme.json)."
+    )
+    parser.add_argument(
+        "--all", action="store_true", help="Run against every theme in the monorepo."
+    )
+    parser.add_argument(
+        "--check", action="store_true", help="Dry-run: exit 1 if any file would change."
+    )
+    parser.add_argument("--quiet", action="store_true", help="Only print a per-theme summary.")
+    parser.add_argument(
+        "--min-ratio", type=float, default=4.5, help="WCAG contrast floor. Default 4.5 (AA Normal)."
+    )
     args = parser.parse_args()
 
     if args.all:
         codes = []
         for theme_root in iter_themes():
-            codes.append(_run_theme(
-                theme_root,
-                check_only=args.check,
-                quiet=args.quiet,
-                min_ratio=args.min_ratio,
-            ))
+            codes.append(
+                _run_theme(
+                    theme_root,
+                    check_only=args.check,
+                    quiet=args.quiet,
+                    min_ratio=args.min_ratio,
+                )
+            )
         total = sum(codes)
         if args.check and total > 0:
             return 1
