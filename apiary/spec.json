@@ -1,0 +1,46 @@
+{
+  "slug": "apiary",
+  "name": "Apiary",
+  "tagline": "butter yellow, cream, hexagon motifs, soft hand-drawn bees",
+  "voice": "contemporary food store: warm, direct, no exclamation marks.",
+  "source": "lysholm",
+  "palette": {
+    "base": "#f5efe6",
+    "surface": "#ffffff",
+    "subtle": "#f9f5f0",
+    "muted": "#fcfaf8",
+    "border": "#b8b3ac",
+    "tertiary": "#13100d",
+    "secondary": "#191612",
+    "contrast": "#1f1b16",
+    "primary": "#1f1b16",
+    "primary-hover": "#4c4945",
+    "accent": "#f0d88a",
+    "accent-soft": "#faf1d6"
+  },
+  "fonts": {
+    "display": {
+      "family": "Recoleta",
+      "fallback": "Georgia, 'Times New Roman', serif",
+      "google_font": true,
+      "weights": [
+        400,
+        700
+      ]
+    },
+    "sans": {
+      "family": "Public Sans",
+      "fallback": "-apple-system, BlinkMacSystemFont, sans-serif",
+      "google_font": true,
+      "weights": [
+        400,
+        600
+      ]
+    }
+  },
+  "layout_hints": [
+    "repeating pattern as the hero background",
+    "centered wordmark + tagline over the pattern",
+    "three-up product grid below"
+  ]
+}
