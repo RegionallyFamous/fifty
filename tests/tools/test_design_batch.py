@@ -216,6 +216,15 @@ def test_batch_posts_visible_autonomy_pr_comment(script_text: str) -> None:
     assert "Next action" in script_text
 
 
+def test_batch_reports_rescue_layers(script_text: str) -> None:
+    assert "recipes_used" in script_text
+    assert "json_repair_used" in script_text
+    assert "tool_rescue_used" in script_text
+    assert "human_boundary" in script_text
+    assert "rescue_artifacts" in script_text
+    assert "def _read_rescue_summary(" in script_text
+
+
 def test_verify_invocation_uses_snap(script_text: str) -> None:
     """`_run_verify_after_push` MUST conditionally append `--snap`.
 

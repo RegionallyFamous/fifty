@@ -200,6 +200,9 @@ def test_watch_parser_exposes_auto_unblock_flags():
             "--max-repair-rounds",
             "2",
             "--unblock-dry-run",
+            "--no-recipes",
+            "--no-json-repair",
+            "--no-tool-rescue",
             "--",
             "--spec",
             "tmp/specs/agave.json",
@@ -208,6 +211,9 @@ def test_watch_parser_exposes_auto_unblock_flags():
     assert args.auto_unblock is True
     assert args.max_repair_rounds == 2
     assert args.unblock_dry_run is True
+    assert args.no_recipes is True
+    assert args.no_json_repair is True
+    assert args.no_tool_rescue is True
 
 
 def test_resume_design_args_replaces_from():
@@ -249,6 +255,7 @@ def test_write_status_emits_auto_unblock_section(tmp_path):
     )
     state.repair_round = 1
     state.repair_last_decision = "not-improved"
+    state.repair_last_layer = "tool-rescue"
     state.repair_last_reason = "Blocker set unchanged after repair attempt."
     state.repair_last_touched = ["agave/theme.json"]
     state.repair_attempts = [{"attempt": 1, "decision": "not-improved", "reason": "unchanged"}]
@@ -258,5 +265,6 @@ def test_write_status_emits_auto_unblock_section(tmp_path):
     body = status_path.read_text(encoding="utf-8")
     assert "## Auto-Unblock" in body
     assert "not-improved" in body
+    assert "tool-rescue" in body
     assert "agave/theme.json" in body
     assert "Auto-unblock stopped:" in body

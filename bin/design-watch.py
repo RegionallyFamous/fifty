@@ -128,6 +128,7 @@ class WatchState:
     repair_attempts: list[dict[str, Any]] = field(default_factory=list)
     repair_active: bool = False
     repair_round: int = 0
+    repair_last_layer: str = ""
     repair_last_decision: str = ""
     repair_last_reason: str = ""
     repair_last_touched: list[str] = field(default_factory=list)
@@ -455,6 +456,8 @@ def write_status(
             lines.append(
                 f"- Last decision: {state.repair_last_decision} — {state.repair_last_reason}"
             )
+        if state.repair_last_layer:
+            lines.append(f"- Last layer: {state.repair_last_layer}")
         if state.repair_last_touched:
             lines.append("- Files touched (most recent):")
             for touched in state.repair_last_touched[:10]:
@@ -593,6 +596,9 @@ def build_parser() -> argparse.ArgumentParser:
             "into STATUS.md and stop, without calling the LLM."
         ),
     )
+    parser.add_argument("--no-recipes", action="store_true", help="Skip deterministic repair recipes.")
+    parser.add_argument("--no-json-repair", action="store_true", help="Skip the JSON edit repair layer.")
+    parser.add_argument("--no-tool-rescue", action="store_true", help="Skip bounded tool-rescue repair.")
     return parser
 
 
@@ -768,9 +774,10 @@ def run_auto_unblock_round(
     state: WatchState,
     run_dir: Path,
     *,
+    layer: str,
     dry_run: bool = False,
 ) -> tuple[int, str]:
-    """Invoke `bin/design_unblock.py --apply --agentic` once.
+    """Invoke one design_unblock repair layer once.
 
     Returns (returncode, resume_phase). The caller decides whether to
     re-enter `run_subprocess` with the resume phase.
@@ -784,11 +791,23 @@ def run_auto_unblock_round(
         "--run-id",
         state.run_id,
     ]
-    if dry_run:
+    if layer == "recipes":
+        cmd.append("--recipes")
+    elif layer == "json-llm" and dry_run:
         cmd.extend(["--agentic", "--agentic-dry-run"])
-    else:
+    elif layer == "json-llm":
         cmd.extend(["--apply", "--agentic"])
-    print(f"Working: Auto-unblock round {state.repair_round}: {' '.join(cmd)}", flush=True)
+    elif layer == "tool-rescue" and dry_run:
+        cmd.extend(["--tool-rescue", "--tool-rescue-dry-run"])
+    elif layer == "tool-rescue":
+        cmd.append("--tool-rescue")
+    else:
+        raise ValueError(f"unknown repair layer: {layer}")
+    print(
+        f"Working: Auto-unblock round {state.repair_round} "
+        f"({layer}): {' '.join(cmd)}",
+        flush=True,
+    )
     proc = subprocess.run(cmd, cwd=str(ROOT), check=False)
     # Read the attempt record that was just appended.
     attempts = _read_attempts(run_dir)
@@ -799,6 +818,9 @@ def run_auto_unblock_round(
         state.repair_last_decision = str(last.get("decision") or "")
         state.repair_last_reason = str(last.get("reason") or "")
         state.repair_last_touched = list(last.get("touched_files") or [])
+        verification = last.get("verification") or {}
+        if isinstance(verification, dict):
+            state.repair_last_layer = str(verification.get("layer") or layer)
         # Load the plan to learn the recommended resume phase.
         plan_path = run_dir / "repair-plan.json"
         if plan_path.is_file():
@@ -880,28 +902,50 @@ def main(argv: list[str] | None = None) -> int:
         and classify_verdict(state) == "blocked"
         and state.check_failures
     ):
+        repair_layers: list[str] = []
+        if not watch_args.no_recipes:
+            repair_layers.append("recipes")
+        if not watch_args.no_json_repair:
+            repair_layers.append("json-llm")
+        if not watch_args.no_tool_rescue:
+            repair_layers.append("tool-rescue")
         while state.repair_round < watch_args.max_repair_rounds:
-            rc_unblock, resume_phase = run_auto_unblock_round(
-                state,
-                run_dir,
-                dry_run=watch_args.unblock_dry_run,
-            )
-            write_status(
-                status_path, state, event_path=event_path, summary_path=summary_path
-            )
-            # Exit codes from design_unblock.py:
-            #   0 = fixed / improved, resume OK
-            #   3 = worse, stop
-            #   4 = stopped (cap or streak), stop
-            #   5 = dry-run / API missing, stop
-            #   2 = worktree dirty, stop
-            if rc_unblock in (2, 3, 4, 5) or watch_args.unblock_dry_run:
+            rc_unblock = 4
+            resume_phase = "check"
+            layer_used = ""
+            for layer in repair_layers:
+                if state.repair_round >= watch_args.max_repair_rounds:
+                    break
+                rc_unblock, resume_phase = run_auto_unblock_round(
+                    state,
+                    run_dir,
+                    layer=layer,
+                    dry_run=watch_args.unblock_dry_run,
+                )
+                layer_used = layer
+                write_status(
+                    status_path, state, event_path=event_path, summary_path=summary_path
+                )
+                # Exit codes from design_unblock.py:
+                #   0 = fixed / improved, resume OK
+                #   2 = worktree dirty, stop
+                #   3 = worse, stop
+                #   4 = stopped (cap or streak), try next layer
+                #   5 = dry-run / API missing, try next layer unless dry-run
+                if rc_unblock == 0:
+                    break
+                if rc_unblock in (2, 3) or watch_args.unblock_dry_run:
+                    break
+                # A non-improving JSON pass should fall through to the
+                # stronger tool-rescue layer; the final layer handles
+                # escalation below.
+            if rc_unblock != 0:
                 state.repair_stop_reason = {
                     2: "Worktree has unrelated framework changes.",
                     3: "Repair attempt made verification worse.",
                     4: "Repair cap or non-improving streak reached.",
-                    5: "LLM unavailable or dry-run; handoff to a human.",
-                }.get(rc_unblock, "Repair halted.")
+                    5: "LLM unavailable or dry-run; handoff to a human boundary.",
+                }.get(rc_unblock, f"Repair halted after {layer_used or 'no layer'}.")
                 break
 
             # Prepare a resume: reset per-run artifacts the next child run
