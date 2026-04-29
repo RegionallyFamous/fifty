@@ -866,138 +866,167 @@ def run_subprocess(
     assert proc.stdout is not None
     selector = selectors.DefaultSelector()
     selector.register(proc.stdout, selectors.EVENT_READ)
+    previous_handlers = _install_forwarding_signal_handlers(proc)
+    try:
+        while proc.poll() is None:
+            ready = selector.select(timeout=1.0)
+            if ready:
+                line = proc.stdout.readline()
+                if line:
+                    process_output_line(
+                        state,
+                        event_path,
+                        status_path,
+                        summary_path,
+                        line,
+                        verbose=verbose,
+                    )
 
-    while proc.poll() is None:
-        ready = selector.select(timeout=1.0)
-        if ready:
-            line = proc.stdout.readline()
-            if line:
-                process_output_line(
+            now = time.time()
+            if now - state.last_heartbeat_at >= heartbeat_seconds:
+                emit_status(
                     state,
+                    status_path=status_path,
+                    event_path=event_path,
+                    summary_path=summary_path,
+                )
+                state.last_heartbeat_at = now
+                write_event(event_path, {"type": "heartbeat", "phase": state.current_phase})
+            if (
+                stall_seconds > 0
+                and now - state.last_output_at >= stall_seconds
+                and now - state.last_stall_at >= stall_seconds
+            ):
+                emit_status(
+                    state,
+                    stalled=True,
+                    status_path=status_path,
+                    event_path=event_path,
+                    summary_path=summary_path,
+                )
+                state.last_stall_at = now
+                write_event(event_path, {"type": "stall", "phase": state.current_phase})
+            if max_elapsed_seconds > 0 and now - state.started_at >= max_elapsed_seconds:
+                elapsed = format_elapsed(now - state.started_at)
+                reason = (
+                    f"Factory timeout: run exceeded {format_elapsed(max_elapsed_seconds)} "
+                    f"total while {PHASE_LABELS.get(state.current_phase, state.current_phase)}."
+                )
+                _terminate_child(proc, reason=reason)
+                state.check_failures.append(
+                    CheckFailure(
+                        title="Factory timeout guard",
+                        detail=reason,
+                        summary=(
+                            f"The run took {elapsed}, over the 20 minute safety cap. "
+                            "The factory stopped it instead of letting it burn the queue."
+                        ),
+                        next_action=(
+                            "Inspect the current STATUS.md and fix the slow or wedged phase "
+                            "before resuming the batch."
+                        ),
+                    )
+                )
+                write_event(
                     event_path,
-                    status_path,
-                    summary_path,
-                    line,
-                    verbose=verbose,
+                    {
+                        "type": "timeout_kill",
+                        "kind": "max_elapsed",
+                        "phase": state.current_phase,
+                        "elapsed_s": round(now - state.started_at, 3),
+                        "reason": reason,
+                    },
                 )
+                emit_status(
+                    state,
+                    status_path=status_path,
+                    event_path=event_path,
+                    summary_path=summary_path,
+                )
+                return 124
+            if kill_stall_seconds > 0 and now - state.last_output_at >= kill_stall_seconds:
+                quiet_for = format_elapsed(now - state.last_output_at)
+                reason = (
+                    f"Factory stall guard: no output for {quiet_for} while "
+                    f"{PHASE_LABELS.get(state.current_phase, state.current_phase)}."
+                )
+                _terminate_child(proc, reason=reason)
+                state.check_failures.append(
+                    CheckFailure(
+                        title="Factory stall guard",
+                        detail=reason,
+                        summary=(
+                            f"The run produced no output for {quiet_for}. "
+                            "The factory stopped it instead of waiting indefinitely."
+                        ),
+                        next_action=(
+                            "Inspect the child phase logs and make the stalled phase fail fast "
+                            "or emit progress before resuming the batch."
+                        ),
+                    )
+                )
+                write_event(
+                    event_path,
+                    {
+                        "type": "timeout_kill",
+                        "kind": "stall",
+                        "phase": state.current_phase,
+                        "quiet_s": round(now - state.last_output_at, 3),
+                        "reason": reason,
+                    },
+                )
+                emit_status(
+                    state,
+                    status_path=status_path,
+                    event_path=event_path,
+                    summary_path=summary_path,
+                )
+                return 124
 
-        now = time.time()
-        if now - state.last_heartbeat_at >= heartbeat_seconds:
-            emit_status(
+        for line in proc.stdout:
+            process_output_line(
                 state,
-                status_path=status_path,
-                event_path=event_path,
-                summary_path=summary_path,
-            )
-            state.last_heartbeat_at = now
-            write_event(event_path, {"type": "heartbeat", "phase": state.current_phase})
-        if (
-            stall_seconds > 0
-            and now - state.last_output_at >= stall_seconds
-            and now - state.last_stall_at >= stall_seconds
-        ):
-            emit_status(
-                state,
-                stalled=True,
-                status_path=status_path,
-                event_path=event_path,
-                summary_path=summary_path,
-            )
-            state.last_stall_at = now
-            write_event(event_path, {"type": "stall", "phase": state.current_phase})
-        if max_elapsed_seconds > 0 and now - state.started_at >= max_elapsed_seconds:
-            elapsed = format_elapsed(now - state.started_at)
-            reason = (
-                f"Factory timeout: run exceeded {format_elapsed(max_elapsed_seconds)} "
-                f"total while {PHASE_LABELS.get(state.current_phase, state.current_phase)}."
-            )
-            _terminate_child(proc, reason=reason)
-            state.check_failures.append(
-                CheckFailure(
-                    title="Factory timeout guard",
-                    detail=reason,
-                    summary=(
-                        f"The run took {elapsed}, over the 20 minute safety cap. "
-                        "The factory stopped it instead of letting it burn the queue."
-                    ),
-                    next_action=(
-                        "Inspect the current STATUS.md and fix the slow or wedged phase "
-                        "before resuming the batch."
-                    ),
-                )
-            )
-            write_event(
                 event_path,
-                {
-                    "type": "timeout_kill",
-                    "kind": "max_elapsed",
-                    "phase": state.current_phase,
-                    "elapsed_s": round(now - state.started_at, 3),
-                    "reason": reason,
-                },
+                status_path,
+                summary_path,
+                line,
+                verbose=verbose,
             )
-            emit_status(
-                state,
-                status_path=status_path,
-                event_path=event_path,
-                summary_path=summary_path,
-            )
-            selector.close()
-            proc.stdout.close()
-            return 124
-        if kill_stall_seconds > 0 and now - state.last_output_at >= kill_stall_seconds:
-            quiet_for = format_elapsed(now - state.last_output_at)
-            reason = (
-                f"Factory stall guard: no output for {quiet_for} while "
-                f"{PHASE_LABELS.get(state.current_phase, state.current_phase)}."
-            )
-            _terminate_child(proc, reason=reason)
-            state.check_failures.append(
-                CheckFailure(
-                    title="Factory stall guard",
-                    detail=reason,
-                    summary=(
-                        f"The run produced no output for {quiet_for}. "
-                        "The factory stopped it instead of waiting indefinitely."
-                    ),
-                    next_action=(
-                        "Inspect the child phase logs and make the stalled phase fail fast "
-                        "or emit progress before resuming the batch."
-                    ),
-                )
-            )
-            write_event(
-                event_path,
-                {
-                    "type": "timeout_kill",
-                    "kind": "stall",
-                    "phase": state.current_phase,
-                    "quiet_s": round(now - state.last_output_at, 3),
-                    "reason": reason,
-                },
-            )
-            emit_status(
-                state,
-                status_path=status_path,
-                event_path=event_path,
-                summary_path=summary_path,
-            )
-            selector.close()
-            proc.stdout.close()
-            return 124
+        return int(proc.returncode or 0)
+    finally:
+        _restore_signal_handlers(previous_handlers)
+        selector.close()
+        proc.stdout.close()
 
-    for line in proc.stdout:
-        process_output_line(
-            state,
-            event_path,
-            status_path,
-            summary_path,
-            line,
-            verbose=verbose,
-        )
-    selector.close()
-    proc.stdout.close()
-    return int(proc.returncode or 0)
+
+def _install_forwarding_signal_handlers(
+    proc: subprocess.Popen[str],
+) -> dict[signal.Signals, Any]:
+    """Forward external interrupts to the supervised process group.
+
+    Nested watchers start their own child process groups. If a parent
+    watcher times out and SIGTERMs this watcher, Python's default
+    handler exits immediately and leaves the nested child running. This
+    forwarding handler makes every watcher clean up its own child before
+    it dies.
+    """
+
+    handled = (signal.SIGTERM, signal.SIGINT)
+    previous = {sig: signal.getsignal(sig) for sig in handled}
+
+    def _forward(signum: int, _frame: Any) -> None:
+        name = signal.Signals(signum).name
+        _terminate_child(proc, reason=f"Received {name}; forwarding to child process group.")
+        raise SystemExit(128 + signum)
+
+    for sig in handled:
+        signal.signal(sig, _forward)
+    return previous
+
+
+def _restore_signal_handlers(previous: dict[signal.Signals, Any]) -> None:
+    for sig, handler in previous.items():
+        signal.signal(sig, handler)
 
 
 def _terminate_child(proc: subprocess.Popen[str], *, reason: str) -> None:

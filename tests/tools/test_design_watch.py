@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib.util
+import os
+import signal
 import subprocess
 import sys
 import time
@@ -309,6 +311,64 @@ def test_run_subprocess_kills_overlong_child(tmp_path):
     assert state.check_failures
     assert state.check_failures[0].title == "Factory timeout guard"
     assert watch._runtime_guard_fired(state) is True
+
+
+def test_design_watch_forwards_external_sigterm_to_child(tmp_path):
+    child_pid_path = tmp_path / "child.pid"
+    child_script = tmp_path / "child_sleep.py"
+    child_script.write_text(
+        "import os\n"
+        "import pathlib\n"
+        "import time\n"
+        f"pathlib.Path({str(child_pid_path)!r}).write_text(str(os.getpid()))\n"
+        "time.sleep(30)\n"
+    )
+    proc = subprocess.Popen(
+        [
+            sys.executable,
+            str(BIN_DIR / "design-watch.py"),
+            "--run-id",
+            "sigterm-demo",
+            "--heartbeat-seconds",
+            "60",
+            "--stall-seconds",
+            "60",
+            "--kill-stall-seconds",
+            "60",
+            "--max-elapsed-seconds",
+            "0",
+            "--script",
+            str(child_script),
+            "--",
+            "ignored-arg",
+        ],
+        cwd=REPO_ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        deadline = time.time() + 5
+        while not child_pid_path.exists() and time.time() < deadline:
+            time.sleep(0.05)
+        assert child_pid_path.exists(), "child process did not start"
+        child_pid = int(child_pid_path.read_text())
+
+        proc.terminate()
+        _stdout, stderr = proc.communicate(timeout=10)
+
+        assert proc.returncode == 128 + signal.SIGTERM
+        assert "Received SIGTERM; forwarding to child process group" in stderr
+        try:
+            os.kill(child_pid, 0)
+        except ProcessLookupError:
+            pass
+        else:
+            raise AssertionError(f"child process {child_pid} survived design-watch SIGTERM")
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.communicate(timeout=5)
 
 
 def test_runtime_guard_fired_false_for_normal_check_failure():
