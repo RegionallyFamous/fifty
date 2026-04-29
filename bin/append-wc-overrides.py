@@ -767,6 +767,8 @@ body.theme-chonk .wo-payment-icons__icon{{border:2px solid var(--wp--preset--col
 body.theme-obel .wo-payment-icons__icon{{border:1px solid var(--wp--preset--color--border);border-radius:var(--wp--custom--radius--md,4px);}}
 body.theme-selvedge .wo-payment-icons__icon{{border:0;border-bottom:1px solid var(--wp--preset--color--border);border-radius:0;}}
 body.theme-lysholm .wo-payment-icons__icon{{border:0;border-radius:var(--wp--custom--radius--pill,9999px);box-shadow:0 1px 2px rgba(0,0,0,0.06);}}
+body.theme-basalt .wo-payment-icons__icon{{border:1px solid var(--wp--preset--color--border);border-radius:2px;background:var(--wp--preset--color--surface);}}
+body.theme-foundry .wo-payment-icons__icon{{border:1px solid var(--wp--preset--color--accent);border-radius:var(--wp--custom--radius--sm,3px);background:var(--wp--preset--color--base);box-shadow:0 1px 0 var(--wp--preset--color--contrast);}}
 {SENTINEL_CLOSE_PHASE_F}"""
 
 
@@ -805,6 +807,8 @@ body.theme-chonk .wc-block-cart__sidebar,body.theme-chonk .wc-block-checkout__si
 body.theme-obel .wc-block-cart__sidebar,body.theme-obel .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--subtle);border-radius:var(--wp--custom--radius--md);display:flex;flex-direction:column;gap:var(--wp--preset--spacing--lg);}}
 body.theme-selvedge .wc-block-cart__sidebar,body.theme-selvedge .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--surface);border:1px solid var(--wp--preset--color--border);border-radius:0;display:flex;flex-direction:column;gap:var(--wp--preset--spacing--lg);}}
 body.theme-lysholm .wc-block-cart__sidebar,body.theme-lysholm .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--surface);border:1px solid var(--wp--preset--color--accent-soft,var(--wp--preset--color--border));border-radius:var(--wp--custom--radius--lg,16px);box-shadow:0 2px 12px rgba(0,0,0,0.04);display:flex;flex-direction:column;gap:var(--wp--preset--spacing--lg);}}
+body.theme-basalt .wc-block-cart__sidebar,body.theme-basalt .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--surface);border:1px solid var(--wp--preset--color--border);border-radius:0;display:flex;flex-direction:column;gap:var(--wp--preset--spacing--md);}}
+body.theme-foundry .wc-block-cart__sidebar,body.theme-foundry .wc-block-checkout__sidebar{{padding:var(--wp--preset--spacing--xl);background:var(--wp--preset--color--base);border-top:2px solid var(--wp--preset--color--accent);border-bottom:2px solid var(--wp--preset--color--accent);border-left:0;border-right:0;border-radius:0;display:flex;flex-direction:column;gap:var(--wp--preset--spacing--lg);}}
 {SENTINEL_CLOSE_PHASE_G}"""
 
 
