@@ -1342,6 +1342,7 @@ def build(*, dry_run: bool = False) -> int:
         Path("blindspot-decisions.md"),
         Path("ci-pat-setup.md"),
         Path("day-0-smoke.md"),
+        Path("how-it-works.md"),
         Path("shipping-a-theme.md"),
         Path("tier-3-deferrals.md"),
         # docs/themes/index.html is rebuilt by `bin/build-theme-status.py`
