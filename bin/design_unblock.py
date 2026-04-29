@@ -1765,6 +1765,15 @@ def _parse_tool_rescue_response(raw_text: str) -> dict[str, Any]:
     return data
 
 
+def _human_boundary_from_exception(exc: Exception) -> str | None:
+    text = str(exc)
+    if "Too Many Requests" in text or "HTTPError 429" in text:
+        return "external-rate-limit"
+    if "ApiKeyMissingError" in text or "ANTHROPIC_API_KEY" in text:
+        return "missing-api-key"
+    return None
+
+
 def _apply_llm_edits(
     slug: str,
     edits: list[dict[str, Any]],
@@ -2000,6 +2009,7 @@ def agentic_repair(
             return 5
         except Exception as exc:
             # A transient API failure is a stop; the operator should retry.
+            boundary = _human_boundary_from_exception(exc)
             record = AttemptRecord(
                 at=time.time(),
                 attempt=attempt_number,
@@ -2009,7 +2019,7 @@ def agentic_repair(
                 after=[b.fingerprint for b in plan.blockers],
                 touched_files=[],
                 commands=[],
-                verification={"layer": "json-llm"},
+                verification={"layer": "json-llm", "human_boundary": boundary} if boundary else {"layer": "json-llm"},
                 notes=[repr(exc)],
             )
             append_attempt(run_dir, record)
@@ -2210,19 +2220,26 @@ def tool_rescue(
             print(f"refusing to --tool-rescue: {exc}", file=sys.stderr)
             return 5
         except Exception as exc:
+            boundary = _human_boundary_from_exception(exc)
             record = AttemptRecord(
                 at=time.time(),
                 attempt=attempt_number,
-                decision="not-improved",
+                decision="stopped" if boundary else "not-improved",
                 reason=f"Tool rescue call/parse failure: {exc!s}",
                 before=[b.fingerprint for b in plan.blockers],
                 after=[b.fingerprint for b in plan.blockers],
                 touched_files=[],
                 commands=[],
-                verification={"layer": "tool-rescue", "error": repr(exc)},
+                verification={
+                    "layer": "tool-rescue",
+                    "error": repr(exc),
+                    **({"human_boundary": boundary} if boundary else {}),
+                },
                 notes=["tool rescue response failed"],
             )
             append_attempt(run_dir, record)
+            if boundary:
+                return 4
             attempt_history.append(asdict(record))
             continue
 

@@ -586,6 +586,15 @@ def test_non_improving_streak_can_be_layer_scoped(tmp_path: Path):
     assert u._non_improving_streak(run_dir, layer="tool-rescue") == 0
 
 
+def test_api_rate_limit_exception_maps_to_external_boundary():
+    u = _load_module()
+    exc = RuntimeError(
+        "Anthropic call failed after 3 attempts: <HTTPError 429: 'Too Many Requests'>"
+    )
+
+    assert u._human_boundary_from_exception(exc) == "external-rate-limit"
+
+
 # ---------------------------------------------------------------------------
 # Edit safety (the core of "LLM can edit until green, safely")
 # ---------------------------------------------------------------------------
