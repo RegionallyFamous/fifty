@@ -254,6 +254,48 @@ def test_skip_snap_check_does_not_require_snap_evidence() -> None:
     assert 'env.setdefault("FIFTY_REQUIRE_SNAP_EVIDENCE", "1")' in src
 
 
+def test_final_commit_refreshes_last_mile_artifacts() -> None:
+    """The final commit must not rely on earlier phases alone.
+
+    Operators frequently re-run from `--only commit` or after a partial
+    failure. Phase N should refresh INDEX.md, home snap evidence, and
+    screenshot.png immediately before staging so copied source-theme
+    screenshots and stale indexes cannot reach the pre-commit hook.
+    """
+    src = DESIGN_PY.read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    commit_fn: ast.FunctionDef | None = None
+    guard_fn: ast.FunctionDef | None = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "_phase_commit":
+            commit_fn = node
+        if isinstance(node, ast.FunctionDef) and node.name == "_refresh_final_commit_artifacts":
+            guard_fn = node
+    assert commit_fn is not None, "bin/design.py no longer defines `_phase_commit`"
+    assert guard_fn is not None, (
+        "bin/design.py must define `_refresh_final_commit_artifacts` so the "
+        "last-mile artifact contract is named and testable."
+    )
+    assert any(
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "_refresh_final_commit_artifacts"
+        for node in ast.walk(commit_fn)
+    ), "_phase_commit must call `_refresh_final_commit_artifacts` before staging."
+
+    guard_src = ast.get_source_segment(src, guard_fn) or ""
+    for required in (
+        "_phase_index(spec, dest, args)",
+        '"shoot"',
+        '"home"',
+        '"mobile"',
+        '"desktop"',
+        '"--no-skip"',
+        "_run_theme_screenshot(spec, strict=True)",
+    ):
+        assert required in guard_src
+
+
 def test_skip_publish_drops_prepublish_too() -> None:
     """`--skip-publish` must filter out `prepublish` in addition to
     `publish`. A regression that lets prepublish push under

@@ -1470,6 +1470,26 @@ def _phase_scorecard(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) 
         raise PhaseError("scorecard", f"bin/design-scorecard.py exited {rc}")
 
 
+def _run_theme_screenshot(spec: ValidatedSpec, *, strict: bool = False) -> None:
+    script = ROOT / "bin" / "build-theme-screenshots.py"
+    if not script.is_file():
+        message = "bin/build-theme-screenshots.py missing; skipping."
+        if strict:
+            raise PhaseError("screenshot", message)
+        print(f"  [screenshot] WARN: {message}")
+        return
+    cmd = [sys.executable, str(script), spec.slug]
+    print(f"  [screenshot] {' '.join(cmd[1:])}")
+    rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
+    if rc != 0:
+        message = f"bin/build-theme-screenshots.py exited {rc}"
+        if strict:
+            raise PhaseError("screenshot", message)
+        # Non-strict so a missing baseline (e.g. --skip-snap flow) doesn't
+        # abort the whole run; check.py will still flag the mismatch.
+        print(f"  [screenshot] WARN: {message}; check.py will flag if screenshot.png is stale.")
+
+
 def _phase_screenshot(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
     """Run `bin/build-theme-screenshots.py <slug>` to derive the theme's
     WordPress admin `screenshot.png` from the freshly promoted baseline.
@@ -1480,20 +1500,51 @@ def _phase_screenshot(spec: ValidatedSpec, dest: Path, args: argparse.Namespace)
     and the git pre-commit hook fails at the last mile of the build.
     We bake the derivation into the pipeline so the gate stays green
     without a separate manual step."""
-    script = ROOT / "bin" / "build-theme-screenshots.py"
-    if not script.is_file():
-        print("  [screenshot] WARN: bin/build-theme-screenshots.py missing; skipping.")
-        return
-    cmd = [sys.executable, str(script), spec.slug]
-    print(f"  [screenshot] {' '.join(cmd[1:])}")
+    _run_theme_screenshot(spec, strict=False)
+
+
+def _refresh_final_commit_artifacts(
+    spec: ValidatedSpec,
+    dest: Path,
+    args: argparse.Namespace,
+) -> None:
+    """Refresh last-mile artifacts immediately before the final commit.
+
+    The normal phase list already contains `index`, `snap`, and `screenshot`,
+    but the final commit is where the Git hooks judge the staged tree. Running
+    a cheap, focused guard here makes `--from commit` / re-runs resilient and
+    prevents copied screenshots or stale INDEX.md from reaching pre-commit.
+    """
+    print("  [commit] refreshing final artifacts (index, home snap, screenshot)")
+    _phase_index(spec, dest, args)
+
+    if getattr(args, "skip_snap", False):
+        raise PhaseError(
+            "commit",
+            "--skip-snap cannot produce a final design commit. Re-run without "
+            "--skip-snap so the commit guard can refresh home snap evidence "
+            "and screenshot.png, or pass --skip-commit for a local-only rehearsal.",
+        )
+
+    cmd = [
+        sys.executable,
+        str(ROOT / "bin" / "snap.py"),
+        "shoot",
+        spec.slug,
+        "--routes",
+        "home",
+        "--viewports",
+        "mobile",
+        "desktop",
+        "--cache-state",
+        "--no-skip",
+    ]
+    print(f"  [commit] {' '.join(cmd[1:])}")
     rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
     if rc != 0:
-        # Non-strict so a missing baseline (e.g. --skip-snap flow) doesn't
-        # abort the whole run; check.py will still flag the mismatch.
-        print(
-            f"  [screenshot] WARN: bin/build-theme-screenshots.py exited {rc}; "
-            "check.py will flag if screenshot.png is stale."
-        )
+        raise PhaseError("commit", f"final home snap guard exited {rc}")
+
+    _run_theme_screenshot(spec, strict=True)
 
 
 def _phase_check(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
@@ -1600,6 +1651,8 @@ def _phase_commit(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> 
     # though MONOREPO_ROOT is always the cwd for other phase
     # subprocesses. The extra clarity is worth a few characters.
     git = ["git", "-C", str(MONOREPO_ROOT)]
+
+    _refresh_final_commit_artifacts(spec, dest, args)
 
     # Scope the stage to the directories we actually wrote. A blanket
     # `git add -A` would sweep unrelated WIP in the operator's working

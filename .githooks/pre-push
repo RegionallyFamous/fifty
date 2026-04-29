@@ -317,15 +317,36 @@ else
   if [ -n "$scope_base" ]; then
     snap_check_cmd+=(--changed-base "$scope_base")
   fi
-  if ! FIFTY_SKIP_UNPUSHED_CHECK=1 FIFTY_SKIP_EVIDENCE_FRESHNESS=1 \
-        "${snap_check_cmd[@]}"; then
+  snap_check_log="$(mktemp "${TMPDIR:-/tmp}/fifty-snap-check.XXXXXX")"
+  set +e
+  FIFTY_SKIP_UNPUSHED_CHECK=1 FIFTY_SKIP_EVIDENCE_FRESHNESS=1 \
+        "${snap_check_cmd[@]}" 2>&1 | tee "$snap_check_log"
+  snap_check_rc=${PIPESTATUS[0]}
+  set -e
+  if [ "$snap_check_rc" -ne 0 ]; then
     echo
-    echo "✘ pre-push blocked: bin/snap.py check --changed reported"
-    echo "  visual or accessibility regressions. Fix locally, re-snap,"
-    echo "  commit, then re-push. To bypass once (NOT recommended):"
-    echo "      FIFTY_SKIP_VISUAL_PUSH=1 git push"
+    if python3 - "$snap_check_log" <<'PY'
+import pathlib
+import sys
+
+text = pathlib.Path(sys.argv[1]).read_text(errors="replace")
+raise SystemExit(0 if "SNAP_INFRASTRUCTURE_TIMEOUT" in text else 1)
+PY
+    then
+      echo "✘ pre-push blocked: bin/snap.py check --changed hit a Playground infrastructure timeout."
+      echo "  No visual or accessibility findings were emitted. Re-run the push to retry"
+      echo "  the snap matrix, or use the documented one-time timeout bypass:"
+      echo "      FIFTY_SKIP_VISUAL_PUSH=1 git push"
+    else
+      echo "✘ pre-push blocked: bin/snap.py check --changed reported"
+      echo "  visual or accessibility regressions. Fix locally, re-snap,"
+      echo "  commit, then re-push. To bypass once (NOT recommended):"
+      echo "      FIFTY_SKIP_VISUAL_PUSH=1 git push"
+    fi
+    rm -f "$snap_check_log"
     exit 1
   fi
+  rm -f "$snap_check_log"
 
   # The visual gate above re-shot every changed theme, so there is
   # now snap evidence on disk for them. Re-run the static gate with
