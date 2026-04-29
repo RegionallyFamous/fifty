@@ -16,8 +16,10 @@ gated on `os.environ.get('ANTHROPIC_API_KEY')`.
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import sys
+import urllib.error
 from pathlib import Path
 
 import pytest
@@ -59,6 +61,42 @@ def test_estimate_cost_usd_combined():
 
     cost = vl.estimate_cost_usd(2000, 800, price_input_per_mtok=3.0, price_output_per_mtok=15.0)
     assert cost == pytest.approx(0.018)
+
+
+def test_parse_retry_after_accepts_seconds():
+    import _vision_lib as vl
+
+    assert vl.parse_retry_after("7.5") == pytest.approx(7.5)
+
+
+def test_post_with_retry_uses_anthropic_retry_after(monkeypatch):
+    import _vision_lib as vl
+
+    sleeps: list[float] = []
+
+    def rate_limited(*args, **kwargs):
+        raise urllib.error.HTTPError(
+            url="https://api.anthropic.com/v1/messages",
+            code=429,
+            msg="Too Many Requests",
+            hdrs={
+                "retry-after": "6",
+                "anthropic-ratelimit-input-tokens-remaining": "0",
+                "anthropic-ratelimit-input-tokens-reset": "2026-04-29T02:30:00Z",
+            },
+            fp=io.BytesIO(b'{"error":{"message":"rate limit"}}'),
+        )
+
+    monkeypatch.setattr(vl.urllib.request, "urlopen", rate_limited)
+    monkeypatch.setattr(vl.time, "sleep", lambda seconds: sleeps.append(seconds))
+
+    with pytest.raises(vl.ApiCallFailedError) as exc_info:
+        vl._post_with_retry({"model": "claude", "messages": []}, {}, timeout_s=1)
+
+    assert sleeps == [6.0, 6.0]
+    assert exc_info.value.status == 429
+    assert exc_info.value.retry_after_seconds == pytest.approx(6.0)
+    assert exc_info.value.rate_limit_headers["anthropic-ratelimit-input-tokens-remaining"] == "0"
 
 
 def test_fingerprint_is_stable_for_identical_inputs():

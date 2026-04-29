@@ -595,6 +595,20 @@ def test_api_rate_limit_exception_maps_to_external_boundary():
     assert u._human_boundary_from_exception(exc) == "external-rate-limit"
 
 
+def test_exception_boundary_metadata_preserves_retry_headers():
+    u = _load_module()
+
+    class Exc(Exception):
+        status = 429
+        retry_after_seconds = 12.0
+        rate_limit_headers = {"retry-after": "12"}
+
+    metadata = u._exception_boundary_metadata(Exc("rate limited"))
+
+    assert metadata["retry_after_seconds"] == 12.0
+    assert metadata["rate_limit_headers"]["retry-after"] == "12"
+
+
 # ---------------------------------------------------------------------------
 # Edit safety (the core of "LLM can edit until green, safely")
 # ---------------------------------------------------------------------------

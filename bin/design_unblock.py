@@ -1766,12 +1766,26 @@ def _parse_tool_rescue_response(raw_text: str) -> dict[str, Any]:
 
 
 def _human_boundary_from_exception(exc: Exception) -> str | None:
+    status = getattr(exc, "status", None)
+    if status == 429:
+        return "external-rate-limit"
     text = str(exc)
     if "Too Many Requests" in text or "HTTPError 429" in text:
         return "external-rate-limit"
     if "ApiKeyMissingError" in text or "ANTHROPIC_API_KEY" in text:
         return "missing-api-key"
     return None
+
+
+def _exception_boundary_metadata(exc: Exception) -> dict[str, Any]:
+    metadata: dict[str, Any] = {}
+    retry_after = getattr(exc, "retry_after_seconds", None)
+    if retry_after is not None:
+        metadata["retry_after_seconds"] = retry_after
+    rate_headers = getattr(exc, "rate_limit_headers", None)
+    if isinstance(rate_headers, dict) and rate_headers:
+        metadata["rate_limit_headers"] = rate_headers
+    return metadata
 
 
 def _apply_llm_edits(
@@ -2019,7 +2033,11 @@ def agentic_repair(
                 after=[b.fingerprint for b in plan.blockers],
                 touched_files=[],
                 commands=[],
-                verification={"layer": "json-llm", "human_boundary": boundary} if boundary else {"layer": "json-llm"},
+                verification={
+                    "layer": "json-llm",
+                    **({"human_boundary": boundary} if boundary else {}),
+                    **_exception_boundary_metadata(exc),
+                },
                 notes=[repr(exc)],
             )
             append_attempt(run_dir, record)
@@ -2234,6 +2252,7 @@ def tool_rescue(
                     "layer": "tool-rescue",
                     "error": repr(exc),
                     **({"human_boundary": boundary} if boundary else {}),
+                    **_exception_boundary_metadata(exc),
                 },
                 notes=["tool rescue response failed"],
             )

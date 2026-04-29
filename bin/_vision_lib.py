@@ -42,10 +42,12 @@ The discipline this module enforces:
 
 Retry policy
 ------------
-Anthropic's API returns 429 (rate limit) and 529 (overloaded) under load,
-plus standard 5xx. We retry up to 3 times with exponential backoff
-(1s, 2s, 4s) on those. 4xx other than 429 fails fast (bad request /
-authentication / model-not-found are not transient).
+Anthropic's API returns 429 (rate limit) when the request exceeds a
+requests-per-minute, input-tokens-per-minute, output-tokens-per-minute, or
+acceleration limit. 429 responses include a `retry-after` header; retrying
+before that window expires will usually fail again. We respect
+`retry-after` when present and fall back to exponential backoff for other
+transient failures (529 / 5xx). 4xx other than 429 fails fast.
 
 Schema contract
 ---------------
@@ -75,6 +77,7 @@ from __future__ import annotations
 
 import base64
 import datetime as dt
+import email.utils
 import hashlib
 import json
 import os
@@ -140,6 +143,12 @@ PROMPT_VERSION = "v1.1.0"
 MAX_RETRY_ATTEMPTS = 3
 RETRY_BACKOFF_SECONDS = (1.0, 2.0, 4.0)
 RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504, 529})
+RATE_LIMIT_HEADER_PREFIXES = (
+    "retry-after",
+    "anthropic-ratelimit-",
+    "anthropic-priority-",
+    "anthropic-fast-",
+)
 
 # Output token cap. The findings response is bounded — even a very busy
 # screenshot maps to at most ~10 findings of ~100 tokens each. Cap protects
@@ -271,6 +280,19 @@ class ApiKeyMissingError(VisionError):
 class ApiCallFailedError(VisionError):
     """Raised after MAX_RETRY_ATTEMPTS exhausted on transient failures, or
     immediately on a non-retryable 4xx."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        status: int | None = None,
+        retry_after_seconds: float | None = None,
+        rate_limit_headers: dict[str, str] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status = status
+        self.retry_after_seconds = retry_after_seconds
+        self.rate_limit_headers = rate_limit_headers or {}
 
 
 # ---------------------------------------------------------------------------
@@ -735,6 +757,67 @@ def _png_dimensions_within_limit(png_bytes: bytes) -> bool:
 # ---------------------------------------------------------------------------
 
 
+def parse_retry_after(value: str | None, *, now: dt.datetime | None = None) -> float | None:
+    """Parse Anthropic's `retry-after` header into seconds.
+
+    The docs define this as "the number of seconds to wait", but HTTP
+    allows a date form too. Accept both so the wrapper stays robust.
+    """
+    if not value:
+        return None
+    value = value.strip()
+    try:
+        seconds = float(value)
+        return max(0.0, seconds)
+    except ValueError:
+        pass
+    try:
+        retry_at = email.utils.parsedate_to_datetime(value)
+    except (TypeError, ValueError):
+        return None
+    if retry_at.tzinfo is None:
+        retry_at = retry_at.replace(tzinfo=UTC)
+    current = now or dt.datetime.now(UTC)
+    return max(0.0, (retry_at - current).total_seconds())
+
+
+def _rate_limit_headers(exc: urllib.error.HTTPError) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for key, value in exc.headers.items():
+        lower = key.lower()
+        if any(lower.startswith(prefix) for prefix in RATE_LIMIT_HEADER_PREFIXES):
+            out[lower] = str(value)
+    return out
+
+
+def _rate_limit_summary(
+    status: int,
+    headers: dict[str, str],
+    err_body: str,
+) -> str:
+    parts = [f"HTTP {status} from Anthropic"]
+    if status == 429:
+        parts.append("rate limit exceeded")
+    retry_after = headers.get("retry-after")
+    if retry_after:
+        parts.append(f"retry-after={retry_after}s")
+    for name in (
+        "anthropic-ratelimit-requests-remaining",
+        "anthropic-ratelimit-requests-reset",
+        "anthropic-ratelimit-input-tokens-remaining",
+        "anthropic-ratelimit-input-tokens-reset",
+        "anthropic-ratelimit-output-tokens-remaining",
+        "anthropic-ratelimit-output-tokens-reset",
+        "anthropic-ratelimit-tokens-remaining",
+        "anthropic-ratelimit-tokens-reset",
+    ):
+        if headers.get(name):
+            parts.append(f"{name}={headers[name]}")
+    if err_body:
+        parts.append(f"body={err_body[:400]}")
+    return "; ".join(parts)
+
+
 def _post_with_retry(payload: dict, headers: dict, *, timeout_s: float = 90.0) -> dict:
     """POST to Anthropic's Messages API with exponential backoff on
     transient failures. Returns the parsed JSON response. Raises
@@ -743,6 +826,10 @@ def _post_with_retry(payload: dict, headers: dict, *, timeout_s: float = 90.0) -
     """
     body = json.dumps(payload).encode("utf-8")
     last_exc: Exception | None = None
+    last_status: int | None = None
+    last_retry_after: float | None = None
+    last_rate_limit_headers: dict[str, str] = {}
+    last_error_summary = ""
     for attempt in range(MAX_RETRY_ATTEMPTS):
         req = urllib.request.Request(
             ANTHROPIC_API_URL,
@@ -755,22 +842,41 @@ def _post_with_retry(payload: dict, headers: dict, *, timeout_s: float = 90.0) -
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             status = exc.code
+            last_status = status
             err_body = ""
             try:
                 err_body = exc.read().decode("utf-8", errors="replace")
             except Exception:
                 pass
+            rate_headers = _rate_limit_headers(exc)
+            retry_after = parse_retry_after(rate_headers.get("retry-after"))
+            last_retry_after = retry_after
+            last_rate_limit_headers = rate_headers
+            last_error_summary = _rate_limit_summary(status, rate_headers, err_body)
             if status not in RETRYABLE_STATUS:
                 raise ApiCallFailedError(
-                    f"HTTP {status} from Anthropic (non-retryable): {err_body[:400]}"
+                    f"HTTP {status} from Anthropic (non-retryable): {err_body[:400]}",
+                    status=status,
+                    retry_after_seconds=retry_after,
+                    rate_limit_headers=rate_headers,
                 ) from exc
             last_exc = exc
         except urllib.error.URLError as exc:
             last_exc = exc
+            last_error_summary = repr(exc)
         if attempt < MAX_RETRY_ATTEMPTS - 1:
-            time.sleep(RETRY_BACKOFF_SECONDS[attempt])
+            delay = (
+                last_retry_after
+                if last_status == 429 and last_retry_after is not None
+                else RETRY_BACKOFF_SECONDS[attempt]
+            )
+            time.sleep(delay)
     raise ApiCallFailedError(
-        f"Anthropic call failed after {MAX_RETRY_ATTEMPTS} attempts: {last_exc!r}"
+        f"Anthropic call failed after {MAX_RETRY_ATTEMPTS} attempts: "
+        f"{last_error_summary or last_exc!r}",
+        status=last_status,
+        retry_after_seconds=last_retry_after,
+        rate_limit_headers=last_rate_limit_headers,
     )
 
 
