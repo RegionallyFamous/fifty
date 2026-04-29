@@ -224,6 +224,9 @@ def test_batch_uses_progressive_build_then_dress_by_default(script_text: str) ->
 def test_pr_create_retries_without_missing_labels(script_text: str) -> None:
     assert "def _run_gh_pr_create" in script_text
     assert "could not add label" in script_text
+    assert "_process_text(pr.stdout)" in script_text
+    assert "_process_text(pr.stderr)" in script_text
+    assert "original_output" in script_text
     assert 'if arg == "--label"' in script_text
 
 
@@ -268,6 +271,8 @@ def test_batch_reports_rescue_layers(script_text: str) -> None:
     assert "rescue_artifacts" in script_text
     assert "factory_defects" in script_text
     assert "needs_tooling_count" in script_text
+    assert "prevention_groups" in script_text
+    assert "prevention_layer" in script_text
     assert "factory-defects.jsonl" in script_text
     assert "def _read_rescue_summary(" in script_text
     assert "external-rate-limit" in script_text

@@ -293,6 +293,80 @@ def validate_spec(raw: Any) -> tuple[list[SpecError], ValidatedSpec | None]:
     )
 
 
+def _hex_luminance(hex_color: str) -> float | None:
+    h = hex_color.strip().lstrip("#")
+    if len(h) == 3:
+        h = "".join(ch * 2 for ch in h)
+    if len(h) != 6:
+        return None
+    try:
+        r, g, b = (int(h[i : i + 2], 16) / 255 for i in (0, 2, 4))
+    except ValueError:
+        return None
+
+    def _linearize(channel: float) -> float:
+        return (
+            channel / 12.92
+            if channel <= 0.03928
+            else ((channel + 0.055) / 1.055) ** 2.4
+        )
+
+    return 0.2126 * _linearize(r) + 0.7152 * _linearize(g) + 0.0722 * _linearize(b)
+
+
+def _hex_contrast(hex_a: str, hex_b: str) -> float | None:
+    lum_a = _hex_luminance(hex_a)
+    lum_b = _hex_luminance(hex_b)
+    if lum_a is None or lum_b is None:
+        return None
+    lighter, darker = max(lum_a, lum_b), min(lum_a, lum_b)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def validate_generation_safety(spec: ValidatedSpec) -> list[SpecError]:
+    """Cheap deterministic rules that prevent known factory mistakes.
+
+    `validate_spec` only checks shape. This pass checks values that are
+    technically valid JSON but known to produce broken generated themes.
+    Keep it pure and fast: no filesystem, no subprocess, no fleet scan.
+    """
+    errors: list[SpecError] = []
+    palette = spec.palette
+
+    base = palette.get("base")
+    contrast = palette.get("contrast")
+    if base and contrast:
+        ratio = _hex_contrast(base, contrast)
+        if ratio is not None and ratio < 4.5:
+            errors.append(
+                SpecError(
+                    "$.palette.contrast",
+                    f"must contrast with base at >= 4.5:1 for body text (got {ratio:.2f}:1)",
+                )
+            )
+
+    primary = palette.get("primary")
+    if base and primary:
+        ratio = _hex_contrast(base, primary)
+        if ratio is not None and ratio < 3.0:
+            errors.append(
+                SpecError(
+                    "$.palette.primary",
+                    f"must contrast with base at >= 3.0:1 for generated hover/button states (got {ratio:.2f}:1)",
+                )
+            )
+
+    if spec.source == spec.slug:
+        errors.append(
+            SpecError(
+                "$.source",
+                "must name an existing source theme different from the generated slug",
+            )
+        )
+
+    return errors
+
+
 def _validate_font_def(ptr: str, raw: dict[str, Any]) -> tuple[list[SpecError], dict[str, Any] | None]:
     """Validate one font slug's spec entry. See `example_spec()` for shape."""
     errors: list[SpecError] = []

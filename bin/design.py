@@ -138,6 +138,7 @@ from _design_lib import (  # noqa: E402
     example_spec,
     make_brief,
     serialize_theme_json,
+    validate_generation_safety,
     validate_spec,
 )
 from _lib import MONOREPO_ROOT  # noqa: E402
@@ -236,6 +237,8 @@ PHASES = (
     #              is live at demo.regionallyfamous.com within minutes.
     "publish",
 )
+
+_TEXT_EXTENSIONS = {".css", ".html", ".json", ".md", ".php", ".txt"}
 
 
 class PhaseError(RuntimeError):
@@ -654,6 +657,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.source:
         spec.source = args.source
 
+    safety_errors = validate_generation_safety(spec)
+    if safety_errors:
+        print("error: generation safety validation failed:", file=sys.stderr)
+        for err in safety_errors:
+            print(str(err), file=sys.stderr)
+        return 2
+
     if args.dry_run:
         print(f"OK: spec is valid for theme `{spec.slug}` (source: {spec.source}).")
         print(
@@ -721,6 +731,7 @@ def main(argv: list[str] | None = None) -> int:
         for phase in phases_to_run:
             handler = _PHASE_HANDLERS[phase]
             handler(spec, dest, args)
+            _run_phase_invariants(spec, dest, phase)
     except PhaseError as e:
         phase, detail = e.args
         print(f"\nSTATUS: FAIL (phase {phase})", file=sys.stderr)
@@ -847,6 +858,164 @@ def _phase_apply(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> N
             f"  [apply] seeded {allow_added} heuristics-allowlist cell(s) "
             f"from {spec.source} → {spec.slug}"
         )
+
+
+def _title_case_slug(slug: str) -> str:
+    return "".join(part.capitalize() for part in slug.split("-"))
+
+
+def _phase_rule_mode(category: str) -> str:
+    from factory_rules import get_rule
+
+    return get_rule(category).mode
+
+
+def _raise_or_report_invariant(category: str, phase: str, message: str) -> None:
+    mode = _phase_rule_mode(category)
+    if mode == "disabled":
+        return
+    if mode == "report-only":
+        print(f"  [{phase}] PREVENTION report-only ({category}): {message}")
+        return
+    raise PhaseError(phase, f"prevention rule {category}: {message}")
+
+
+def _assert_no_source_branding_leaked(spec: ValidatedSpec, dest: Path) -> None:
+    old_lower = spec.source.lower()
+    old_title = _title_case_slug(old_lower)
+    needles = {old_lower, old_title}
+    leaks: list[str] = []
+    for path in dest.rglob("*"):
+        if not path.is_file() or path.suffix not in _TEXT_EXTENSIONS:
+            continue
+        rel = path.relative_to(MONOREPO_ROOT).as_posix()
+        if rel == f"{spec.slug}/readiness.json":
+            continue
+        if rel.startswith(f"{spec.slug}/playground/content/"):
+            continue
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        if any(needle in text for needle in needles):
+            leaks.append(rel)
+            if len(leaks) >= 5:
+                break
+    if leaks:
+        _raise_or_report_invariant(
+            "php-syntax",
+            "clone",
+            f"source theme branding from `{spec.source}` survived clone in {', '.join(leaks)}",
+        )
+
+
+def _assert_apply_guards_present(dest: Path) -> None:
+    theme_json_path = dest / "theme.json"
+    data = json.loads(theme_json_path.read_text(encoding="utf-8"))
+    css = str(data.get("styles", {}).get("css") or "")
+    missing = [
+        sentinel
+        for sentinel in (
+            _SITE_TITLE_OVERFLOW_SENTINEL,
+            _PRODUCT_REVIEWS_OVERFLOW_SENTINEL,
+        )
+        if sentinel not in css
+    ]
+    if missing:
+        _raise_or_report_invariant(
+            "snap-a11y-color-contrast",
+            "apply",
+            f"generated mobile overflow guard(s) missing from theme.json: {', '.join(missing)}",
+        )
+
+
+def _assert_playground_payload_seeded(dest: Path) -> None:
+    content = dest / "playground" / "content"
+    images = dest / "playground" / "images"
+    required = [
+        content / "content.xml",
+        content / "products.csv",
+    ]
+    missing = [path.relative_to(MONOREPO_ROOT).as_posix() for path in required if not path.is_file()]
+    if missing:
+        _raise_or_report_invariant(
+            "placeholder-images",
+            "seed",
+            f"playground content payload missing required file(s): {', '.join(missing)}",
+        )
+    if not images.is_dir() or not any(images.iterdir()):
+        _raise_or_report_invariant(
+            "placeholder-images",
+            "seed",
+            f"{images.relative_to(MONOREPO_ROOT)} is missing or empty",
+        )
+
+
+def _assert_blueprint_landing_page(dest: Path) -> None:
+    blueprint = dest / "playground" / "blueprint.json"
+    if not blueprint.is_file():
+        _raise_or_report_invariant(
+            "placeholder-images",
+            "sync",
+            f"{blueprint.relative_to(MONOREPO_ROOT)} missing after sync",
+        )
+    data = json.loads(blueprint.read_text(encoding="utf-8"))
+    if data.get("landingPage") != "/":
+        _raise_or_report_invariant(
+            "placeholder-images",
+            "sync",
+            "playground blueprint landingPage must be `/`",
+        )
+
+
+def _assert_hero_placeholders_not_source_copies(spec: ValidatedSpec, dest: Path) -> None:
+    content = dest / "playground" / "content"
+    for manifest in ("category-images.json", "product-images.json"):
+        path = content / manifest
+        if not path.is_file():
+            _raise_or_report_invariant(
+                "placeholder-images",
+                "photos",
+                f"{path.relative_to(MONOREPO_ROOT)} missing after photos phase",
+            )
+
+    source_images = MONOREPO_ROOT / spec.source / "playground" / "images"
+    images = dest / "playground" / "images"
+    duplicates: list[str] = []
+    for path in sorted(images.glob("wonders-page-*.png")) + sorted(images.glob("wonders-post-*.png")):
+        source_path = source_images / path.name
+        if source_path.is_file() and path.read_bytes() == source_path.read_bytes():
+            duplicates.append(path.name)
+            if len(duplicates) >= 5:
+                break
+    if duplicates:
+        _raise_or_report_invariant(
+            "hero-placeholders-duplicate",
+            "photos",
+            f"hero placeholder(s) still match source bytes: {', '.join(duplicates)}",
+        )
+
+
+def _assert_microcopy_artifact_present(dest: Path) -> None:
+    artifact = dest / "microcopy-overrides.json"
+    if not artifact.is_file():
+        _raise_or_report_invariant(
+            "microcopy-duplicate",
+            "microcopy",
+            f"{artifact.relative_to(MONOREPO_ROOT)} missing after microcopy phase",
+        )
+
+
+def _run_phase_invariants(spec: ValidatedSpec, dest: Path, phase: str) -> None:
+    if phase == "clone":
+        _assert_no_source_branding_leaked(spec, dest)
+    elif phase == "apply":
+        _assert_apply_guards_present(dest)
+    elif phase == "seed":
+        _assert_playground_payload_seeded(dest)
+    elif phase == "sync":
+        _assert_blueprint_landing_page(dest)
+    elif phase == "photos":
+        _assert_hero_placeholders_not_source_copies(spec, dest)
+    elif phase == "microcopy":
+        _assert_microcopy_artifact_present(dest)
 
 
 # Keep in sync with `bin/check.py::_BASE_POLARITY_SAMESIDE_SLUGS` — the

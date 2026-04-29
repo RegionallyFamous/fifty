@@ -24,6 +24,7 @@ from _design_lib import (
     example_spec,
     make_brief,
     serialize_theme_json,
+    validate_generation_safety,
     validate_spec,
 )
 
@@ -146,6 +147,47 @@ def test_validate_spec_rejects_non_object():
     errors, spec = validate_spec(["this", "is", "a", "list"])
     assert spec is None
     assert errors
+
+
+def test_generation_safety_rejects_low_contrast_body_tokens():
+    raw = example_spec()
+    raw["palette"] = {
+        "base": "#f5f1e8",
+        "contrast": "#e9e0d1",
+    }
+    errors, spec = validate_spec(raw)
+
+    assert errors == []
+    assert spec is not None
+    safety_errors = validate_generation_safety(spec)
+
+    assert any("$.palette.contrast" in str(error) for error in safety_errors)
+
+
+def test_generation_safety_rejects_primary_that_collapses_on_base():
+    raw = example_spec()
+    raw["palette"] = {
+        "base": "#f5f1e8",
+        "contrast": "#111111",
+        "primary": "#fff1d2",
+    }
+    errors, spec = validate_spec(raw)
+
+    assert errors == []
+    assert spec is not None
+    safety_errors = validate_generation_safety(spec)
+
+    assert any("$.palette.primary" in str(error) for error in safety_errors)
+
+
+def test_generation_safety_rejects_self_clone_source():
+    errors, spec = validate_spec({"slug": "agitprop", "name": "Agitprop", "source": "agitprop"})
+
+    assert errors == []
+    assert spec is not None
+    safety_errors = validate_generation_safety(spec)
+
+    assert any("$.source" in str(error) for error in safety_errors)
 
 
 # ---------------------------------------------------------------------------

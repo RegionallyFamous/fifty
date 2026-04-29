@@ -63,6 +63,8 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "bin"))
 
+from factory_rules import get_rule  # noqa: E402
+
 # ---------------------------------------------------------------------------
 # Blocker classification
 # ---------------------------------------------------------------------------
@@ -83,6 +85,7 @@ _CLASSIFIER_RULES: tuple[tuple[str, str, str | None], ...] = (
     ("snap-a11y-color-contrast", "recent snaps carry no serious", None),
     ("placeholder-images", "product image", "woocommerce placeholder"),
     ("placeholder-images", "woocommerce placeholder", None),
+    ("category-images", "category-images.json", "category cover art"),
     ("snap-evidence-stale", "snap evidence is fresh", None),
     ("design-score-low", "design scorecard meets minimum", None),
 )
@@ -99,6 +102,7 @@ KNOWN_CATEGORIES = frozenset(
         "screenshot-duplicate",
         "snap-a11y-color-contrast",
         "placeholder-images",
+        "category-images",
         "snap-evidence-stale",
         "design-score-low",
     }
@@ -135,6 +139,7 @@ _DETAIL_EXTRACTORS: dict[str, re.Pattern[str]] = {
     "screenshot-duplicate": re.compile(r"share identical screenshot\.png"),
     "snap-a11y-color-contrast": re.compile(r"\b(\d+)\s+NEW severity:error finding\(s\)"),
     "placeholder-images": re.compile(r"([a-z0-9-]+/playground/[^\s,;]+)"),
+    "category-images": re.compile(r"([a-z0-9-]+/playground/content/category-images\.json)"),
     "snap-evidence-stale": re.compile(r"(\S+\.(?:html|php|json|css))"),
     "design-score-low": re.compile(r"([a-z_]+)\s+scored\s+(\d+)/(\d+)"),
 }
@@ -842,10 +847,16 @@ class FactoryDefectRecord:
     promotion_target: str
     suggested_files: list[str]
     tooling_status: str
+    prevention_layer: str
+    prevention_phase: str
+    owner: str
+    fixture: str
+    promotion_status: str
+    first_seen_run_id: str
 
 
 SUCCESSFUL_REPAIR_DECISIONS = frozenset({"fixed", "improved"})
-FACTORY_DEFECT_SCHEMA_VERSION = 1
+FACTORY_DEFECT_SCHEMA_VERSION = 2
 
 _FACTORY_PATH_PREFIXES = (
     "bin/",
@@ -897,7 +908,7 @@ def _recipes_from_record(record: AttemptRecord) -> list[str]:
 def _promotion_target(category: str, touched_files: list[str]) -> str:
     if _has_factory_touches(touched_files):
         return "manual-review"
-    return _PROMOTION_TARGET_BY_CATEGORY.get(category, "manual-review")
+    return get_rule(category).promotion_target
 
 
 def _tooling_status(layer: str, category: str, touched_files: list[str]) -> str:
@@ -908,6 +919,19 @@ def _tooling_status(layer: str, category: str, touched_files: list[str]) -> str:
     if layer in {"json-llm", "tool-rescue"}:
         return "needs-tooling" if category != "unknown" else "manual-review"
     return "candidate"
+
+
+def _promotion_status(category: str, layer: str, touched_files: list[str]) -> str:
+    if _has_factory_touches(touched_files):
+        return "manual-review"
+    rule = get_rule(category)
+    if rule.layer == "manual-review":
+        return "manual-review"
+    if rule.layer == "render":
+        return "render-only"
+    if layer == "recipe":
+        return "covered-by-recipe"
+    return "needs-promotion"
 
 
 def _defect_id(
@@ -958,6 +982,7 @@ def _factory_defects_for_attempt(
         blocker = blocker_by_fp.get(fingerprint)
         category = blocker.category if blocker else "unknown"
         target = _promotion_target(category, record.touched_files)
+        rule = get_rule(category)
         records.append(
             FactoryDefectRecord(
                 schema_version=FACTORY_DEFECT_SCHEMA_VERSION,
@@ -988,6 +1013,12 @@ def _factory_defects_for_attempt(
                 promotion_target=target,
                 suggested_files=_SUGGESTED_FILES_BY_CATEGORY.get(category, []),
                 tooling_status=_tooling_status(layer, category, record.touched_files),
+                prevention_layer=rule.layer,
+                prevention_phase=rule.phase,
+                owner=rule.owner,
+                fixture=rule.fixture,
+                promotion_status=_promotion_status(category, layer, record.touched_files),
+                first_seen_run_id=plan.run_id,
             )
         )
     return records
