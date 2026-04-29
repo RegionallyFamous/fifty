@@ -1,0 +1,45 @@
+{
+  "slug": "bodega",
+  "name": "Bodega",
+  "tagline": "hand-painted awning, fluorescent price stickers, neon OPEN",
+  "voice": "contemporary food store: warm, direct, no exclamation marks.",
+  "source": "lysholm",
+  "palette": {
+    "base": "#f5efe6",
+    "surface": "#ffffff",
+    "subtle": "#f9f5f0",
+    "muted": "#fcfaf8",
+    "border": "#b8b3ac",
+    "tertiary": "#13100d",
+    "secondary": "#191612",
+    "contrast": "#1f1b16",
+    "primary": "#1f1b16",
+    "primary-hover": "#4c4945",
+    "accent": "#c8281a",
+    "accent-soft": "#ecb4af"
+  },
+  "fonts": {
+    "display": {
+      "family": "Hand-painted sign",
+      "fallback": "Georgia, 'Times New Roman', serif",
+      "google_font": true,
+      "weights": [
+        400,
+        700
+      ]
+    },
+    "sans": {
+      "family": "Inter",
+      "fallback": "-apple-system, BlinkMacSystemFont, sans-serif",
+      "google_font": true,
+      "weights": [
+        400,
+        600
+      ]
+    }
+  },
+  "layout_hints": [
+    "full-bleed hero photograph with short overlaid tagline",
+    "product category cards immediately below"
+  ]
+}
