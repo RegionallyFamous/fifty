@@ -371,6 +371,36 @@ def test_design_watch_forwards_external_sigterm_to_child(tmp_path):
             proc.communicate(timeout=5)
 
 
+def test_repair_command_emits_heartbeat_while_silent(tmp_path, capsys):
+    watch = load_design_watch()
+    sleeper = tmp_path / "silent_repair.py"
+    sleeper.write_text("import time\ntime.sleep(0.4)\nprint('done')\n")
+    now = time.time()
+    state = watch.WatchState(
+        run_id="repair-demo",
+        started_at=now,
+        command=["python3", "bin/design.py"],
+        cwd=str(REPO_ROOT),
+        phase_started_at=now,
+        last_output_at=now,
+        last_heartbeat_at=now,
+        repair_round=2,
+    )
+
+    rc = watch._run_repair_command(
+        [sys.executable, str(sleeper)],
+        cwd=tmp_path,
+        state=state,
+        layer="json-llm",
+        heartbeat_seconds=0.1,
+    )
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "Auto-unblock round 2 (json-llm) is still repairing" in out
+    assert "done" in out
+
+
 def test_runtime_guard_fired_false_for_normal_check_failure():
     watch = load_design_watch()
     state = watch.WatchState(

@@ -24,6 +24,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 
 VIEWPORTS = {"mobile", "tablet", "desktop", "wide"}
+REPAIR_HEARTBEAT_SECONDS = 30.0
 
 PHASE_LABELS = {
     "validate": "checking the theme plan",
@@ -1136,7 +1137,13 @@ def run_auto_unblock_round(
         f"Working: Auto-unblock round {state.repair_round} ({layer}): {' '.join(cmd)}",
         flush=True,
     )
-    proc = subprocess.run(cmd, cwd=str(ROOT), check=False)
+    rc = _run_repair_command(
+        cmd,
+        cwd=ROOT,
+        state=state,
+        layer=layer,
+        heartbeat_seconds=REPAIR_HEARTBEAT_SECONDS,
+    )
     # Read the attempt record that was just appended.
     attempts = _read_attempts(run_dir)
     state.repair_attempts = attempts
@@ -1159,7 +1166,56 @@ def run_auto_unblock_round(
             except json.JSONDecodeError:
                 pass
     state.repair_active = False
-    return proc.returncode, resume_phase
+    return rc, resume_phase
+
+
+def _run_repair_command(
+    cmd: list[str],
+    *,
+    cwd: Path,
+    state: WatchState,
+    layer: str,
+    heartbeat_seconds: float,
+) -> int:
+    proc = subprocess.Popen(
+        cmd,
+        cwd=str(cwd),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+        start_new_session=True,
+    )
+    assert proc.stdout is not None
+    selector = selectors.DefaultSelector()
+    selector.register(proc.stdout, selectors.EVENT_READ)
+    previous_handlers = _install_forwarding_signal_handlers(proc)
+    last_heartbeat = time.time()
+    try:
+        while proc.poll() is None:
+            timeout = max(0.1, min(1.0, heartbeat_seconds - (time.time() - last_heartbeat)))
+            ready = selector.select(timeout=timeout)
+            if ready:
+                line = proc.stdout.readline()
+                if line:
+                    print(line, end="", flush=True)
+                    last_heartbeat = time.time()
+            now = time.time()
+            if now - last_heartbeat >= heartbeat_seconds:
+                print(
+                    "Working: "
+                    f"Auto-unblock round {state.repair_round} ({layer}) is still repairing.",
+                    flush=True,
+                )
+                last_heartbeat = now
+
+        for line in proc.stdout:
+            print(line, end="", flush=True)
+        return int(proc.returncode or 0)
+    finally:
+        _restore_signal_handlers(previous_handlers)
+        selector.close()
+        proc.stdout.close()
 
 
 def main(argv: list[str] | None = None) -> int:
