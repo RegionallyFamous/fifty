@@ -481,6 +481,24 @@ def _focused_snippet(rel: str, line_no: int, *, radius: int = 35) -> str:
     return f"### {rel}:{line_no}\n```\n{body}\n```"
 
 
+def _focused_text_snippet(rel: str, needle: str, *, radius: int = 1400) -> str:
+    path = ROOT / rel
+    if not path.is_file():
+        return f"### {rel}\n(missing)"
+    try:
+        data = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return f"### {rel}\n(binary)"
+    idx = data.find(needle)
+    if idx == -1:
+        return ""
+    start = max(0, idx - radius)
+    end = min(len(data), idx + len(needle) + radius)
+    prefix = "... [truncated before]\n" if start else ""
+    suffix = "\n... [truncated after]" if end < len(data) else ""
+    return f"### {rel} around `{needle}`\n```\n{prefix}{data[start:end]}{suffix}\n```"
+
+
 def _source_snippets_for_blocker(
     category: str,
     slug: str,
@@ -494,6 +512,12 @@ def _source_snippets_for_blocker(
     # actionable text/PHP files. Binary assets are intentionally skipped.
     if snippets:
         return snippets
+    if category in {"hover-contrast", "snap-a11y-color-contrast"}:
+        for needle in ("single_add_to_cart_button:hover", ".button:hover", ":hover"):
+            snippet = _focused_text_snippet(f"{slug}/theme.json", needle)
+            if snippet:
+                snippets.append(snippet)
+                break
     for rel in affected_files:
         if rel.endswith("/") or rel.startswith("tmp/snaps/") or rel.startswith("bin/"):
             continue
@@ -1908,7 +1932,10 @@ def _build_repair_prompt(plan: RepairPlan, prior_attempts: list[dict[str, Any]])
         "`bin/`, never touch allowlist files.\n"
         "3. Prefer the smallest possible string replacement. Each edit must "
         "be an exact, unique `old_string` that appears once in the file.\n"
-        "4. If you cannot safely fix a blocker from the evidence provided, "
+        "4. This repo intentionally has no theme CSS files such as "
+        "`<slug>/styles.css` or `<slug>/assets/css/*.css`. Theme CSS lives in "
+        "`<slug>/theme.json` under `styles.css` or block `css` entries.\n"
+        "5. If you cannot safely fix a blocker from the evidence provided, "
         "set `done: true` with `rationale` explaining what a human should do "
         "and leave `edits` empty.\n"
         "\n"
@@ -1963,10 +1990,20 @@ def _build_repair_prompt(plan: RepairPlan, prior_attempts: list[dict[str, Any]])
     if prior_attempts:
         prior_text = "\n## Prior attempts\n"
         for rec in prior_attempts[-3:]:
+            verification_raw = rec.get("verification")
+            verification: dict[str, Any] = (
+                verification_raw if isinstance(verification_raw, dict) else {}
+            )
+            rejected = list(rec.get("rejected_edits") or verification.get("rejected_edits") or [])
+            notes = list(rec.get("notes") or [])
+            rejected_text = ""
+            if rejected or notes:
+                rejected_text = f"; rejected: {', '.join([*rejected, *notes])[:700]}"
             prior_text += (
                 f"- attempt {rec.get('attempt')}: {rec.get('decision')} "
                 f"({rec.get('reason', '')}); files: "
-                f"{', '.join(rec.get('touched_files', []))}\n"
+                f"{', '.join(rec.get('touched_files', []))}"
+                f"{rejected_text}\n"
             )
 
     user = (
@@ -2151,7 +2188,9 @@ def _build_tool_rescue_prompt(
         "edit framework files from this rescue loop; if a framework change is "
         "needed, set `human_boundary` to `factory-tooling-change` with a clear "
         "rationale. Never edit allowlists, never use destructive git operations, "
-        "and never bypass checks.\n\n"
+        "and never bypass checks. This repo intentionally has no theme CSS files "
+        "such as `<slug>/styles.css` or `<slug>/assets/css/*.css`; theme CSS lives "
+        "in `<slug>/theme.json` under `styles.css` or block `css` entries.\n\n"
         "Respond with exactly one JSON object:\n"
         "{\n"
         '  "rationale": "<diagnosis>",\n'
@@ -2178,14 +2217,29 @@ def _build_tool_rescue_prompt(
             if snippet not in seen:
                 seen.add(snippet)
                 snippets.append(snippet)
+        for rel in b.affected_files:
+            if rel in seen or rel.startswith("tmp/snaps/") or rel.startswith("bin/"):
+                continue
+            seen.add(rel)
+            snippets.append(f"### {rel}\n```\n{_file_snippet(ROOT / rel)}\n```")
     prior_text = ""
     if prior_attempts:
         prior_text = "\n## Prior attempts\n"
         for rec in prior_attempts[-5:]:
+            verification_raw = rec.get("verification")
+            verification: dict[str, Any] = (
+                verification_raw if isinstance(verification_raw, dict) else {}
+            )
+            rejected = list(rec.get("rejected_edits") or verification.get("rejected_edits") or [])
+            notes = list(rec.get("notes") or [])
+            rejected_text = ""
+            if rejected or notes:
+                rejected_text = f"; rejected: {', '.join([*rejected, *notes])[:900]}"
             prior_text += (
                 f"- attempt {rec.get('attempt')}: {rec.get('decision')} "
                 f"({rec.get('reason', '')}); files: "
-                f"{', '.join(rec.get('touched_files', []))}\n"
+                f"{', '.join(rec.get('touched_files', []))}"
+                f"{rejected_text}\n"
             )
     user = (
         f"# Tool rescue packet for `{plan.slug}`\n"

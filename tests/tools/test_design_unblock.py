@@ -591,6 +591,86 @@ def test_line_focused_source_snippets_for_php_failure(tmp_path, monkeypatch):
     assert "42|<?php // line 42" in snippets[0]
 
 
+def test_hover_contrast_snippet_points_at_theme_json_css(tmp_path, monkeypatch):
+    u = _load_module()
+    root = tmp_path
+    theme = root / "agave"
+    theme.mkdir()
+    (theme / "theme.json").write_text(
+        json.dumps(
+            {
+                "styles": {
+                    "css": ".single_add_to_cart_button:hover { background: var(--wp--preset--color--accent); color: var(--wp--preset--color--base); }"
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(u, "ROOT", root)
+
+    snippets = u._source_snippets_for_blocker(
+        "hover-contrast",
+        "agave",
+        ".single_add_to_cart_button:hover contrast is 1.2",
+        ["agave/theme.json"],
+    )
+
+    assert snippets
+    assert "agave/theme.json" in snippets[0]
+    assert "single_add_to_cart_button:hover" in snippets[0]
+
+
+def test_tool_rescue_prompt_guides_css_edits_to_theme_json(tmp_path, monkeypatch):
+    u = _load_module()
+    root = tmp_path
+    theme = root / "agave"
+    theme.mkdir()
+    (theme / "theme.json").write_text(
+        '{"styles":{"css":".button:hover{color:red}"}}', encoding="utf-8"
+    )
+    monkeypatch.setattr(u, "ROOT", root)
+
+    blocker = u.Blocker(
+        category="hover-contrast",
+        title="Hover/focus states have legible text-vs-background contrast",
+        summary="bad hover contrast",
+        detail=".button:hover is too low contrast",
+        next_action="change hover text color",
+        fingerprint="hover-contrast:agave:test",
+        affected_files=["agave/theme.json"],
+    )
+    plan = u.RepairPlan(
+        run_id="test",
+        slug="agave",
+        run_dir=str(tmp_path / "runs" / "test"),
+        worktree_root=str(root),
+        generated_at=1.0,
+        worktree_clean=True,
+        worktree_unrelated_files=[],
+        blockers=[blocker],
+        resume_phase="check",
+        verification_ladder=[],
+    )
+    system, user = u._build_tool_rescue_prompt(
+        plan,
+        [
+            {
+                "attempt": 1,
+                "decision": "not-improved",
+                "reason": "edit rejected",
+                "touched_files": [],
+                "verification": {"rejected_edits": ["agave/styles.css: file does not exist"]},
+            }
+        ],
+    )
+
+    assert "no theme CSS files" in system
+    assert "<slug>/theme.json" in system
+    assert "agave/theme.json" in user
+    assert ".button:hover" in user
+    assert "agave/styles.css: file does not exist" in user
+
+
 def test_repair_plan_records_recipes_and_allowed_commands(tmp_path, monkeypatch):
     u = _load_module()
     run_dir = tmp_path / "runs" / "test"
