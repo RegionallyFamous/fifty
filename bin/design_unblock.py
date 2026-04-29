@@ -986,10 +986,17 @@ def _judge_progress(
     *,
     slug: str | None = None,
     snap_errors_before: int | None = None,
+    verification_failed: bool = False,
 ) -> tuple[str, str]:
     before_set = set(before)
     after_set = set(after)
     snap_after = _snap_error_count(slug) if slug else 0
+    if verification_failed and not after_set:
+        return (
+            "not-improved",
+            "Verification failed, but no blocker fingerprints could be parsed; "
+            "treating the blocker set as unchanged.",
+        )
     if not after_set and (snap_errors_before is None or snap_after <= snap_errors_before):
         return "fixed", "No blockers remain."
     gained = after_set - before_set
@@ -1087,12 +1094,17 @@ def apply_verification(
     categories = [b.category for b in plan.blockers]
     after = _collect_fingerprints(plan.slug, categories)
     verification_log["snap_errors_after"] = _snap_error_count(plan.slug)
+    verification_failed = any(
+        int(result.get("returncode", 0) or 0) != 0
+        for result in verification_log["ladder"]
+    )
 
     decision, reason = _judge_progress(
         before,
         after,
         slug=plan.slug,
         snap_errors_before=snap_errors_before,
+        verification_failed=verification_failed,
     )
     record = AttemptRecord(
         at=time.time(),
@@ -1544,11 +1556,16 @@ def agentic_repair(
         categories = [b.category for b in plan.blockers]
         after = _collect_fingerprints(plan.slug, categories)
         verification_log["snap_errors_after"] = _snap_error_count(plan.slug)
+        verification_failed = any(
+            int(result.get("returncode", 0) or 0) != 0
+            for result in verification_log["ladder"]
+        )
         decision, reason = _judge_progress(
             before,
             after,
             slug=plan.slug,
             snap_errors_before=snap_errors_before,
+            verification_failed=verification_failed,
         )
 
         record = AttemptRecord(
