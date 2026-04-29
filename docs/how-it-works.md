@@ -1,6 +1,6 @@
 # How the theme factory works
 
-We ship 50+ visually distinct WooCommerce storefronts from one codebase. Each theme inherits the same hard-won plumbing — 77 structural invariants, a11y gates, cross-theme uniqueness checks, per-theme WC override layers — while painting its own voice on every shopper-facing surface. Adding a new theme is a few-minute workflow that ends in a live, shareable demo link; design, structural, and visual regressions are all gated automatically.
+We ship visually distinct WooCommerce storefronts from one codebase. Each theme inherits the same hard-won plumbing — 77 structural invariants, a11y gates, cross-theme uniqueness checks, per-theme WC override layers — while painting its own voice on every shopper-facing surface. Adding a new theme is a few-minute workflow that ends in a live, shareable demo link; design, structural, and visual regressions are all gated automatically.
 
 ## The factory floor
 
@@ -23,7 +23,7 @@ flowchart TB
     UN["<b>design_unblock.py</b><br/>classify blocker → evidence packet → LLM patch"]:::heal
     BL[("<b>⑨ baselines</b><br/>tests/visual-baseline/")]:::ship
     CI["<b>⑩ GitHub Actions</b><br/>check · visual · vision-review"]:::ship
-    LIVE(["<b>⑪ demo.regionallyfamous.com/&lt;slug&gt;/</b><br/>Playground deeplink · live storefront"]):::ship
+    LIVE(["<b>⑪ demo.regionallyfamous.com/<slug>/</b><br/>Playground deeplink · live storefront"]):::ship
 
     A --> M --> S --> B --> D --> CH --> SN --> VI
     VI -->|green| BL --> CI --> LIVE
@@ -56,7 +56,7 @@ Three layers, loudest first:
 
 - `**bin/check.py`** — 77 static invariants. Example rules: no `!important`, only `core/*` and `woocommerce/*` blocks, unique shopper-visible strings across themes, per-theme chrome on every WC card surface, no default-WooCommerce microcopy leaks, product photos visually distinct within and across themes, hover states ≥3:1 contrast, view transitions wired end-to-end.
 - `**bin/snap.py`** — boots the theme in WordPress Playground locally (no WP install required), drives Playwright across four viewports × thirty routes (home, shop, category, product-simple, product-variable, cart-empty, cart-filled, checkout, my-account, journal, 404…), and captures PNG + HTML + axe-core a11y + DOM heuristics (overflow, duplicate nav, region-void, tap-target, broken background images).
-- `**bin/snap-vision-review.py**` — hands each rendered PNG to Claude with the theme's own `design-intent.md` rubric. Findings land alongside axe errors in the same `findings.json` pipeline, so a "typography overpowered" pixel critique triages identically to an a11y violation.
+- `**bin/snap-vision-review.py`** — hands each rendered PNG to Claude with the theme's own `design-intent.md` rubric. Findings land alongside axe errors in the same `findings.json` pipeline, so a "typography overpowered" pixel critique triages identically to an a11y violation.
 
 ### ④ Self-heal
 
@@ -81,7 +81,7 @@ Three things that aren't usually in the same pipeline:
 2. **Pixel-verified, not just test-passing.** An LLM reviews rendered screenshots against a rubric the theme itself declared, and the resulting findings are first-class alongside axe-core and static checks. "The H1 crushes the hierarchy" fails CI the same way "`<html>` missing `lang` attribute" does.
 3. **Self-healing, not just red-light/green-light.** Most CI pipelines stop at red. Ours structures the failure into an evidence packet an LLM can actually act on, applies the fix, and re-verifies — usually before a human has finished reading the notification.
 
-The net effect: the cost of shipping the 50th theme is the same as shipping the first.
+The net effect: the cost of shipping the next theme is the same as the last — whether that's the tenth or the ten-thousandth.
 
 ## Where to go next
 
