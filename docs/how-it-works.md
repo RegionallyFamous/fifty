@@ -1,6 +1,8 @@
 # How the theme factory works
 
-We ship visually distinct WooCommerce storefronts from one codebase. Each theme inherits the same hard-won plumbing — 77 structural invariants, a11y gates, cross-theme uniqueness checks, per-theme WC override layers — while painting its own voice on every shopper-facing surface. Adding a new theme is a few-minute workflow that ends in a live, shareable demo link; design, structural, and visual regressions are all gated automatically.
+We build online stores on WordPress. Lots of them. They all look different — different colors, different typefaces, different voice — but they come out of the same codebase. This is how.
+
+Every theme is a full WooCommerce store: product pages, shopping cart, checkout, customer accounts, an order confirmation flow, a blog. The visible style changes from theme to theme; the underlying structure and every automated safety check is shared. Adding a new theme takes a few minutes and ends with a live link anyone on the internet can click.
 
 ## The factory floor
 
@@ -13,17 +15,17 @@ flowchart TB
     classDef ship   fill:#e4ecf7,stroke:#3A6FB3,color:#1c1711,stroke-width:2px
 
     A(["<b>① Concept</b><br/>palette · type · voice"]):::ideate
-    M(["<b>② Mockup</b><br/>homepage + shop, one PNG"]):::ideate
-    S["<b>③ spec.json</b><br/><i>concept-to-spec.py</i>"]:::design
-    B["<b>④ design.py build</b><br/>clone Obel · swap tokens · seed Playground"]:::design
-    D["<b>⑤ design.py dress</b><br/>microcopy · photography · front-page layout"]:::design
-    CH["<b>⑥ check.py</b><br/>77 static invariants"]:::verify
-    SN["<b>⑦ snap.py</b><br/>Playground boot + Playwright × 4 viewports × 30 routes<br/>+ axe + DOM heuristics"]:::verify
-    VI{"<b>⑧ vision review</b><br/>Claude vs. design-intent.md"}:::verify
-    UN["<b>design_unblock.py</b><br/>classify blocker → evidence packet → LLM patch"]:::heal
-    BL[("<b>⑨ baselines</b><br/>tests/visual-baseline/")]:::ship
-    CI["<b>⑩ GitHub Actions</b><br/>check · visual · vision-review"]:::ship
-    LIVE(["<b>⑪ demo.regionallyfamous.com/<slug>/</b><br/>Playground deeplink · live storefront"]):::ship
+    M(["<b>② Mockup</b><br/>homepage + shop, one image"]):::ideate
+    S["<b>③ Recipe file</b><br/>machine-readable brief"]:::design
+    B["<b>④ Build</b><br/>copy parent theme, swap colors/fonts, seed demo store"]:::design
+    D["<b>⑤ Dress</b><br/>rewrite copy, swap photos, restyle layout"]:::design
+    CH["<b>⑥ Structural checks</b><br/>77 automated rules"]:::verify
+    SN["<b>⑦ Screenshot sweep</b><br/>every page, every screen size<br/>+ accessibility + sanity checks"]:::verify
+    VI{"<b>⑧ AI design review</b><br/>Claude reads each screenshot<br/>vs. the theme's design brief"}:::verify
+    UN["<b>Self-heal</b><br/>bundle evidence · ask AI for a fix · reverify"]:::heal
+    BL[("<b>⑨ Reference screenshots</b><br/>committed to the repo")]:::ship
+    CI["<b>⑩ GitHub CI</b><br/>same checks on every pull request"]:::ship
+    LIVE(["<b>⑪ Live demo</b><br/>demo.regionallyfamous.com/&lt;slug&gt;/"]):::ship
 
     A --> M --> S --> B --> D --> CH --> SN --> VI
     VI -->|green| BL --> CI --> LIVE
@@ -31,64 +33,65 @@ flowchart TB
     UN -. patch + retry .-> CH
 ```
 
-
-
 ## The five stages
 
-### ① Ideate
+### ① Ideate — decide what the next theme should look like
 
-A concept seed in `bin/concept_seed.py` encodes a palette (four to six hex values), a type specimen, and a handful of voice tags. `bin/paint-mockup.py` turns that seed into a two-view browser mockup — homepage + shop — at a fixed 1376×768 aspect so every concept card lays out identically in the public queue at `[demo.regionallyfamous.com/concepts/](https://demo.regionallyfamous.com/concepts/)`.
+Each theme starts as a **concept card**: a small recipe that says "here are the colors, here's the typography, here's the voice." We paint each concept as a single image showing a homepage and a shop page side by side, so we can see at a glance what the finished store will feel like before any code exists. Every concept card lives on a public queue at [demo.regionallyfamous.com/concepts/](https://demo.regionallyfamous.com/concepts/).
 
-### ② Design
+### ② Design — turn the concept into a real website
 
-`bin/concept-to-spec.py` distills the concept into a machine-readable `spec.json`. `bin/design.py build` then deterministically:
+A small script reads the concept card and writes a machine-readable brief. The `build` step then runs through a checklist:
 
-- clones the canonical theme (`obel/`) into `<slug>/`,
-- swaps every design token across `theme.json` (colors, fonts, spacing, shadows, radii),
-- seeds a per-theme WooCommerce demo catalog (30 products, 6 categories, pages, posts, imagery),
-- inlines the shared PHP helpers into the theme's Playground blueprint.
+- make a fresh copy of our canonical "parent" theme (named Obel),
+- swap in the new theme's colors, fonts, spacing, shadows and corner radii,
+- populate a demo store with 30 products across 6 categories, plus a few blog posts and photos,
+- wire up a one-click live-preview link.
 
-`build` ends when the theme **renders**. `dress` then runs the judgment-heavy passes: microcopy rewritten in the theme's voice, product photography swapped for per-theme imagery, the front-page layout restructured so no two themes share a composition fingerprint.
+At this point the theme renders — it's a working store, it just looks like our parent theme with different colors. The next step, `dress`, is the judgment-heavy part: rewriting every piece of copy in the new theme's voice, replacing placeholder product photos with brand-appropriate imagery, and restructuring the homepage layout so no two themes feel the same when you browse them back-to-back.
 
-### ③ Verify
+### ③ Verify — make sure it actually works and looks right
 
-Three layers, loudest first:
+Three layers, in increasing order of subtlety:
 
-- `**bin/check.py`** — 77 static invariants. Example rules: no `!important`, only `core/*` and `woocommerce/*` blocks, unique shopper-visible strings across themes, per-theme chrome on every WC card surface, no default-WooCommerce microcopy leaks, product photos visually distinct within and across themes, hover states ≥3:1 contrast, view transitions wired end-to-end.
-- `**bin/snap.py`** — boots the theme in WordPress Playground locally (no WP install required), drives Playwright across four viewports × thirty routes (home, shop, category, product-simple, product-variable, cart-empty, cart-filled, checkout, my-account, journal, 404…), and captures PNG + HTML + axe-core a11y + DOM heuristics (overflow, duplicate nav, region-void, tap-target, broken background images).
-- `**bin/snap-vision-review.py`** — hands each rendered PNG to Claude with the theme's own `design-intent.md` rubric. Findings land alongside axe errors in the same `findings.json` pipeline, so a "typography overpowered" pixel critique triages identically to an a11y violation.
+1. **Structural checks.** 77 automated rules that catch concrete things like *"don't reuse the same sentence across two themes"*, *"hover states must have enough contrast to stay legible"*, *"every theme must paint its own cart sidebar, not inherit a shared default"*, *"no two product photographs may look identical"*. Every rule exists because we hit that specific bug at least once.
 
-### ④ Self-heal
+2. **Screenshot + accessibility sweeps.** We spin up a temporary WordPress + WooCommerce site *in the browser* (no real install needed, using the Playground runtime), then take screenshots of every important page — home, shop, cart, checkout, product pages, 404, about 25 others — at four screen sizes (phone, tablet, laptop, big desktop). While the site is up we also run an accessibility audit (the same [axe-core](https://github.com/dequelabs/axe-core) that the Chrome DevTools use) and a handful of sanity checks: is any text overflowing its container? Are there two identical navigation menus on one page? Did any background image fail to load?
 
-When verification goes red, `bin/design_unblock.py` steps in:
+3. **AI design review.** Each screenshot is handed to Claude along with the design brief for that theme, and the model writes critique like *"the hero headline is too big and crushes the product grid underneath"* or *"the payment icons collide with the checkout sidebar on mobile"*. Those comments land in the same place as the accessibility findings and get treated the same way — a design critique can fail the build just like a missing `alt` attribute can.
 
-1. **Classify** — parse every finding into a stable blocker category (`microcopy-duplicate`, `hover-contrast`, `photo-collision`, `vision-overpowered`, …).
-2. **Build an evidence packet** — relevant file slices, the exact rule that fired, the rendered screenshot, the theme's design-intent rubric, and fingerprints so the same blocker isn't re-attempted.
-3. **Hand it to an LLM** — Claude proposes a JSON edit plan (path + old_string + new_string per edit) under strict guardrails: no edits outside the theme slug, no `!important`, no framework files.
-4. **Apply + verify** — the patch lands, a scoped re-run of `check.py` / `snap.py` proves the blocker is gone, and the loop either continues to the next blocker or stops when green.
+### ④ Self-heal — fix the problems automatically
 
-`bin/design-watch.py` streams the whole loop to a live `STATUS.md` dashboard so a human can watch (or intervene) in real time. Every attempt — decision, reasoning, files touched, verification outcome — is persisted to `repair-attempts.jsonl` for audit.
+If anything from the verify step comes back red, the system tries to fix it before asking for help.
 
-### ⑤ Ship
+1. **Sort.** Each problem is classified into a known category: *"microcopy duplicates another theme"*, *"hover contrast too low"*, *"two product photos look the same"*, *"AI reviewer thinks the hero is overpowering"*, and so on.
+2. **Pack.** The evidence is bundled up — the relevant source files, the exact rule that fired, the offending screenshot, the theme's design brief — into a package an AI can actually reason about.
+3. **Ask.** The bundle goes to Claude, which proposes a specific, minimal patch (exact file, exact replacement text) under strict guardrails: no `!important`, no edits outside the theme's own folder, no touching shared framework code.
+4. **Apply and re-verify.** The patch lands, the affected checks re-run, and the loop either moves on to the next problem or stops when everything is green. After a bounded number of attempts it escalates for human help rather than spinning forever.
 
-Visual baselines live at `tests/visual-baseline/<slug>/` — the canonical rendered PNG for every (viewport, route) cell, committed to the repo. GitHub Actions runs the same static gate on every PR (scoped to changed themes), a pixel-diff against the baselines, and a vision pass on any PR that adds a brand-new theme. On green merge, the theme lands at `[demo.regionallyfamous.com/<slug>/](https://demo.regionallyfamous.com)` — a short URL that redirects to a WordPress Playground deeplink, so anyone on the internet can click through a fully-seeded WooCommerce storefront without touching a real WordPress install.
+A companion process writes a live status file so a human can watch the loop work in real time — every attempt, every decision, every file touched is logged for later audit.
 
-## Why it's cool
+### ⑤ Ship — put the theme online
 
-Three things that aren't usually in the same pipeline:
+Once everything is green, the reference screenshots get committed to the repo alongside the code. GitHub runs the exact same checks on every pull request and compares the new screenshots against those references pixel by pixel; any regression blocks the merge. On a successful merge, the theme appears at `demo.regionallyfamous.com/<slug>/` — a short link that opens a live, fully-seeded version of the store in anyone's browser. No WordPress install required; the whole thing runs inside Playground, WordPress's in-browser runtime.
 
-1. **Spec-driven, not template-driven.** Every theme is a deterministic token swap off one canonical ancestor. No `if brand == 'X'` forks, no copy-paste drift. Change a structural rule in the ancestor and every theme inherits it.
-2. **Pixel-verified, not just test-passing.** An LLM reviews rendered screenshots against a rubric the theme itself declared, and the resulting findings are first-class alongside axe-core and static checks. "The H1 crushes the hierarchy" fails CI the same way "`<html>` missing `lang` attribute" does.
-3. **Self-healing, not just red-light/green-light.** Most CI pipelines stop at red. Ours structures the failure into an evidence packet an LLM can actually act on, applies the fix, and re-verifies — usually before a human has finished reading the notification.
+## Why it's interesting
 
-The net effect: the cost of shipping the next theme is the same as the last — whether that's the tenth or the ten-thousandth.
+Three things that don't usually live in the same system:
+
+1. **One recipe, many flavors.** Every theme is a mechanical copy of one canonical parent with the design decisions swapped. There are no `if theme == "acme"` branches anywhere in the code. Change a structural rule in the parent and every child inherits the change on the next build — including the safety checks.
+
+2. **Pixel-verified, not just test-passing.** It's not enough for the code to compile and the automated tests to pass. An AI that can actually *see* the rendered pages grades them against the design brief, and its findings count the same as the mechanical ones. "The headline swallows the page" fails the build just like "missing alt text on a button" does.
+
+3. **Self-healing, not just red-light / green-light.** Most build systems stop at "this is broken." Ours structures the failure into something an AI can act on, proposes a specific fix, applies it, and rechecks — usually before a human has finished reading the notification.
+
+The combined effect: the cost of shipping the next theme is the same as the last — whether that's the tenth or the ten-thousandth.
 
 ## Where to go next
 
-- **Bootstrap**: `[../AGENTS.md](../AGENTS.md)` — the operator manual (23 hard rules + tooling).
-- **Shipping one**: `[./shipping-a-theme.md](./shipping-a-theme.md)` — per-theme checklist.
-- **Shipping many**: `[./batch-playbook.md](./batch-playbook.md)` — N-at-a-time workflow.
-- **Public bench**: `[/concepts/](https://demo.regionallyfamous.com/concepts/)` — the queue of painted concepts.
-- **Shipped themes**: `[/themes/](https://demo.regionallyfamous.com/themes/)` — live dashboard with stage + gate claims per theme.
-- **Snap gallery**: `[/snaps/](https://demo.regionallyfamous.com/snaps/)` — the retina baseline gallery, organised by theme × viewport × route.
-
+- **Operator manual** — [AGENTS.md](../AGENTS.md) — 23 hard rules + the tooling reference.
+- **Shipping one theme** — [shipping-a-theme.md](./shipping-a-theme.md) — the per-theme checklist.
+- **Shipping many at once** — [batch-playbook.md](./batch-playbook.md) — the N-at-a-time workflow.
+- **Public concept queue** — [/concepts/](https://demo.regionallyfamous.com/concepts/) — every painted concept, queued up.
+- **Shipped themes** — [/themes/](https://demo.regionallyfamous.com/themes/) — live dashboard with each theme's stage and passing-checks.
+- **Screenshot gallery** — [/snaps/](https://demo.regionallyfamous.com/snaps/) — the committed reference screenshots, browseable by theme × screen size × page.
