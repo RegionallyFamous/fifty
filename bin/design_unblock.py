@@ -66,10 +66,15 @@ sys.path.insert(0, str(ROOT / "bin"))
 # are lowercase substring matches over (title + '\n' + detail).  The first
 # matching rule wins; fallback is `unknown`.
 _CLASSIFIER_RULES: tuple[tuple[str, str, str | None], ...] = (
+    ("php-syntax", "php syntax", None),
     ("product-photo-duplicate", "product photographs are visually distinct", None),
     ("hover-contrast", "hover/focus states have legible", None),
     ("microcopy-duplicate", "pattern + heading microcopy distinct", None),
     ("microcopy-duplicate", "all rendered text distinct", None),
+    ("wc-microcopy-duplicate", "wc microcopy maps are distinct", None),
+    ("cross-theme-product-images", "product photographs are unique across themes", None),
+    ("hero-placeholders-duplicate", "hero placeholders are unique across themes", None),
+    ("screenshot-duplicate", "theme screenshots distinct", None),
     ("snap-a11y-color-contrast", "recent snaps carry no serious", None),
     ("placeholder-images", "product image", "woocommerce placeholder"),
     ("placeholder-images", "woocommerce placeholder", None),
@@ -79,9 +84,14 @@ _CLASSIFIER_RULES: tuple[tuple[str, str, str | None], ...] = (
 
 KNOWN_CATEGORIES = frozenset(
     {
+        "php-syntax",
         "product-photo-duplicate",
         "hover-contrast",
         "microcopy-duplicate",
+        "wc-microcopy-duplicate",
+        "cross-theme-product-images",
+        "hero-placeholders-duplicate",
+        "screenshot-duplicate",
         "snap-a11y-color-contrast",
         "placeholder-images",
         "snap-evidence-stale",
@@ -108,13 +118,18 @@ def _classify(title: str, detail: str) -> str:
 # small formatting jitter (e.g. a ratio changing by 0.01) but changes when
 # the LLM actually touches the right element.
 _DETAIL_EXTRACTORS: dict[str, re.Pattern[str]] = {
+    "php-syntax": re.compile(r"\b(functions\.php|patterns?/[a-z0-9_-]+\.php)\b"),
     "product-photo-duplicate": re.compile(
         r"(product-wo-[a-z0-9-]+\.jpg)\s*~\s*(product-wo-[a-z0-9-]+\.jpg)"
     ),
     "hover-contrast": re.compile(r"([.#][^{}:\s]+:hover[^{}\s]*)"),
     "microcopy-duplicate": re.compile(
-        r"(patterns?/[a-z0-9_-]+\.(?:php|html))"
+        r"((?:patterns?|templates?|parts?)/[a-z0-9_-]+\.(?:php|html))"
     ),
+    "wc-microcopy-duplicate": re.compile(r"(WC microcopy maps share translations)"),
+    "cross-theme-product-images": re.compile(r"(\d+)\s+product-wo-\*\.jpg"),
+    "hero-placeholders-duplicate": re.compile(r"(\d+)\s+hero placeholder"),
+    "screenshot-duplicate": re.compile(r"share identical screenshot\.png"),
     "snap-a11y-color-contrast": re.compile(
         r"\b(\d+)\s+NEW severity:error finding\(s\)"
     ),
@@ -170,6 +185,8 @@ class Blocker:
     affected_viewports: list[str] = field(default_factory=list)
     snap_findings: list[SnapFinding] = field(default_factory=list)
     verification: list[list[str]] = field(default_factory=list)
+    source_snippets: list[str] = field(default_factory=list)
+    recommended_recipes: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
 
 
@@ -185,6 +202,11 @@ class RepairPlan:
     blockers: list[Blocker]
     resume_phase: str
     verification_ladder: list[list[str]]
+    allowed_commands: list[str] = field(default_factory=list)
+    recommended_recipes: list[str] = field(default_factory=list)
+    requires_secret: list[str] = field(default_factory=list)
+    human_boundary: str | None = None
+    artifact_paths: list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -321,7 +343,13 @@ def _affected_files_for_category(
         if path and path not in out:
             out.append(path)
 
-    if category == "product-photo-duplicate":
+    if category == "php-syntax":
+        add(f"{slug}/functions.php")
+        pat = _DETAIL_EXTRACTORS["php-syntax"]
+        for rel in pat.findall(detail):
+            add(f"{slug}/{rel}")
+
+    elif category == "product-photo-duplicate":
         pat = _DETAIL_EXTRACTORS["product-photo-duplicate"]
         m = pat.search(detail)
         if m:
@@ -338,6 +366,21 @@ def _affected_files_for_category(
         pat = _DETAIL_EXTRACTORS["microcopy-duplicate"]
         for rel in pat.findall(detail):
             add(f"{slug}/{rel}")
+
+    elif category == "wc-microcopy-duplicate":
+        add(f"{slug}/functions.php")
+
+    elif category == "cross-theme-product-images":
+        add(f"{slug}/playground/content/product-images.json")
+        add(f"{slug}/playground/content/image-manifest.json")
+        add(f"{slug}/playground/images/")
+
+    elif category == "hero-placeholders-duplicate":
+        add(f"{slug}/playground/content/content.xml")
+        add(f"{slug}/playground/images/")
+
+    elif category == "screenshot-duplicate":
+        add(f"{slug}/screenshot.png")
 
     elif category == "snap-a11y-color-contrast":
         add(f"{slug}/theme.json")
@@ -375,6 +418,98 @@ def _affected_files_for_category(
         add(html)
 
     return out
+
+
+_FILE_LINE_RE = re.compile(
+    r"((?:[a-z0-9_-]+/)?(?:functions\.php|(?:patterns?|templates?|parts?)/[a-z0-9_-]+\.(?:php|html)|theme\.json))"
+    r"(?:(?:\s+on\s+line|\:)(?:\s*)?|\b.*?\bline\s+)(\d+)",
+    re.IGNORECASE,
+)
+
+
+def _line_refs_from_detail(slug: str, detail: str) -> list[tuple[str, int]]:
+    refs: list[tuple[str, int]] = []
+    for rel, line_raw in _FILE_LINE_RE.findall(detail):
+        path = rel
+        if not path.startswith(f"{slug}/"):
+            path = f"{slug}/{path}"
+        try:
+            line_no = int(line_raw)
+        except ValueError:
+            continue
+        if (path, line_no) not in refs:
+            refs.append((path, line_no))
+    return refs
+
+
+def _focused_snippet(rel: str, line_no: int, *, radius: int = 35) -> str:
+    path = ROOT / rel
+    if not path.is_file():
+        return f"### {rel}:{line_no}\n(missing)"
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except UnicodeDecodeError:
+        return f"### {rel}:{line_no}\n(binary)"
+    start = max(1, line_no - radius)
+    end = min(len(lines), line_no + radius)
+    body = "\n".join(
+        f"{idx}|{lines[idx - 1]}" for idx in range(start, end + 1)
+    )
+    return f"### {rel}:{line_no}\n```\n{body}\n```"
+
+
+def _source_snippets_for_blocker(
+    category: str,
+    slug: str,
+    detail: str,
+    affected_files: list[str],
+) -> list[str]:
+    snippets: list[str] = []
+    for rel, line_no in _line_refs_from_detail(slug, detail):
+        snippets.append(_focused_snippet(rel, line_no))
+    # If no line was provided, include compact source for the most
+    # actionable text/PHP files. Binary assets are intentionally skipped.
+    if snippets:
+        return snippets
+    for rel in affected_files:
+        if rel.endswith("/") or rel.startswith("tmp/snaps/") or rel.startswith("bin/"):
+            continue
+        if not rel.endswith((".php", ".html", ".json")):
+            continue
+        path = ROOT / rel
+        snippets.append(f"### {rel}\n```\n{_file_snippet(path)}\n```")
+        if category in {"php-syntax", "wc-microcopy-duplicate"}:
+            break
+    return snippets
+
+
+def _recipes_for_category(category: str) -> list[str]:
+    return {
+        "php-syntax": ["php_syntax"],
+        "cross-theme-product-images": ["generate_product_photos"],
+        "product-photo-duplicate": ["generate_product_photos"],
+        "hero-placeholders-duplicate": ["generate_theme_images"],
+        "placeholder-images": ["snap_routes"],
+        "screenshot-duplicate": ["build_screenshot"],
+        "snap-evidence-stale": ["snap_routes"],
+        "design-score-low": ["snap_routes", "design_scorecard"],
+    }.get(category, [])
+
+
+def _allowed_commands_for_categories(categories: list[str]) -> list[str]:
+    commands = {"check_quick", "check_only"}
+    if any(c in categories for c in {"placeholder-images", "snap-evidence-stale", "snap-a11y-color-contrast", "screenshot-duplicate", "design-score-low"}):
+        commands.add("snap_routes")
+        commands.add("snap_report")
+    if any(c in categories for c in {"product-photo-duplicate", "cross-theme-product-images"}):
+        commands.add("generate_product_photos")
+    if "screenshot-duplicate" in categories:
+        commands.add("build_screenshot")
+    if "design-score-low" in categories:
+        commands.add("design_scorecard")
+    commands.add("sync_playground")
+    commands.add("build_index")
+    return sorted(commands)
 
 
 # ---------------------------------------------------------------------------
@@ -534,6 +669,13 @@ def _summary_to_blockers(summary: dict[str, Any]) -> list[Blocker]:
         affected_routes = sorted({f.route for f in snap_findings if f.route})
         affected_viewports = sorted({f.viewport for f in snap_findings if f.viewport})
         verification = _verification_for_blocker(category, slug, snap_findings)
+        recipes = _recipes_for_category(category)
+        source_snippets = _source_snippets_for_blocker(
+            category,
+            slug,
+            detail,
+            affected_files,
+        )
         blocker = Blocker(
             category=category,
             title=title,
@@ -546,6 +688,8 @@ def _summary_to_blockers(summary: dict[str, Any]) -> list[Blocker]:
             affected_viewports=affected_viewports,
             snap_findings=snap_findings,
             verification=verification,
+            source_snippets=source_snippets,
+            recommended_recipes=recipes,
         )
         if category == "unknown":
             blocker.notes.append(
@@ -585,6 +729,14 @@ def build_repair_plan(run_dir: Path) -> RepairPlan:
     categories = [b.category for b in blockers]
     resume = _resume_phase_for(categories)
     ladder = _full_verification_ladder(slug, categories)
+    recommended_recipes = sorted(
+        {recipe for blocker in blockers for recipe in blocker.recommended_recipes}
+    )
+    artifact_paths = [
+        str(run_dir / "repair-plan.json"),
+        str(run_dir / "repair-attempts.jsonl"),
+        str(run_dir / "STATUS.md"),
+    ]
     return RepairPlan(
         run_id=str(summary.get("run_id") or run_dir.name),
         slug=slug,
@@ -596,6 +748,11 @@ def build_repair_plan(run_dir: Path) -> RepairPlan:
         blockers=blockers,
         resume_phase=resume,
         verification_ladder=ladder,
+        allowed_commands=_allowed_commands_for_categories(categories),
+        recommended_recipes=recommended_recipes,
+        requires_secret=[],
+        human_boundary=None,
+        artifact_paths=artifact_paths,
     )
 
 
@@ -684,6 +841,221 @@ def _run_cmd(cmd: list[str], *, timeout: float | None = None) -> dict[str, Any]:
             "elapsed_s": round(time.time() - started, 3),
             "timed_out": True,
         }
+
+
+_SAFE_ARG_RE = re.compile(r"^[a-z0-9_.:/,-]+$")
+
+
+def _validate_slug(slug: str) -> None:
+    if not re.match(r"^[a-z0-9][a-z0-9-]{1,80}$", slug):
+        raise ValueError(f"unsafe theme slug: {slug!r}")
+
+
+def _validate_safe_args(values: list[str], *, label: str) -> None:
+    for value in values:
+        if not value or ".." in value or value.startswith("-") or not _SAFE_ARG_RE.match(value):
+            raise ValueError(f"unsafe {label}: {value!r}")
+
+
+def broker_action_to_argv(slug: str, action: str, payload: dict[str, Any] | None = None) -> list[str]:
+    """Translate one structured rescue action into an approved command.
+
+    This is intentionally not a shell passthrough. Every command shape is
+    enumerated here so recipes and tool-rescue can mutate the worktree only
+    through known, scoped repair operations.
+    """
+    payload = payload or {}
+    _validate_slug(slug)
+    if action == "check_quick":
+        return [sys.executable, str(ROOT / "bin" / "check.py"), slug, "--quick"]
+    if action == "check_only":
+        only = [str(item) for item in payload.get("only") or []]
+        _validate_safe_args(only, label="check alias")
+        return [
+            sys.executable,
+            str(ROOT / "bin" / "check.py"),
+            slug,
+            "--quick",
+            "--only",
+            *only,
+        ]
+    if action == "snap_routes":
+        routes = [str(item) for item in payload.get("routes") or []]
+        viewports = [str(item) for item in payload.get("viewports") or ["mobile", "desktop"]]
+        _validate_safe_args(routes, label="route")
+        _validate_safe_args(viewports, label="viewport")
+        cmd = [
+            sys.executable,
+            str(ROOT / "bin" / "snap.py"),
+            "shoot",
+            slug,
+            "--viewports",
+            ",".join(viewports),
+        ]
+        if routes:
+            cmd.extend(["--routes", ",".join(routes)])
+        return cmd
+    if action == "snap_report":
+        return [sys.executable, str(ROOT / "bin" / "snap.py"), "report", slug]
+    if action == "generate_product_photos":
+        cmd = [
+            sys.executable,
+            str(ROOT / "bin" / "generate-product-photos.py"),
+            "--theme",
+            slug,
+        ]
+        if payload.get("force", True):
+            cmd.append("--" + "force")
+        return cmd
+    if action == "build_screenshot":
+        return [sys.executable, str(ROOT / "bin" / "build-theme-screenshots.py"), slug]
+    if action == "sync_playground":
+        return [sys.executable, str(ROOT / "bin" / "sync-playground.py")]
+    if action == "build_index":
+        return [sys.executable, str(ROOT / "bin" / "build-index.py"), slug]
+    if action == "design_scorecard":
+        return [
+            sys.executable,
+            str(ROOT / "bin" / "design-scorecard.py"),
+            slug,
+            "--run-id",
+            str(payload.get("run_id") or os.environ.get("FIFTY_DESIGN_RUN_ID") or f"design-{slug}"),
+        ]
+    if action == "php_lint":
+        rel = str(payload.get("path") or f"{slug}/functions.php").lstrip("./")
+        if not rel.startswith(f"{slug}/") or ".." in rel or not rel.endswith(".php"):
+            raise ValueError(f"unsafe php lint path: {rel!r}")
+        return ["php", "-l", str(ROOT / rel)]
+    raise ValueError(f"unsupported broker action: {action}")
+
+
+def run_broker_action(
+    slug: str,
+    action: str,
+    payload: dict[str, Any] | None = None,
+    *,
+    timeout: float | None = 30 * 60,
+) -> dict[str, Any]:
+    argv = broker_action_to_argv(slug, action, payload)
+    result = _run_cmd(argv, timeout=timeout)
+    result["action"] = action
+    result["payload"] = payload or {}
+    return result
+
+
+def _actions_for_recipe(slug: str, recipe: str, run_id: str) -> list[tuple[str, dict[str, Any]]]:
+    if recipe == "php_syntax":
+        return [("php_lint", {"path": f"{slug}/functions.php"}), ("check_quick", {})]
+    if recipe == "generate_product_photos":
+        return [("generate_product_photos", {"force": True}), ("check_quick", {})]
+    if recipe == "generate_theme_images":
+        generator = ROOT / slug / "playground" / "generate-images.py"
+        if generator.is_file():
+            # This legacy per-theme script is intentionally not exposed as a
+            # general broker command; recipes may invoke it through the
+            # normal Python runner shape when it exists.
+            return []
+        return [("generate_product_photos", {"force": True}), ("check_quick", {})]
+    if recipe == "build_screenshot":
+        return [
+            ("snap_routes", {"routes": ["home"], "viewports": ["desktop"]}),
+            ("build_screenshot", {}),
+            ("check_quick", {}),
+        ]
+    if recipe == "snap_routes":
+        return [("snap_routes", {}), ("snap_report", {}), ("check_quick", {})]
+    if recipe == "design_scorecard":
+        return [("design_scorecard", {"run_id": run_id})]
+    if recipe == "sync_playground":
+        return [("sync_playground", {}), ("check_quick", {})]
+    if recipe == "build_index":
+        return [("build_index", {}), ("check_quick", {})]
+    return []
+
+
+def apply_recipes(
+    run_dir: Path,
+    *,
+    max_attempts: int = 6,
+    max_non_improving: int = 3,
+) -> AttemptRecord:
+    plan = build_repair_plan(run_dir)
+    existing_attempts = _read_attempt_count(run_dir)
+    attempt_number = existing_attempts + 1
+    if attempt_number > max_attempts or _non_improving_streak(run_dir, layer="recipe") >= max_non_improving:
+        record = AttemptRecord(
+            at=time.time(),
+            attempt=attempt_number,
+            decision="stopped",
+            reason="Recipe repair cap reached before running deterministic recipes.",
+            before=[b.fingerprint for b in plan.blockers],
+            after=[b.fingerprint for b in plan.blockers],
+            touched_files=[],
+            commands=[],
+            verification={"layer": "recipe"},
+            notes=["recipe layer stopped on cap"],
+        )
+        append_attempt(run_dir, record)
+        return record
+
+    before = [b.fingerprint for b in plan.blockers]
+    changed_before = set(_changed_files(ROOT))
+    results: list[dict[str, Any]] = []
+    commands_run: list[list[str]] = []
+    notes: list[str] = []
+
+    for recipe in plan.recommended_recipes:
+        actions = _actions_for_recipe(plan.slug, recipe, plan.run_id)
+        if not actions:
+            notes.append(f"recipe {recipe} had no brokered actions")
+            continue
+        for action, payload in actions:
+            result = run_broker_action(plan.slug, action, payload)
+            results.append(result)
+            commands_run.append([str(part) for part in result.get("argv", [])])
+            if int(result.get("returncode", 0) or 0) not in (0, 1):
+                notes.append(f"recipe {recipe} stopped after {action} rc={result.get('returncode')}")
+                break
+
+    for cmd in plan.verification_ladder:
+        result = _run_cmd(cmd, timeout=30 * 60)
+        results.append(result | {"action": "verification", "payload": {}})
+        commands_run.append(cmd)
+        if result["returncode"] not in (0, 1):
+            break
+
+    categories = [b.category for b in plan.blockers]
+    after = _collect_fingerprints(plan.slug, categories)
+    verification_failed = any(
+        int(result.get("returncode", 0) or 0) != 0 for result in results
+    )
+    decision, reason = _judge_progress(
+        before,
+        after,
+        slug=plan.slug,
+        snap_errors_before=_snap_error_count(plan.slug),
+        verification_failed=verification_failed,
+    )
+    changed_after = set(_changed_files(ROOT))
+    touched = sorted(path for path in (changed_after - changed_before) if path.startswith(f"{plan.slug}/"))
+    record = AttemptRecord(
+        at=time.time(),
+        attempt=attempt_number,
+        decision=decision,
+        reason=reason,
+        before=before,
+        after=after,
+        touched_files=touched,
+        commands=commands_run,
+        verification={
+            "layer": "recipe",
+            "recipes": plan.recommended_recipes,
+            "results": results,
+        },
+        notes=notes,
+    )
+    append_attempt(run_dir, record)
+    return record
 
 
 def _collect_fingerprints(slug: str, categories: list[str]) -> list[str]:
@@ -834,6 +1206,14 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--recipes",
+        action="store_true",
+        help=(
+            "Run deterministic repair recipes named by the repair plan, "
+            "then verify and append a recipe-layer attempt record."
+        ),
+    )
+    p.add_argument(
         "--attempt-number",
         type=int,
         default=None,
@@ -891,6 +1271,19 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--tool-rescue",
+        action="store_true",
+        help=(
+            "Run a bounded tool-rescue loop. The model may request exact "
+            "edits and structured broker actions, but never raw shell."
+        ),
+    )
+    p.add_argument(
+        "--tool-rescue-dry-run",
+        action="store_true",
+        help="Emit the tool-rescue packet and stop without calling the model.",
+    )
+    p.add_argument(
         "--model",
         default=None,
         help="Override the Anthropic model for --agentic (default: FIFTY_UNBLOCK_MODEL or claude-sonnet-4-6).",
@@ -908,6 +1301,12 @@ def _print_plan_text(plan: RepairPlan) -> None:
     print(f"# Repair plan: {plan.slug} (run {plan.run_id})")
     print(f"worktree_root: {plan.worktree_root}")
     print(f"worktree_clean: {plan.worktree_clean}")
+    if plan.allowed_commands:
+        print(f"allowed_commands: {', '.join(plan.allowed_commands)}")
+    if plan.recommended_recipes:
+        print(f"recommended_recipes: {', '.join(plan.recommended_recipes)}")
+    if plan.human_boundary:
+        print(f"human_boundary: {plan.human_boundary}")
     if plan.worktree_unrelated_files:
         print("unrelated_framework_files:")
         for p in plan.worktree_unrelated_files:
@@ -924,6 +1323,8 @@ def _print_plan_text(plan: RepairPlan) -> None:
             print(f"    action: {b.next_action}")
         for f in b.affected_files:
             print(f"    file:   {f}")
+        for recipe in b.recommended_recipes:
+            print(f"    recipe: {recipe}")
         if b.affected_routes:
             print(f"    routes: {', '.join(b.affected_routes)}")
         if b.affected_viewports:
@@ -953,7 +1354,7 @@ def _read_attempt_count(run_dir: Path) -> int:
         return sum(1 for line in fh if line.strip())
 
 
-def _non_improving_streak(run_dir: Path) -> int:
+def _non_improving_streak(run_dir: Path, *, layer: str | None = None) -> int:
     path = run_dir / "repair-attempts.jsonl"
     if not path.is_file():
         return 0
@@ -965,6 +1366,10 @@ def _non_improving_streak(run_dir: Path) -> int:
             rec = json.loads(line)
         except json.JSONDecodeError:
             continue
+        if layer is not None:
+            verification = rec.get("verification") or {}
+            if not isinstance(verification, dict) or verification.get("layer") != layer:
+                continue
         if rec.get("decision") == "improved" or rec.get("decision") == "fixed":
             streak = 0
         else:
@@ -1243,6 +1648,11 @@ def _build_repair_prompt(plan: RepairPlan, prior_attempts: list[dict[str, Any]])
     file_sections: list[str] = []
     seen_files: set[str] = set()
     for b in plan.blockers:
+        for snippet in b.source_snippets:
+            if snippet in seen_files:
+                continue
+            seen_files.add(snippet)
+            file_sections.append(snippet)
         for rel in b.affected_files:
             if rel in seen_files:
                 continue
@@ -1344,6 +1754,40 @@ def _parse_llm_edits(raw_text: str) -> dict[str, Any]:
     return data
 
 
+def _parse_tool_rescue_response(raw_text: str) -> dict[str, Any]:
+    data = _parse_llm_edits(raw_text)
+    data.setdefault("actions", [])
+    data.setdefault("human_boundary", None)
+    if not isinstance(data["actions"], list):
+        raise ValueError("`actions` must be a list")
+    if data["human_boundary"] is not None and not isinstance(data["human_boundary"], str):
+        raise ValueError("`human_boundary` must be null or a string")
+    return data
+
+
+def _human_boundary_from_exception(exc: Exception) -> str | None:
+    status = getattr(exc, "status", None)
+    if status == 429:
+        return "external-rate-limit"
+    text = str(exc)
+    if "Too Many Requests" in text or "HTTPError 429" in text:
+        return "external-rate-limit"
+    if "ApiKeyMissingError" in text or "ANTHROPIC_API_KEY" in text:
+        return "missing-api-key"
+    return None
+
+
+def _exception_boundary_metadata(exc: Exception) -> dict[str, Any]:
+    metadata: dict[str, Any] = {}
+    retry_after = getattr(exc, "retry_after_seconds", None)
+    if retry_after is not None:
+        metadata["retry_after_seconds"] = retry_after
+    rate_headers = getattr(exc, "rate_limit_headers", None)
+    if isinstance(rate_headers, dict) and rate_headers:
+        metadata["rate_limit_headers"] = rate_headers
+    return metadata
+
+
 def _apply_llm_edits(
     slug: str,
     edits: list[dict[str, Any]],
@@ -1374,6 +1818,87 @@ def _apply_llm_edits(
         if path_str not in applied:
             applied.append(path_str)
     return applied, rejected
+
+
+def _run_rescue_actions(
+    slug: str,
+    allowed: list[str],
+    actions: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    results: list[dict[str, Any]] = []
+    rejected: list[str] = []
+    allowed_set = set(allowed)
+    for action in actions:
+        name = str(action.get("action") or "")
+        payload = action.get("payload") or {}
+        if name not in allowed_set:
+            rejected.append(f"action {name!r} is not allowed")
+            continue
+        if not isinstance(payload, dict):
+            rejected.append(f"action {name!r} payload must be an object")
+            continue
+        try:
+            results.append(run_broker_action(slug, name, payload))
+        except ValueError as exc:
+            rejected.append(str(exc))
+    return results, rejected
+
+
+def _build_tool_rescue_prompt(plan: RepairPlan, prior_attempts: list[dict[str, Any]]) -> tuple[str, str]:
+    system = (
+        "You are a bounded tool-using rescue agent for a WordPress block theme "
+        "factory. You may propose exact file edits and structured broker "
+        "actions, but you may not run raw shell commands. Work only inside the "
+        "active theme and generated per-theme artifacts. Never edit allowlists, "
+        "never use destructive git operations, and never bypass checks.\n\n"
+        "Respond with exactly one JSON object:\n"
+        "{\n"
+        '  "rationale": "<diagnosis>",\n'
+        '  "done": false,\n'
+        '  "human_boundary": null,\n'
+        '  "actions": [{"action": "check_quick", "payload": {}}],\n'
+        '  "edits": [{"path": "<slug>/<file>", "old_string": "...", "new_string": "..."}]\n'
+        "}\n"
+        "Use `human_boundary` only for credentials, budget cap, destructive "
+        "approval, external outage, or genuinely ambiguous design judgment."
+    )
+    blockers_text: list[str] = []
+    snippets: list[str] = []
+    seen: set[str] = set()
+    for b in plan.blockers:
+        blockers_text.append(
+            f"- [{b.category}] {b.title}\n"
+            f"    detail: {b.detail[:1000]}\n"
+            f"    next_action: {b.next_action}\n"
+            f"    recipes: {', '.join(b.recommended_recipes) or 'none'}\n"
+            f"    fingerprint: {b.fingerprint}"
+        )
+        for snippet in b.source_snippets:
+            if snippet not in seen:
+                seen.add(snippet)
+                snippets.append(snippet)
+    prior_text = ""
+    if prior_attempts:
+        prior_text = "\n## Prior attempts\n"
+        for rec in prior_attempts[-5:]:
+            prior_text += (
+                f"- attempt {rec.get('attempt')}: {rec.get('decision')} "
+                f"({rec.get('reason', '')}); files: "
+                f"{', '.join(rec.get('touched_files', []))}\n"
+            )
+    user = (
+        f"# Tool rescue packet for `{plan.slug}`\n"
+        f"Worktree: {plan.worktree_root}\n"
+        f"Resume phase: {plan.resume_phase}\n"
+        f"Allowed broker actions: {', '.join(plan.allowed_commands)}\n"
+        f"Recommended recipes: {', '.join(plan.recommended_recipes) or 'none'}\n"
+        f"\n## Blockers\n" + "\n".join(blockers_text)
+        + prior_text
+        + "\n\n## Source snippets\n"
+        + "\n\n".join(snippets)
+        + "\n\nReturn JSON now."
+    )
+    return system, user
 
 
 def _read_attempts_jsonl(run_dir: Path) -> list[dict[str, Any]]:
@@ -1440,7 +1965,7 @@ def agentic_repair(
         attempt_number += 1
 
         # Check non-improving streak before each attempt.
-        if _non_improving_streak(run_dir) >= max_non_improving:
+        if _non_improving_streak(run_dir, layer="json-llm") >= max_non_improving:
             record = AttemptRecord(
                 at=time.time(),
                 attempt=attempt_number,
@@ -1453,7 +1978,7 @@ def agentic_repair(
                 after=[b.fingerprint for b in plan.blockers],
                 touched_files=[],
                 commands=[],
-                verification={},
+                verification={"layer": "json-llm", "human_boundary": "non-improving-streak"},
                 notes=["agentic repair stopped on non-improving streak"],
             )
             append_attempt(run_dir, record)
@@ -1478,7 +2003,7 @@ def agentic_repair(
                 after=[b.fingerprint for b in plan.blockers],
                 touched_files=[],
                 commands=[],
-                verification={},
+                verification={"layer": "json-llm", "human_boundary": "missing-api-key"},
                 notes=["dry-run agentic repair; no edits applied"],
             )
             append_attempt(run_dir, record)
@@ -1498,6 +2023,7 @@ def agentic_repair(
             return 5
         except Exception as exc:
             # A transient API failure is a stop; the operator should retry.
+            boundary = _human_boundary_from_exception(exc)
             record = AttemptRecord(
                 at=time.time(),
                 attempt=attempt_number,
@@ -1507,7 +2033,11 @@ def agentic_repair(
                 after=[b.fingerprint for b in plan.blockers],
                 touched_files=[],
                 commands=[],
-                verification={},
+                verification={
+                    "layer": "json-llm",
+                    **({"human_boundary": boundary} if boundary else {}),
+                    **_exception_boundary_metadata(exc),
+                },
                 notes=[repr(exc)],
             )
             append_attempt(run_dir, record)
@@ -1526,7 +2056,7 @@ def agentic_repair(
                 after=before,
                 touched_files=[],
                 commands=[],
-                verification={"raw_tail": resp.raw_text[:2000]},
+                verification={"layer": "json-llm", "raw_tail": resp.raw_text[:2000]},
                 notes=["LLM returned malformed JSON"],
             )
             append_attempt(run_dir, record)
@@ -1539,6 +2069,7 @@ def agentic_repair(
         snap_errors_before = _snap_error_count(plan.slug)
         commands_run: list[list[str]] = []
         verification_log: dict[str, Any] = {
+            "layer": "json-llm",
             "ladder": [],
             "llm_rationale": parsed.get("rationale", "")[:800],
             "llm_done": bool(parsed.get("done")),
@@ -1612,8 +2143,216 @@ def agentic_repair(
         after=[b.fingerprint for b in plan.blockers],
         touched_files=[],
         commands=[],
-        verification={},
+        verification={"layer": "json-llm", "human_boundary": "attempt-cap"},
         notes=["agentic repair stopped on attempt cap"],
+    )
+    append_attempt(run_dir, record)
+    return 4
+
+
+def tool_rescue(
+    run_dir: Path,
+    *,
+    max_attempts: int = 3,
+    max_non_improving: int = 2,
+    dry_run: bool = False,
+    model: str | None = None,
+) -> int:
+    try:
+        from _vision_lib import (
+            ApiKeyMissingError,
+            text_completion,
+        )
+    except Exception:
+        print("refusing to --tool-rescue: bin/_vision_lib.py is unavailable", file=sys.stderr)
+        return 5
+
+    plan = build_repair_plan(run_dir)
+    if not plan.worktree_clean:
+        print(
+            "refusing to --tool-rescue: worktree has unrelated framework changes:",
+            file=sys.stderr,
+        )
+        for p in plan.worktree_unrelated_files:
+            print(f"  - {p}", file=sys.stderr)
+        return 2
+    if not plan.blockers:
+        print("no blockers to rescue", file=sys.stderr)
+        return 0
+
+    attempt_history = _read_attempts_jsonl(run_dir)
+    attempt_number = len(attempt_history)
+    while attempt_number < max_attempts:
+        attempt_number += 1
+        if _non_improving_streak(run_dir, layer="tool-rescue") >= max_non_improving:
+            record = AttemptRecord(
+                at=time.time(),
+                attempt=attempt_number,
+                decision="stopped",
+                reason=(
+                    f"Tool rescue non-improving streak reached {max_non_improving}; "
+                    "escalating with typed boundary."
+                ),
+                before=[b.fingerprint for b in plan.blockers],
+                after=[b.fingerprint for b in plan.blockers],
+                touched_files=[],
+                commands=[],
+                verification={"layer": "tool-rescue", "human_boundary": "non-improving-streak"},
+                notes=["tool rescue stopped on non-improving streak"],
+            )
+            append_attempt(run_dir, record)
+            return 4
+
+        system, user = _build_tool_rescue_prompt(plan, attempt_history)
+        if dry_run or not os.environ.get("ANTHROPIC_API_KEY"):
+            print("---- TOOL RESCUE PACKET (dry-run) ----", flush=True)
+            print(user, flush=True)
+            print("---- END PACKET ----", flush=True)
+            record = AttemptRecord(
+                at=time.time(),
+                attempt=attempt_number,
+                decision="stopped",
+                reason="Dry-run or ANTHROPIC_API_KEY missing; tool-rescue packet emitted.",
+                before=[b.fingerprint for b in plan.blockers],
+                after=[b.fingerprint for b in plan.blockers],
+                touched_files=[],
+                commands=[],
+                verification={"layer": "tool-rescue", "human_boundary": "missing-api-key"},
+                notes=["tool rescue dry-run; no edits or actions applied"],
+            )
+            append_attempt(run_dir, record)
+            return 5
+
+        try:
+            resp = text_completion(
+                system_prompt=system,
+                user_prompt=user,
+                model=model or os.environ.get("FIFTY_RESCUE_MODEL")
+                or os.environ.get("FIFTY_UNBLOCK_MODEL")
+                or "claude-sonnet-4-6",
+                label="design-tool-rescue",
+                max_output_tokens=10000,
+            )
+            parsed = _parse_tool_rescue_response(resp.raw_text)
+        except ApiKeyMissingError as exc:
+            print(f"refusing to --tool-rescue: {exc}", file=sys.stderr)
+            return 5
+        except Exception as exc:
+            boundary = _human_boundary_from_exception(exc)
+            record = AttemptRecord(
+                at=time.time(),
+                attempt=attempt_number,
+                decision="stopped" if boundary else "not-improved",
+                reason=f"Tool rescue call/parse failure: {exc!s}",
+                before=[b.fingerprint for b in plan.blockers],
+                after=[b.fingerprint for b in plan.blockers],
+                touched_files=[],
+                commands=[],
+                verification={
+                    "layer": "tool-rescue",
+                    "error": repr(exc),
+                    **({"human_boundary": boundary} if boundary else {}),
+                    **_exception_boundary_metadata(exc),
+                },
+                notes=["tool rescue response failed"],
+            )
+            append_attempt(run_dir, record)
+            if boundary:
+                return 4
+            attempt_history.append(asdict(record))
+            continue
+
+        before = [b.fingerprint for b in plan.blockers]
+        human_boundary = parsed.get("human_boundary")
+        if human_boundary:
+            record = AttemptRecord(
+                at=time.time(),
+                attempt=attempt_number,
+                decision="stopped",
+                reason=f"Tool rescue reported human boundary: {human_boundary}",
+                before=before,
+                after=before,
+                touched_files=[],
+                commands=[],
+                verification={"layer": "tool-rescue", "human_boundary": human_boundary},
+                notes=[str(parsed.get("rationale") or "")[:800]],
+            )
+            append_attempt(run_dir, record)
+            return 4
+
+        action_results, rejected_actions = _run_rescue_actions(
+            plan.slug,
+            plan.allowed_commands,
+            parsed.get("actions", []),
+        )
+        applied, rejected_edits = _apply_llm_edits(plan.slug, parsed.get("edits", []))
+        commands_run = [[str(part) for part in result.get("argv", [])] for result in action_results]
+        verification_results: list[dict[str, Any]] = []
+        for cmd in plan.verification_ladder:
+            result = _run_cmd(cmd, timeout=30 * 60)
+            verification_results.append(result)
+            commands_run.append(cmd)
+            if result["returncode"] not in (0, 1):
+                break
+        categories = [b.category for b in plan.blockers]
+        after = _collect_fingerprints(plan.slug, categories)
+        verification_failed = any(
+            int(result.get("returncode", 0) or 0) != 0
+            for result in [*action_results, *verification_results]
+        )
+        decision, reason = _judge_progress(
+            before,
+            after,
+            slug=plan.slug,
+            snap_errors_before=_snap_error_count(plan.slug),
+            verification_failed=verification_failed,
+        )
+        record = AttemptRecord(
+            at=time.time(),
+            attempt=attempt_number,
+            decision=decision,
+            reason=reason,
+            before=before,
+            after=after,
+            touched_files=applied,
+            commands=commands_run,
+            verification={
+                "layer": "tool-rescue",
+                "llm_rationale": str(parsed.get("rationale") or "")[:800],
+                "actions": action_results,
+                "verification": verification_results,
+                "rejected_actions": rejected_actions,
+                "rejected_edits": rejected_edits,
+            },
+            notes=(
+                ["actions rejected: " + "; ".join(rejected_actions)] if rejected_actions else []
+            )
+            + (["edits rejected: " + "; ".join(rejected_edits)] if rejected_edits else []),
+        )
+        append_attempt(run_dir, record)
+        attempt_history.append(asdict(record))
+        print(
+            f"tool-rescue attempt {attempt_number}: {decision} — {reason}; "
+            f"actions={len(action_results)} edits={len(applied)}",
+            flush=True,
+        )
+        if decision in {"fixed", "improved"}:
+            return 0
+        if decision == "worse":
+            return 3
+        plan = build_repair_plan(run_dir)
+
+    record = AttemptRecord(
+        at=time.time(),
+        attempt=attempt_number,
+        decision="stopped",
+        reason=f"Exceeded tool-rescue max-attempts={max_attempts}; escalating.",
+        before=[b.fingerprint for b in plan.blockers],
+        after=[b.fingerprint for b in plan.blockers],
+        touched_files=[],
+        commands=[],
+        verification={"layer": "tool-rescue", "human_boundary": "attempt-cap"},
+        notes=["tool rescue stopped on attempt cap"],
     )
     append_attempt(run_dir, record)
     return 4
@@ -1642,6 +2381,38 @@ def main(argv: list[str] | None = None) -> int:
             dry_run=args.agentic_dry_run,
             model=args.model,
         )
+    if args.tool_rescue:
+        return tool_rescue(
+            run_dir,
+            max_attempts=args.max_attempts,
+            max_non_improving=args.max_non_improving,
+            dry_run=args.tool_rescue_dry_run,
+            model=args.model,
+        )
+    if args.recipes:
+        if not plan.worktree_clean:
+            print(
+                "refusing to --recipes: worktree has unrelated framework changes:",
+                file=sys.stderr,
+            )
+            for p in plan.worktree_unrelated_files:
+                print(f"  - {p}", file=sys.stderr)
+            return 2
+        record = apply_recipes(
+            run_dir,
+            max_attempts=args.max_attempts,
+            max_non_improving=args.max_non_improving,
+        )
+        print()
+        print(f"attempt {record.attempt}: {record.decision}")
+        print(f"reason: {record.reason}")
+        if record.decision in {"fixed", "improved"}:
+            return 0
+        if record.decision == "worse":
+            return 3
+        if record.decision == "stopped":
+            return 4
+        return 1
     if args.apply:
         # Hard safety: refuse to apply if the worktree is mixed with
         # unrelated framework changes (the theme edits the caller made

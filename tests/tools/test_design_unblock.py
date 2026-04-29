@@ -15,6 +15,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 BIN_DIR = REPO_ROOT / "bin"
 
@@ -67,13 +69,57 @@ def test_classify_unknown_title_returns_unknown():
 def test_known_categories_includes_all_primary_categories():
     u = _load_module()
     for expected in (
+        "php-syntax",
         "product-photo-duplicate",
         "hover-contrast",
         "microcopy-duplicate",
+        "wc-microcopy-duplicate",
+        "cross-theme-product-images",
+        "hero-placeholders-duplicate",
+        "screenshot-duplicate",
         "snap-a11y-color-contrast",
         "design-score-low",
     ):
         assert expected in u.KNOWN_CATEGORIES
+
+
+def test_classify_common_static_failures():
+    u = _load_module()
+    assert (
+        u._classify(
+            "PHP syntax (functions.php + patterns/*.php)",
+            'functions.php: PHP Parse error: unexpected token "-"',
+        )
+        == "php-syntax"
+    )
+    assert (
+        u._classify(
+            "WC microcopy maps are distinct across themes",
+            "WC microcopy maps share translations across themes",
+        )
+        == "wc-microcopy-duplicate"
+    )
+    assert (
+        u._classify(
+            "Product photographs are unique across themes (no copy-paste leak)",
+            "30 product-wo-*.jpg file(s) byte-identical across [new, obel]",
+        )
+        == "cross-theme-product-images"
+    )
+    assert (
+        u._classify(
+            "Hero placeholders are unique across themes (no copy-paste leak in wonders-page-*.png / wonders-post-*.png)",
+            "24 hero placeholder(s) byte-identical across [basalt, new]",
+        )
+        == "hero-placeholders-duplicate"
+    )
+    assert (
+        u._classify(
+            "Theme screenshots distinct (no duplicate-bytes)",
+            "new, obel share identical screenshot.png",
+        )
+        == "screenshot-duplicate"
+    )
 
 
 def test_classify_design_scorecard_failure():
@@ -319,7 +365,92 @@ def test_collect_fingerprints_reruns_full_check_for_unknown(monkeypatch):
     fps = u._collect_fingerprints("agave", ["unknown"])
 
     assert fps
-    assert fps[0].startswith("unknown:agave:")
+    assert fps[0].startswith("php-syntax:agave:")
+
+
+def test_affected_files_include_static_failure_sources():
+    u = _load_module()
+    assert "agave/functions.php" in u._affected_files_for_category(
+        "php-syntax",
+        "agave",
+        'functions.php: PHP Parse error: unexpected token "-"',
+        [],
+    )
+    assert "agave/templates/order-confirmation.html" in u._affected_files_for_category(
+        "microcopy-duplicate",
+        "agave",
+        'templates/order-confirmation.html: ships rendered text "01 — confirmation"',
+        [],
+    )
+    assert "agave/functions.php" in u._affected_files_for_category(
+        "wc-microcopy-duplicate",
+        "agave",
+        "WC microcopy maps share translations across themes",
+        [],
+    )
+    assert "agave/playground/images/" in u._affected_files_for_category(
+        "cross-theme-product-images",
+        "agave",
+        "30 product-wo-*.jpg file(s) byte-identical across [agave, obel]",
+        [],
+    )
+    assert "agave/screenshot.png" in u._affected_files_for_category(
+        "screenshot-duplicate",
+        "agave",
+        "agave, obel share identical screenshot.png",
+        [],
+    )
+
+
+def test_line_focused_source_snippets_for_php_failure(tmp_path, monkeypatch):
+    u = _load_module()
+    root = tmp_path
+    theme = root / "agave"
+    theme.mkdir()
+    lines = [f"<?php // line {i}" for i in range(1, 90)]
+    (theme / "functions.php").write_text("\n".join(lines), encoding="utf-8")
+    monkeypatch.setattr(u, "ROOT", root)
+
+    snippets = u._source_snippets_for_blocker(
+        "php-syntax",
+        "agave",
+        "functions.php: PHP Parse error on line 42",
+        ["agave/functions.php"],
+    )
+
+    assert snippets
+    assert "### agave/functions.php:42" in snippets[0]
+    assert "42|<?php // line 42" in snippets[0]
+
+
+def test_repair_plan_records_recipes_and_allowed_commands(tmp_path, monkeypatch):
+    u = _load_module()
+    run_dir = tmp_path / "runs" / "test"
+    _write_summary(
+        run_dir,
+        [
+            {
+                "title": "Product photographs are unique across themes (no copy-paste leak)",
+                "detail": "30 product-wo-*.jpg file(s) byte-identical across [agave, obel]",
+                "summary": "copy leak",
+                "next_action": "regenerate",
+            },
+            {
+                "title": "Theme screenshots distinct (no duplicate-bytes)",
+                "detail": "agave, obel share identical screenshot.png",
+                "summary": "duplicate screenshot",
+                "next_action": "rebuild",
+            },
+        ],
+    )
+    monkeypatch.setattr(u, "_changed_files", lambda cwd: [])
+    plan = u.build_repair_plan(run_dir)
+
+    assert "generate_product_photos" in plan.recommended_recipes
+    assert "build_screenshot" in plan.recommended_recipes
+    assert "generate_product_photos" in plan.allowed_commands
+    assert "build_screenshot" in plan.allowed_commands
+    assert str(run_dir / "repair-plan.json") in plan.artifact_paths
 
 
 def test_full_verification_ladder_uses_positional_snap_report():
@@ -328,6 +459,154 @@ def test_full_verification_ladder_uses_positional_snap_report():
     report_cmd = next(cmd for cmd in ladder if "snap.py" in cmd[1] and "report" in cmd)
     assert report_cmd[-2:] == ["report", "agave"]
     assert "--theme" not in report_cmd
+
+
+def test_command_broker_allows_only_declared_actions():
+    u = _load_module()
+    argv = u.broker_action_to_argv("agave", "check_only", {"only": ["php_syntax"]})
+    assert argv[-2:] == ["--only", "php_syntax"]
+    with pytest.raises(ValueError):
+        u.broker_action_to_argv("agave", "shell", {"cmd": "git reset --hard"})
+    with pytest.raises(ValueError):
+        u.broker_action_to_argv("agave", "php_lint", {"path": "../bin/check.py"})
+    with pytest.raises(ValueError):
+        u.broker_action_to_argv("agave", "check_only", {"only": ["--no-verify"]})
+
+
+def test_apply_recipes_runs_brokered_actions_and_records_attempt(tmp_path, monkeypatch):
+    u = _load_module()
+    run_dir = tmp_path / "runs" / "test"
+    _write_summary(
+        run_dir,
+        [
+            {
+                "title": "Theme screenshots distinct (no duplicate-bytes)",
+                "detail": "agave, obel share identical screenshot.png",
+                "summary": "duplicate screenshot",
+                "next_action": "rebuild screenshot",
+            },
+        ],
+    )
+    monkeypatch.setattr(u, "_changed_files", lambda cwd: [])
+    monkeypatch.setattr(u, "_collect_fingerprints", lambda slug, categories: [])
+    monkeypatch.setattr(u, "_snap_error_count", lambda slug: 0)
+
+    seen_actions: list[str] = []
+
+    def fake_run_broker_action(slug, action, payload=None, *, timeout=30 * 60):
+        seen_actions.append(action)
+        return {
+            "argv": ["python3", action],
+            "returncode": 0,
+            "stdout_tail": "",
+            "stderr_tail": "",
+            "elapsed_s": 0.0,
+            "timed_out": False,
+            "action": action,
+            "payload": payload or {},
+        }
+
+    monkeypatch.setattr(u, "run_broker_action", fake_run_broker_action)
+    monkeypatch.setattr(
+        u,
+        "_run_cmd",
+        lambda cmd, timeout=None: {
+            "argv": cmd,
+            "returncode": 0,
+            "stdout_tail": "",
+            "stderr_tail": "",
+            "elapsed_s": 0.0,
+            "timed_out": False,
+        },
+    )
+
+    record = u.apply_recipes(run_dir)
+
+    assert record.decision == "fixed"
+    assert "snap_routes" in seen_actions
+    assert "build_screenshot" in seen_actions
+    assert record.verification["layer"] == "recipe"
+
+
+def test_tool_rescue_parser_accepts_actions_and_human_boundary():
+    u = _load_module()
+    parsed = u._parse_tool_rescue_response(
+        json.dumps(
+            {
+                "rationale": "need screenshots",
+                "done": False,
+                "human_boundary": None,
+                "actions": [{"action": "snap_routes", "payload": {"routes": ["home"]}}],
+                "edits": [],
+            }
+        )
+    )
+
+    assert parsed["actions"][0]["action"] == "snap_routes"
+    assert parsed["human_boundary"] is None
+
+
+def test_run_rescue_actions_rejects_disallowed_broker_action(monkeypatch):
+    u = _load_module()
+    called = False
+
+    def fake_run_broker_action(slug, action, payload=None, *, timeout=30 * 60):
+        nonlocal called
+        called = True
+        return {"argv": ["python3", action], "returncode": 0}
+
+    monkeypatch.setattr(u, "run_broker_action", fake_run_broker_action)
+    results, rejected = u._run_rescue_actions(
+        "agave",
+        ["check_quick"],
+        [{"action": "generate_product_photos", "payload": {}}],
+    )
+
+    assert results == []
+    assert rejected
+    assert not called
+
+
+def test_non_improving_streak_can_be_layer_scoped(tmp_path: Path):
+    u = _load_module()
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    records = [
+        {"decision": "not-improved", "verification": {"layer": "recipe"}},
+        {"decision": "not-improved", "verification": {"layer": "json-llm"}},
+        {"decision": "not-improved", "verification": {"layer": "json-llm"}},
+    ]
+    (run_dir / "repair-attempts.jsonl").write_text(
+        "\n".join(json.dumps(record) for record in records) + "\n",
+        encoding="utf-8",
+    )
+
+    assert u._non_improving_streak(run_dir) == 3
+    assert u._non_improving_streak(run_dir, layer="json-llm") == 2
+    assert u._non_improving_streak(run_dir, layer="tool-rescue") == 0
+
+
+def test_api_rate_limit_exception_maps_to_external_boundary():
+    u = _load_module()
+    exc = RuntimeError(
+        "Anthropic call failed after 3 attempts: <HTTPError 429: 'Too Many Requests'>"
+    )
+
+    assert u._human_boundary_from_exception(exc) == "external-rate-limit"
+
+
+def test_exception_boundary_metadata_preserves_retry_headers():
+    u = _load_module()
+
+    class Exc(Exception):
+        status = 429
+        retry_after_seconds = 12.0
+        rate_limit_headers = {"retry-after": "12"}
+
+    metadata = u._exception_boundary_metadata(Exc("rate limited"))
+
+    assert metadata["retry_after_seconds"] == 12.0
+    assert metadata["rate_limit_headers"]["retry-after"] == "12"
 
 
 # ---------------------------------------------------------------------------

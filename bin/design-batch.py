@@ -171,6 +171,13 @@ class ThemeOutcome:
     design_status_path: str | None = None
     next_action: str | None = None
     rescue_used: bool = False
+    recipes_used: list[str] = field(default_factory=list)
+    json_repair_used: bool = False
+    tool_rescue_used: bool = False
+    human_required: bool = False
+    human_boundary: str | None = None
+    rescue_attempts: int = 0
+    rescue_artifacts: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -464,11 +471,80 @@ class _CommitAndPushResult:
     verify_report_path: str | None = None
 
 
+def _read_rescue_summary(worktree: Path, run_id: str | None) -> dict[str, Any]:
+    if not run_id:
+        return {
+            "recipes_used": [],
+            "json_repair_used": False,
+            "tool_rescue_used": False,
+            "human_required": False,
+            "human_boundary": None,
+            "rescue_attempts": 0,
+            "rescue_artifacts": [],
+        }
+    run_dir = worktree / "tmp" / "runs" / run_id
+    attempts_path = run_dir / "repair-attempts.jsonl"
+    attempts: list[dict[str, Any]] = []
+    if attempts_path.is_file():
+        for line in attempts_path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                attempts.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    layers: list[str] = []
+    recipes: set[str] = set()
+    human_boundary: str | None = None
+    for attempt in attempts:
+        verification = attempt.get("verification") or {}
+        if not isinstance(verification, dict):
+            continue
+        layer = str(verification.get("layer") or "")
+        if layer:
+            layers.append(layer)
+        for recipe in verification.get("recipes") or []:
+            recipes.add(str(recipe))
+        boundary = verification.get("human_boundary")
+        if boundary:
+            human_boundary = str(boundary)
+    artifacts = [
+        str(path)
+        for path in (
+            run_dir / "STATUS.md",
+            run_dir / "summary.json",
+            run_dir / "repair-plan.json",
+            attempts_path,
+        )
+        if path.exists()
+    ]
+    if human_boundary is None:
+        status_path = run_dir / "STATUS.md"
+        status_text = status_path.read_text(encoding="utf-8", errors="replace") if status_path.is_file() else ""
+        if "Too Many Requests" in status_text or "HTTPError 429" in status_text:
+            human_boundary = "external-rate-limit"
+        elif "ApiKeyMissingError" in status_text or "ANTHROPIC_API_KEY" in status_text:
+            human_boundary = "missing-api-key"
+    return {
+        "recipes_used": sorted(recipes),
+        "json_repair_used": "json-llm" in layers or any(
+            "llm_rationale" in (a.get("verification") or {}) and (a.get("verification") or {}).get("layer") != "tool-rescue"
+            for a in attempts
+        ),
+        "tool_rescue_used": "tool-rescue" in layers,
+        "human_required": human_boundary is not None,
+        "human_boundary": human_boundary,
+        "rescue_attempts": len(attempts),
+        "rescue_artifacts": artifacts,
+    }
+
+
 def _commit_and_push(
     worktree: Path,
     branch: str,
     slug: str,
     opts: RunnerOptions,
+    rescue_summary: dict[str, Any] | None = None,
 ) -> _CommitAndPushResult:
     """Stage everything, commit, push, run verify-theme, open a PR.
 
@@ -549,6 +625,7 @@ def _commit_and_push(
         phase="opened",
         verify_status=verify_status,
         verify_report_path=verify_path,
+        rescue_summary=rescue_summary,
     )
 
     # Arm auto-merge so the PR lands the moment all required checks
@@ -611,6 +688,7 @@ def _post_pr_status_comment(
     verify_report_path: str | None = None,
     human_required: bool = False,
     next_action: str | None = None,
+    rescue_summary: dict[str, Any] | None = None,
 ) -> None:
     """Best-effort visible run status for autonomous PRs.
 
@@ -633,6 +711,15 @@ def _post_pr_status_comment(
         f"- Human input required: `{'yes' if human_required else 'no'}`\n"
         f"- Agent rescue used: `{'yes' if os.environ.get('FIFTY_AGENT_RESCUE') else 'no'}`\n"
     )
+    if rescue_summary:
+        body += (
+            f"- Recipes used: `{', '.join(rescue_summary.get('recipes_used') or []) or 'none'}`\n"
+            f"- JSON repair used: `{'yes' if rescue_summary.get('json_repair_used') else 'no'}`\n"
+            f"- Tool rescue used: `{'yes' if rescue_summary.get('tool_rescue_used') else 'no'}`\n"
+            f"- Rescue attempts: `{rescue_summary.get('rescue_attempts') or 0}`\n"
+        )
+        if rescue_summary.get("human_boundary"):
+            body += f"- Human boundary: `{rescue_summary['human_boundary']}`\n"
     if verify_report_path:
         body += f"- Verify report: `{verify_report_path}`\n"
     if next_action:
@@ -815,6 +902,14 @@ def run_theme(
             worktree / "tmp" / "runs" / outcome.design_run_id / "STATUS.md"
         )
         proc = _run_design(entry, worktree, opts, pre_slug)
+        rescue_summary = _read_rescue_summary(worktree, outcome.design_run_id)
+        outcome.recipes_used = list(rescue_summary["recipes_used"])
+        outcome.json_repair_used = bool(rescue_summary["json_repair_used"])
+        outcome.tool_rescue_used = bool(rescue_summary["tool_rescue_used"])
+        outcome.human_required = bool(rescue_summary["human_required"])
+        outcome.human_boundary = rescue_summary["human_boundary"]
+        outcome.rescue_attempts = int(rescue_summary["rescue_attempts"])
+        outcome.rescue_artifacts = list(rescue_summary["rescue_artifacts"])
         if proc.returncode != 0:
             outcome.status = "failed"
             outcome.error = (
@@ -825,10 +920,15 @@ def run_theme(
                 f"Open `{outcome.design_status_path}` and resume the worktree "
                 "after the reported blocker is repaired."
             )
+            if outcome.human_boundary:
+                outcome.next_action = (
+                    f"Human boundary `{outcome.human_boundary}` reached; "
+                    f"open `{outcome.design_status_path}` for the recorded rescue artifact."
+                )
             return outcome
         slug = _resolve_slug_after_design(entry, worktree, pre_slug)
         outcome.slug = slug
-        result = _commit_and_push(worktree, branch, slug, opts)
+        result = _commit_and_push(worktree, branch, slug, opts, rescue_summary)
         outcome.pr_url = result.pr_url
         outcome.verify_status = result.verify_status
         outcome.verify_report_path = result.verify_report_path
