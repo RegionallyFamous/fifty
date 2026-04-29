@@ -208,6 +208,17 @@ def test_batch_uses_self_healing_watch_by_default(script_text: str) -> None:
     assert "--no-self-heal" in script_text
 
 
+def test_batch_cli_reexecs_under_top_level_watchdog(script_text: str) -> None:
+    assert 'TOP_WATCH_ENV = "FIFTY_BATCH_TOP_WATCH"' in script_text
+    assert "def _maybe_reexec_under_top_watch(" in script_text
+    assert '"--script",' in script_text
+    assert 'str(ROOT / "bin" / "design-batch.py")' in script_text
+    assert '"--no-auto-unblock"' in script_text
+    assert "os.execve(sys.executable, cmd, env)" in script_text
+    assert "if argv is None:" in script_text
+    assert "_maybe_reexec_under_top_watch(raw_argv, args=args, run_id=run_id)" in script_text
+
+
 def test_batch_uses_progressive_build_then_dress_by_default(script_text: str) -> None:
     """Batch mode should leave a draft artifact before expensive gates.
 

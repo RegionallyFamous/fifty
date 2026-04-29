@@ -143,6 +143,7 @@ SLUG_PATTERN = re.compile(r"^[a-z][a-z0-9-]{1,38}$")
 HARD_CONCURRENCY_CAP = 4
 DEFAULT_RUN_DIR = ROOT / "tmp"
 DEFAULT_WORKTREE_PARENT = ROOT.parent  # alongside the main repo dir
+TOP_WATCH_ENV = "FIFTY_BATCH_TOP_WATCH"
 
 
 # ---------------------------------------------------------------------------
@@ -1880,6 +1881,42 @@ def _resolve_run_id(cli_value: str | None) -> str:
     return f"{dt.datetime.now(UTC).strftime('%Y%m%d')}-{uuid.uuid4().hex[:6]}"
 
 
+def _maybe_reexec_under_top_watch(
+    argv: list[str],
+    *,
+    args: argparse.Namespace,
+    run_id: str,
+) -> None:
+    """Put real batch runs under design-watch's top-level kill/stall guard.
+
+    Per-theme work already goes through design-watch, but launching
+    design-batch.py directly used to leave the batch orchestrator itself
+    unsupervised. This re-exec makes the safe path the default CLI path
+    while preserving in-process tests and dry-run planning.
+    """
+    if args.dry_run or os.environ.get(TOP_WATCH_ENV) == "1":
+        return
+
+    forwarded = list(argv)
+    if not args.run_id:
+        forwarded.extend(["--run-id", run_id])
+
+    env = os.environ.copy()
+    env[TOP_WATCH_ENV] = "1"
+    cmd = [
+        sys.executable,
+        str(ROOT / "bin" / "design-watch.py"),
+        "--run-id",
+        f"batch-{run_id}-watch",
+        "--no-auto-unblock",
+        "--script",
+        str(ROOT / "bin" / "design-batch.py"),
+        "--",
+        *forwarded,
+    ]
+    os.execve(sys.executable, cmd, env)
+
+
 def _resolve_concurrency(cli: int | None, manifest: dict[str, Any]) -> int:
     raw = cli if cli is not None else int(manifest.get("concurrency", 1))
     if raw < 1:
@@ -2008,7 +2045,8 @@ def _synthesize_from_concepts(
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = _build_parser().parse_args(argv)
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
+    args = _build_parser().parse_args(raw_argv)
     if args.from_concepts and args.manifest is not None:
         print(
             "error: --from-concepts and --manifest are mutually exclusive; "
@@ -2022,6 +2060,10 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
+    run_id = _resolve_run_id(args.run_id)
+    if argv is None:
+        _maybe_reexec_under_top_watch(raw_argv, args=args, run_id=run_id)
+
     if args.from_concepts:
         entries, manifest_opts = _synthesize_from_concepts(
             concept_slugs=args.concept_slugs,
@@ -2034,7 +2076,6 @@ def main(argv: list[str] | None = None) -> int:
         print("error: no themes to run", file=sys.stderr)
         return 2
 
-    run_id = _resolve_run_id(args.run_id)
     concurrency = _resolve_concurrency(args.concurrency, manifest_opts)
     daily_cap = args.budget_usd if args.budget_usd is not None else _vision_default_budget()
     worktree_parent = (args.worktree_parent or DEFAULT_WORKTREE_PARENT).resolve()

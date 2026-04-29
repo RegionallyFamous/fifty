@@ -719,6 +719,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--jsonl", type=Path, default=None, help="Override event JSONL path.")
     parser.add_argument("--summary", type=Path, default=None, help="Override summary JSON path.")
     parser.add_argument("--status", type=Path, default=None, help="Override live STATUS.md path.")
+    parser.add_argument(
+        "--script",
+        type=Path,
+        default=ROOT / "bin" / "design.py",
+        help=(
+            "Python script to supervise. Defaults to bin/design.py; "
+            "batch runs use this to put bin/design-batch.py under the same "
+            "stall and wall-clock guards."
+        ),
+    )
     parser.add_argument("--verbose", action="store_true", help="Also echo raw design.py output.")
     parser.add_argument(
         "--replay-transcript",
@@ -779,7 +789,7 @@ def parse_watch_args(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
         design_args = design_args[1:]
     if not design_args and not args.replay_transcript:
         parser.error(
-            "pass design.py arguments after watch options, e.g. --spec tmp/specs/agave.json"
+            "pass script arguments after watch options, e.g. --spec tmp/specs/agave.json"
         )
     return args, design_args
 
@@ -1133,18 +1143,23 @@ def main(argv: list[str] | None = None) -> int:
     status_path = watch_args.status or (run_dir / "STATUS.md")
     event_path.write_text("", encoding="utf-8")
 
-    command = [sys.executable, "-u", str(ROOT / "bin" / "design.py"), *design_args]
+    script_path = watch_args.script
+    if not script_path.is_absolute():
+        script_path = ROOT / script_path
+    is_design_script = script_path.resolve() == (ROOT / "bin" / "design.py").resolve()
+    command = [sys.executable, "-u", str(script_path), *design_args]
     now = time.time()
+    slug = infer_slug(design_args) if is_design_script else script_path.stem
     state = WatchState(
         run_id=run_id,
         started_at=now,
         command=command,
         cwd=str(ROOT),
-        slug=infer_slug(design_args),
+        slug=slug,
         phase_started_at=now,
         last_output_at=now,
         last_heartbeat_at=now,
-        no_strict="--no-strict" in design_args,
+        no_strict=is_design_script and "--no-strict" in design_args,
     )
     write_event(event_path, {"type": "run_start", "command": command, "cwd": str(ROOT)})
     state.last_status_label = "Working"
@@ -1188,7 +1203,12 @@ def main(argv: list[str] | None = None) -> int:
     # has the final blocker list even if auto-unblock kicks in.
     write_summary(summary_path, state)
 
-    if watch_args.auto_unblock and classify_verdict(state) == "blocked" and state.check_failures:
+    if (
+        is_design_script
+        and watch_args.auto_unblock
+        and classify_verdict(state) == "blocked"
+        and state.check_failures
+    ):
         repair_layers: list[str]
         if _runtime_guard_fired(state):
             repair_layers = [] if watch_args.no_tool_rescue else ["tool-rescue"]
@@ -1249,7 +1269,7 @@ def main(argv: list[str] | None = None) -> int:
             state.command = [
                 sys.executable,
                 "-u",
-                str(ROOT / "bin" / "design.py"),
+                str(script_path),
                 *resume_args,
             ]
             state.current_phase = resume_phase

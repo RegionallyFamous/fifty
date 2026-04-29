@@ -259,6 +259,26 @@ def test_watch_parser_exposes_auto_unblock_flags():
     assert defaults.kill_stall_seconds == 300.0
 
 
+def test_watch_parser_can_supervise_batch_script():
+    watch = load_design_watch()
+    parser = watch.build_parser()
+    args, batch_args = parser.parse_known_args(
+        [
+            "--script",
+            "bin/design-batch.py",
+            "--no-auto-unblock",
+            "--",
+            "--from-concepts",
+            "--limit",
+            "1",
+        ]
+    )
+
+    assert str(args.script) == "bin/design-batch.py"
+    assert args.auto_unblock is False
+    assert batch_args == ["--", "--from-concepts", "--limit", "1"]
+
+
 def test_run_subprocess_kills_overlong_child(tmp_path):
     watch = load_design_watch()
     now = time.time()
