@@ -114,6 +114,14 @@ class WatchState:
     completed_cells: int = 0
     snap_error_cells: int = 0
     snap_warn_cells: int = 0
+    vision_total: int = 0
+    vision_completed: int = 0
+    vision_cached: int = 0
+    vision_prefiltered: int = 0
+    vision_errored: int = 0
+    vision_current: str = ""
+    vision_last: str = ""
+    vision_findings: int = 0
     check_failures: list[CheckFailure] = field(default_factory=list)
     no_strict: bool = False
     saw_no_strict_warning: bool = False
@@ -170,10 +178,9 @@ def start_phase(state: WatchState, phase: str, now: float) -> bool:
     if phase == state.current_phase:
         return False
     if state.current_phase and state.current_phase != "starting" and state.phase_started_at:
-        state.phase_durations[state.current_phase] = (
-            state.phase_durations.get(state.current_phase, 0.0)
-            + max(0.0, now - state.phase_started_at)
-        )
+        state.phase_durations[state.current_phase] = state.phase_durations.get(
+            state.current_phase, 0.0
+        ) + max(0.0, now - state.phase_started_at)
     state.current_phase = phase
     state.phase_started_at = now
     return True
@@ -210,6 +217,62 @@ def parse_line(state: WatchState, line: str, now: float) -> list[dict[str, Any]]
         if start_phase(state, "snap", now):
             events.append({"type": "phase_start", "phase": "snap"})
         events.append({"type": "snap_total", "total": state.total_cells})
+        return events
+
+    m = re.search(r"== reviewing (\d+) PNGs for ([a-z0-9-]+)", clean)
+    if m:
+        state.vision_total = int(m.group(1))
+        state.slug = m.group(2)
+        if start_phase(state, "vision-review", now):
+            events.append({"type": "phase_start", "phase": "vision-review"})
+        events.append({"type": "vision_total", "total": state.vision_total})
+        return events
+
+    m = re.match(r">>\s+reviewing\s+(\d+)/(\d+)\s+([a-z]+)/([a-z0-9][a-z0-9.-]*)", clean)
+    if m:
+        state.vision_completed = max(0, int(m.group(1)) - 1)
+        state.vision_total = int(m.group(2))
+        state.vision_current = f"{m.group(3)}/{m.group(4)}"
+        if start_phase(state, "vision-review", now):
+            events.append({"type": "phase_start", "phase": "vision-review"})
+        events.append(
+            {
+                "type": "vision_cell_start",
+                "current": state.vision_current,
+                "completed": state.vision_completed,
+                "total": state.vision_total,
+            }
+        )
+        return events
+
+    m = re.match(
+        r"\s*(?:=|\.\.|!!|-)?\s*([a-z]+)/([a-z0-9][a-z0-9.-]*)\s+"
+        r"\[(reviewed|cached|prefiltered|errored|skipped)\]\s+(\d+)\s+findings",
+        clean,
+    )
+    if m:
+        status = m.group(3)
+        state.vision_completed += 1
+        state.vision_last = f"{m.group(1)}/{m.group(2)} [{status}]"
+        state.vision_findings += int(m.group(4))
+        if status == "cached":
+            state.vision_cached += 1
+        elif status == "prefiltered":
+            state.vision_prefiltered += 1
+        elif status == "errored":
+            state.vision_errored += 1
+        if start_phase(state, "vision-review", now):
+            events.append({"type": "phase_start", "phase": "vision-review"})
+        events.append(
+            {
+                "type": "vision_cell_done",
+                "cell": state.vision_last,
+                "status": status,
+                "completed": state.vision_completed,
+                "total": state.vision_total,
+                "findings": int(m.group(4)),
+            }
+        )
         return events
 
     m = re.match(r"\s*(mobile|tablet|desktop|wide)\s+([a-z0-9][a-z0-9.-]*)\s+", clean)
@@ -275,7 +338,9 @@ def parse_line(state: WatchState, line: str, now: float) -> list[dict[str, Any]]
     return events
 
 
-def plain_status(state: WatchState, *, stalled: bool = False, final: bool = False) -> tuple[str, str]:
+def plain_status(
+    state: WatchState, *, stalled: bool = False, final: bool = False
+) -> tuple[str, str]:
     elapsed = format_elapsed(time.time() - state.started_at)
     name = titlecase_slug(state.slug)
     if final:
@@ -294,7 +359,10 @@ def plain_status(state: WatchState, *, stalled: bool = False, final: bool = Fals
                 f"[{elapsed}] {name} is usable for review, but not ready to ship. "
                 f"{len(state.check_failures)} issue(s) still need attention.",
             )
-        return "Blocked", f"[{elapsed}] {name} stopped before it was ready. {len(state.check_failures)} issue(s) were found."
+        return (
+            "Blocked",
+            f"[{elapsed}] {name} stopped before it was ready. {len(state.check_failures)} issue(s) were found.",
+        )
 
     if stalled:
         quiet_for = format_elapsed(time.time() - state.last_output_at)
@@ -316,6 +384,15 @@ def plain_status(state: WatchState, *, stalled: bool = False, final: bool = Fals
             "Working",
             f"[{elapsed}] {name} is checking screenshots. "
             f"{state.completed_cells} of {state.total_cells} pages captured.{suffix}",
+        )
+
+    if state.current_phase == "vision-review" and state.vision_total:
+        current = f" Current: {state.vision_current}." if state.vision_current else ""
+        return (
+            "Working",
+            f"[{elapsed}] {name} is reviewing screenshots. "
+            f"{state.vision_completed} of {state.vision_total} reviewed."
+            f"{current}",
         )
 
     if state.current_phase == "check" and state.check_failures:
@@ -406,6 +483,8 @@ def write_status(
     progress = "Not started"
     if state.current_phase == "snap" and state.total_cells:
         progress = f"{state.completed_cells}/{state.total_cells} screenshots captured"
+    elif state.current_phase == "vision-review" and state.vision_total:
+        progress = f"{state.vision_completed}/{state.vision_total} screenshots reviewed"
     elif state.phases:
         progress = f"Step {phase_index(state)}"
 
@@ -442,7 +521,11 @@ def write_status(
     if state.check_failures:
         for summary, failures in grouped_failures(state.check_failures)[:8]:
             affected = affected_names(failures)
-            suffix = f" ({len(failures)} times: {', '.join(affected)})" if len(failures) > 1 and affected else ""
+            suffix = (
+                f" ({len(failures)} times: {', '.join(affected)})"
+                if len(failures) > 1 and affected
+                else ""
+            )
             lines.append(f"- **{summary}**{suffix}")
             lines.append(f"  Next: {failures[0].next_action}")
     else:
@@ -478,6 +561,15 @@ def write_status(
             f"- Captured: {state.completed_cells}/{state.total_cells or 0}",
             f"- Pages with errors: {state.snap_error_cells}",
             f"- Pages with warnings: {state.snap_warn_cells}",
+            "",
+            "## Vision Review Progress",
+            f"- Reviewed: {state.vision_completed}/{state.vision_total or 0}",
+            f"- Current: {state.vision_current or 'n/a'}",
+            f"- Last completed: {state.vision_last or 'n/a'}",
+            f"- Cached: {state.vision_cached}",
+            f"- Prefiltered: {state.vision_prefiltered}",
+            f"- Errored: {state.vision_errored}",
+            f"- Findings so far: {state.vision_findings}",
             "",
             "## Files",
             f"- Events: `{display_path(event_path)}`",
@@ -521,6 +613,16 @@ def write_summary(path: Path, state: WatchState) -> None:
             "total_cells": state.total_cells,
             "error_cells": state.snap_error_cells,
             "warn_cells": state.snap_warn_cells,
+        },
+        "vision_review": {
+            "completed": state.vision_completed,
+            "total": state.vision_total,
+            "current": state.vision_current,
+            "last": state.vision_last,
+            "cached": state.vision_cached,
+            "prefiltered": state.vision_prefiltered,
+            "errored": state.vision_errored,
+            "findings": state.vision_findings,
         },
         "check_failures": [asdict(failure) for failure in state.check_failures],
     }
@@ -578,8 +680,7 @@ def build_parser() -> argparse.ArgumentParser:
         dest="auto_unblock",
         action="store_false",
         help=(
-            "Disable the default self-healing loop and only write the "
-            "run summary/status artifacts."
+            "Disable the default self-healing loop and only write the run summary/status artifacts."
         ),
     )
     parser.add_argument(
@@ -596,9 +697,15 @@ def build_parser() -> argparse.ArgumentParser:
             "into STATUS.md and stop, without calling the LLM."
         ),
     )
-    parser.add_argument("--no-recipes", action="store_true", help="Skip deterministic repair recipes.")
-    parser.add_argument("--no-json-repair", action="store_true", help="Skip the JSON edit repair layer.")
-    parser.add_argument("--no-tool-rescue", action="store_true", help="Skip bounded tool-rescue repair.")
+    parser.add_argument(
+        "--no-recipes", action="store_true", help="Skip deterministic repair recipes."
+    )
+    parser.add_argument(
+        "--no-json-repair", action="store_true", help="Skip the JSON edit repair layer."
+    )
+    parser.add_argument(
+        "--no-tool-rescue", action="store_true", help="Skip bounded tool-rescue repair."
+    )
     return parser
 
 
@@ -608,7 +715,9 @@ def parse_watch_args(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
     if design_args and design_args[0] == "--":
         design_args = design_args[1:]
     if not design_args and not args.replay_transcript:
-        parser.error("pass design.py arguments after watch options, e.g. --spec tmp/specs/agave.json")
+        parser.error(
+            "pass design.py arguments after watch options, e.g. --spec tmp/specs/agave.json"
+        )
     return args, design_args
 
 
@@ -804,8 +913,7 @@ def run_auto_unblock_round(
     else:
         raise ValueError(f"unknown repair layer: {layer}")
     print(
-        f"Working: Auto-unblock round {state.repair_round} "
-        f"({layer}): {' '.join(cmd)}",
+        f"Working: Auto-unblock round {state.repair_round} ({layer}): {' '.join(cmd)}",
         flush=True,
     )
     proc = subprocess.run(cmd, cwd=str(ROOT), check=False)
@@ -886,10 +994,9 @@ def main(argv: list[str] | None = None) -> int:
             )
     finally:
         if state.current_phase and state.phase_started_at:
-            state.phase_durations[state.current_phase] = (
-                state.phase_durations.get(state.current_phase, 0.0)
-                + max(0.0, time.time() - state.phase_started_at)
-            )
+            state.phase_durations[state.current_phase] = state.phase_durations.get(
+                state.current_phase, 0.0
+            ) + max(0.0, time.time() - state.phase_started_at)
 
     state.returncode = rc
     write_event(event_path, {"type": "process_exit", "returncode": rc})
@@ -897,11 +1004,7 @@ def main(argv: list[str] | None = None) -> int:
     # has the final blocker list even if auto-unblock kicks in.
     write_summary(summary_path, state)
 
-    if (
-        watch_args.auto_unblock
-        and classify_verdict(state) == "blocked"
-        and state.check_failures
-    ):
+    if watch_args.auto_unblock and classify_verdict(state) == "blocked" and state.check_failures:
         repair_layers: list[str] = []
         if not watch_args.no_recipes:
             repair_layers.append("recipes")
@@ -923,9 +1026,7 @@ def main(argv: list[str] | None = None) -> int:
                     dry_run=watch_args.unblock_dry_run,
                 )
                 layer_used = layer
-                write_status(
-                    status_path, state, event_path=event_path, summary_path=summary_path
-                )
+                write_status(status_path, state, event_path=event_path, summary_path=summary_path)
                 # Exit codes from design_unblock.py:
                 #   0 = fixed / improved, resume OK
                 #   2 = worktree dirty, stop
@@ -991,10 +1092,9 @@ def main(argv: list[str] | None = None) -> int:
                 )
             finally:
                 if state.current_phase and state.phase_started_at:
-                    state.phase_durations[state.current_phase] = (
-                        state.phase_durations.get(state.current_phase, 0.0)
-                        + max(0.0, time.time() - state.phase_started_at)
-                    )
+                    state.phase_durations[state.current_phase] = state.phase_durations.get(
+                        state.current_phase, 0.0
+                    ) + max(0.0, time.time() - state.phase_started_at)
             state.returncode = rc
             write_event(event_path, {"type": "process_exit", "returncode": rc})
             write_summary(summary_path, state)

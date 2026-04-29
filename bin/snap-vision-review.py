@@ -62,6 +62,7 @@ Exit codes
     2  budget exceeded / API key missing / no theme found
     3  other unhandled error
 """
+
 from __future__ import annotations
 
 import argparse
@@ -177,6 +178,7 @@ def _route_purpose(theme_root: Path, route: str) -> str:
     try:
         sys.path.insert(0, str(REPO_ROOT / "bin"))
         from snap_config import ROUTES
+
         for r in ROUTES:
             if r.slug == route:
                 return r.description
@@ -228,6 +230,7 @@ def _discover_items(
 def _passes_prefilter(png_bytes: bytes) -> tuple[bool, str]:
     """Return (proceed, reason). `proceed=False` means skip the API call."""
     from PIL import Image
+
     try:
         with Image.open(_BytesIO(png_bytes)) as img:
             img = img.convert("RGB")
@@ -237,10 +240,7 @@ def _passes_prefilter(png_bytes: bytes) -> tuple[bool, str]:
             if not pixels:
                 return False, "empty image"
             # Whitespace = pixels >= (240,240,240) on each channel
-            white = sum(
-                1 for r, g, b in pixels
-                if r >= 240 and g >= 240 and b >= 240
-            )
+            white = sum(1 for r, g, b in pixels if r >= 240 and g >= 240 and b >= 240)
             white_frac = white / len(pixels)
             unique = len(set(pixels))
             if white_frac >= WHITESPACE_FRAC_FLOOR and unique < UNIQUE_COLORS_FLOOR:
@@ -256,6 +256,7 @@ def _passes_prefilter(png_bytes: bytes) -> tuple[bool, str]:
 def _BytesIO(b: bytes):
     """Local alias to avoid a top-level `import io` for one use."""
     import io
+
     return io.BytesIO(b)
 
 
@@ -269,6 +270,7 @@ def _annotate_review_png(item: ReviewItem, findings: list[dict]) -> None:
     rather than untouched.
     """
     from PIL import Image, ImageDraw
+
     try:
         with Image.open(item.png_path) as src:
             canvas = src.convert("RGB").copy()
@@ -296,10 +298,8 @@ def _annotate_review_png(item: ReviewItem, findings: list[dict]) -> None:
         draw.rectangle((10, 10, 200, 36), fill=(40, 160, 80))
         draw.text((18, 16), "vision: no findings", fill=(255, 255, 255))
     else:
-        draw.rectangle((10, legend_y, 280, legend_y + 18 + 18 * len(findings)),
-                       fill=(20, 20, 20))
-        draw.text((18, legend_y + 2), f"vision findings: {len(findings)}",
-                  fill=(255, 255, 255))
+        draw.rectangle((10, legend_y, 280, legend_y + 18 + 18 * len(findings)), fill=(20, 20, 20))
+        draw.text((18, legend_y + 2), f"vision findings: {len(findings)}", fill=(255, 255, 255))
         for i, f in enumerate(findings):
             color = SEVERITY_COLORS.get(f.get("severity", "warn"), SEVERITY_COLORS["warn"])
             label = f.get("kind", "?").removeprefix("vision:")
@@ -483,7 +483,7 @@ def validate_against_fixtures(
                 print(f"  !! {spec['file']}: {exc}")
                 return 2
             findings = resp.findings
-            note = ("dry" if resp.dry_run else f"${resp.cost_usd:.3f}")
+            note = "dry" if resp.dry_run else f"${resp.cost_usd:.3f}"
         results.append((spec, findings, note))
 
     # Compute stats. Each fixture contributes:
@@ -508,7 +508,9 @@ def validate_against_fixtures(
             else:
                 fn += 1
                 ok = "MISS"
-            print(f"  [{ok}] {spec['file']}: expected={sorted(expected)} got={sorted(kinds)} ({note})")
+            print(
+                f"  [{ok}] {spec['file']}: expected={sorted(expected)} got={sorted(kinds)} ({note})"
+            )
         else:
             wd_total += 1
             if forbidden & kinds:
@@ -517,20 +519,28 @@ def validate_against_fixtures(
                 ok = "FAIL(false-positive)"
             else:
                 ok = "PASS"
-            print(f"  [{ok}] {spec['file']}: forbidden={sorted(forbidden)} got={sorted(kinds)} ({note})")
+            print(
+                f"  [{ok}] {spec['file']}: forbidden={sorted(forbidden)} got={sorted(kinds)} ({note})"
+            )
 
     precision = tp / (tp + fp) if (tp + fp) else 1.0
     recall = tp / (tp + fn) if (tp + fn) else 1.0
     print()
-    print(f"   regressions caught:        {regs_caught}/{regs_total} (min {accept.get('regressions_caught_min', '?')})")
-    print(f"   well-designed false +:     {wd_fp}/{wd_total} (max {accept.get('well_designed_false_positives_max', '?')})")
+    print(
+        f"   regressions caught:        {regs_caught}/{regs_total} (min {accept.get('regressions_caught_min', '?')})"
+    )
+    print(
+        f"   well-designed false +:     {wd_fp}/{wd_total} (max {accept.get('well_designed_false_positives_max', '?')})"
+    )
     print(f"   precision:                 {precision:.2f} (min {accept.get('precision_min', '?')})")
     print(f"   recall:                    {recall:.2f} (min {accept.get('recall_min', '?')})")
 
     if dry_run:
         print()
-        print("   (dry-run: precision/recall meaningless without real API. "
-              "Re-run with ANTHROPIC_API_KEY set to get real numbers.)")
+        print(
+            "   (dry-run: precision/recall meaningless without real API. "
+            "Re-run with ANTHROPIC_API_KEY set to get real numbers.)"
+        )
         return 0
 
     fail = (
@@ -548,19 +558,41 @@ def validate_against_fixtures(
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("theme", nargs="?", help="Theme slug (e.g. selvedge). Omit when using --validate.")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "theme", nargs="?", help="Theme slug (e.g. selvedge). Omit when using --validate."
+    )
     p.add_argument("--routes", nargs="*", default=None, help="Route slugs to review (default: all)")
-    p.add_argument("--viewports", nargs="*", default=None, help="Viewport names to review (default: all)")
-    p.add_argument("--no-cache", action="store_true", help="Ignore cached fingerprints; re-review every PNG.")
+    p.add_argument(
+        "--viewports", nargs="*", default=None, help="Viewport names to review (default: all)"
+    )
+    p.add_argument(
+        "--no-cache", action="store_true", help="Ignore cached fingerprints; re-review every PNG."
+    )
     p.add_argument("--dry-run", action="store_true", help="Build prompts but do not call the API.")
-    p.add_argument("--model", default=DEFAULT_MODEL, help=f"Override model (default {DEFAULT_MODEL}).")
-    p.add_argument("--budget", type=float, default=DEFAULT_DAILY_BUDGET_USD,
-                   help=f"Daily $ cap (default ${DEFAULT_DAILY_BUDGET_USD:.2f}).")
-    p.add_argument("--ledger", type=Path, default=DEFAULT_LEDGER_PATH,
-                   help=f"Path to spend ledger (default {DEFAULT_LEDGER_PATH}).")
-    p.add_argument("--validate", type=Path, default=None,
-                   help="Run against the labelled fixture set at this path; skip normal review.")
+    p.add_argument(
+        "--model", default=DEFAULT_MODEL, help=f"Override model (default {DEFAULT_MODEL})."
+    )
+    p.add_argument(
+        "--budget",
+        type=float,
+        default=DEFAULT_DAILY_BUDGET_USD,
+        help=f"Daily $ cap (default ${DEFAULT_DAILY_BUDGET_USD:.2f}).",
+    )
+    p.add_argument(
+        "--ledger",
+        type=Path,
+        default=DEFAULT_LEDGER_PATH,
+        help=f"Path to spend ledger (default {DEFAULT_LEDGER_PATH}).",
+    )
+    p.add_argument(
+        "--validate",
+        type=Path,
+        default=None,
+        help="Run against the labelled fixture set at this path; skip normal review.",
+    )
     p.add_argument(
         "--phase",
         choices=list(VISION_PHASES),
@@ -595,27 +627,36 @@ def main(argv: list[str]) -> int:
         return 2
     intent_md = _intent_md(theme_root)
     if intent_md is None:
-        print(f"!! {args.theme}/design-intent.md missing. Add one first "
-              "(see obel/design-intent.md for the canonical shape).",
-              file=sys.stderr)
+        print(
+            f"!! {args.theme}/design-intent.md missing. Add one first "
+            "(see obel/design-intent.md for the canonical shape).",
+            file=sys.stderr,
+        )
         return 2
 
     items = _discover_items(args.theme, routes=args.routes, viewports=args.viewports)
     if not items:
-        print(f"!! No PNGs to review. Run `python3 bin/snap.py shoot {args.theme}` first.",
-              file=sys.stderr)
+        print(
+            f"!! No PNGs to review. Run `python3 bin/snap.py shoot {args.theme}` first.",
+            file=sys.stderr,
+        )
         return 2
 
-    print(f"== reviewing {len(items)} PNGs for {args.theme} "
-          f"(model={args.model}, dry_run={args.dry_run})")
-    print(f"   today's spend so far: ${today_spend_usd(path=args.ledger):.3f} "
-          f"/ ${args.budget:.2f} cap")
+    print(
+        f"== reviewing {len(items)} PNGs for {args.theme} "
+        f"(model={args.model}, dry_run={args.dry_run})"
+    )
+    print(
+        f"   today's spend so far: ${today_spend_usd(path=args.ledger):.3f} "
+        f"/ ${args.budget:.2f} cap"
+    )
 
     totals = {"reviewed": 0, "cached": 0, "prefiltered": 0, "errored": 0, "skipped": 0}
     cost = 0.0
     findings_count = 0
 
-    for item in items:
+    for index, item in enumerate(items, start=1):
+        print(f">> reviewing {index}/{len(items)} {item.viewport}/{item.route}", flush=True)
         try:
             r = review_one(
                 item,
@@ -632,8 +673,10 @@ def main(argv: list[str]) -> int:
             return 2
         except BudgetExceededError as exc:
             print(f"!! {exc}", file=sys.stderr)
-            print(f"   Stopping after {totals['reviewed']} reviews (cost ${cost:.3f}).",
-                  file=sys.stderr)
+            print(
+                f"   Stopping after {totals['reviewed']} reviews (cost ${cost:.3f}).",
+                file=sys.stderr,
+            )
             return 2
         totals[r.status] = totals.get(r.status, 0) + 1
         cost += r.cost_usd
@@ -645,12 +688,16 @@ def main(argv: list[str]) -> int:
             "errored": "!!",
             "skipped": "-",
         }.get(r.status, "?")
-        print(f"  {marker} {item.viewport}/{item.route} [{r.status}] "
-              f"{len(r.findings)} findings  {r.note}")
+        print(
+            f"  {marker} {item.viewport}/{item.route} [{r.status}] "
+            f"{len(r.findings)} findings  {r.note}"
+        )
 
     print()
-    print(f"   reviewed={totals.get('reviewed',0)} cached={totals.get('cached',0)} "
-          f"prefiltered={totals.get('prefiltered',0)} errored={totals.get('errored',0)}")
+    print(
+        f"   reviewed={totals.get('reviewed', 0)} cached={totals.get('cached', 0)} "
+        f"prefiltered={totals.get('prefiltered', 0)} errored={totals.get('errored', 0)}"
+    )
     print(f"   total findings: {findings_count}")
     print(f"   call cost: ${cost:.3f}")
     return 0

@@ -12,14 +12,17 @@ This script is that walker. It:
 2. For each entry, materializes a fresh `git worktree` rooted on
    `origin/main` so cross-theme failures stay isolated and humans can
    `cd` into a worktree to inspect.
-3. Runs `bin/design.py` inside the worktree (strict-by-default thanks
-   to PR beta, so any phase failure surfaces immediately).
-4. On success: commits + pushes + opens a PR (unless `--no-pr`).
-5. On failure: leaves the worktree intact, records the reason in the
-   run report, moves on to the next theme.
-6. Honors `FIFTY_VISION_DAILY_BUDGET` *before* starting each theme so
+3. Runs `bin/design.py build` inside the worktree and opens a draft PR
+   as soon as a runnable branch exists.
+4. Runs `bin/design.py dress` on the same branch so content-fit,
+   vision-review, and repair commits layer onto the draft.
+5. On success: verifies the branch, marks the draft ready, and arms
+   auto-merge when allowed.
+6. On failure: leaves the draft PR/worktree intact, records the reason
+   in the run report, moves on to the next theme.
+7. Honors `FIFTY_VISION_DAILY_BUDGET` *before* starting each theme so
    the run halts cleanly when the cap is reached, not mid-pipeline.
-7. Is **resumable**: re-running with the same `--run-id` skips themes
+8. Is **resumable**: re-running with the same `--run-id` skips themes
    already marked `passed` in the run report.
 
 Run report
@@ -119,6 +122,7 @@ UTC = getattr(dt, "UTC", dt.timezone.utc)  # noqa: UP017
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "bin"))
 
+
 # Imported for budget probe + spec validation. Keep this import lazy
 # so `--help` doesn't fail when ANTHROPIC_API_KEY isn't set or the
 # vision lib is otherwise unhappy.
@@ -150,6 +154,7 @@ class ThemeOutcome:
     """One row in the run report. Mutated as the pipeline progresses;
     serialized at the end of every theme so a crash mid-batch leaves a
     readable artifact on disk."""
+
     slug: str
     source: str
     status: str = "pending"  # pending|passed|failed|skipped|budget_capped
@@ -197,8 +202,12 @@ class RunReport:
 
     def recompute_totals(self) -> None:
         totals: dict[str, Any] = {
-            "passed": 0, "failed": 0, "skipped": 0,
-            "budget_capped": 0, "vision_cost_usd": 0.0, "elapsed_s": 0.0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "budget_capped": 0,
+            "vision_cost_usd": 0.0,
+            "elapsed_s": 0.0,
         }
         for t in self.themes:
             if t.status in totals:
@@ -216,6 +225,7 @@ class RunReport:
 @dataclass
 class ManifestEntry:
     """One theme to attempt. Either prompt or spec_path is set, not both."""
+
     prompt: str | None
     spec_path: Path | None
     slug_hint: str | None  # only used as a name for the worktree pre-design
@@ -237,7 +247,7 @@ def load_manifest(path: Path) -> tuple[list[ManifestEntry], dict[str, Any]]:
     except json.JSONDecodeError as e:
         raise SystemExit(f"error: manifest is not valid JSON: {e}") from e
     if not isinstance(raw, dict) or "themes" not in raw:
-        raise SystemExit("error: manifest must be {\"themes\": [...]}")
+        raise SystemExit('error: manifest must be {"themes": [...]}')
     entries: list[ManifestEntry] = []
     for i, row in enumerate(raw.get("themes") or []):
         if not isinstance(row, dict):
@@ -245,10 +255,7 @@ def load_manifest(path: Path) -> tuple[list[ManifestEntry], dict[str, Any]]:
         prompt = row.get("prompt")
         spec = row.get("spec")
         if bool(prompt) == bool(spec):
-            raise SystemExit(
-                f"error: themes[{i}] must set exactly one of "
-                "'prompt' or 'spec'"
-            )
+            raise SystemExit(f"error: themes[{i}] must set exactly one of 'prompt' or 'spec'")
         spec_path = Path(spec) if spec else None
         if spec_path is not None and not spec_path.is_absolute():
             spec_path = (ROOT / spec_path).resolve()
@@ -348,6 +355,13 @@ class RunnerOptions:
     self_heal: bool = True
     max_repair_rounds: int = 3
     unblock_dry_run: bool = False
+    # Progressive mode splits generation into `design.py build` followed
+    # by `design.py dress`. The build step commits + pushes a structurally
+    # sound draft first, then the slower content/vision work lands as
+    # follow-up commits on the same branch. If the later phase stalls or
+    # fails, the run still leaves a reviewable PR instead of only a local
+    # worktree.
+    progressive: bool = True
 
 
 def _git(*args: str, cwd: Path | None = None, check: bool = True) -> subprocess.CompletedProcess:
@@ -381,22 +395,14 @@ def _ensure_worktree(slug: str, opts: RunnerOptions) -> tuple[Path, str]:
     return target, branch
 
 
-def _run_design(
-    entry: ManifestEntry,
+def _run_design_cmd(
+    design_cmd: list[str],
+    *,
     worktree: Path,
     opts: RunnerOptions,
-    pre_slug: str,
+    design_run_id: str,
 ) -> subprocess.CompletedProcess:
-    """Invoke `bin/design.py` inside the worktree. Returns the
-    completed process (caller inspects rc + stdout/stderr)."""
-    design_cmd: list[str] = []
-    if entry.prompt:
-        design_cmd.extend(["--prompt", entry.prompt])
-    elif entry.spec_path:
-        design_cmd.extend(["--spec", str(entry.spec_path)])
-    design_cmd.extend(opts.extra_design_args)
-
-    design_run_id = f"batch-{opts.run_id}-{pre_slug}"
+    """Invoke `bin/design.py` (or the self-healing wrapper) in a worktree."""
     if opts.self_heal:
         cmd = [
             sys.executable,
@@ -434,9 +440,48 @@ def _run_design(
     )
 
 
-def _resolve_slug_after_design(
-    entry: ManifestEntry, worktree: Path, fallback: str
-) -> str:
+def _entry_design_args(entry: ManifestEntry) -> list[str]:
+    design_cmd: list[str] = []
+    if entry.prompt:
+        design_cmd.extend(["--prompt", entry.prompt])
+    elif entry.spec_path:
+        design_cmd.extend(["--spec", str(entry.spec_path)])
+    return design_cmd
+
+
+def _run_design(
+    entry: ManifestEntry,
+    worktree: Path,
+    opts: RunnerOptions,
+    pre_slug: str,
+) -> subprocess.CompletedProcess:
+    """Invoke the legacy all-in-one `bin/design.py` path."""
+    return _run_design_cmd(
+        [*_entry_design_args(entry), *opts.extra_design_args],
+        worktree=worktree,
+        opts=opts,
+        design_run_id=f"batch-{opts.run_id}-{pre_slug}",
+    )
+
+
+def _run_design_stage(
+    stage: str,
+    design_cmd: list[str],
+    *,
+    worktree: Path,
+    opts: RunnerOptions,
+    pre_slug: str,
+) -> subprocess.CompletedProcess:
+    """Run one progressive stage (`build` or `dress`) with its own STATUS.md."""
+    return _run_design_cmd(
+        [stage, *design_cmd, *opts.extra_design_args],
+        worktree=worktree,
+        opts=opts,
+        design_run_id=f"batch-{opts.run_id}-{pre_slug}-{stage}",
+    )
+
+
+def _resolve_slug_after_design(entry: ManifestEntry, worktree: Path, fallback: str) -> str:
     """Find the slug `design.py` actually used. design.py mutates the
     spec's slug into the new theme dir name; the simplest way to read
     it back is to look at what new top-level dir appeared in the
@@ -520,15 +565,21 @@ def _read_rescue_summary(worktree: Path, run_id: str | None) -> dict[str, Any]:
     ]
     if human_boundary is None:
         status_path = run_dir / "STATUS.md"
-        status_text = status_path.read_text(encoding="utf-8", errors="replace") if status_path.is_file() else ""
+        status_text = (
+            status_path.read_text(encoding="utf-8", errors="replace")
+            if status_path.is_file()
+            else ""
+        )
         if "Too Many Requests" in status_text or "HTTPError 429" in status_text:
             human_boundary = "external-rate-limit"
         elif "ApiKeyMissingError" in status_text or "ANTHROPIC_API_KEY" in status_text:
             human_boundary = "missing-api-key"
     return {
         "recipes_used": sorted(recipes),
-        "json_repair_used": "json-llm" in layers or any(
-            "llm_rationale" in (a.get("verification") or {}) and (a.get("verification") or {}).get("layer") != "tool-rescue"
+        "json_repair_used": "json-llm" in layers
+        or any(
+            "llm_rationale" in (a.get("verification") or {})
+            and (a.get("verification") or {}).get("layer") != "tool-rescue"
             for a in attempts
         ),
         "tool_rescue_used": "tool-rescue" in layers,
@@ -595,17 +646,19 @@ def _commit_and_push(
     if opts.label_run_id:
         label_args.extend(["--label", f"batch-{opts.run_id}"])
     body = (
-        f"Generated by `bin/design-batch.py` "
-        f"(run-id: `{opts.run_id}`).\n\n"
-        f"Worktree: `{worktree}`\n"
+        f"Generated by `bin/design-batch.py` (run-id: `{opts.run_id}`).\n\nWorktree: `{worktree}`\n"
     )
     if verify_md:
         body += "\n---\n\n" + verify_md
     pr = subprocess.run(
         [
-            "gh", "pr", "create",
-            "--title", f"feat({slug}): bootstrap from batch {opts.run_id}",
-            "--body", body,
+            "gh",
+            "pr",
+            "create",
+            "--title",
+            f"feat({slug}): bootstrap from batch {opts.run_id}",
+            "--body",
+            body,
             *label_args,
         ],
         cwd=str(worktree),
@@ -613,9 +666,7 @@ def _commit_and_push(
         text=True,
     )
     if pr.returncode != 0:
-        raise RuntimeError(
-            f"gh pr create failed (rc={pr.returncode}): {pr.stderr.strip()}"
-        )
+        raise RuntimeError(f"gh pr create failed (rc={pr.returncode}): {pr.stderr.strip()}")
     pr_url = pr.stdout.strip().splitlines()[-1] if pr.stdout.strip() else None
     _post_pr_status_comment(
         worktree=worktree,
@@ -675,6 +726,161 @@ def _commit_and_push(
         verify_status=verify_status,
         verify_report_path=verify_path,
     )
+
+
+def _label_args(opts: RunnerOptions) -> list[str]:
+    label_args: list[str] = ["--label", "design"]
+    if opts.label_run_id:
+        label_args.extend(["--label", f"batch-{opts.run_id}"])
+    return label_args
+
+
+def _current_pr_url(worktree: Path, branch: str) -> str | None:
+    """Return an existing open PR URL for branch, if GitHub knows one."""
+    proc = subprocess.run(
+        ["gh", "pr", "view", branch, "--json", "url", "-q", ".url"],
+        cwd=str(worktree),
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        return None
+    url = proc.stdout.strip()
+    return url or None
+
+
+def _open_progressive_pr(
+    *,
+    worktree: Path,
+    branch: str,
+    slug: str,
+    opts: RunnerOptions,
+    phase: str,
+    body_extra: str = "",
+) -> str | None:
+    """Open (or return) the draft PR that represents the first artifact.
+
+    The key distinction from `_commit_and_push` is that `design.py build`
+    already committed and pushed the branch. This helper only exposes that
+    branch to reviewers, as a draft, before the expensive dress/vision
+    phases run.
+    """
+    if opts.dry_run:
+        return f"https://example.test/dry-run/{slug}"
+    if not opts.open_prs:
+        return None
+
+    existing = _current_pr_url(worktree, branch)
+    if existing:
+        return existing
+
+    body = (
+        f"Generated by `bin/design-batch.py` progressive mode "
+        f"(run-id: `{opts.run_id}`).\n\n"
+        f"Worktree: `{worktree}`\n\n"
+        "This draft was opened after the structural build produced a "
+        "runnable branch. The content-fit, vision-review, and verification "
+        "passes continue as follow-up commits on the same PR.\n"
+    )
+    if body_extra:
+        body += f"\n---\n\n{body_extra}\n"
+    pr = subprocess.run(
+        [
+            "gh",
+            "pr",
+            "create",
+            "--draft",
+            "--title",
+            f"feat({slug}): bootstrap from batch {opts.run_id}",
+            "--body",
+            body,
+            *_label_args(opts),
+        ],
+        cwd=str(worktree),
+        capture_output=True,
+        text=True,
+    )
+    if pr.returncode != 0:
+        raise RuntimeError(f"gh pr create failed (rc={pr.returncode}): {pr.stderr.strip()}")
+    pr_url = pr.stdout.strip().splitlines()[-1] if pr.stdout.strip() else None
+    _post_pr_status_comment(
+        worktree=worktree,
+        pr_url=pr_url,
+        slug=slug,
+        opts=opts,
+        phase=phase,
+        verify_status="pending",
+        next_action="Content-fit and verification are still running on this branch.",
+    )
+    return pr_url
+
+
+def _finalize_progressive_pr(
+    *,
+    worktree: Path,
+    pr_url: str | None,
+    slug: str,
+    opts: RunnerOptions,
+    verify_status: str | None,
+    verify_report_path: str | None,
+    rescue_summary: dict[str, Any] | None,
+) -> None:
+    """Move a progressive PR from draft artifact to merge candidate."""
+    _post_pr_status_comment(
+        worktree=worktree,
+        pr_url=pr_url,
+        slug=slug,
+        opts=opts,
+        phase="verified",
+        verify_status=verify_status,
+        verify_report_path=verify_report_path,
+        rescue_summary=rescue_summary,
+        next_action=(
+            "Verification passed; PR marked ready and auto-merge is armed if allowed."
+            if verify_status == "passed"
+            else (
+                "Fix the verification failures on this PR branch; it remains draft."
+                if verify_status
+                else "Verification was skipped; PR marked ready without auto-merge proof."
+            )
+        ),
+    )
+    if not pr_url or (verify_status and verify_status != "passed"):
+        if pr_url and verify_status and verify_status != "passed":
+            sys.stderr.write(
+                f"[batch] verify-theme reported '{verify_status}' on {slug}; "
+                f"leaving draft PR open for fixes: {pr_url}\n"
+            )
+        return
+
+    ready = subprocess.run(
+        ["gh", "pr", "ready", pr_url],
+        cwd=str(worktree),
+        capture_output=True,
+        text=True,
+    )
+    if ready.returncode != 0:
+        sys.stderr.write(
+            f"[batch] WARN: failed to mark {pr_url} ready "
+            f"(rc={ready.returncode}): {ready.stderr.strip()}\n"
+        )
+        return
+
+    if not opts.arm_auto_merge:
+        return
+    arm = subprocess.run(
+        ["gh", "pr", "merge", pr_url, "--auto", "--squash"],
+        cwd=str(worktree),
+        capture_output=True,
+        text=True,
+    )
+    if arm.returncode != 0:
+        sys.stderr.write(
+            f"[batch] WARN: failed to arm auto-merge on {pr_url} "
+            f"(rc={arm.returncode}): {arm.stderr.strip()}. "
+            "The PR is ready; a human will need to enable auto-merge "
+            "or merge manually once checks are green.\n"
+        )
 
 
 def _post_pr_status_comment(
@@ -742,6 +948,7 @@ class _VerifyBundle:
         md: markdown fragment suitable for gluing into a PR body
         json_path: path to the full JSON report (may be None on error)
     """
+
     status: str
     md: str = ""
     json_path: str | None = None
@@ -901,6 +1108,175 @@ def run_theme(
         outcome.design_status_path = str(
             worktree / "tmp" / "runs" / outcome.design_run_id / "STATUS.md"
         )
+        if opts.progressive:
+            build_run_id = f"batch-{opts.run_id}-{pre_slug}-build"
+            outcome.design_run_id = build_run_id
+            outcome.design_status_path = str(worktree / "tmp" / "runs" / build_run_id / "STATUS.md")
+            build_proc = _run_design_stage(
+                "build",
+                _entry_design_args(entry),
+                worktree=worktree,
+                opts=opts,
+                pre_slug=pre_slug,
+            )
+            build_rescue = _read_rescue_summary(worktree, build_run_id)
+            if build_proc.returncode != 0:
+                slug = _resolve_slug_after_design(entry, worktree, pre_slug)
+                outcome.slug = slug
+                # If build reached prepublish/publish, expose the partial
+                # artifact as a draft instead of leaving the operator to
+                # discover a pushed-but-hidden branch.
+                if opts.open_prs:
+                    try:
+                        outcome.pr_url = _open_progressive_pr(
+                            worktree=worktree,
+                            branch=branch,
+                            slug=slug,
+                            opts=opts,
+                            phase="build-failed",
+                            body_extra=(
+                                "The structural build stopped before it was "
+                                "green. The branch is intentionally preserved "
+                                "for repair instead of being discarded."
+                            ),
+                        )
+                    except Exception as e:
+                        sys.stderr.write(
+                            f"[batch] WARN: failed to open draft PR for "
+                            f"{slug} after build failure: {e}\n"
+                        )
+                outcome.recipes_used = list(build_rescue["recipes_used"])
+                outcome.json_repair_used = bool(build_rescue["json_repair_used"])
+                outcome.tool_rescue_used = bool(build_rescue["tool_rescue_used"])
+                outcome.human_required = bool(build_rescue["human_required"])
+                outcome.human_boundary = build_rescue["human_boundary"]
+                outcome.rescue_attempts = int(build_rescue["rescue_attempts"])
+                outcome.rescue_artifacts = list(build_rescue["rescue_artifacts"])
+                outcome.status = "failed"
+                outcome.error = (
+                    f"bin/design.py build exited {build_proc.returncode}; "
+                    f"worktree left intact at {worktree} for inspection."
+                )
+                outcome.next_action = (
+                    f"Open `{outcome.design_status_path}` and repair the "
+                    "structural build blocker on the draft branch."
+                )
+                return outcome
+
+            slug = _resolve_slug_after_design(entry, worktree, pre_slug)
+            outcome.slug = slug
+            outcome.pr_url = _open_progressive_pr(
+                worktree=worktree,
+                branch=branch,
+                slug=slug,
+                opts=opts,
+                phase="build-published",
+            )
+
+            dress_run_id = f"batch-{opts.run_id}-{pre_slug}-dress"
+            outcome.design_run_id = dress_run_id
+            outcome.design_status_path = str(worktree / "tmp" / "runs" / dress_run_id / "STATUS.md")
+            dress_proc = _run_design_stage(
+                "dress",
+                [slug],
+                worktree=worktree,
+                opts=opts,
+                pre_slug=pre_slug,
+            )
+            build_summary = _read_rescue_summary(worktree, build_run_id)
+            dress_summary = _read_rescue_summary(worktree, dress_run_id)
+            combined_recipes = sorted(
+                {
+                    *build_summary["recipes_used"],
+                    *dress_summary["recipes_used"],
+                }
+            )
+            rescue_summary = {
+                "recipes_used": combined_recipes,
+                "json_repair_used": bool(
+                    build_summary["json_repair_used"] or dress_summary["json_repair_used"]
+                ),
+                "tool_rescue_used": bool(
+                    build_summary["tool_rescue_used"] or dress_summary["tool_rescue_used"]
+                ),
+                "human_required": bool(
+                    build_summary["human_required"] or dress_summary["human_required"]
+                ),
+                "human_boundary": (
+                    dress_summary["human_boundary"] or build_summary["human_boundary"]
+                ),
+                "rescue_attempts": int(build_summary["rescue_attempts"])
+                + int(dress_summary["rescue_attempts"]),
+                "rescue_artifacts": [
+                    *build_summary["rescue_artifacts"],
+                    *dress_summary["rescue_artifacts"],
+                ],
+            }
+            outcome.recipes_used = list(rescue_summary["recipes_used"])
+            outcome.json_repair_used = bool(rescue_summary["json_repair_used"])
+            outcome.tool_rescue_used = bool(rescue_summary["tool_rescue_used"])
+            outcome.human_required = bool(rescue_summary["human_required"])
+            outcome.human_boundary = rescue_summary["human_boundary"]
+            outcome.rescue_attempts = int(rescue_summary["rescue_attempts"])
+            outcome.rescue_artifacts = list(rescue_summary["rescue_artifacts"])
+            if dress_proc.returncode != 0:
+                outcome.status = "failed"
+                outcome.error = (
+                    f"bin/design.py dress exited {dress_proc.returncode}; "
+                    f"draft PR remains open at {outcome.pr_url or '<no-pr>'}."
+                )
+                outcome.next_action = (
+                    f"Open `{outcome.design_status_path}` and push fixes to "
+                    "the existing draft PR branch."
+                )
+                _post_pr_status_comment(
+                    worktree=worktree,
+                    pr_url=outcome.pr_url,
+                    slug=slug,
+                    opts=opts,
+                    phase="dress-failed",
+                    human_required=outcome.human_required,
+                    next_action=outcome.next_action,
+                    rescue_summary=rescue_summary,
+                )
+                return outcome
+
+            verify_status: str | None = None
+            verify_path: str | None = None
+            if opts.run_verify and not opts.dry_run:
+                bundle = _run_verify_after_push(worktree, slug, opts)
+                verify_status = bundle.status
+                verify_path = bundle.json_path
+            outcome.verify_status = verify_status
+            outcome.verify_report_path = verify_path
+            _finalize_progressive_pr(
+                worktree=worktree,
+                pr_url=outcome.pr_url,
+                slug=slug,
+                opts=opts,
+                verify_status=verify_status,
+                verify_report_path=verify_path,
+                rescue_summary=rescue_summary,
+            )
+            if verify_status and verify_status != "passed":
+                outcome.status = "failed"
+                outcome.error = (
+                    "bin/verify-theme.py reported failures after dress; "
+                    f"see {verify_path or '<no report>'}."
+                )
+                outcome.next_action = (
+                    "Fix the verify-theme failures on the draft PR branch, then rerun "
+                    f"`python3 bin/verify-theme.py {slug} --strict --snap`."
+                )
+            else:
+                outcome.status = "passed"
+                outcome.next_action = (
+                    "Draft PR was marked ready; auto-merge is armed if allowed."
+                    if opts.arm_auto_merge
+                    else "Review the ready PR and merge when required checks are green."
+                )
+            return outcome
+
         proc = _run_design(entry, worktree, opts, pre_slug)
         rescue_summary = _read_rescue_summary(worktree, outcome.design_run_id)
         outcome.recipes_used = list(rescue_summary["recipes_used"])
@@ -1149,6 +1525,16 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--single-shot",
+        action="store_true",
+        help=(
+            "Use the legacy all-in-one design.py run and open the PR only "
+            "after every phase succeeds. Default is progressive mode: "
+            "`design.py build` opens a draft PR first, then `design.py dress` "
+            "adds content/vision fixes on the same branch."
+        ),
+    )
+    p.add_argument(
         "--max-repair-rounds",
         type=int,
         default=3,
@@ -1233,8 +1619,7 @@ def _resolve_concurrency(cli: int | None, manifest: dict[str, Any]) -> int:
         raise SystemExit("error: concurrency must be >= 1")
     if raw > HARD_CONCURRENCY_CAP:
         print(
-            f"warn: concurrency {raw} exceeds hard cap "
-            f"{HARD_CONCURRENCY_CAP}; clamping.",
+            f"warn: concurrency {raw} exceeds hard cap {HARD_CONCURRENCY_CAP}; clamping.",
             file=sys.stderr,
         )
         raw = HARD_CONCURRENCY_CAP
@@ -1384,11 +1769,7 @@ def main(argv: list[str] | None = None) -> int:
 
     run_id = _resolve_run_id(args.run_id)
     concurrency = _resolve_concurrency(args.concurrency, manifest_opts)
-    daily_cap = (
-        args.budget_usd
-        if args.budget_usd is not None
-        else _vision_default_budget()
-    )
+    daily_cap = args.budget_usd if args.budget_usd is not None else _vision_default_budget()
     worktree_parent = (args.worktree_parent or DEFAULT_WORKTREE_PARENT).resolve()
     worktree_parent.mkdir(parents=True, exist_ok=True)
     report_path = DEFAULT_RUN_DIR / f"batch-{run_id}.json"
@@ -1425,13 +1806,15 @@ def main(argv: list[str] | None = None) -> int:
         self_heal=not args.no_self_heal,
         max_repair_rounds=args.max_repair_rounds,
         unblock_dry_run=args.unblock_dry_run,
+        progressive=not args.single_shot,
     )
 
     print(
         f"[batch] run-id={run_id} themes={len(entries)} "
         f"concurrency={concurrency} daily-cap=${daily_cap:.2f} "
         f"worktree-parent={worktree_parent} dry-run={args.dry_run} "
-        f"self-heal={not args.no_self_heal}",
+        f"self-heal={not args.no_self_heal} "
+        f"mode={'progressive' if not args.single_shot else 'single-shot'}",
         file=sys.stderr,
     )
 
@@ -1484,8 +1867,7 @@ def main(argv: list[str] | None = None) -> int:
     report.write(report_path)
 
     print(
-        f"[batch] done. report: {report_path}\n"
-        f"[batch] totals: {json.dumps(report.totals)}",
+        f"[batch] done. report: {report_path}\n[batch] totals: {json.dumps(report.totals)}",
         file=sys.stderr,
     )
     # Exit non-zero if any theme failed so CI/cron can notice.

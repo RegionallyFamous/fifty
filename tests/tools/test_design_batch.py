@@ -208,6 +208,30 @@ def test_batch_uses_self_healing_watch_by_default(script_text: str) -> None:
     assert "--no-self-heal" in script_text
 
 
+def test_batch_uses_progressive_build_then_dress_by_default(script_text: str) -> None:
+    """Batch mode should leave a draft artifact before expensive gates.
+
+    The failure mode this guards against is the old all-or-nothing flow:
+    `design.py` could stall in vision review or fail a late scorecard and
+    the operator had no PR to inspect. Progressive mode runs `build`, opens
+    a draft PR, then runs `dress` on the same branch.
+    """
+    assert "progressive: bool = True" in script_text
+    assert '"build"' in script_text
+    assert '"dress"' in script_text
+    assert "def _open_progressive_pr(" in script_text
+    assert '"--draft"' in script_text
+    assert "--single-shot" in script_text
+
+
+def test_progressive_pr_is_marked_ready_after_verification(script_text: str) -> None:
+    """A draft artifact must become mergeable only after verification."""
+    assert "def _finalize_progressive_pr(" in script_text
+    assert '"gh", "pr", "ready", pr_url' in script_text
+    assert '"gh", "pr", "merge", pr_url, "--auto", "--squash"' in script_text
+    assert 'verify_status and verify_status != "passed"' in script_text
+
+
 def test_batch_posts_visible_autonomy_pr_comment(script_text: str) -> None:
     assert "def _post_pr_status_comment(" in script_text
     assert '"gh", "pr", "comment", pr_url' in script_text
