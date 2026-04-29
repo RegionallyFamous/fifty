@@ -187,6 +187,15 @@ def test_write_status_creates_live_markdown_dashboard(tmp_path):
                 next_action="Regenerate or replace the named duplicate product photo.",
             )
         ],
+        factory_defects=[
+            {
+                "category": "hover-contrast",
+                "title": "Hover/focus states have legible text-vs-background contrast",
+                "promotion_target": "design-phase",
+                "tooling_status": "needs-tooling",
+                "suggested_files": ["bin/autofix-contrast.py", "bin/design.py"],
+            }
+        ],
     )
     status_path = tmp_path / "STATUS.md"
 
@@ -201,8 +210,13 @@ def test_write_status_creates_live_markdown_dashboard(tmp_path):
     assert "# Demo Pipeline Status" in body
     assert "**Status:** Needs attention" in body
     assert "Regenerate or replace the named duplicate product photo." in body
+    assert "## Factory Defects" in body
+    assert "Need deterministic tooling: 1" in body
     assert "## Vision Review Progress" in body
     assert "## Last Output" in body
+    watch.write_summary(tmp_path / "summary.json", state)
+    summary = (tmp_path / "summary.json").read_text(encoding="utf-8")
+    assert '"needs_tooling": 1' in summary
 
 
 def test_design_watch_help_smoke():

@@ -134,6 +134,7 @@ class WatchState:
     last_status_label: str = "Working"
     last_status_message: str = "Starting pipeline run."
     repair_attempts: list[dict[str, Any]] = field(default_factory=list)
+    factory_defects: list[dict[str, Any]] = field(default_factory=list)
     repair_active: bool = False
     repair_round: int = 0
     repair_last_layer: str = ""
@@ -554,6 +555,23 @@ def write_status(
                     f"  - attempt {rec.get('attempt')}: {rec.get('decision')} "
                     f"({rec.get('reason', '')[:120]})"
                 )
+    if state.factory_defects:
+        needs_tooling = sum(
+            1 for defect in state.factory_defects if defect.get("tooling_status") == "needs-tooling"
+        )
+        lines.extend(["", "## Factory Defects"])
+        lines.append(f"- Candidates: {len(state.factory_defects)}")
+        lines.append(f"- Need deterministic tooling: {needs_tooling}")
+        lines.append("- Latest:")
+        for defect in state.factory_defects[-5:]:
+            title = defect.get("title") or defect.get("category") or "unknown"
+            lines.append(
+                f"  - `{defect.get('tooling_status')}` "
+                f"{title} -> `{defect.get('promotion_target')}`"
+            )
+            suggested = defect.get("suggested_files") or []
+            if suggested:
+                lines.append(f"    Suggested: {', '.join(f'`{path}`' for path in suggested[:4])}")
     lines.extend(
         [
             "",
@@ -623,6 +641,25 @@ def write_summary(path: Path, state: WatchState) -> None:
             "prefiltered": state.vision_prefiltered,
             "errored": state.vision_errored,
             "findings": state.vision_findings,
+        },
+        "factory_defects": {
+            "total": len(state.factory_defects),
+            "needs_tooling": sum(
+                1
+                for defect in state.factory_defects
+                if defect.get("tooling_status") == "needs-tooling"
+            ),
+            "manual_review": sum(
+                1
+                for defect in state.factory_defects
+                if defect.get("tooling_status") == "manual-review"
+            ),
+            "covered": sum(
+                1
+                for defect in state.factory_defects
+                if defect.get("tooling_status") == "covered-by-recipe"
+            ),
+            "items": state.factory_defects,
         },
         "check_failures": [asdict(failure) for failure in state.check_failures],
     }
@@ -864,8 +901,7 @@ def _resume_design_args(design_args: list[str], from_phase: str) -> list[str]:
     return out
 
 
-def _read_attempts(run_dir: Path) -> list[dict[str, Any]]:
-    path = run_dir / "repair-attempts.jsonl"
+def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     if not path.is_file():
         return []
     out: list[dict[str, Any]] = []
@@ -877,6 +913,14 @@ def _read_attempts(run_dir: Path) -> list[dict[str, Any]]:
         except json.JSONDecodeError:
             continue
     return out
+
+
+def _read_attempts(run_dir: Path) -> list[dict[str, Any]]:
+    return _read_jsonl(run_dir / "repair-attempts.jsonl")
+
+
+def _read_factory_defects(run_dir: Path) -> list[dict[str, Any]]:
+    return _read_jsonl(run_dir / "factory-defects.jsonl")
 
 
 def run_auto_unblock_round(
@@ -920,6 +964,7 @@ def run_auto_unblock_round(
     # Read the attempt record that was just appended.
     attempts = _read_attempts(run_dir)
     state.repair_attempts = attempts
+    state.factory_defects = _read_factory_defects(run_dir)
     resume_phase = "check"
     if attempts:
         last = attempts[-1]

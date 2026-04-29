@@ -183,6 +183,9 @@ class ThemeOutcome:
     human_boundary: str | None = None
     rescue_attempts: int = 0
     rescue_artifacts: list[str] = field(default_factory=list)
+    factory_defects: list[dict[str, Any]] = field(default_factory=list)
+    factory_defect_artifacts: list[str] = field(default_factory=list)
+    needs_tooling_count: int = 0
 
 
 @dataclass
@@ -362,6 +365,11 @@ class RunnerOptions:
     # fails, the run still leaves a reviewable PR instead of only a local
     # worktree.
     progressive: bool = True
+    # Successful JSON/tool-rescue fixes indicate that the factory built
+    # something it later had to repair. Keep the PR draft and do not
+    # arm auto-merge until those fixes have deterministic coverage,
+    # unless this explicit escape hatch is set.
+    allow_unpromoted_factory_defects: bool = False
 
 
 def _git(*args: str, cwd: Path | None = None, check: bool = True) -> subprocess.CompletedProcess:
@@ -526,9 +534,13 @@ def _read_rescue_summary(worktree: Path, run_id: str | None) -> dict[str, Any]:
             "human_boundary": None,
             "rescue_attempts": 0,
             "rescue_artifacts": [],
+            "factory_defects": [],
+            "factory_defect_artifacts": [],
+            "needs_tooling_count": 0,
         }
     run_dir = worktree / "tmp" / "runs" / run_id
     attempts_path = run_dir / "repair-attempts.jsonl"
+    defects_path = run_dir / "factory-defects.jsonl"
     attempts: list[dict[str, Any]] = []
     if attempts_path.is_file():
         for line in attempts_path.read_text(encoding="utf-8").splitlines():
@@ -536,6 +548,15 @@ def _read_rescue_summary(worktree: Path, run_id: str | None) -> dict[str, Any]:
                 continue
             try:
                 attempts.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    defects: list[dict[str, Any]] = []
+    if defects_path.is_file():
+        for line in defects_path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                defects.append(json.loads(line))
             except json.JSONDecodeError:
                 continue
     layers: list[str] = []
@@ -560,9 +581,14 @@ def _read_rescue_summary(worktree: Path, run_id: str | None) -> dict[str, Any]:
             run_dir / "summary.json",
             run_dir / "repair-plan.json",
             attempts_path,
+            defects_path,
         )
         if path.exists()
     ]
+    defect_artifacts = [str(defects_path)] if defects_path.exists() else []
+    needs_tooling_count = sum(
+        1 for defect in defects if defect.get("tooling_status") == "needs-tooling"
+    )
     if human_boundary is None:
         status_path = run_dir / "STATUS.md"
         status_text = (
@@ -587,7 +613,57 @@ def _read_rescue_summary(worktree: Path, run_id: str | None) -> dict[str, Any]:
         "human_boundary": human_boundary,
         "rescue_attempts": len(attempts),
         "rescue_artifacts": artifacts,
+        "factory_defects": defects,
+        "factory_defect_artifacts": defect_artifacts,
+        "needs_tooling_count": needs_tooling_count,
     }
+
+
+def _combine_rescue_summaries(*summaries: dict[str, Any]) -> dict[str, Any]:
+    recipes: set[str] = set()
+    defects: list[dict[str, Any]] = []
+    defect_artifacts: list[str] = []
+    rescue_artifacts: list[str] = []
+    for summary in summaries:
+        recipes.update(str(recipe) for recipe in summary.get("recipes_used") or [])
+        defects.extend(summary.get("factory_defects") or [])
+        defect_artifacts.extend(summary.get("factory_defect_artifacts") or [])
+        rescue_artifacts.extend(summary.get("rescue_artifacts") or [])
+    human_boundary = next(
+        (
+            summary.get("human_boundary")
+            for summary in reversed(summaries)
+            if summary.get("human_boundary")
+        ),
+        None,
+    )
+    return {
+        "recipes_used": sorted(recipes),
+        "json_repair_used": any(bool(summary.get("json_repair_used")) for summary in summaries),
+        "tool_rescue_used": any(bool(summary.get("tool_rescue_used")) for summary in summaries),
+        "human_required": any(bool(summary.get("human_required")) for summary in summaries),
+        "human_boundary": human_boundary,
+        "rescue_attempts": sum(int(summary.get("rescue_attempts") or 0) for summary in summaries),
+        "rescue_artifacts": sorted(set(rescue_artifacts)),
+        "factory_defects": defects,
+        "factory_defect_artifacts": sorted(set(defect_artifacts)),
+        "needs_tooling_count": sum(
+            1 for defect in defects if defect.get("tooling_status") == "needs-tooling"
+        ),
+    }
+
+
+def _apply_rescue_summary(outcome: ThemeOutcome, summary: dict[str, Any]) -> None:
+    outcome.recipes_used = list(summary["recipes_used"])
+    outcome.json_repair_used = bool(summary["json_repair_used"])
+    outcome.tool_rescue_used = bool(summary["tool_rescue_used"])
+    outcome.human_required = bool(summary["human_required"])
+    outcome.human_boundary = summary["human_boundary"]
+    outcome.rescue_attempts = int(summary["rescue_attempts"])
+    outcome.rescue_artifacts = list(summary["rescue_artifacts"])
+    outcome.factory_defects = list(summary.get("factory_defects") or [])
+    outcome.factory_defect_artifacts = list(summary.get("factory_defect_artifacts") or [])
+    outcome.needs_tooling_count = int(summary.get("needs_tooling_count") or 0)
 
 
 def _commit_and_push(
@@ -694,12 +770,17 @@ def _commit_and_push(
     # auto-merge so a human reviewer is forced to look at the
     # findings before the PR lands. The `arm_auto_merge_on_failure`
     # escape hatch exists only for explicit rescue runs.
+    needs_tooling_count = (
+        int(rescue_summary.get("needs_tooling_count") or 0) if rescue_summary else 0
+    )
     auto_merge_blocked = bool(
-        verify_status and verify_status != "passed" and not opts.arm_auto_merge_on_failure
+        (verify_status and verify_status != "passed" and not opts.arm_auto_merge_on_failure)
+        or (needs_tooling_count and not opts.allow_unpromoted_factory_defects)
     )
     if opts.arm_auto_merge and pr_url and auto_merge_blocked:
         sys.stderr.write(
-            f"[batch] verify-theme reported '{verify_status}' on {slug}; "
+            f"[batch] merge blocked on {slug}: verify={verify_status or 'pending'}, "
+            f"needs-tooling={needs_tooling_count}. "
             f"auto-merge NOT armed on {pr_url}. The PR is open with the "
             f"failure summary in the body so a reviewer can decide "
             f"whether to fix-and-merge or close.\n"
@@ -826,6 +907,9 @@ def _finalize_progressive_pr(
     rescue_summary: dict[str, Any] | None,
 ) -> None:
     """Move a progressive PR from draft artifact to merge candidate."""
+    needs_tooling_count = (
+        int(rescue_summary.get("needs_tooling_count") or 0) if rescue_summary else 0
+    )
     _post_pr_status_comment(
         worktree=worktree,
         pr_url=pr_url,
@@ -836,15 +920,30 @@ def _finalize_progressive_pr(
         verify_report_path=verify_report_path,
         rescue_summary=rescue_summary,
         next_action=(
-            "Verification passed; PR marked ready and auto-merge is armed if allowed."
-            if verify_status == "passed"
+            "Self-healing fixed this branch, but deterministic tooling still needs "
+            "to absorb the repair; PR remains draft."
+            if needs_tooling_count and not opts.allow_unpromoted_factory_defects
             else (
-                "Fix the verification failures on this PR branch; it remains draft."
-                if verify_status
-                else "Verification was skipped; PR marked ready without auto-merge proof."
+                "Verification passed; PR marked ready and auto-merge is armed if allowed."
+                if verify_status == "passed"
+                else (
+                    "Fix the verification failures on this PR branch; it remains draft."
+                    if verify_status
+                    else "Verification was skipped; PR marked ready without auto-merge proof."
+                )
             )
         ),
     )
+    if opts.dry_run:
+        return
+    if needs_tooling_count and not opts.allow_unpromoted_factory_defects:
+        if pr_url:
+            sys.stderr.write(
+                f"[batch] {slug} has {needs_tooling_count} self-healing "
+                f"factory defect(s) needing deterministic tooling; leaving "
+                f"draft PR open for promotion work: {pr_url}\n"
+            )
+        return
     if not pr_url or (verify_status and verify_status != "passed"):
         if pr_url and verify_status and verify_status != "passed":
             sys.stderr.write(
@@ -918,14 +1017,30 @@ def _post_pr_status_comment(
         f"- Agent rescue used: `{'yes' if os.environ.get('FIFTY_AGENT_RESCUE') else 'no'}`\n"
     )
     if rescue_summary:
+        needs_tooling_count = int(rescue_summary.get("needs_tooling_count") or 0)
         body += (
             f"- Recipes used: `{', '.join(rescue_summary.get('recipes_used') or []) or 'none'}`\n"
             f"- JSON repair used: `{'yes' if rescue_summary.get('json_repair_used') else 'no'}`\n"
             f"- Tool rescue used: `{'yes' if rescue_summary.get('tool_rescue_used') else 'no'}`\n"
             f"- Rescue attempts: `{rescue_summary.get('rescue_attempts') or 0}`\n"
+            f"- Factory defects: `{len(rescue_summary.get('factory_defects') or [])}`\n"
+            f"- Need deterministic tooling: `{needs_tooling_count}`\n"
         )
         if rescue_summary.get("human_boundary"):
             body += f"- Human boundary: `{rescue_summary['human_boundary']}`\n"
+        if needs_tooling_count:
+            body += "\nFactory defects needing promotion:\n"
+            for defect in (rescue_summary.get("factory_defects") or [])[:5]:
+                if defect.get("tooling_status") != "needs-tooling":
+                    continue
+                body += (
+                    f"- `{defect.get('category')}` via `{defect.get('layer')}` "
+                    f"-> `{defect.get('promotion_target')}`"
+                )
+                suggested = defect.get("suggested_files") or []
+                if suggested:
+                    body += f" ({', '.join(f'`{path}`' for path in suggested[:3])})"
+                body += "\n"
     if verify_report_path:
         body += f"- Verify report: `{verify_report_path}`\n"
     if next_action:
@@ -1145,13 +1260,7 @@ def run_theme(
                             f"[batch] WARN: failed to open draft PR for "
                             f"{slug} after build failure: {e}\n"
                         )
-                outcome.recipes_used = list(build_rescue["recipes_used"])
-                outcome.json_repair_used = bool(build_rescue["json_repair_used"])
-                outcome.tool_rescue_used = bool(build_rescue["tool_rescue_used"])
-                outcome.human_required = bool(build_rescue["human_required"])
-                outcome.human_boundary = build_rescue["human_boundary"]
-                outcome.rescue_attempts = int(build_rescue["rescue_attempts"])
-                outcome.rescue_artifacts = list(build_rescue["rescue_artifacts"])
+                _apply_rescue_summary(outcome, build_rescue)
                 outcome.status = "failed"
                 outcome.error = (
                     f"bin/design.py build exited {build_proc.returncode}; "
@@ -1185,40 +1294,8 @@ def run_theme(
             )
             build_summary = _read_rescue_summary(worktree, build_run_id)
             dress_summary = _read_rescue_summary(worktree, dress_run_id)
-            combined_recipes = sorted(
-                {
-                    *build_summary["recipes_used"],
-                    *dress_summary["recipes_used"],
-                }
-            )
-            rescue_summary = {
-                "recipes_used": combined_recipes,
-                "json_repair_used": bool(
-                    build_summary["json_repair_used"] or dress_summary["json_repair_used"]
-                ),
-                "tool_rescue_used": bool(
-                    build_summary["tool_rescue_used"] or dress_summary["tool_rescue_used"]
-                ),
-                "human_required": bool(
-                    build_summary["human_required"] or dress_summary["human_required"]
-                ),
-                "human_boundary": (
-                    dress_summary["human_boundary"] or build_summary["human_boundary"]
-                ),
-                "rescue_attempts": int(build_summary["rescue_attempts"])
-                + int(dress_summary["rescue_attempts"]),
-                "rescue_artifacts": [
-                    *build_summary["rescue_artifacts"],
-                    *dress_summary["rescue_artifacts"],
-                ],
-            }
-            outcome.recipes_used = list(rescue_summary["recipes_used"])
-            outcome.json_repair_used = bool(rescue_summary["json_repair_used"])
-            outcome.tool_rescue_used = bool(rescue_summary["tool_rescue_used"])
-            outcome.human_required = bool(rescue_summary["human_required"])
-            outcome.human_boundary = rescue_summary["human_boundary"]
-            outcome.rescue_attempts = int(rescue_summary["rescue_attempts"])
-            outcome.rescue_artifacts = list(rescue_summary["rescue_artifacts"])
+            rescue_summary = _combine_rescue_summaries(build_summary, dress_summary)
+            _apply_rescue_summary(outcome, rescue_summary)
             if dress_proc.returncode != 0:
                 outcome.status = "failed"
                 outcome.error = (
@@ -1258,7 +1335,17 @@ def run_theme(
                 verify_report_path=verify_path,
                 rescue_summary=rescue_summary,
             )
-            if verify_status and verify_status != "passed":
+            if outcome.needs_tooling_count and not opts.allow_unpromoted_factory_defects:
+                outcome.status = "failed"
+                outcome.error = (
+                    f"{outcome.needs_tooling_count} self-healing factory defect(s) "
+                    "need deterministic tooling before this PR can be marked ready."
+                )
+                outcome.next_action = (
+                    "Promote the recorded factory defects into a check, generator, "
+                    "design phase, or recipe; then rerun verification."
+                )
+            elif verify_status and verify_status != "passed":
                 outcome.status = "failed"
                 outcome.error = (
                     "bin/verify-theme.py reported failures after dress; "
@@ -1279,13 +1366,7 @@ def run_theme(
 
         proc = _run_design(entry, worktree, opts, pre_slug)
         rescue_summary = _read_rescue_summary(worktree, outcome.design_run_id)
-        outcome.recipes_used = list(rescue_summary["recipes_used"])
-        outcome.json_repair_used = bool(rescue_summary["json_repair_used"])
-        outcome.tool_rescue_used = bool(rescue_summary["tool_rescue_used"])
-        outcome.human_required = bool(rescue_summary["human_required"])
-        outcome.human_boundary = rescue_summary["human_boundary"]
-        outcome.rescue_attempts = int(rescue_summary["rescue_attempts"])
-        outcome.rescue_artifacts = list(rescue_summary["rescue_artifacts"])
+        _apply_rescue_summary(outcome, rescue_summary)
         if proc.returncode != 0:
             outcome.status = "failed"
             outcome.error = (
@@ -1312,7 +1393,17 @@ def run_theme(
         # "passed" in the run report. The PR still opens (with the
         # failure summary in the body) so reviewers can push fixups
         # without re-running the batch.
-        if result.verify_status == "failed":
+        if outcome.needs_tooling_count and not opts.allow_unpromoted_factory_defects:
+            outcome.status = "failed"
+            outcome.error = (
+                f"{outcome.needs_tooling_count} self-healing factory defect(s) "
+                "need deterministic tooling before this PR can be marked ready."
+            )
+            outcome.next_action = (
+                "Promote the recorded factory defects into a check, generator, "
+                "design phase, or recipe; then rerun verification."
+            )
+        elif result.verify_status == "failed":
             outcome.status = "failed"
             outcome.error = (
                 "bin/verify-theme.py reported failures after push; "
@@ -1513,6 +1604,17 @@ def _build_parser() -> argparse.ArgumentParser:
             "to look at the failing gate before the PR can land. Only "
             "use this for explicit rescue runs where you've already "
             "decided the failures are acceptable."
+        ),
+    )
+    p.add_argument(
+        "--allow-unpromoted-factory-defects",
+        action="store_true",
+        help=(
+            "Do not keep draft PRs blocked when self-healing fixed a "
+            "theme with JSON/tool rescue but the fix has not yet been "
+            "promoted into deterministic tooling. Default is to block "
+            "ready/auto-merge so recurring defects are added to the "
+            "factory before shipping."
         ),
     )
     p.add_argument(
@@ -1807,6 +1909,7 @@ def main(argv: list[str] | None = None) -> int:
         max_repair_rounds=args.max_repair_rounds,
         unblock_dry_run=args.unblock_dry_run,
         progressive=not args.single_shot,
+        allow_unpromoted_factory_defects=args.allow_unpromoted_factory_defects,
     )
 
     print(

@@ -294,6 +294,116 @@ def test_build_repair_plan_emits_and_reads_back(tmp_path):
     assert data["blockers"][0]["category"] == "hover-contrast"
 
 
+def test_successful_json_repair_emits_factory_defect_candidate(tmp_path):
+    u = _load_module()
+    run_dir = tmp_path / "runs" / "test"
+    _write_summary(
+        run_dir,
+        [
+            {
+                "title": "Hover/focus states have legible text-vs-background contrast",
+                "detail": ".button:hover: 1.2:1",
+                "summary": "low hover contrast",
+                "next_action": "fix hover",
+            }
+        ],
+    )
+    u._changed_files = lambda cwd: []
+    plan = u.build_repair_plan(run_dir)
+    record = u.AttemptRecord(
+        at=123.0,
+        attempt=1,
+        decision="fixed",
+        reason="all blockers cleared",
+        before=[plan.blockers[0].fingerprint],
+        after=[],
+        touched_files=["agave/theme.json"],
+        commands=[["python3", "bin/check.py", "agave", "--quick"]],
+        verification={"layer": "json-llm"},
+    )
+
+    u.append_attempt(run_dir, record)
+
+    defects = [
+        json.loads(line)
+        for line in (run_dir / "factory-defects.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert len(defects) == 1
+    assert defects[0]["schema_version"] == 1
+    assert defects[0]["category"] == "hover-contrast"
+    assert defects[0]["promotion_target"] == "design-phase"
+    assert defects[0]["tooling_status"] == "needs-tooling"
+    assert defects[0]["resolved_fingerprints"] == [plan.blockers[0].fingerprint]
+
+
+def test_successful_recipe_repair_is_recorded_as_covered(tmp_path):
+    u = _load_module()
+    run_dir = tmp_path / "runs" / "test"
+    _write_summary(
+        run_dir,
+        [
+            {
+                "title": "Product photographs are visually distinct within a theme",
+                "detail": "product-wo-a.jpg ~ product-wo-b.jpg",
+                "summary": "duplicate product photos",
+                "next_action": "regenerate",
+            }
+        ],
+    )
+    u._changed_files = lambda cwd: []
+    plan = u.build_repair_plan(run_dir)
+    record = u.AttemptRecord(
+        at=123.0,
+        attempt=1,
+        decision="improved",
+        reason="one blocker cleared",
+        before=[plan.blockers[0].fingerprint],
+        after=[],
+        touched_files=["agave/playground/images/product-wo-a.jpg"],
+        commands=[["python3", "bin/generate-product-photos.py", "--theme", "agave"]],
+        verification={"layer": "recipe", "recipes": ["generate_product_photos"]},
+    )
+
+    u.append_attempt(run_dir, record)
+
+    defect = json.loads((run_dir / "factory-defects.jsonl").read_text(encoding="utf-8"))
+    assert defect["tooling_status"] == "covered-by-recipe"
+    assert defect["recipes"] == ["generate_product_photos"]
+
+
+def test_unsuccessful_repair_does_not_emit_factory_defect(tmp_path):
+    u = _load_module()
+    run_dir = tmp_path / "runs" / "test"
+    _write_summary(
+        run_dir,
+        [
+            {
+                "title": "Hover/focus states have legible text-vs-background contrast",
+                "detail": ".button:hover: 1.2:1",
+                "summary": "low hover contrast",
+                "next_action": "fix hover",
+            }
+        ],
+    )
+    u._changed_files = lambda cwd: []
+    plan = u.build_repair_plan(run_dir)
+    record = u.AttemptRecord(
+        at=123.0,
+        attempt=1,
+        decision="not-improved",
+        reason="unchanged",
+        before=[plan.blockers[0].fingerprint],
+        after=[plan.blockers[0].fingerprint],
+        touched_files=[],
+        commands=[],
+        verification={"layer": "json-llm"},
+    )
+
+    u.append_attempt(run_dir, record)
+
+    assert not (run_dir / "factory-defects.jsonl").exists()
+
+
 # ---------------------------------------------------------------------------
 # Progress judge
 # ---------------------------------------------------------------------------

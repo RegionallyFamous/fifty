@@ -230,6 +230,7 @@ def test_progressive_pr_is_marked_ready_after_verification(script_text: str) -> 
     assert '"gh", "pr", "ready", pr_url' in script_text
     assert '"gh", "pr", "merge", pr_url, "--auto", "--squash"' in script_text
     assert 'verify_status and verify_status != "passed"' in script_text
+    assert "if opts.dry_run:" in script_text
 
 
 def test_batch_posts_visible_autonomy_pr_comment(script_text: str) -> None:
@@ -246,9 +247,19 @@ def test_batch_reports_rescue_layers(script_text: str) -> None:
     assert "tool_rescue_used" in script_text
     assert "human_boundary" in script_text
     assert "rescue_artifacts" in script_text
+    assert "factory_defects" in script_text
+    assert "needs_tooling_count" in script_text
+    assert "factory-defects.jsonl" in script_text
     assert "def _read_rescue_summary(" in script_text
     assert "external-rate-limit" in script_text
     assert "missing-api-key" in script_text
+
+
+def test_batch_blocks_ready_on_unpromoted_factory_defects(script_text: str) -> None:
+    assert "allow_unpromoted_factory_defects: bool = False" in script_text
+    assert "--allow-unpromoted-factory-defects" in script_text
+    assert "needs_tooling_count and not opts.allow_unpromoted_factory_defects" in script_text
+    assert "draft PR open for promotion work" in script_text
 
 
 def test_verify_invocation_uses_snap(script_text: str) -> None:
