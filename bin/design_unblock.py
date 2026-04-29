@@ -87,6 +87,7 @@ _CLASSIFIER_RULES: tuple[tuple[str, str, str | None], ...] = (
     ("placeholder-images", "woocommerce placeholder", None),
     ("category-images", "category-images.json", "category cover art"),
     ("snap-evidence-stale", "snap evidence is fresh", None),
+    ("scorecard-mass-failure", "scorecard mass failure", None),
     ("design-score-low", "design scorecard meets minimum", None),
     ("factory-timeout", "factory timeout guard", None),
     ("factory-stall", "factory stall guard", None),
@@ -106,6 +107,7 @@ KNOWN_CATEGORIES = frozenset(
         "placeholder-images",
         "category-images",
         "snap-evidence-stale",
+        "scorecard-mass-failure",
         "design-score-low",
         "factory-timeout",
         "factory-stall",
@@ -145,6 +147,7 @@ _DETAIL_EXTRACTORS: dict[str, re.Pattern[str]] = {
     "placeholder-images": re.compile(r"([a-z0-9-]+/playground/[^\s,;]+)"),
     "category-images": re.compile(r"([a-z0-9-]+/playground/content/category-images\.json)"),
     "snap-evidence-stale": re.compile(r"(\S+\.(?:html|php|json|css))"),
+    "scorecard-mass-failure": re.compile(r"([a-z_]+)\s+scored\s+(\d+)/(\d+)"),
     "design-score-low": re.compile(r"([a-z_]+)\s+scored\s+(\d+)/(\d+)"),
     "factory-timeout": re.compile(r"(?:while|phase=)\s+([a-z0-9_-]+)"),
     "factory-stall": re.compile(r"(?:while|phase=)\s+([a-z0-9_-]+)"),
@@ -343,6 +346,56 @@ def _snap_findings_for_blocker(slug: str, limit: int = 12) -> list[SnapFinding]:
     return findings
 
 
+def _latest_design_score(slug: str) -> dict[str, Any]:
+    runs_dir = ROOT / "tmp" / "runs"
+    if not runs_dir.is_dir():
+        return {}
+    candidates = sorted(
+        [p for p in runs_dir.glob(f"*{slug}*/design-score.json") if p.is_file()],
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    if not candidates:
+        fallback = runs_dir / f"design-{slug}" / "design-score.json"
+        candidates = [fallback] if fallback.is_file() else []
+    if not candidates:
+        return {}
+    try:
+        return json.loads(candidates[0].read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _scorecard_top_findings_snippet(slug: str, *, limit: int = 12) -> str:
+    doc = _latest_design_score(slug)
+    if not doc:
+        return ""
+    groups = doc.get("top_weak_findings") or []
+    if not isinstance(groups, list):
+        groups = []
+    lines = [
+        f"### scorecard diagnostic packet for {slug}",
+        f"- classification: {doc.get('classification', 'unknown')}",
+        f"- overall: {doc.get('overall', 'n/a')}/{doc.get('threshold', 'n/a')}",
+        f"- weak findings: {len(doc.get('weak_findings') or [])}",
+        "- top grouped weak findings:",
+    ]
+    for item in groups[:limit]:
+        if not isinstance(item, dict):
+            continue
+        lines.append(
+            "  - "
+            f"{item.get('count', 0)}x "
+            f"{item.get('category', 'unknown')}/"
+            f"{item.get('kind', 'unknown')} "
+            f"on {item.get('route', 'unknown')}/"
+            f"{item.get('viewport', 'unknown')} "
+            f"({item.get('severity', 'unknown')}): "
+            f"{str(item.get('sample_message') or '')[:220]}"
+        )
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # Affected-file inference
 # ---------------------------------------------------------------------------
@@ -417,7 +470,7 @@ def _affected_files_for_category(
         for rel in pat.findall(detail):
             add(rel)
 
-    elif category == "design-score-low":
+    elif category in {"design-score-low", "scorecard-mass-failure"}:
         add(f"{slug}/theme.json")
         add(f"{slug}/design-intent.md")
         scorecards = sorted((ROOT / "tmp" / "runs").glob("*/design-score.json"))
@@ -512,6 +565,10 @@ def _source_snippets_for_blocker(
     # actionable text/PHP files. Binary assets are intentionally skipped.
     if snippets:
         return snippets
+    if category in {"design-score-low", "scorecard-mass-failure"}:
+        score_snippet = _scorecard_top_findings_snippet(slug)
+        if score_snippet:
+            snippets.append(score_snippet)
     if category in {"hover-contrast", "snap-a11y-color-contrast"}:
         for needle in ("single_add_to_cart_button:hover", ".button:hover", ":hover"):
             snippet = _focused_text_snippet(f"{slug}/theme.json", needle)
@@ -539,7 +596,6 @@ def _recipes_for_category(category: str) -> list[str]:
         "placeholder-images": ["snap_routes"],
         "screenshot-duplicate": ["build_screenshot"],
         "snap-evidence-stale": ["snap_routes"],
-        "design-score-low": ["snap_routes", "design_scorecard"],
     }.get(category, [])
 
 
@@ -801,6 +857,14 @@ def _summary_to_blockers(summary: dict[str, Any]) -> list[Blocker]:
                 "prefer a small fix that makes the slow phase fail fast, "
                 "emit progress, narrow its scope, or resume safely."
             )
+        elif category == "scorecard-mass-failure":
+            blocker.notes.append(
+                "Mass scorecard failures are strategy failures, not repair-loop "
+                "inputs. Do not run recipes, JSON repair, tool-rescue, "
+                "resume-from-snap, or full re-shoots; inspect the diagnostic "
+                "packet and fix the generator, spec, design intent, route "
+                "state, or scorecard calibration."
+            )
         blockers.append(blocker)
     return blockers
 
@@ -835,6 +899,7 @@ def build_repair_plan(run_dir: Path) -> RepairPlan:
     recommended_recipes = sorted(
         {recipe for blocker in blockers for recipe in blocker.recommended_recipes}
     )
+    human_boundary = "scorecard-mass-failure" if "scorecard-mass-failure" in categories else None
     artifact_paths = [
         str(run_dir / "repair-plan.json"),
         str(run_dir / "repair-attempts.jsonl"),
@@ -855,7 +920,7 @@ def build_repair_plan(run_dir: Path) -> RepairPlan:
         allowed_commands=_allowed_commands_for_categories(categories),
         recommended_recipes=recommended_recipes,
         requires_secret=[],
-        human_boundary=None,
+        human_boundary=human_boundary,
         artifact_paths=artifact_paths,
     )
 
@@ -1323,6 +1388,22 @@ def apply_recipes(
     commands_run: list[list[str]] = []
     notes: list[str] = []
 
+    if not plan.recommended_recipes:
+        record = AttemptRecord(
+            at=time.time(),
+            attempt=attempt_number,
+            decision="stopped",
+            reason="No deterministic recipe can change source for these blockers.",
+            before=before,
+            after=before,
+            touched_files=[],
+            commands=[],
+            verification={"layer": "recipe", "recipes": [], "human_boundary": "no-op-repair"},
+            notes=["recipe layer stopped before no-op verification or re-shoot"],
+        )
+        append_attempt(run_dir, record)
+        return record
+
     for recipe in plan.recommended_recipes:
         actions = _actions_for_recipe(plan.slug, recipe, plan.run_id)
         if not actions:
@@ -1338,14 +1419,25 @@ def apply_recipes(
                 )
                 break
 
-    for cmd in plan.verification_ladder:
-        result = _run_cmd(cmd, timeout=30 * 60)
-        results.append(result | {"action": "verification", "payload": {}})
-        commands_run.append(cmd)
-        if result["returncode"] not in (0, 1):
-            break
-
     categories = [b.category for b in plan.blockers]
+    changed_after_recipes = set(_changed_files(ROOT))
+    touched_by_recipes = sorted(
+        path
+        for path in (changed_after_recipes - changed_before)
+        if path.startswith(f"{plan.slug}/")
+    )
+    if not touched_by_recipes and any(
+        recipe in {"snap_routes", "design_scorecard"} for recipe in plan.recommended_recipes
+    ):
+        notes.append("no source files changed before visual verification; skipped re-shoot")
+    else:
+        for cmd in plan.verification_ladder:
+            result = _run_cmd(cmd, timeout=30 * 60)
+            results.append(result | {"action": "verification", "payload": {}})
+            commands_run.append(cmd)
+            if result["returncode"] not in (0, 1):
+                break
+
     after = _collect_fingerprints(plan.slug, categories)
     verification_failed = any(int(result.get("returncode", 0) or 0) != 0 for result in results)
     decision, reason = _judge_progress(

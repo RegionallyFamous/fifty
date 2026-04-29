@@ -238,6 +238,13 @@ def test_batch_uses_progressive_build_then_dress_by_default(script_text: str) ->
     a draft PR, then runs `dress` on the same branch.
     """
     assert "progressive: bool = True" in script_text
+
+
+def test_failed_canaries_get_lifecycle_label_and_cleanup_path(script_text: str) -> None:
+    assert 'FAILED_CANARY_LABEL = "factory-canary-failed"' in script_text
+    assert "def _is_exploratory_canary(" in script_text
+    assert '"gh", "pr", "edit", pr_url, "--add-label", FAILED_CANARY_LABEL' in script_text
+    assert "agent-worktree.py prune --dry-run" in script_text
     assert '"build"' in script_text
     assert '"dress"' in script_text
 

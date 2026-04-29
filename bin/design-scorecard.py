@@ -67,6 +67,8 @@ SEVERITY_PENALTY = {
 
 CONTACT_ROUTES = ("home", "shop", "product-simple", "cart-filled", "checkout-filled", "journal-post")
 CONTACT_VIEWPORTS = ("mobile", "desktop")
+MASS_FAILURE_VISUAL_DISTINCTNESS_MAX = 10
+MASS_FAILURE_WEAK_FINDINGS_MIN = 40
 
 
 @dataclass
@@ -83,6 +85,17 @@ class WeakFinding:
 
 
 @dataclass
+class WeakFindingGroup:
+    category: str
+    kind: str
+    route: str
+    viewport: str
+    severity: str
+    count: int
+    sample_message: str
+
+
+@dataclass
 class Scorecard:
     schema: int
     theme: str
@@ -91,8 +104,11 @@ class Scorecard:
     scores: dict[str, int]
     overall: int
     verdict: str
+    classification: str
+    mass_failure: bool
     threshold: int
     weak_findings: list[WeakFinding] = field(default_factory=list)
+    top_weak_findings: list[WeakFindingGroup] = field(default_factory=list)
     contact_sheet: str | None = None
     next_action: str = ""
 
@@ -178,6 +194,53 @@ def _write_contact_sheet(theme: str, run_dir: Path) -> Path:
     return out
 
 
+def _is_mass_failure(scores: dict[str, int], weak: list[WeakFinding]) -> bool:
+    return (
+        scores.get("visual_distinctness", 100) <= MASS_FAILURE_VISUAL_DISTINCTNESS_MAX
+        or any(score == 0 for score in scores.values())
+        or len(weak) >= MASS_FAILURE_WEAK_FINDINGS_MIN
+    )
+
+
+def _top_weak_findings(weak: list[WeakFinding], *, limit: int = 12) -> list[WeakFindingGroup]:
+    groups: dict[tuple[str, str, str, str, str], list[WeakFinding]] = {}
+    for finding in weak:
+        key = (
+            finding.category,
+            finding.kind,
+            finding.route,
+            finding.viewport,
+            finding.severity,
+        )
+        groups.setdefault(key, []).append(finding)
+    ranked = sorted(
+        groups.items(),
+        key=lambda item: (
+            len(item[1]),
+            item[0][0],
+            item[0][1],
+            item[0][2],
+            item[0][3],
+            item[0][4],
+        ),
+        reverse=True,
+    )
+    out: list[WeakFindingGroup] = []
+    for (category, kind, route, viewport, severity), items in ranked[:limit]:
+        out.append(
+            WeakFindingGroup(
+                category=category,
+                kind=kind,
+                route=route,
+                viewport=viewport,
+                severity=severity,
+                count=len(items),
+                sample_message=items[0].message,
+            )
+        )
+    return out
+
+
 def build_scorecard(theme: str, run_id: str, threshold: int) -> Scorecard:
     # Resolve early so typos fail before writing tmp artifacts.
     resolve_theme_root(theme)
@@ -187,12 +250,21 @@ def build_scorecard(theme: str, run_id: str, threshold: int) -> Scorecard:
     scores, weak = _score_findings(findings)
     overall = min(scores.values()) if scores else 0
     verdict = "pass" if overall >= threshold else "fail"
+    mass_failure = verdict == "fail" and _is_mass_failure(scores, weak)
+    classification = "mass-failure" if mass_failure else ("marginal" if verdict == "fail" else "green")
     contact = _write_contact_sheet(theme, run_dir)
-    next_action = (
-        "Feed the weakest scorecard findings into design_unblock.py and rerun snap + scorecard."
-        if verdict == "fail"
-        else "Continue the shipping pipeline."
-    )
+    if mass_failure:
+        next_action = (
+            "Stop the factory loop. This is a strategy failure: inspect the grouped "
+            "weak findings and adjust the generator/spec/design intent before another run."
+        )
+    elif verdict == "fail":
+        next_action = (
+            "Run at most one targeted repair round using the grouped weak findings, "
+            "then rerun only the affected rendered evidence."
+        )
+    else:
+        next_action = "Continue the shipping pipeline."
     return Scorecard(
         schema=1,
         theme=theme,
@@ -201,8 +273,11 @@ def build_scorecard(theme: str, run_id: str, threshold: int) -> Scorecard:
         scores=scores,
         overall=overall,
         verdict=verdict,
+        classification=classification,
+        mass_failure=mass_failure,
         threshold=threshold,
         weak_findings=weak,
+        top_weak_findings=_top_weak_findings(weak),
         contact_sheet=str(contact.relative_to(MONOREPO_ROOT)),
         next_action=next_action,
     )
@@ -226,6 +301,14 @@ def main(argv: list[str] | None = None) -> int:
     print(f"design scorecard: {out.relative_to(MONOREPO_ROOT)}")
     if scorecard.verdict == "fail":
         weakest = min(scorecard.scores.items(), key=lambda item: item[1])
+        if scorecard.mass_failure:
+            print(
+                "[FAIL] [scorecard] Scorecard mass failure\n"
+                f"         {weakest[0]} scored {weakest[1]}/{args.threshold}; "
+                f"{len(scorecard.weak_findings)} weak finding(s) recorded in {out.relative_to(MONOREPO_ROOT)}; "
+                "classification=mass-failure"
+            )
+            return 0 if args.no_fail else 1
         print(
             "[FAIL] [scorecard] Design scorecard meets minimum\n"
             f"         {weakest[0]} scored {weakest[1]}/{args.threshold}; "

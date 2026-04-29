@@ -39,6 +39,8 @@ PHASE_LABELS = {
     "index": "updating the theme file map",
     "prepublish": "publishing demo content so screenshots can load it",
     "snap": "capturing screenshots",
+    "content-preflight": "running cheap content checks before vision review",
+    "snap-preflight": "checking screenshot findings before vision review",
     "vision-review": "reviewing screenshots",
     "baseline": "saving screenshot baselines",
     "screenshot": "building the WordPress admin preview image",
@@ -47,9 +49,15 @@ PHASE_LABELS = {
     "redirects": "updating demo links",
     "commit": "committing results",
     "publish": "pushing the branch",
+    "batch-child": "supervising an active child theme run",
 }
 
 FAILURE_MESSAGES: list[tuple[str, str, str]] = [
+    (
+        "Scorecard mass failure",
+        "The design scorecard found a strategy-level failure, not a small polish issue.",
+        "Stop this canary. Read the grouped scorecard diagnostics and fix the generator/spec/design intent before another run.",
+    ),
     (
         "placeholder",
         "Some product/category images are missing, so WooCommerce is showing grey placeholder tiles.",
@@ -144,6 +152,8 @@ class WatchState:
     repair_last_reason: str = ""
     repair_last_touched: list[str] = field(default_factory=list)
     repair_stop_reason: str = ""
+    active_child_run_id: str = ""
+    active_child_status_path: str = ""
 
 
 def format_elapsed(seconds: float) -> str:
@@ -203,6 +213,53 @@ def parse_line(state: WatchState, line: str, now: float) -> list[dict[str, Any]]
         if state.phases and start_phase(state, state.phases[0], now):
             events.append({"type": "phase_start", "phase": state.current_phase})
         events.append({"type": "run_plan", "phases": state.phases, "slug": state.slug})
+        return events
+
+    m = re.match(r"\[batch\]\s+active child run=([^\s]+)\s+status=(.+)", clean)
+    if m:
+        state.active_child_run_id = m.group(1)
+        state.active_child_status_path = m.group(2).strip()
+        if start_phase(state, "batch-child", now):
+            events.append({"type": "phase_start", "phase": "batch-child"})
+        events.append(
+            {
+                "type": "batch_child_start",
+                "run_id": state.active_child_run_id,
+                "status_path": state.active_child_status_path,
+            }
+        )
+        return events
+
+    m = re.match(r"(Working|Needs attention|Blocked):\s+\[[^\]]+\]\s+(.+?)\s+is\s+(.+)", clean)
+    if m and state.active_child_run_id:
+        child_name = m.group(2).strip()
+        child_status = m.group(3).strip().lower()
+        child_slug = re.sub(r"[^a-z0-9]+", "-", child_name.lower()).strip("-")
+        if child_slug:
+            state.slug = child_slug
+        if "checking screenshots" in child_status:
+            phase = "snap"
+        elif "reviewing screenshots" in child_status:
+            phase = "vision-review"
+        elif "running quality checks" in child_status:
+            phase = "check"
+        elif "cheap content checks" in child_status:
+            phase = "content-preflight"
+        elif "screenshot findings" in child_status:
+            phase = "snap-preflight"
+        else:
+            phase = "batch-child"
+        if start_phase(state, phase, now):
+            events.append({"type": "phase_start", "phase": phase})
+        events.append(
+            {
+                "type": "batch_child_status",
+                "run_id": state.active_child_run_id,
+                "status_path": state.active_child_status_path,
+                "status": m.group(1),
+                "message": clean,
+            }
+        )
         return events
 
     m = re.match(r"\s*\[([a-z0-9-]+)\]\s+", clean)
@@ -427,6 +484,10 @@ def _runtime_guard_fired(state: WatchState) -> bool:
     )
 
 
+def _scorecard_mass_failure_fired(state: WatchState) -> bool:
+    return any(failure.title == "Scorecard mass failure" for failure in state.check_failures)
+
+
 def emit_status(
     state: WatchState,
     *,
@@ -507,9 +568,23 @@ def write_status(
         f"**Current step:** {phase_label}",
         f"**Progress:** {progress}",
         f"**Updated:** {time.strftime('%Y-%m-%d %H:%M:%S')}",
-        "",
-        "## Next Action",
     ]
+    if state.active_child_run_id or state.active_child_status_path:
+        lines.extend(
+            [
+                f"**Active child run:** `{state.active_child_run_id or 'n/a'}`",
+                f"**Active child status:** `{state.active_child_status_path or 'n/a'}`",
+                "",
+                "## What To Watch Now",
+                (
+                    f"Open `{state.active_child_status_path}` for the live theme-level "
+                    "status; this top-level watcher is supervising the batch."
+                    if state.active_child_status_path
+                    else "The batch has started child work, but no child status path was reported yet."
+                ),
+            ]
+        )
+    lines.extend(["", "## Next Action"])
     if state.repair_stop_reason:
         lines.append(
             f"Auto-unblock stopped: {state.repair_stop_reason} "
@@ -669,6 +744,10 @@ def write_summary(path: Path, state: WatchState) -> None:
                 if defect.get("tooling_status") == "covered-by-recipe"
             ),
             "items": state.factory_defects,
+        },
+        "active_child": {
+            "run_id": state.active_child_run_id,
+            "status_path": state.active_child_status_path,
         },
         "check_failures": [asdict(failure) for failure in state.check_failures],
     }
@@ -1295,7 +1374,12 @@ def main(argv: list[str] | None = None) -> int:
         and state.check_failures
     ):
         repair_layers: list[str]
-        if _runtime_guard_fired(state):
+        if _scorecard_mass_failure_fired(state):
+            repair_layers = []
+            state.repair_stop_reason = (
+                "Scorecard mass failure is a strategy stop; auto-repair is disabled."
+            )
+        elif _runtime_guard_fired(state):
             repair_layers = [] if watch_args.no_tool_rescue else ["tool-rescue"]
         else:
             repair_layers = []
@@ -1305,7 +1389,7 @@ def main(argv: list[str] | None = None) -> int:
                 repair_layers.append("json-llm")
             if not watch_args.no_tool_rescue:
                 repair_layers.append("tool-rescue")
-        while state.repair_round < watch_args.max_repair_rounds:
+        while repair_layers and state.repair_round < watch_args.max_repair_rounds:
             rc_unblock = 4
             resume_phase = "check"
             layer_used = ""

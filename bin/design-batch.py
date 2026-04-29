@@ -145,6 +145,7 @@ DEFAULT_RUN_DIR = ROOT / "tmp"
 DEFAULT_WORKTREE_PARENT = ROOT.parent  # alongside the main repo dir
 TOP_WATCH_ENV = "FIFTY_BATCH_TOP_WATCH"
 THEME_WATCH_MAX_ELAPSED_SECONDS = 90 * 60
+FAILED_CANARY_LABEL = "factory-canary-failed"
 
 
 # ---------------------------------------------------------------------------
@@ -481,6 +482,11 @@ def _run_design_cmd(
             stdout=f"[dry-run] would run: {' '.join(shlex.quote(x) for x in cmd)} (cwd={worktree})\n",
             stderr="",
         )
+    status_path = worktree / "tmp" / "runs" / design_run_id / "STATUS.md"
+    print(
+        f"[batch] active child run={design_run_id} status={status_path}",
+        flush=True,
+    )
     return subprocess.run(
         cmd,
         cwd=str(worktree),
@@ -929,6 +935,31 @@ def _ensure_batch_label(run_id: str) -> None:
         )
 
 
+def _ensure_label(name: str, *, color: str, description: str) -> None:
+    listing = subprocess.run(
+        ["gh", "label", "list", "--search", name, "--json", "name", "--limit", "50"],
+        capture_output=True,
+        text=True,
+    )
+    if listing.returncode == 0:
+        try:
+            hits = json.loads(listing.stdout or "[]")
+        except json.JSONDecodeError:
+            hits = []
+        if any(h.get("name") == name for h in hits):
+            return
+    subprocess.run(
+        ["gh", "label", "create", name, "--color", color, "--description", description],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def _is_exploratory_canary(opts: RunnerOptions) -> bool:
+    return "canary" in opts.run_id.lower()
+
+
 def _run_gh_pr_create(args: list[str], *, cwd: Path) -> subprocess.CompletedProcess[Any]:
     """Create a PR, retrying without labels if GitHub lacks one."""
     pr = subprocess.run(args, cwd=str(cwd), capture_output=True, text=True)
@@ -1193,6 +1224,25 @@ def _post_pr_status_comment(
         body += f"- Verify report: `{verify_report_path}`\n"
     if next_action:
         body += f"- Next action: {next_action}\n"
+    if _is_exploratory_canary(opts) and phase.endswith("failed"):
+        body += (
+            "\nThis exploratory canary is intentionally marked stale after "
+            "capturing the learning. Cleanup path:\n\n"
+            f"```sh\npython3 bin/agent-worktree.py prune --dry-run\n"
+            f"git push origin --delete agent/batch-{opts.run_id}-{slug}\n```\n"
+        )
+        _ensure_label(
+            FAILED_CANARY_LABEL,
+            color="B60205",
+            description="Exploratory factory canary failed and is preserved only for evidence.",
+        )
+        subprocess.run(
+            ["gh", "pr", "edit", pr_url, "--add-label", FAILED_CANARY_LABEL],
+            cwd=str(worktree),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
     subprocess.run(
         ["gh", "pr", "comment", pr_url, "--body", body],
         cwd=str(worktree),
@@ -1435,6 +1485,16 @@ def run_theme(
                 outcome.next_action = (
                     f"Open `{outcome.design_status_path}` and repair the "
                     "structural build blocker on the draft branch."
+                )
+                _post_pr_status_comment(
+                    worktree=worktree,
+                    pr_url=outcome.pr_url,
+                    slug=slug,
+                    opts=opts,
+                    phase="build-failed",
+                    human_required=outcome.human_required,
+                    next_action=outcome.next_action,
+                    rescue_summary=build_rescue,
                 )
                 return outcome
 

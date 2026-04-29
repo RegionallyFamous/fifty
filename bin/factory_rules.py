@@ -145,6 +145,18 @@ RULES: dict[str, PreventionRule] = {
         fixture="tests/tools/test_design_scorecard.py",
         manual_review_reason="Design score has judgment-heavy components; keep rendered evidence.",
     ),
+    "scorecard-mass-failure": PreventionRule(
+        category="scorecard-mass-failure",
+        layer="render",
+        phase="scorecard",
+        owner="bin/design-scorecard.py",
+        mode="hard-fail",
+        fixture="tests/tools/test_design_scorecard.py",
+        manual_review_reason=(
+            "Catastrophic scorecard failures indicate a generator/spec/design-intent "
+            "mismatch and must stop before autonomous repair loops."
+        ),
+    ),
     "factory-timeout": PreventionRule(
         category="factory-timeout",
         layer="manual-review",

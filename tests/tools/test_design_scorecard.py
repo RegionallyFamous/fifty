@@ -81,3 +81,25 @@ def test_build_scorecard_writes_contact_sheet(tmp_path, monkeypatch) -> None:
     assert scorecard.scores["hierarchy"] == 82
     assert scorecard.contact_sheet == "tmp/runs/proof/contact-sheet.md"
     assert (root / scorecard.contact_sheet).is_file()
+
+
+def test_mass_failure_classification_groups_top_findings() -> None:
+    m = _load_module()
+    findings = [
+        {
+            "kind": "vision:brand-violation",
+            "severity": "error",
+            "route": "home",
+            "viewport": "desktop",
+            "message": "generic storefront chrome",
+        }
+        for _ in range(6)
+    ]
+
+    scores, weak = m._score_findings(findings)
+    groups = m._top_weak_findings(weak)
+
+    assert m._is_mass_failure(scores, weak)
+    assert groups[0].category == "visual_distinctness"
+    assert groups[0].kind == "vision:brand-violation"
+    assert groups[0].count == 6
