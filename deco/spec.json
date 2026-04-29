@@ -1,0 +1,46 @@
+{
+  "slug": "deco",
+  "name": "Deco",
+  "tagline": "stepped gold borders, fan-motif hero, jewel tones",
+  "voice": "pre-1950 jewelry store: warm, direct, no exclamation marks.",
+  "source": "chonk",
+  "palette": {
+    "base": "#f5efe6",
+    "surface": "#ffffff",
+    "subtle": "#f9f5f0",
+    "muted": "#fcfaf8",
+    "border": "#b8b3ac",
+    "tertiary": "#060606",
+    "secondary": "#080808",
+    "contrast": "#0a0a0a",
+    "primary": "#0a0a0a",
+    "primary-hover": "#3b3b3b",
+    "accent": "#2c4a34",
+    "accent-soft": "#b5c0b8"
+  },
+  "fonts": {
+    "display": {
+      "family": "Poiret One",
+      "fallback": "Georgia, 'Times New Roman', serif",
+      "google_font": true,
+      "weights": [
+        400,
+        700
+      ]
+    },
+    "sans": {
+      "family": "Cormorant",
+      "fallback": "-apple-system, BlinkMacSystemFont, sans-serif",
+      "google_font": true,
+      "weights": [
+        400,
+        600
+      ]
+    }
+  },
+  "layout_hints": [
+    "oversized display wordmark anchored to the top-left",
+    "thin rule beneath the hero",
+    "three-up product grid below the hero"
+  ]
+}
