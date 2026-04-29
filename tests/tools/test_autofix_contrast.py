@@ -122,6 +122,42 @@ def test_injects_textcolor_on_child_paragraph(minimal_theme):
     assert '"backgroundColor":"accent"' in text
 
 
+def test_rewrites_saved_text_color_class_with_textcolor_attr(minimal_theme):
+    """When textColor changes, saved HTML must change too or the block
+    validator reports a silent deprecation."""
+    _set_palette(
+        minimal_theme,
+        [
+            {"slug": "base", "name": "Base", "color": "#f5efe6"},
+            {"slug": "contrast", "name": "Contrast", "color": "#1a1a1a"},
+            {"slug": "primary", "name": "Primary", "color": "#3a352b"},
+            {"slug": "border", "name": "Border", "color": "#D9D6CC"},
+            {"slug": "accent", "name": "Accent", "color": "#d87e3a"},
+        ],
+    )
+    front = minimal_theme / "templates" / "front-page.html"
+    _write(
+        front,
+        """\
+        <!-- wp:group {"backgroundColor":"accent","layout":{"type":"constrained"}} -->
+        <div class="wp-block-group has-accent-background-color has-background">
+            <!-- wp:paragraph {"textColor":"base"} -->
+            <p class="has-base-color has-text-color">Saved class must follow.</p>
+            <!-- /wp:paragraph -->
+        </div>
+        <!-- /wp:group -->
+        """,
+    )
+    result = _run_autofix(minimal_theme)
+    assert result.returncode == 0, result.stderr
+    text = front.read_text(encoding="utf-8")
+
+    assert '"textColor":"contrast"' in text
+    assert 'class="has-contrast-color has-text-color"' in text
+    assert "has-base-color" not in text
+    assert "has-accent-background-color has-background" in text
+
+
 def test_check_mode_returns_nonzero_when_fixes_needed(minimal_theme):
     _set_palette(
         minimal_theme,

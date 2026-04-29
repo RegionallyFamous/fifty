@@ -797,6 +797,27 @@ def _phase_apply(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> N
     brief_path.write_text(make_brief(spec, dest), encoding="utf-8")
     print(f"  [apply] wrote {brief_path.relative_to(MONOREPO_ROOT)}")
 
+    spec_path = dest / "spec.json"
+    spec_path.write_text(
+        json.dumps(
+            {
+                "slug": spec.slug,
+                "name": spec.name,
+                "tagline": spec.tagline,
+                "voice": spec.voice,
+                "source": spec.source,
+                "palette": spec.palette,
+                "fonts": spec.fonts,
+                "layout_hints": spec.layout_hints,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    print(f"  [apply] wrote {spec_path.relative_to(MONOREPO_ROOT)}")
+
     allow_added = _seed_allowlist_from_source(spec.source, spec.slug)
     if allow_added:
         print(
@@ -1114,11 +1135,23 @@ def _phase_photos(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> 
     if not script.is_file():
         print("  [photos] WARN: bin/generate-product-photos.py missing; skipping.")
         return
-    cmd = [sys.executable, str(script), "--theme", spec.slug]
+    cmd = [sys.executable, str(script), "--theme", spec.slug, "--force"]
     print(f"  [photos] {' '.join(cmd[1:])}")
     rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
     if rc != 0:
         raise PhaseError("photos", f"bin/generate-product-photos.py exited {rc}")
+
+    hero_script = dest / "playground" / "generate-images.py"
+    if hero_script.is_file():
+        cmd = [sys.executable, str(hero_script)]
+        print(f"  [photos] {' '.join(cmd)}")
+        rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
+        if rc != 0:
+            raise PhaseError("photos", f"{hero_script.relative_to(MONOREPO_ROOT)} exited {rc}")
+    else:
+        print(
+            "  [photos] WARN: playground/generate-images.py missing; hero placeholders remain seeded."
+        )
 
 
 def _phase_microcopy(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
@@ -1253,10 +1286,13 @@ def _phase_prepublish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace)
     # A brand-new theme checked out locally on `main` is NOT on GitHub yet —
     # snap would 404 content.xml if we skipped prepublish.
     if branch == "main":
-        has_on_origin = subprocess.run(
-            [*git, "cat-file", "-e", f"origin/main:{slug}/theme.json"],
-            capture_output=True,
-        ).returncode == 0
+        has_on_origin = (
+            subprocess.run(
+                [*git, "cat-file", "-e", f"origin/main:{slug}/theme.json"],
+                capture_output=True,
+            ).returncode
+            == 0
+        )
         if has_on_origin:
             print(
                 "  [prepublish] skipped: on main and "
@@ -1298,6 +1334,7 @@ def _phase_prepublish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace)
     else:
         msg = f"design: scaffold {slug} (pre-snap content publish)"
         commit_env = os.environ.copy()
+        commit_env["FIFTY_DESIGN_PREPUBLISH"] = "1"
         commit_env["FIFTY_SKIP_EVIDENCE_FRESHNESS"] = "1"
         rc = subprocess.call([*git, "commit", "-m", msg], env=commit_env)
         if rc != 0:
@@ -1433,6 +1470,26 @@ def _phase_scorecard(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) 
         raise PhaseError("scorecard", f"bin/design-scorecard.py exited {rc}")
 
 
+def _run_theme_screenshot(spec: ValidatedSpec, *, strict: bool = False) -> None:
+    script = ROOT / "bin" / "build-theme-screenshots.py"
+    if not script.is_file():
+        message = "bin/build-theme-screenshots.py missing; skipping."
+        if strict:
+            raise PhaseError("screenshot", message)
+        print(f"  [screenshot] WARN: {message}")
+        return
+    cmd = [sys.executable, str(script), spec.slug]
+    print(f"  [screenshot] {' '.join(cmd[1:])}")
+    rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
+    if rc != 0:
+        message = f"bin/build-theme-screenshots.py exited {rc}"
+        if strict:
+            raise PhaseError("screenshot", message)
+        # Non-strict so a missing baseline (e.g. --skip-snap flow) doesn't
+        # abort the whole run; check.py will still flag the mismatch.
+        print(f"  [screenshot] WARN: {message}; check.py will flag if screenshot.png is stale.")
+
+
 def _phase_screenshot(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
     """Run `bin/build-theme-screenshots.py <slug>` to derive the theme's
     WordPress admin `screenshot.png` from the freshly promoted baseline.
@@ -1443,20 +1500,51 @@ def _phase_screenshot(spec: ValidatedSpec, dest: Path, args: argparse.Namespace)
     and the git pre-commit hook fails at the last mile of the build.
     We bake the derivation into the pipeline so the gate stays green
     without a separate manual step."""
-    script = ROOT / "bin" / "build-theme-screenshots.py"
-    if not script.is_file():
-        print("  [screenshot] WARN: bin/build-theme-screenshots.py missing; skipping.")
-        return
-    cmd = [sys.executable, str(script), spec.slug]
-    print(f"  [screenshot] {' '.join(cmd[1:])}")
+    _run_theme_screenshot(spec, strict=False)
+
+
+def _refresh_final_commit_artifacts(
+    spec: ValidatedSpec,
+    dest: Path,
+    args: argparse.Namespace,
+) -> None:
+    """Refresh last-mile artifacts immediately before the final commit.
+
+    The normal phase list already contains `index`, `snap`, and `screenshot`,
+    but the final commit is where the Git hooks judge the staged tree. Running
+    a cheap, focused guard here makes `--from commit` / re-runs resilient and
+    prevents copied screenshots or stale INDEX.md from reaching pre-commit.
+    """
+    print("  [commit] refreshing final artifacts (index, home snap, screenshot)")
+    _phase_index(spec, dest, args)
+
+    if getattr(args, "skip_snap", False):
+        raise PhaseError(
+            "commit",
+            "--skip-snap cannot produce a final design commit. Re-run without "
+            "--skip-snap so the commit guard can refresh home snap evidence "
+            "and screenshot.png, or pass --skip-commit for a local-only rehearsal.",
+        )
+
+    cmd = [
+        sys.executable,
+        str(ROOT / "bin" / "snap.py"),
+        "shoot",
+        spec.slug,
+        "--routes",
+        "home",
+        "--viewports",
+        "mobile",
+        "desktop",
+        "--cache-state",
+        "--no-skip",
+    ]
+    print(f"  [commit] {' '.join(cmd[1:])}")
     rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
     if rc != 0:
-        # Non-strict so a missing baseline (e.g. --skip-snap flow) doesn't
-        # abort the whole run; check.py will still flag the mismatch.
-        print(
-            f"  [screenshot] WARN: bin/build-theme-screenshots.py exited {rc}; "
-            "check.py will flag if screenshot.png is stale."
-        )
+        raise PhaseError("commit", f"final home snap guard exited {rc}")
+
+    _run_theme_screenshot(spec, strict=True)
 
 
 def _phase_check(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
@@ -1563,6 +1651,8 @@ def _phase_commit(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> 
     # though MONOREPO_ROOT is always the cwd for other phase
     # subprocesses. The extra clarity is worth a few characters.
     git = ["git", "-C", str(MONOREPO_ROOT)]
+
+    _refresh_final_commit_artifacts(spec, dest, args)
 
     # Scope the stage to the directories we actually wrote. A blanket
     # `git add -A` would sweep unrelated WIP in the operator's working

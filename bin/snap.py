@@ -1120,6 +1120,7 @@ def _probe(url: str, timeout_s: float = 3.0) -> tuple[int, str] | None:
 # does NOT make it to this stdout stream because it's captured by the
 # wp-cli step runner inside the playground worker, not the cli host.
 BLUEPRINT_DONE_MARKER = "Ready! WordPress is running on"
+SNAP_INFRASTRUCTURE_TIMEOUT_MARKER = "SNAP_INFRASTRUCTURE_TIMEOUT"
 
 # Regex matching the wasm-runtime race that surfaces in
 # ~1-in-2 cold boots of @wp-playground/cli. The CLI itself never
@@ -1219,7 +1220,8 @@ def wait_for_server(server: Server, timeout_s: float = 600.0) -> None:
         time.sleep(2.0)
 
     raise SystemExit(
-        f"Playground server at {server.url} did not finish blueprint "
+        f"{SNAP_INFRASTRUCTURE_TIMEOUT_MARKER}: Playground server at {server.url} "
+        f"did not finish blueprint "
         f"within {timeout_s:.0f}s (last /shop/ probe: {last_status}). "
         f"Tail of log:\n"
         f"{server.log_path.read_text(errors='replace')[-3000:]}"
@@ -4596,6 +4598,11 @@ def _shoot_one_theme(theme: str, routes: list[Route],
     return theme, None
 
 
+def _is_infrastructure_timeout_failure(err: str) -> bool:
+    """Return True for Playground readiness timeouts, not visual regressions."""
+    return SNAP_INFRASTRUCTURE_TIMEOUT_MARKER in err
+
+
 def cmd_shoot(args: argparse.Namespace) -> int:
     """Boot, capture, kill -- repeated per theme.
 
@@ -4749,6 +4756,15 @@ def cmd_shoot(args: argparse.Namespace) -> int:
         print(f"{RED}done with {len(failures)} failure(s).{RESET}")
         for t, err in failures:
             print(f"  {RED}{t}:{RESET} {err}")
+        if all(_is_infrastructure_timeout_failure(err) for _, err in failures):
+            print()
+            print(
+                f"{YELLOW}{SNAP_INFRASTRUCTURE_TIMEOUT_MARKER}: "
+                "Playground timed out before screenshots could run; "
+                "no visual/a11y findings were emitted for this failure."
+                f"{RESET}"
+            )
+            return 2
         return 1
     print(f"{GREEN}done.{RESET} Snaps in {SNAPS_DIR.relative_to(REPO_ROOT)}/")
     print(

@@ -1,0 +1,291 @@
+{
+  "categories": [
+    {
+      "exists": true,
+      "filename": "cat-curated-bundles.jpg",
+      "name": "Curated Bundles",
+      "path": "midcentury-depot/playground/images/cat-curated-bundles.jpg",
+      "prompt": "midcentury-depot category cover for Curated Bundles; editorial cover generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "cat-curiosities.jpg",
+      "name": "Curiosities",
+      "path": "midcentury-depot/playground/images/cat-curiosities.jpg",
+      "prompt": "midcentury-depot category cover for Curiosities; editorial cover generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "cat-digital-oddments.jpg",
+      "name": "Digital Oddments",
+      "path": "midcentury-depot/playground/images/cat-digital-oddments.jpg",
+      "prompt": "midcentury-depot category cover for Digital Oddments; editorial cover generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "cat-forbidden-snacks.jpg",
+      "name": "Forbidden Snacks",
+      "path": "midcentury-depot/playground/images/cat-forbidden-snacks.jpg",
+      "prompt": "midcentury-depot category cover for Forbidden Snacks; editorial cover generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "cat-impossibilities.jpg",
+      "name": "Impossibilities",
+      "path": "midcentury-depot/playground/images/cat-impossibilities.jpg",
+      "prompt": "midcentury-depot category cover for Impossibilities; editorial cover generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "cat-moods-feelings.jpg",
+      "name": "Moods & Feelings",
+      "path": "midcentury-depot/playground/images/cat-moods-feelings.jpg",
+      "prompt": "midcentury-depot category cover for Moods & Feelings; editorial cover generated from theme palette"
+    }
+  ],
+  "coverage": {
+    "categories": 6,
+    "missing_categories": [],
+    "missing_products": [],
+    "products": 30
+  },
+  "generated_at": 1777431107.740098,
+  "generator": "bin/generate-product-photos.py",
+  "mode": "pillow-specimen-card",
+  "palette": {
+    "accent": "#c96a28",
+    "accent-soft": "#f2d4b0",
+    "base": "#f5efe6",
+    "border": "#c8b99f",
+    "contrast": "#1f1a13",
+    "error": "#b03a2e",
+    "info": "#3a6b8a",
+    "muted": "#d9ccba",
+    "primary": "#1f1a13",
+    "primary-hover": "#3d3322",
+    "secondary": "#5c4f3a",
+    "subtle": "#ede4d6",
+    "success": "#4a7c59",
+    "surface": "#ffffff",
+    "tertiary": "#7a6a54",
+    "warning": "#c97b28"
+  },
+  "products": [
+    {
+      "exists": true,
+      "filename": "product-wo-borrowed-nostalgia.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-borrowed-nostalgia.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-BORROWED-NOSTALGIA; specimen-card fallback generated from theme palette",
+      "sku": "WO-BORROWED-NOSTALGIA"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-bottled-morning.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-bottled-morning.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-BOTTLED-MORNING; specimen-card fallback generated from theme palette",
+      "sku": "WO-BOTTLED-MORNING"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-chaos-seasoning.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-chaos-seasoning.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-CHAOS-SEASONING; specimen-card fallback generated from theme palette",
+      "sku": "WO-CHAOS-SEASONING"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-cosmic-mystery-box.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-cosmic-mystery-box.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-COSMIC-MYSTERY-BOX; specimen-card fallback generated from theme palette",
+      "sku": "WO-COSMIC-MYSTERY-BOX"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-deja-vu-session.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-deja-vu-session.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-DEJA-VU-SESSION; specimen-card fallback generated from theme palette",
+      "sku": "WO-DEJA-VU-SESSION"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-discount-gravity.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-discount-gravity.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-DISCOUNT-GRAVITY; specimen-card fallback generated from theme palette",
+      "sku": "WO-DISCOUNT-GRAVITY"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-dread-repellent.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-dread-repellent.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-DREAD-REPELLENT; specimen-card fallback generated from theme palette",
+      "sku": "WO-DREAD-REPELLENT"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-fog-in-bottle.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-fog-in-bottle.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-FOG-IN-BOTTLE; specimen-card fallback generated from theme palette",
+      "sku": "WO-FOG-IN-BOTTLE"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-forbidden-honey.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-forbidden-honey.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-FORBIDDEN-HONEY; specimen-card fallback generated from theme palette",
+      "sku": "WO-FORBIDDEN-HONEY"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-gently-used-luck.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-gently-used-luck.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-GENTLY-USED-LUCK; specimen-card fallback generated from theme palette",
+      "sku": "WO-GENTLY-USED-LUCK"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-handcrafted-echo.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-handcrafted-echo.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-HANDCRAFTED-ECHO; specimen-card fallback generated from theme palette",
+      "sku": "WO-HANDCRAFTED-ECHO"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-haunted-candle.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-haunted-candle.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-HAUNTED-CANDLE; specimen-card fallback generated from theme palette",
+      "sku": "WO-HAUNTED-CANDLE"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-imaginary-deed.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-imaginary-deed.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-IMAGINARY-DEED; specimen-card fallback generated from theme palette",
+      "sku": "WO-IMAGINARY-DEED"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-interdim-bazaar.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-interdim-bazaar.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-INTERDIM-BAZAAR; specimen-card fallback generated from theme palette",
+      "sku": "WO-INTERDIM-BAZAAR"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-invisible-umbrella.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-invisible-umbrella.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-INVISIBLE-UMBRELLA; specimen-card fallback generated from theme palette",
+      "sku": "WO-INVISIBLE-UMBRELLA"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-left-sock.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-left-sock.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-LEFT-SOCK; specimen-card fallback generated from theme palette",
+      "sku": "WO-LEFT-SOCK"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-lost-recipe-time.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-lost-recipe-time.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-LOST-RECIPE-TIME; specimen-card fallback generated from theme palette",
+      "sku": "WO-LOST-RECIPE-TIME"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-memory-foam-memory.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-memory-foam-memory.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-MEMORY-FOAM-MEMORY; specimen-card fallback generated from theme palette",
+      "sku": "WO-MEMORY-FOAM-MEMORY"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-monday-kit.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-monday-kit.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-MONDAY-KIT; specimen-card fallback generated from theme palette",
+      "sku": "WO-MONDAY-KIT"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-moon-dust.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-moon-dust.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-MOON-DUST; specimen-card fallback generated from theme palette",
+      "sku": "WO-MOON-DUST"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-one-hand-clapping.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-one-hand-clapping.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-ONE-HAND-CLAPPING; specimen-card fallback generated from theme palette",
+      "sku": "WO-ONE-HAND-CLAPPING"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-pocket-thunder.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-pocket-thunder.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-POCKET-THUNDER; specimen-card fallback generated from theme palette",
+      "sku": "WO-POCKET-THUNDER"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-portable-hole.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-portable-hole.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-PORTABLE-HOLE; specimen-card fallback generated from theme palette",
+      "sku": "WO-PORTABLE-HOLE"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-sensory-starter.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-sensory-starter.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-SENSORY-STARTER; specimen-card fallback generated from theme palette",
+      "sku": "WO-SENSORY-STARTER"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-silence-jar.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-silence-jar.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-SILENCE-JAR; specimen-card fallback generated from theme palette",
+      "sku": "WO-SILENCE-JAR"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-spare-key-nowhere.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-spare-key-nowhere.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-SPARE-KEY-NOWHERE; specimen-card fallback generated from theme palette",
+      "sku": "WO-SPARE-KEY-NOWHERE"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-spare-tuesday.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-spare-tuesday.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-SPARE-TUESDAY; specimen-card fallback generated from theme palette",
+      "sku": "WO-SPARE-TUESDAY"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-tangible-wifi.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-tangible-wifi.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-TANGIBLE-WIFI; specimen-card fallback generated from theme palette",
+      "sku": "WO-TANGIBLE-WIFI"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-void-sampler.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-void-sampler.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-VOID-SAMPLER; specimen-card fallback generated from theme palette",
+      "sku": "WO-VOID-SAMPLER"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-whispering-stone.jpg",
+      "path": "midcentury-depot/playground/images/product-wo-whispering-stone.jpg",
+      "prompt": "midcentury-depot brand-fit product photograph for WO-WHISPERING-STONE; specimen-card fallback generated from theme palette",
+      "sku": "WO-WHISPERING-STONE"
+    }
+  ],
+  "regeneration": {
+    "all": "python3 bin/generate-product-photos.py --theme midcentury-depot --force",
+    "seed": "python3 bin/seed-playground-content.py --theme midcentury-depot"
+  },
+  "schema": 1,
+  "theme": "midcentury-depot"
+}

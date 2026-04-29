@@ -143,6 +143,15 @@ def test_warning_hits_does_not_catch_the_word_warning_mid_string(snap_mod):
     assert snap_mod._boot_warning_hits(body) == []
 
 
+def test_infrastructure_timeout_marker_is_classified(snap_mod):
+    err = (
+        "failed: SNAP_INFRASTRUCTURE_TIMEOUT: Playground server at "
+        "http://127.0.0.1:9400 did not finish blueprint within 600s"
+    )
+    assert snap_mod._is_infrastructure_timeout_failure(err)
+    assert not snap_mod._is_infrastructure_timeout_failure("failed: visual diff exceeded threshold")
+
+
 # ---------------------------------------------------------------------------
 # _scan_log_for_fatals
 # ---------------------------------------------------------------------------

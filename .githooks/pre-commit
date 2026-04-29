@@ -40,6 +40,13 @@ if [ "${FIFTY_AGENT_RESCUE:-0}" = "1" ]; then
   exit 0
 fi
 
+if [ "${FIFTY_DESIGN_PREPUBLISH:-0}" = "1" ]; then
+  echo "▸ pre-commit: design prepublish active (FIFTY_DESIGN_PREPUBLISH=1)."
+  echo "  Skipping scoped theme checks until snap/screenshot evidence exists;"
+  echo "  the final design commit and push run the full gate."
+  exit 0
+fi
+
 echo "▸ pre-commit: resolving staged scope"
 scope="$(python3 bin/changed-scope.py --staged --format shell)"
 themes="$(printf '%s\n' "$scope" | sed -n 's/^themes=//p')"

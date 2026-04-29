@@ -67,6 +67,31 @@ def test_parser_tracks_snap_cells_and_flags():
     assert state.snap_error_cells == 1
 
 
+def test_parser_tracks_vision_review_progress():
+    watch = load_design_watch()
+    now = time.time()
+    state = watch.WatchState(
+        run_id="test",
+        started_at=now,
+        command=["python3", "bin/design.py"],
+        cwd=str(REPO_ROOT),
+        phase_started_at=now,
+        last_output_at=now,
+    )
+
+    watch.parse_line(state, "== reviewing 52 PNGs for apiary (model=claude, dry_run=False)", now)
+    watch.parse_line(state, ">> reviewing 7/52 mobile/my-account", now)
+    watch.parse_line(state, "     mobile/my-account [reviewed] 6 findings  2235in/1248out", now)
+
+    assert state.current_phase == "vision-review"
+    assert state.slug == "apiary"
+    assert state.vision_total == 52
+    assert state.vision_completed == 7
+    assert state.vision_current == "mobile/my-account"
+    assert state.vision_last == "mobile/my-account [reviewed]"
+    assert state.vision_findings == 6
+
+
 def test_parser_ignores_check_theme_headers_as_phases():
     watch = load_design_watch()
     now = time.time()
@@ -162,6 +187,15 @@ def test_write_status_creates_live_markdown_dashboard(tmp_path):
                 next_action="Regenerate or replace the named duplicate product photo.",
             )
         ],
+        factory_defects=[
+            {
+                "category": "hover-contrast",
+                "title": "Hover/focus states have legible text-vs-background contrast",
+                "promotion_target": "design-phase",
+                "tooling_status": "needs-tooling",
+                "suggested_files": ["bin/autofix-contrast.py", "bin/design.py"],
+            }
+        ],
     )
     status_path = tmp_path / "STATUS.md"
 
@@ -176,7 +210,13 @@ def test_write_status_creates_live_markdown_dashboard(tmp_path):
     assert "# Demo Pipeline Status" in body
     assert "**Status:** Needs attention" in body
     assert "Regenerate or replace the named duplicate product photo." in body
+    assert "## Factory Defects" in body
+    assert "Need deterministic tooling: 1" in body
+    assert "## Vision Review Progress" in body
     assert "## Last Output" in body
+    watch.write_summary(tmp_path / "summary.json", state)
+    summary = (tmp_path / "summary.json").read_text(encoding="utf-8")
+    assert '"needs_tooling": 1' in summary
 
 
 def test_design_watch_help_smoke():
