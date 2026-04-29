@@ -204,6 +204,8 @@ def test_runner_options_has_run_verify_snap_field(script_text: str) -> None:
 def test_batch_uses_self_healing_watch_by_default(script_text: str) -> None:
     assert "self_heal: bool = True" in script_text
     assert '"bin/design-watch.py"' in script_text
+    assert "THEME_WATCH_MAX_ELAPSED_SECONDS = 90 * 60" in script_text
+    assert "str(THEME_WATCH_MAX_ELAPSED_SECONDS)" in script_text
     assert "--max-repair-rounds" in script_text
     assert "--no-self-heal" in script_text
 

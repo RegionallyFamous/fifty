@@ -144,6 +144,7 @@ HARD_CONCURRENCY_CAP = 4
 DEFAULT_RUN_DIR = ROOT / "tmp"
 DEFAULT_WORKTREE_PARENT = ROOT.parent  # alongside the main repo dir
 TOP_WATCH_ENV = "FIFTY_BATCH_TOP_WATCH"
+THEME_WATCH_MAX_ELAPSED_SECONDS = 90 * 60
 
 
 # ---------------------------------------------------------------------------
@@ -451,6 +452,8 @@ def _run_design_cmd(
             "bin/design-watch.py",
             "--run-id",
             design_run_id,
+            "--max-elapsed-seconds",
+            str(THEME_WATCH_MAX_ELAPSED_SECONDS),
             "--max-repair-rounds",
             str(opts.max_repair_rounds),
         ]
