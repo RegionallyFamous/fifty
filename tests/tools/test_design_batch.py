@@ -241,6 +241,10 @@ def test_no_resume_forces_fresh_child_worktree(script_text: str) -> None:
     assert "fresh_worktree=args.no_resume" in script_text
     assert '"worktree", "remove", "--force", str(target)' in script_text
     assert '"branch", "-D", branch' in script_text
+    assert "def _delete_fresh_remote_batch_branch(" in script_text
+    assert 'branch.startswith("agent/batch-")' in script_text
+    assert '"ls-remote", "--exit-code", "origin", remote_ref' in script_text
+    assert '"push", "origin", "--delete", branch' in script_text
     assert "def _open_progressive_pr(" in script_text
     assert '"--draft"' in script_text
     assert "--single-shot" in script_text

@@ -396,6 +396,21 @@ def _git(*args: str, cwd: Path | None = None, check: bool = True) -> subprocess.
     return proc
 
 
+def _delete_fresh_remote_batch_branch(branch: str, opts: RunnerOptions) -> None:
+    """Drop stale generated remotes when --no-resume asks for a fresh proof.
+
+    The branch name is produced by this runner, but keep the prefix guard so a
+    future caller cannot accidentally delete a human-owned remote branch.
+    """
+    if opts.dry_run or not opts.fresh_worktree or not branch.startswith("agent/batch-"):
+        return
+
+    remote_ref = f"refs/heads/{branch}"
+    exists = _git("ls-remote", "--exit-code", "origin", remote_ref, check=False)
+    if exists.returncode == 0:
+        _git("push", "origin", "--delete", branch)
+
+
 def _ensure_worktree(slug: str, opts: RunnerOptions) -> tuple[Path, str]:
     """Create `<worktree_parent>/fifty-batch-<slug>` on a new branch
     `agent/batch-<run-id>-<slug>` rooted at `opts.base_branch`. If the
@@ -409,6 +424,7 @@ def _ensure_worktree(slug: str, opts: RunnerOptions) -> tuple[Path, str]:
             return target, branch
     if _git("branch", "--list", branch).stdout.strip() and not opts.dry_run:
         _git("branch", "-D", branch)
+    _delete_fresh_remote_batch_branch(branch, opts)
     if target.is_dir():
         return target, branch
     if opts.dry_run:
