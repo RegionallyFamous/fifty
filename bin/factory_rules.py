@@ -7,7 +7,10 @@ This module is deliberately data-like so `design.py`, `design_unblock.py`,
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+import argparse
+import json
+import sys
+from dataclasses import asdict, dataclass
 
 PreventionLayer = str
 RolloutMode = str
@@ -160,3 +163,28 @@ def get_rule(category: str) -> PreventionRule:
 
 def categories() -> set[str]:
     return set(RULES) - {"unknown"}
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Print the autonomous theme-factory prevention rule catalog."
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the catalog as JSON instead of a compact text summary.",
+    )
+    args = parser.parse_args(argv)
+
+    if args.json:
+        json.dump({key: asdict(rule) for key, rule in sorted(RULES.items())}, sys.stdout, indent=2)
+        sys.stdout.write("\n")
+        return 0
+
+    for key, rule in sorted(RULES.items()):
+        print(f"{key}: {rule.layer}/{rule.phase} -> {rule.owner} ({rule.mode})")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
