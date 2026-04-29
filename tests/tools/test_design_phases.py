@@ -206,6 +206,13 @@ def test_scorecard_runs_after_vision_before_baseline() -> None:
     assert phases.index("scorecard") < phases.index("baseline")
 
 
+def test_cheap_gates_run_before_vision_review() -> None:
+    phases = _extract_phases_tuple()
+    assert phases.index("snap") < phases.index("content-preflight")
+    assert phases.index("content-preflight") < phases.index("snap-preflight")
+    assert phases.index("snap-preflight") < phases.index("vision-review")
+
+
 def test_prepublish_is_registered_in_phase_handlers() -> None:
     """Every entry in PHASES must have a corresponding handler in
     `_PHASE_HANDLERS`. A phase in the list with no handler would raise

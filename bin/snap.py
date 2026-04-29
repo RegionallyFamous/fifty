@@ -3820,8 +3820,8 @@ def shoot_theme(
     with sync_playwright() as p:
         browser = p.chromium.launch()
         try:
-            for vp in viewports:
-                ctx = browser.new_context(
+            def _new_capture_context(vp):
+                new_ctx = browser.new_context(
                     viewport={"width": vp.width, "height": vp.height},
                     # Capture at 2x DPR so source PNGs are retina-sharp
                     # for human review (zoomed inspection, retina
@@ -3846,11 +3846,15 @@ def shoot_theme(
                 # init script wires that up via a <style> tag on
                 # DOMContentLoaded so timed animations (font swap,
                 # WC drawer slide) settle before our screenshot fires.
-                ctx.add_init_script(
+                new_ctx.add_init_script(
                     "(() => { const s = document.createElement('style');"
                     f" s.textContent = {json.dumps(_FREEZE_CSS)};"
                     " document.documentElement.appendChild(s); })();"
                 )
+                return new_ctx
+
+            for vp in viewports:
+                ctx = _new_capture_context(vp)
                 page = ctx.new_page()
                 bag = _attach_diagnostics(page)
                 vp_dir = out_root / vp.name
@@ -3869,20 +3873,7 @@ def shoot_theme(
                     if phase_auth:
                         if ctx is not None:
                             ctx.close()
-                        ctx = browser.new_context(
-                            viewport={"width": vp.width, "height": vp.height},
-                            device_scale_factor=2,
-                            user_agent=(
-                                "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) "
-                                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                                "Chrome/138.0.0.0 Safari/537.36"
-                            ),
-                        )
-                        ctx.add_init_script(
-                            "(() => { const s = document.createElement('style');"
-                            f" s.textContent = {json.dumps(_FREEZE_CSS)};"
-                            " document.documentElement.appendChild(s); })();"
-                        )
+                        ctx = _new_capture_context(vp)
                         if not _login_admin(ctx):
                             print(
                                 f"  {YELLOW}warn:{RESET} {vp.name:7s} "
@@ -3893,6 +3884,17 @@ def shoot_theme(
                         page = ctx.new_page()
                         bag = _attach_diagnostics(page)
                     for route in phase_route_list:
+                        if not phase_auth and route.slug == "cart-empty":
+                            # The `cart-filled` route intentionally primes a
+                            # WooCommerce cart via `?demo=cart`. Use a fresh
+                            # anonymous context for cart-empty so session
+                            # cookies/local storage from the filled cart
+                            # cannot bleed into the empty-state evidence.
+                            page.close()
+                            ctx.close()
+                            ctx = _new_capture_context(vp)
+                            page = ctx.new_page()
+                            bag = _attach_diagnostics(page)
                     # Phase 2 skip: if the caller computed that this
                     # cell's signature matches the baseline, the tmp
                     # tree was already populated by _materialize_skipped_

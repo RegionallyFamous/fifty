@@ -243,7 +243,7 @@ def _write_summary(run_dir: Path, failures: list[dict], slug: str = "agave") -> 
 
 def test_build_repair_plan_classifies_agave_style_summary(tmp_path):
     u = _load_module()
-    run_dir = tmp_path / "runs" / "test"
+    run_dir = tmp_path / "tmp" / "runs" / "test-agave"
     _write_summary(
         run_dir,
         [
@@ -287,7 +287,7 @@ def test_build_repair_plan_classifies_agave_style_summary(tmp_path):
 
 def test_build_repair_plan_visual_blockers_force_snap_resume(tmp_path):
     u = _load_module()
-    run_dir = tmp_path / "runs" / "test"
+    run_dir = tmp_path / "tmp" / "runs" / "test-agave"
     _write_summary(
         run_dir,
         [
@@ -618,6 +618,60 @@ def test_hover_contrast_snippet_points_at_theme_json_css(tmp_path, monkeypatch):
     assert snippets
     assert "agave/theme.json" in snippets[0]
     assert "single_add_to_cart_button:hover" in snippets[0]
+
+
+def test_scorecard_mass_failure_stops_without_recipes(tmp_path, monkeypatch):
+    u = _load_module()
+    run_dir = tmp_path / "tmp" / "runs" / "test-agave"
+    _write_summary(
+        run_dir,
+        [
+            {
+                "title": "Scorecard mass failure",
+                "detail": (
+                    "visual_distinctness scored 0/70; 144 weak finding(s) "
+                    "recorded in tmp/runs/test/design-score.json; classification=mass-failure"
+                ),
+                "summary": "strategy failure",
+                "next_action": "stop the factory loop",
+            },
+        ],
+    )
+    score_path = run_dir / "design-score.json"
+    score_path.write_text(
+        json.dumps(
+            {
+                "classification": "mass-failure",
+                "overall": 0,
+                "threshold": 70,
+                "weak_findings": [{}] * 40,
+                "top_weak_findings": [
+                    {
+                        "category": "visual_distinctness",
+                        "kind": "vision:brand-violation",
+                        "route": "home",
+                        "viewport": "desktop",
+                        "severity": "error",
+                        "count": 12,
+                        "sample_message": "generic storefront chrome",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(u, "ROOT", tmp_path)
+    monkeypatch.setattr(u, "_changed_files", lambda cwd: [])
+
+    plan = u.build_repair_plan(run_dir)
+    record = u.apply_recipes(run_dir)
+
+    assert plan.human_boundary == "scorecard-mass-failure"
+    assert plan.recommended_recipes == []
+    assert plan.blockers[0].category == "scorecard-mass-failure"
+    assert "generic storefront chrome" in "\n".join(plan.blockers[0].source_snippets)
+    assert record.decision == "stopped"
+    assert record.verification["human_boundary"] == "no-op-repair"
 
 
 def test_tool_rescue_prompt_guides_css_edits_to_theme_json(tmp_path, monkeypatch):

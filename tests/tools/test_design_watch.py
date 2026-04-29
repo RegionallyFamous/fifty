@@ -113,6 +113,35 @@ def test_parser_ignores_check_theme_headers_as_phases():
     assert state.current_phase == "check"
 
 
+def test_parser_tracks_batch_child_status_path_and_phase():
+    watch = load_design_watch()
+    now = time.time()
+    state = watch.WatchState(
+        run_id="batch",
+        started_at=now,
+        command=["python3", "bin/design-batch.py"],
+        cwd=str(REPO_ROOT),
+        phase_started_at=now,
+        last_output_at=now,
+    )
+
+    watch.parse_line(
+        state,
+        "[batch] active child run=batch-canary-agave-dress status=/tmp/work/tree/tmp/runs/batch-canary-agave-dress/STATUS.md",
+        now,
+    )
+    watch.parse_line(
+        state,
+        "Working: [03:12] Agave is checking screenshots. 4 of 52 pages captured.",
+        now,
+    )
+
+    assert state.active_child_run_id == "batch-canary-agave-dress"
+    assert state.active_child_status_path.endswith("STATUS.md")
+    assert state.slug == "agave"
+    assert state.current_phase == "snap"
+
+
 def test_parser_translates_known_check_failures():
     watch = load_design_watch()
     now = time.time()
@@ -198,6 +227,8 @@ def test_write_status_creates_live_markdown_dashboard(tmp_path):
                 "suggested_files": ["bin/autofix-contrast.py", "bin/design.py"],
             }
         ],
+        active_child_run_id="batch-demo-dress",
+        active_child_status_path="/tmp/worktree/tmp/runs/batch-demo-dress/STATUS.md",
     )
     status_path = tmp_path / "STATUS.md"
 
@@ -214,6 +245,8 @@ def test_write_status_creates_live_markdown_dashboard(tmp_path):
     assert "Regenerate or replace the named duplicate product photo." in body
     assert "## Factory Defects" in body
     assert "Need deterministic tooling: 1" in body
+    assert "## What To Watch Now" in body
+    assert "batch-demo-dress" in body
     assert "## Vision Review Progress" in body
     assert "## Last Output" in body
     watch.write_summary(tmp_path / "summary.json", state)

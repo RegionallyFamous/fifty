@@ -217,6 +217,8 @@ PHASES = (
     #                  squash-merge collapses them on the final PR.
     "prepublish",
     "snap",
+    "content-preflight",
+    "snap-preflight",
     "vision-review",
     "scorecard",
     "baseline",
@@ -291,6 +293,8 @@ _PHASES_FOR_DRESS = (
     "microcopy",
     "frontpage",
     "snap",
+    "content-preflight",
+    "snap-preflight",
     "vision-review",
     "scorecard",
     "check",
@@ -1693,6 +1697,45 @@ def _phase_snap(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> No
         raise PhaseError("snap", f"bin/snap.py shoot exited {rc}")
 
 
+def _phase_content_preflight(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
+    """Run content-fit checks before any paid vision review.
+
+    This is deliberately narrower than the final `check` phase: it catches
+    missing content/images/microcopy/front-page uniqueness early, while the
+    full final gate still runs after vision and scorecard.
+    """
+    env = os.environ.copy()
+    if not getattr(args, "skip_snap", False):
+        env.setdefault("FIFTY_REQUIRE_SNAP_EVIDENCE", "1")
+    cmd = [
+        sys.executable,
+        str(ROOT / "bin" / "check.py"),
+        spec.slug,
+        "--quick",
+        "--phase",
+        "content",
+    ]
+    print(f"  [content-preflight] {' '.join(cmd[1:])}")
+    rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT), env=env)
+    if rc != 0:
+        raise PhaseError("content-preflight", f"bin/check.py --phase content exited {rc}")
+
+
+def _phase_snap_preflight(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
+    """Fail before vision if the freshly captured snap report is already red."""
+    cmd = [
+        sys.executable,
+        str(ROOT / "bin" / "snap.py"),
+        "report",
+        spec.slug,
+        "--strict",
+    ]
+    print(f"  [snap-preflight] {' '.join(cmd[1:])}")
+    rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
+    if rc != 0:
+        raise PhaseError("snap-preflight", f"bin/snap.py report --strict exited {rc}")
+
+
 def _phase_vision_review(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
     """Run `bin/snap-vision-review.py <slug>` against the freshly shot PNGs.
     Skipped (with a warning) when ANTHROPIC_API_KEY is unset so airgapped /
@@ -2155,6 +2198,8 @@ _PHASE_HANDLERS = {
     "frontpage": _phase_frontpage,
     "prepublish": _phase_prepublish,
     "snap": _phase_snap,
+    "content-preflight": _phase_content_preflight,
+    "snap-preflight": _phase_snap_preflight,
     "vision-review": _phase_vision_review,
     "scorecard": _phase_scorecard,
     "baseline": _phase_baseline,
