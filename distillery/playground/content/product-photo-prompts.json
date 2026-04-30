@@ -1,0 +1,281 @@
+{
+  "model": "gpt-image-2",
+  "prompts": {
+    "WO-BORROWED-NOSTALGIA": "Square product photograph. A dark amber glass bottle with a hand-rolled cork stopper, aged cream paper label, wax seal in deep burgundy. Bottle sits on worn oak planks beside a folded sepia photograph and dried pressed flowers. Single warm tungsten side-light casts long shadows. Background is dark charcoal with soft vignette. Shallow depth of field. Photorealistic, no text.",
+    "WO-BOTTLED-MORNING": "Square product photograph. A slender pale-glass bottle filled with pale golden liquid, sealed with a natural cork and linen twine. Morning light streams through a narrow window, catching dust motes. Props: a small copper measuring cup, scattered juniper berries, a white ceramic saucer. Background is cream linen draped over a dark walnut surface. Soft diffused daylight. Photorealistic, no text.",
+    "WO-CHAOS-SEASONING": "Square product photograph. A stout, dark green glass apothecary jar with a ground-glass stopper, filled with a turbid amber liquid. Surrounded by scattered whole spices \u2014 black pepper, star anise, dried chilli \u2014 on a scorched oak cutting board. Hard directional copper-toned light from upper left. Background rough plaster wall. Shallow focus. Photorealistic, no text.",
+    "WO-COSMIC-MYSTERY-BOX": "Square product photograph. A small wooden crate lined with black tissue paper holds three miniature dark glass bottles of varying shapes, each sealed with wax in different deep jewel tones \u2014 burgundy, midnight blue, forest green. Arranged on a dark slate surface with dried botanicals tucked between bottles. Warm ambient light from left. Photorealistic, no text.",
+    "WO-DEJA-VU-SESSION": "Square product photograph. A pair of identical dark forest-green 500ml bottles side by side on aged oak, one slightly dusty, one clean, both corked and wax-sealed in deep crimson. Low raking amber light from the right reveals grain in the wood. Background is deep shadow. Props: a bone-handled penknife and a rolled cellar tag. Photorealistic, no text.",
+    "WO-DISCOUNT-GRAVITY": "Square product photograph. A tall, slightly irregular hand-blown dark amber bottle tilted at a slight angle, propped against a stack of old leather-bound ledgers on a dark wood shelf. Warm tungsten light from below-left. The bottle casts a long amber shadow. Props: a small copper weight and a frayed length of jute twine. Photorealistic, no text.",
+    "WO-DREAD-REPELLENT": "Square product photograph. A squat, dark cobalt-tinted glass bottle with a rubber-bulb atomiser top, filled with deep mahogany liquid. Sits on a slate tile beside dried wormwood sprigs and a small obsidian river stone. Single cold-warm split light \u2014 tungsten from left, cool window from right. Dark grey background. Photorealistic, no text.",
+    "WO-FOG-IN-BOTTLE": "Square product photograph. A wide-shouldered frosted glass bottle sealed with a large natural cork, containing a pale, slightly cloudy silver-grey liquid. Dry ice wisps of condensation curl around the base on a cold black marble surface. Diffused cool-white light from above. Props: a folded linen cloth and a silver tasting spoon. Photorealistic, no text.",
+    "WO-FORBIDDEN-HONEY": "Square product photograph. A hexagonal dark amber glass jar sealed with a hammered bronze lid and drizzled beeswax, filled with a luminous deep-gold liquid. Beside it: a raw honeycomb shard and dried fig halves on dark walnut. Warm side-light from a single candle and a distant tungsten bulb. Rich amber shadow. Photorealistic, no text.",
+    "WO-GENTLY-USED-LUCK": "Square product photograph. A worn, slightly scratched dark green glass bottle with a re-corked top and remnants of an old wax seal, containing a rich tawny liquid. Placed on a green baize surface alongside a tarnished horseshoe and a worn playing card face-down. Warm directional light. Background dark timber panelling. Photorealistic, no text.",
+    "WO-HANDCRAFTED-ECHO": "Square product photograph. A narrow, cylindrical dark glass bottle with layered wax seals \u2014 one old hardened ring beneath a fresh crimson one \u2014 containing a clear pale spirit. Sits on a rough-hewn oak block surrounded by copper still offcuts and wood shavings. Warm single-source light from the right. Vignetted dark background. Photorealistic, no text.",
+    "WO-HAUNTED-CANDLE": "Square product photograph. A thick cream pillar candle in a heavy black iron holder, half-burned, with amber wax pooled around its base. Beside it, a small dark glass vial sealed in black wax on a stone surface. Candlelight is the primary warm source, casting dancing shadows on a rough stone wall. Moody, high-contrast. Photorealistic, no text.",
+    "WO-IMAGINARY-DEED": "Square product photograph. A rolled parchment scroll tied with dark burgundy ribbon sits beside a sealed dark glass bottle containing pale golden liquid, on an aged leather desktop. A brass letter opener and a stick of sealing wax rest nearby. Warm desk-lamp light from upper right. Dark oak background. Photorealistic, no text.",
+    "WO-INTERDIM-BAZAAR": "Square product photograph. A mixed grouping of four small dark glass bottles in different shapes \u2014 round, hexagonal, square, slim \u2014 each sealed with different coloured wax, arranged on an aged Persian rug swatch. Warm ambient light from multiple directions. Props: dried petals, a small brass compass. Rich, jewel-toned shadows. Photorealistic, no text.",
+    "WO-INVISIBLE-UMBRELLA": "Square product photograph. A clear glass bottle with a slightly blue tint, sealed with a pale grey wax top, containing a crystal-clear spirit. A single raindrop trails down the exterior. Props: a folded dark grey linen handkerchief and a polished black river stone on a slate grey surface. Cool diffused overhead light. Photorealistic, no text.",
+    "WO-LEFT-SOCK": "Square product photograph. A single, small 200ml dark green glass bottle with a hand-tied label tag on jute string, cork-sealed, containing a warm amber liquid. Placed inside a rough grey wool sock folded open on a dark oak table. Warm tungsten light from the left. Playful yet artisan composition. Photorealistic, no text.",
+    "WO-LOST-RECIPE-TIME": "Square product photograph. An old dark amber bottle with a wax-encrusted neck \u2014 layers of old wax in multiple aged colours \u2014 containing a deep caramel liquid. Surrounded by torn recipe notes (illegible), dried herbs, and a rusted copper measuring spoon on dark stone. Single warm light source. Heavy vignette. Photorealistic, no text.",
+    "WO-MEMORY-FOAM-MEMORY": "Square product photograph. A low, wide-shouldered dark glass bottle sealed with a flush cork and soft ivory wax, containing a pale rose-tinted liquid. Rests on a folded ivory linen cloth on a cream marble surface. Soft diffused window light from the left. Props: a pressed rose petal and a small glass tasting cup. Gentle, warm tones. Photorealistic, no text.",
+    "WO-MONDAY-KIT": "Square product photograph. A small wooden box with a sliding lid contains a 200ml dark glass bottle, a copper jigger, and a bundle of dried botanicals tied with linen twine. Arranged on a dark slate surface. Warm overhead tungsten light. Background is dark charcoal. Clean, artisan composition. Photorealistic, no text.",
+    "WO-MOON-DUST": "Square product photograph. A matte-black glass bottle sealed with silver-grey wax, containing an almost-clear spirit with a faint iridescent shimmer visible when light catches it. Rests on a piece of raw grey granite. A single shaft of cool blue-white light from above. Surrounding props: fine pale grey ash and a small piece of raw quartz. Photorealistic, no text.",
+    "WO-ONE-HAND-CLAPPING": "Square product photograph. A single 500ml dark forest-green bottle with a hand-dipped wax seal in deep moss green, containing a pale amber spirit. Positioned alone, off-centre on a vast expanse of dark walnut surface. Single hard directional light from the left. Long dramatic shadow. Meditative, spare composition. Photorealistic, no text.",
+    "WO-POCKET-THUNDER": "Square product photograph. A compact, wide flask-shaped dark amber glass bottle with a tight cork and electric blue wax seal, containing a deep copper-hued spirit. Sits on dark grey slate beside a small cluster of black peppercorns and a fragment of charred oak. High-contrast tungsten light from below-left. Photorealistic, no text.",
+    "WO-PORTABLE-HOLE": "Square product photograph. A jet-black ceramic flask sealed with a matte black wax top, placed on a circle of dark velvet cloth on a stone surface. The velvet creates a dark circular shadow resembling a void. Minimal props. Single overhead soft-box light. Deep shadow at the edges. Stark, dramatic. Photorealistic, no text.",
+    "WO-SENSORY-STARTER": "Square product photograph. A wooden tasting tray holds five 50ml miniature dark glass bottles in a row, each with a different coloured wax seal \u2014 amber, green, burgundy, ivory, copper \u2014 on a dark oak surface. Warm overhead light. Props: a small white ceramic spittoon and a linen tasting note card (blank). Photorealistic, no text.",
+    "WO-SILENCE-JAR": "Square product photograph. A wide-mouth clear glass jar with a ground-glass lid, sealed with ivory wax, filled with a perfectly clear liquid. No bubbles, absolutely still. Placed alone on a white marble slab in a pool of soft diffused cool light. Background fades to pale grey. Perfectly minimal, meditative. Photorealistic, no text.",
+    "WO-SPARE-KEY-NOWHERE": "Square product photograph. A dark green 350ml bottle with a key-shaped copper charm tied to the neck on linen twine, wax-sealed in aged gold, containing a warm amber liquid. Props: a tarnished skeleton key lying beside it on dark timber. Warm raking light from the right. Deep shadows. Photorealistic, no text.",
+    "WO-SPARE-TUESDAY": "Square product photograph. A plain, utilitarian dark glass bottle \u2014 no embellishment, simple cork, small strip of cream tape around the neck \u2014 containing a pale straw-coloured spirit. Sits on a worn enamel tray beside a plain tin cup. Flat, slightly cool overhead light. Spare, workmanlike composition on a scrubbed pine surface. Photorealistic, no text.",
+    "WO-TANGIBLE-WIFI": "Square product photograph. A sleek, modern-shaped dark glass bottle with sharp angles, sealed with a geometric copper wax seal, containing a crystal-clear spirit. Placed on a sheet of raw copper mesh on a dark slate surface. Warm copper-toned light from below catches the mesh texture. Contemporary but artisan. Photorealistic, no text.",
+    "WO-VOID-SAMPLER": "Square product photograph. A black wooden box with a hinged lid contains compartments holding three 100ml matte-black ceramic bottles sealed with black wax, nestled in black linen. No colour except deep warm tungsten light catching the copper hinge hardware. Background pure dark. Austere, refined. Photorealistic, no text.",
+    "WO-WHISPERING-STONE": "Square product photograph. A short, round-shouldered dark amber bottle sealed with grey-green wax, containing a pale smoky spirit. Surrounded by smooth river stones of varying sizes on a damp slate surface. Cool diffused light with a faint warm accent from the right. Water droplets on the stone surface. Photorealistic, no text."
+  },
+  "provider": "openai",
+  "records": [
+    {
+      "filename": "product-wo-borrowed-nostalgia.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A dark amber glass bottle with a hand-rolled cork stopper, aged cream paper label, wax seal in deep burgundy. Bottle sits on worn oak planks beside a folded sepia photograph and dried pressed flowers. Single warm tungsten side-light casts long shadows. Background is dark charcoal with soft vignette. Shallow depth of field. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-BORROWED-NOSTALGIA",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-bottled-morning.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A slender pale-glass bottle filled with pale golden liquid, sealed with a natural cork and linen twine. Morning light streams through a narrow window, catching dust motes. Props: a small copper measuring cup, scattered juniper berries, a white ceramic saucer. Background is cream linen draped over a dark walnut surface. Soft diffused daylight. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-BOTTLED-MORNING",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-chaos-seasoning.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A stout, dark green glass apothecary jar with a ground-glass stopper, filled with a turbid amber liquid. Surrounded by scattered whole spices \u2014 black pepper, star anise, dried chilli \u2014 on a scorched oak cutting board. Hard directional copper-toned light from upper left. Background rough plaster wall. Shallow focus. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-CHAOS-SEASONING",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-cosmic-mystery-box.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small wooden crate lined with black tissue paper holds three miniature dark glass bottles of varying shapes, each sealed with wax in different deep jewel tones \u2014 burgundy, midnight blue, forest green. Arranged on a dark slate surface with dried botanicals tucked between bottles. Warm ambient light from left. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-COSMIC-MYSTERY-BOX",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-deja-vu-session.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A pair of identical dark forest-green 500ml bottles side by side on aged oak, one slightly dusty, one clean, both corked and wax-sealed in deep crimson. Low raking amber light from the right reveals grain in the wood. Background is deep shadow. Props: a bone-handled penknife and a rolled cellar tag. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-DEJA-VU-SESSION",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-discount-gravity.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A tall, slightly irregular hand-blown dark amber bottle tilted at a slight angle, propped against a stack of old leather-bound ledgers on a dark wood shelf. Warm tungsten light from below-left. The bottle casts a long amber shadow. Props: a small copper weight and a frayed length of jute twine. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-DISCOUNT-GRAVITY",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-dread-repellent.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A squat, dark cobalt-tinted glass bottle with a rubber-bulb atomiser top, filled with deep mahogany liquid. Sits on a slate tile beside dried wormwood sprigs and a small obsidian river stone. Single cold-warm split light \u2014 tungsten from left, cool window from right. Dark grey background. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-DREAD-REPELLENT",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-fog-in-bottle.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A wide-shouldered frosted glass bottle sealed with a large natural cork, containing a pale, slightly cloudy silver-grey liquid. Dry ice wisps of condensation curl around the base on a cold black marble surface. Diffused cool-white light from above. Props: a folded linen cloth and a silver tasting spoon. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-FOG-IN-BOTTLE",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-forbidden-honey.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A hexagonal dark amber glass jar sealed with a hammered bronze lid and drizzled beeswax, filled with a luminous deep-gold liquid. Beside it: a raw honeycomb shard and dried fig halves on dark walnut. Warm side-light from a single candle and a distant tungsten bulb. Rich amber shadow. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-FORBIDDEN-HONEY",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-gently-used-luck.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A worn, slightly scratched dark green glass bottle with a re-corked top and remnants of an old wax seal, containing a rich tawny liquid. Placed on a green baize surface alongside a tarnished horseshoe and a worn playing card face-down. Warm directional light. Background dark timber panelling. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-GENTLY-USED-LUCK",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-handcrafted-echo.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A narrow, cylindrical dark glass bottle with layered wax seals \u2014 one old hardened ring beneath a fresh crimson one \u2014 containing a clear pale spirit. Sits on a rough-hewn oak block surrounded by copper still offcuts and wood shavings. Warm single-source light from the right. Vignetted dark background. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-HANDCRAFTED-ECHO",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-haunted-candle.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A thick cream pillar candle in a heavy black iron holder, half-burned, with amber wax pooled around its base. Beside it, a small dark glass vial sealed in black wax on a stone surface. Candlelight is the primary warm source, casting dancing shadows on a rough stone wall. Moody, high-contrast. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-HAUNTED-CANDLE",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-imaginary-deed.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A rolled parchment scroll tied with dark burgundy ribbon sits beside a sealed dark glass bottle containing pale golden liquid, on an aged leather desktop. A brass letter opener and a stick of sealing wax rest nearby. Warm desk-lamp light from upper right. Dark oak background. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-IMAGINARY-DEED",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-interdim-bazaar.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A mixed grouping of four small dark glass bottles in different shapes \u2014 round, hexagonal, square, slim \u2014 each sealed with different coloured wax, arranged on an aged Persian rug swatch. Warm ambient light from multiple directions. Props: dried petals, a small brass compass. Rich, jewel-toned shadows. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-INTERDIM-BAZAAR",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-invisible-umbrella.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A clear glass bottle with a slightly blue tint, sealed with a pale grey wax top, containing a crystal-clear spirit. A single raindrop trails down the exterior. Props: a folded dark grey linen handkerchief and a polished black river stone on a slate grey surface. Cool diffused overhead light. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-INVISIBLE-UMBRELLA",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-left-sock.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A single, small 200ml dark green glass bottle with a hand-tied label tag on jute string, cork-sealed, containing a warm amber liquid. Placed inside a rough grey wool sock folded open on a dark oak table. Warm tungsten light from the left. Playful yet artisan composition. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-LEFT-SOCK",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-lost-recipe-time.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. An old dark amber bottle with a wax-encrusted neck \u2014 layers of old wax in multiple aged colours \u2014 containing a deep caramel liquid. Surrounded by torn recipe notes (illegible), dried herbs, and a rusted copper measuring spoon on dark stone. Single warm light source. Heavy vignette. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-LOST-RECIPE-TIME",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-memory-foam-memory.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A low, wide-shouldered dark glass bottle sealed with a flush cork and soft ivory wax, containing a pale rose-tinted liquid. Rests on a folded ivory linen cloth on a cream marble surface. Soft diffused window light from the left. Props: a pressed rose petal and a small glass tasting cup. Gentle, warm tones. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-MEMORY-FOAM-MEMORY",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-monday-kit.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small wooden box with a sliding lid contains a 200ml dark glass bottle, a copper jigger, and a bundle of dried botanicals tied with linen twine. Arranged on a dark slate surface. Warm overhead tungsten light. Background is dark charcoal. Clean, artisan composition. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-MONDAY-KIT",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-moon-dust.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A matte-black glass bottle sealed with silver-grey wax, containing an almost-clear spirit with a faint iridescent shimmer visible when light catches it. Rests on a piece of raw grey granite. A single shaft of cool blue-white light from above. Surrounding props: fine pale grey ash and a small piece of raw quartz. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-MOON-DUST",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-one-hand-clapping.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A single 500ml dark forest-green bottle with a hand-dipped wax seal in deep moss green, containing a pale amber spirit. Positioned alone, off-centre on a vast expanse of dark walnut surface. Single hard directional light from the left. Long dramatic shadow. Meditative, spare composition. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-ONE-HAND-CLAPPING",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-pocket-thunder.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A compact, wide flask-shaped dark amber glass bottle with a tight cork and electric blue wax seal, containing a deep copper-hued spirit. Sits on dark grey slate beside a small cluster of black peppercorns and a fragment of charred oak. High-contrast tungsten light from below-left. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-POCKET-THUNDER",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-portable-hole.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A jet-black ceramic flask sealed with a matte black wax top, placed on a circle of dark velvet cloth on a stone surface. The velvet creates a dark circular shadow resembling a void. Minimal props. Single overhead soft-box light. Deep shadow at the edges. Stark, dramatic. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-PORTABLE-HOLE",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-sensory-starter.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A wooden tasting tray holds five 50ml miniature dark glass bottles in a row, each with a different coloured wax seal \u2014 amber, green, burgundy, ivory, copper \u2014 on a dark oak surface. Warm overhead light. Props: a small white ceramic spittoon and a linen tasting note card (blank). Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-SENSORY-STARTER",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-silence-jar.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A wide-mouth clear glass jar with a ground-glass lid, sealed with ivory wax, filled with a perfectly clear liquid. No bubbles, absolutely still. Placed alone on a white marble slab in a pool of soft diffused cool light. Background fades to pale grey. Perfectly minimal, meditative. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-SILENCE-JAR",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-spare-key-nowhere.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A dark green 350ml bottle with a key-shaped copper charm tied to the neck on linen twine, wax-sealed in aged gold, containing a warm amber liquid. Props: a tarnished skeleton key lying beside it on dark timber. Warm raking light from the right. Deep shadows. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-SPARE-KEY-NOWHERE",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-spare-tuesday.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A plain, utilitarian dark glass bottle \u2014 no embellishment, simple cork, small strip of cream tape around the neck \u2014 containing a pale straw-coloured spirit. Sits on a worn enamel tray beside a plain tin cup. Flat, slightly cool overhead light. Spare, workmanlike composition on a scrubbed pine surface. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-SPARE-TUESDAY",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-tangible-wifi.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A sleek, modern-shaped dark glass bottle with sharp angles, sealed with a geometric copper wax seal, containing a crystal-clear spirit. Placed on a sheet of raw copper mesh on a dark slate surface. Warm copper-toned light from below catches the mesh texture. Contemporary but artisan. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-TANGIBLE-WIFI",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-void-sampler.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A black wooden box with a hinged lid contains compartments holding three 100ml matte-black ceramic bottles sealed with black wax, nestled in black linen. No colour except deep warm tungsten light catching the copper hinge hardware. Background pure dark. Austere, refined. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-VOID-SAMPLER",
+      "status": "generated"
+    },
+    {
+      "filename": "product-wo-whispering-stone.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A short, round-shouldered dark amber bottle sealed with grey-green wax, containing a pale smoky spirit. Surrounded by smooth river stones of varying sizes on a damp slate surface. Cool diffused light with a faint warm accent from the right. Water droplets on the stone surface. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-WHISPERING-STONE",
+      "status": "generated"
+    }
+  ],
+  "schema": 2,
+  "status": "generated",
+  "theme": "distillery"
+}

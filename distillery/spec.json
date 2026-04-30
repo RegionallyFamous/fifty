@@ -1,0 +1,44 @@
+{
+  "slug": "distillery",
+  "name": "Distillery",
+  "tagline": "Small-batch spirits, hand-labelled bottles, copper still.",
+  "voice": "A small-batch distillery with a long history and longer patience. Copy feels like handwritten cellar notes and copper-plate labels — precise, unhurried, proud of craft. Quantities are 'casks' and 'batches', orders are 'reservations', the cart is 'your selection'. Nothing is rushed; everything is considered. Tone sits between a Victorian apothecary and a serious whisky bar: authoritative but not stuffy, warm but never folksy.",
+  "source": "obel",
+  "palette": {
+    "base": "#f4edd8",
+    "contrast": "#120a00",
+    "primary": "#7b3d1e",
+    "secondary": "#5c4a30",
+    "accent": "#b8741a",
+    "tertiary": "#8c8272",
+    "border": "#c9b98a",
+    "surface": "#ede0c4",
+    "muted": "#d9ccaa"
+  },
+  "fonts": {
+    "display": {
+      "family": "Roslindale",
+      "fallback": "Georgia, Times New Roman, serif",
+      "google_font": false,
+      "weights": [
+        400,
+        700
+      ]
+    },
+    "serif": {
+      "family": "Crimson Pro",
+      "fallback": "Georgia, Times New Roman, serif",
+      "google_font": true,
+      "weights": [
+        400,
+        600
+      ]
+    }
+  },
+  "layout_hints": [
+    "full-bleed amber bottle photography hero with overlay label text",
+    "copper-still product-feature section below hero",
+    "product grid labelled like a tasting menu — vintage year + batch number",
+    "editorial journal section for distillery notes and process writing"
+  ]
+}

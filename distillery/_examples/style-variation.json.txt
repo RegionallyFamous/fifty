@@ -1,0 +1,42 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/theme.json",
+	"version": 3,
+	"title": "Your Variation Name",
+
+	"//": "COPY THIS FILE TO styles/your-name.json WHEN CREATING A NEW STYLE VARIATION.",
+	"//1": "The .txt suffix prevents WordPress from loading this stub.",
+	"//2": "Variations are merged on top of theme.json. Only include keys you want to override.",
+	"//3": "Always include the title field; it's how the variation appears in Site Editor > Styles.",
+	"//4": "Reuse slugs already defined in theme.json (accent, base, contrast, ...) -- never invent new ones in a variation.",
+	"//5": "Remove every // key before saving. JSON does not allow comments; these are workarounds for the stub only.",
+
+	"settings": {
+		"color": {
+			"palette": [
+				{ "slug": "base",        "name": "Base",        "color": "#FFFFFF" },
+				{ "slug": "surface",     "name": "Surface",     "color": "#FFFFFF" },
+				{ "slug": "subtle",      "name": "Subtle",      "color": "#F5F5F5" },
+				{ "slug": "muted",       "name": "Muted",       "color": "#E8E8E8" },
+				{ "slug": "border",      "name": "Border",      "color": "#D0D0D0" },
+				{ "slug": "tertiary",    "name": "Tertiary",    "color": "#888888" },
+				{ "slug": "secondary",   "name": "Secondary",   "color": "#444444" },
+				{ "slug": "contrast",    "name": "Contrast",    "color": "#000000" },
+				{ "slug": "primary",     "name": "Primary",     "color": "#000000" },
+				{ "slug": "primary-hover","name": "Primary Hover","color": "#222222" },
+				{ "slug": "accent",      "name": "Accent",      "color": "#0066CC" },
+				{ "slug": "accent-soft", "name": "Accent Soft", "color": "#D6E4FF" },
+				{ "slug": "success",     "name": "Success",     "color": "#0A7A3E" },
+				{ "slug": "warning",     "name": "Warning",     "color": "#A06B00" },
+				{ "slug": "error",       "name": "Error",       "color": "#A00000" },
+				{ "slug": "info",        "name": "Info",        "color": "#0050A0" }
+			]
+		}
+	},
+
+	"styles": {
+		"color": {
+			"background": "var(--wp--preset--color--base)",
+			"text": "var(--wp--preset--color--contrast)"
+		}
+	}
+}
