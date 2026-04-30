@@ -4,17 +4,7 @@
       "*"
     ]
   },
-  "*:wide:checkout-filled.return-to-cart-visible": {
-    "a11y-autocomplete-valid": [
-      "*"
-    ]
-  },
   "*:mobile:checkout-filled.return-to-cart-visible": {
-    "a11y-autocomplete-valid": [
-      "*"
-    ]
-  },
-  "*:tablet:checkout-filled.return-to-cart-visible": {
     "a11y-autocomplete-valid": [
       "*"
     ]
@@ -45,32 +35,6 @@
       ".wo-account-login-grid"
     ]
   },
-  "aero:wide:cart-filled": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "aero:wide:cart-filled.line-remove": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "aero:wide:checkout-filled.return-to-cart-visible": {
-    "a11y-autocomplete-valid": [
-      "*"
-    ]
-  },
-  "aero:wide:my-account": {
-    "element-overflow-x": [
-      "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid",
-      "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid > aside.wo-account-intro",
-      "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid > div.wo-account-login-form",
-      "div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid > div.wo-account-login-form > form.woocommerce-form.woocommerce-form-login"
-    ],
-    "narrow-wc-block": [
-      ".wo-account-login-grid"
-    ]
-  },
   "chonk:desktop:cart-filled": {
     "narrow-wc-block": [
       ".wc-block-cart-items"
@@ -82,24 +46,6 @@
     ]
   },
   "chonk:desktop:checkout-filled.return-to-cart-visible": {
-    "a11y-autocomplete-valid": [
-      "*"
-    ],
-    "a11y-color-contrast": [
-      "*"
-    ]
-  },
-  "chonk:wide:cart-filled": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "chonk:wide:cart-filled.line-remove": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "chonk:wide:checkout-filled.return-to-cart-visible": {
     "a11y-autocomplete-valid": [
       "*"
     ],
@@ -147,104 +93,6 @@
       "*"
     ]
   },
-  "foundry:tablet:cart-empty": {
-    "element-overflow-x": [
-      "div.wp-site-blocks:nth-of-type(1) > div.wp-block-template-part:nth-of-type(1) > header.wp-block-group.alignfull > div.wp-block-group.alignfull:nth-of-type(2) > div.wp-block-group.alignwide"
-    ]
-  },
-  "foundry:tablet:cart-filled": {
-    "element-overflow-x": [
-      "div.wp-site-blocks:nth-of-type(1) > div.wp-block-template-part:nth-of-type(1) > header.wp-block-group.alignfull > div.wp-block-group.alignfull:nth-of-type(2) > div.wp-block-group.alignwide"
-    ]
-  },
-  "foundry:tablet:cart-filled.line-remove": {
-    "element-overflow-x": [
-      "div.wp-site-blocks:nth-of-type(1) > div.wp-block-template-part:nth-of-type(1) > header.wp-block-group.alignfull > div.wp-block-group.alignfull:nth-of-type(2) > div.wp-block-group.alignwide"
-    ]
-  },
-  "foundry:tablet:category": {
-    "element-overflow-x": [
-      "div.wp-site-blocks:nth-of-type(1) > div.wp-block-template-part:nth-of-type(1) > header.wp-block-group.alignfull > div.wp-block-group.alignfull:nth-of-type(2) > div.wp-block-group.alignwide"
-    ]
-  },
-  "foundry:tablet:home": {
-    "element-overflow-x": [
-      "div.wp-site-blocks:nth-of-type(1) > div.wp-block-template-part:nth-of-type(1) > header.wp-block-group.alignfull > div.wp-block-group.alignfull:nth-of-type(2) > div.wp-block-group.alignwide"
-    ]
-  },
-  "foundry:tablet:journal": {
-    "element-overflow-x": [
-      "div.wp-site-blocks:nth-of-type(1) > div.wp-block-template-part:nth-of-type(1) > header.wp-block-group.alignfull > div.wp-block-group.alignfull:nth-of-type(2) > div.wp-block-group.alignwide"
-    ]
-  },
-  "foundry:tablet:journal-post": {
-    "element-overflow-x": [
-      "div.wp-site-blocks:nth-of-type(1) > div.wp-block-template-part:nth-of-type(1) > header.wp-block-group.alignfull > div.wp-block-group.alignfull:nth-of-type(2) > div.wp-block-group.alignwide"
-    ]
-  },
-  "foundry:tablet:my-account": {
-    "element-overflow-x": [
-      "div.wp-site-blocks:nth-of-type(1) > div.wp-block-template-part:nth-of-type(1) > header.wp-block-group.alignfull > div.wp-block-group.alignfull:nth-of-type(2) > div.wp-block-group.alignwide"
-    ]
-  },
-  "foundry:tablet:product-simple": {
-    "element-overflow-x": [
-      "div.wp-site-blocks:nth-of-type(1) > div.wp-block-template-part:nth-of-type(1) > header.wp-block-group.alignfull > div.wp-block-group.alignfull:nth-of-type(2) > div.wp-block-group.alignwide"
-    ]
-  },
-  "foundry:tablet:product-simple.qty-increment": {
-    "element-overflow-x": [
-      "div.wp-site-blocks:nth-of-type(1) > div.wp-block-template-part:nth-of-type(1) > header.wp-block-group.alignfull > div.wp-block-group.alignfull:nth-of-type(2) > div.wp-block-group.alignwide"
-    ]
-  },
-  "foundry:tablet:product-variable": {
-    "a11y-color-contrast": [
-      "*"
-    ],
-    "element-overflow-x": [
-      "div.wp-site-blocks:nth-of-type(1) > div.wp-block-template-part:nth-of-type(1) > header.wp-block-group.alignfull > div.wp-block-group.alignfull:nth-of-type(2) > div.wp-block-group.alignwide"
-    ]
-  },
-  "foundry:tablet:product-variable.swatch-pick": {
-    "a11y-color-contrast": [
-      "*"
-    ]
-  },
-  "foundry:tablet:shop": {
-    "element-overflow-x": [
-      "div.wp-site-blocks:nth-of-type(1) > div.wp-block-template-part:nth-of-type(1) > header.wp-block-group.alignfull > div.wp-block-group.alignfull:nth-of-type(2) > div.wp-block-group.alignwide"
-    ]
-  },
-  "foundry:wide:cart-filled": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "foundry:wide:cart-filled.line-remove": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "foundry:wide:checkout-filled.return-to-cart-visible": {
-    "a11y-autocomplete-valid": [
-      "*"
-    ]
-  },
-  "foundry:wide:my-account": {
-    "narrow-wc-block": [
-      ".wo-account-login-grid"
-    ]
-  },
-  "foundry:wide:product-variable": {
-    "a11y-color-contrast": [
-      "*"
-    ]
-  },
-  "foundry:wide:product-variable.swatch-pick": {
-    "a11y-color-contrast": [
-      "*"
-    ]
-  },
   "lysholm:desktop:cart-filled": {
     "narrow-wc-block": [
       ".wc-block-cart-items"
@@ -264,34 +112,6 @@
     ]
   },
   "lysholm:desktop:my-account": {
-    "element-overflow-x": [
-      "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid",
-      "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid > div.wo-account-login-form",
-      "div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid > div.wo-account-login-form > form.woocommerce-form.woocommerce-form-login"
-    ],
-    "narrow-wc-block": [
-      ".wo-account-login-grid"
-    ]
-  },
-  "lysholm:wide:cart-filled": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "lysholm:wide:cart-filled.line-remove": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "lysholm:wide:checkout-filled.return-to-cart-visible": {
-    "a11y-autocomplete-valid": [
-      "*"
-    ],
-    "a11y-color-contrast": [
-      "*"
-    ]
-  },
-  "lysholm:wide:my-account": {
     "element-overflow-x": [
       "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid",
       "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid > div.wo-account-login-form",
@@ -324,29 +144,6 @@
       ".wo-account-login-grid"
     ]
   },
-  "obel:wide:cart-filled": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "obel:wide:cart-filled.line-remove": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "obel:wide:checkout-filled.return-to-cart-visible": {
-    "a11y-autocomplete-valid": [
-      "*"
-    ],
-    "a11y-color-contrast": [
-      "*"
-    ]
-  },
-  "obel:wide:my-account": {
-    "narrow-wc-block": [
-      ".wo-account-login-grid"
-    ]
-  },
   "selvedge:desktop:cart-filled": {
     "narrow-wc-block": [
       ".wc-block-cart-items"
@@ -363,31 +160,6 @@
     ]
   },
   "selvedge:desktop:my-account": {
-    "element-overflow-x": [
-      "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid",
-      "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid > div.wo-account-login-form",
-      "div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid > div.wo-account-login-form > form.woocommerce-form.woocommerce-form-login"
-    ],
-    "narrow-wc-block": [
-      ".wo-account-login-grid"
-    ]
-  },
-  "selvedge:wide:cart-filled": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "selvedge:wide:cart-filled.line-remove": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "selvedge:wide:checkout-filled.return-to-cart-visible": {
-    "a11y-autocomplete-valid": [
-      "*"
-    ]
-  },
-  "selvedge:wide:my-account": {
     "element-overflow-x": [
       "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid",
       "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid > div.wo-account-login-form",
@@ -416,29 +188,6 @@
     ]
   },
   "agave:desktop:my-account": {
-    "narrow-wc-block": [
-      ".wo-account-login-grid"
-    ]
-  },
-  "agave:wide:cart-filled": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "agave:wide:cart-filled.line-remove": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "agave:wide:checkout-filled.return-to-cart-visible": {
-    "a11y-autocomplete-valid": [
-      "*"
-    ],
-    "a11y-color-contrast": [
-      "*"
-    ]
-  },
-  "agave:wide:my-account": {
     "narrow-wc-block": [
       ".wo-account-login-grid"
     ]

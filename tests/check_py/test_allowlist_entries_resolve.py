@@ -45,7 +45,7 @@ def test_known_cells_pass(tmp_path, monkeypatch):
     theme = _make_theme(tmp_path, "selvedge")
     allow = tmp_path / "allow.json"
     allow.write_text(
-        json.dumps({"selvedge:wide:checkout-filled": {"element-overflow-x": ["fp-a"]}}),
+        json.dumps({"selvedge:desktop:checkout-filled": {"element-overflow-x": ["fp-a"]}}),
         encoding="utf-8",
     )
     check = _import_check(monkeypatch, theme, allow)
@@ -96,7 +96,7 @@ def test_wildcard_theme_passes(tmp_path, monkeypatch):
     theme = _make_theme(tmp_path, "selvedge")
     allow = tmp_path / "allow.json"
     allow.write_text(
-        json.dumps({"*:wide:checkout-filled": {"vision:typography-overpowered": ["*"]}}),
+        json.dumps({"*:desktop:checkout-filled": {"vision:typography-overpowered": ["*"]}}),
         encoding="utf-8",
     )
     check = _import_check(monkeypatch, theme, allow)
