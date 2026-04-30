@@ -1,0 +1,84 @@
+{
+  "custom_border_width": {
+    "hairline": "1px",
+    "thick": "2px"
+  },
+  "custom_radius": {
+    "lg": "0",
+    "md": "0",
+    "none": "0",
+    "pill": "0",
+    "sm": "0",
+    "xl": "0"
+  },
+  "schema": 1,
+  "shadow_presets": [
+    {
+      "shadow": "none",
+      "slug": "xs"
+    },
+    {
+      "shadow": "none",
+      "slug": "sm"
+    },
+    {
+      "shadow": "none",
+      "slug": "md"
+    },
+    {
+      "shadow": "none",
+      "slug": "lg"
+    },
+    {
+      "shadow": "none",
+      "slug": "xl"
+    },
+    {
+      "shadow": "none",
+      "slug": "inset"
+    }
+  ],
+  "spacing_sizes": [
+    {
+      "size": "0.25rem",
+      "slug": "2-xs"
+    },
+    {
+      "size": "0.5rem",
+      "slug": "xs"
+    },
+    {
+      "size": "0.75rem",
+      "slug": "sm"
+    },
+    {
+      "size": "1.25rem",
+      "slug": "md"
+    },
+    {
+      "size": "1.5rem",
+      "slug": "lg"
+    },
+    {
+      "size": "2.5rem",
+      "slug": "xl"
+    },
+    {
+      "size": "3.5rem",
+      "slug": "2-xl"
+    },
+    {
+      "size": "5rem",
+      "slug": "3-xl"
+    },
+    {
+      "size": "7rem",
+      "slug": "4-xl"
+    },
+    {
+      "size": "10rem",
+      "slug": "5-xl"
+    }
+  ],
+  "styles_css_append": "/* bauhaus \u2014 enforce Bauhaus catalogue geometry */\n\n/* \u2500\u2500 Zero radius everywhere \u2500\u2500 */\n*,\n*::before,\n*::after {\n  border-radius: 0 !important;\n}\n\n/* \u2500\u2500 Card chrome: flat, 2 px cobalt border, no shadow \u2500\u2500 */\n.wp-block-woocommerce-product-list .wc-block-product,\n.wc-block-grid__product,\n.wp-block-post,\n.wo-product-card,\n.wc-block-components-product-image,\n.wc-block-product-template li {\n  border: 2px solid var(--wp--preset--color--border) !important;\n  box-shadow: none !important;\n  background: var(--wp--preset--color--surface);\n  border-radius: 0 !important;\n}\n\n/* \u2500\u2500 No hover elevation \u2500\u2500 */\n.wp-block-woocommerce-product-list .wc-block-product:hover,\n.wc-block-grid__product:hover,\n.wo-product-card:hover {\n  box-shadow: none !important;\n  transform: none !important;\n}\n\n/* \u2500\u2500 Section dividers \u2500\u2500 */\n.wp-block-group + .wp-block-group,\n.wp-block-separator {\n  border-top: 2px solid var(--wp--preset--color--border);\n}\n\n/* \u2500\u2500 Section vertical padding: condensed \u2500\u2500 */\n.wp-block-group.alignfull,\n.wp-block-group.alignwide {\n  padding-top: var(--wp--preset--spacing--lg) !important;\n  padding-bottom: var(--wp--preset--spacing--lg) !important;\n}\n\n/* \u2500\u2500 Hero band: cream base, full-width, no image bleed \u2500\u2500 */\n.wp-block-cover.bauhaus-hero,\n.wp-block-group.bauhaus-hero {\n  background-color: var(--wp--preset--color--base) !important;\n  background-image: none !important;\n}\n\n/* \u2500\u2500 Primary CTA button: outline, no fill, uppercase tracked \u2500\u2500 */\n.wp-block-button__link,\n.wc-block-components-button,\n.button,\nbutton {\n  background: transparent !important;\n  color: var(--wp--preset--color--contrast) !important;\n  border: 2px solid var(--wp--preset--color--contrast) !important;\n  box-shadow: none !important;\n  border-radius: 0 !important;\n  text-transform: uppercase;\n  letter-spacing: 0.12em;\n  font-weight: 600;\n  padding: 0.5rem 1.25rem;\n}\n\n.wp-block-button__link:hover,\n.wc-block-components-button:hover,\n.button:hover,\nbutton:hover {\n  background: var(--wp--preset--color--contrast) !important;\n  color: var(--wp--preset--color--base) !important;\n  box-shadow: none !important;\n}\n\n/* \u2500\u2500 Price figures: accent yellow only \u2500\u2500 */\n.wc-block-components-product-price,\n.price,\n.woocommerce-Price-amount,\n.wc-block-grid__product-price {\n  color: var(--wp--preset--color--accent) !important;\n  font-weight: 700;\n}\n\n/* \u2500\u2500 Section headings: display font, uppercase, tracked \u2500\u2500 */\nh1, h2, h3, h4, h5, h6,\n.wp-block-heading {\n  font-family: var(--wp--preset--font-family--display);\n  text-transform: uppercase;\n  letter-spacing: 0.12em;\n  color: var(--wp--preset--color--contrast);\n}\n\n/* \u2500\u2500 Body copy: sans, muted \u2500\u2500 */\nbody, p, li {\n  font-family: var(--wp--preset--font-family--sans);\n  font-weight: 400;\n  line-height: 1.5;\n  color: var(--wp--preset--color--muted);\n}\n\n/* \u2500\u2500 Links: cobalt underline only \u2500\u2500 */\na {\n  color: inherit;\n  text-decoration-color: var(--wp--preset--color--border);\n  text-decoration: underline;\n}\na:hover {\n  color: var(--wp--preset--color--border);\n}\n\n/* \u2500\u2500 Navigation links: no underline \u2500\u2500 */\n.wp-block-navigation a,\n.wp-block-navigation-item__content {\n  text-decoration: none !important;\n  text-transform: uppercase;\n  letter-spacing: 0.1em;\n  font-size: 0.8rem;\n}\n\n/* \u2500\u2500 Product grid: 4-col, 1 rem gap, no masonry \u2500\u2500 */\n.wc-block-product-template,\n.wc-block-grid__products {\n  display: grid !important;\n  grid-template-columns: repeat(4, 1fr) !important;\n  gap: 1rem !important;\n  align-items: start;\n}\n\n@media (max-width: 900px) {\n  .wc-block-product-template,\n  .wc-block-grid__products {\n    grid-template-columns: repeat(2, 1fr) !important;\n  }\n}\n\n@media (max-width: 480px) {\n  .wc-block-product-template,\n  .wc-block-grid__products {\n    grid-template-columns: 1fr !important;\n  }\n}\n\n/* \u2500\u2500 Add to Cart buttons inside grid: full-width, outline \u2500\u2500 */\n.wc-block-grid__product .wp-block-button__link,\n.wc-block-product-template .wp-block-button__link {\n  width: 100%;\n  text-align: center;\n  font-size: 0.75rem;\n  padding: 0.35rem 0.5rem;\n}\n\n/* \u2500\u2500 Input fields: no radius, 2 px border \u2500\u2500 */\ninput, select, textarea {\n  border: 2px solid var(--wp--preset--color--border) !important;\n  border-radius: 0 !important;\n  box-shadow: none !important;\n  background: var(--wp--preset--color--surface);\n}\n\n/* \u2500\u2500 Mini-cart / totals buttons: inherit outline style \u2500\u2500 */\n.wc-block-mini-cart__footer-actions a,\n.wc-block-components-totals-coupon__button,\n.wc-block-cart__submit-container .wc-block-components-checkout-place-order-button {\n  border-radius: 0 !important;\n}\n\n/* \u2500\u2500 Dense hero-to-grid transition \u2500\u2500 */\n.bauhaus-hero + .wp-block-group,\n.bauhaus-hero + section {\n  margin-top: 0 !important;\n  padding-top: var(--wp--preset--spacing--sm) !important;\n}\n"
+}

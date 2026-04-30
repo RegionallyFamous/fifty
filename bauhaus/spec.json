@@ -1,0 +1,46 @@
+{
+  "slug": "bauhaus",
+  "name": "Bauhaus",
+  "tagline": "circle + square + triangle hero icon, red + yellow + blue + cream, Universal-style geometric type",
+  "voice": "pre-1950 stationery store: warm, direct, no exclamation marks.",
+  "source": "obel",
+  "palette": {
+    "base": "#f5efe6",
+    "surface": "#ffffff",
+    "subtle": "#f9f5f0",
+    "muted": "#fcfaf8",
+    "border": "#b8b3ac",
+    "tertiary": "#13100d",
+    "secondary": "#191612",
+    "contrast": "#1f1b16",
+    "primary": "#1f1b16",
+    "primary-hover": "#4c4945",
+    "accent": "#c8281a",
+    "accent-soft": "#ecb4af"
+  },
+  "fonts": {
+    "display": {
+      "family": "Universal",
+      "fallback": "Georgia, 'Times New Roman', serif",
+      "google_font": true,
+      "weights": [
+        400,
+        700
+      ]
+    },
+    "sans": {
+      "family": "Futura Book",
+      "fallback": "-apple-system, BlinkMacSystemFont, sans-serif",
+      "google_font": true,
+      "weights": [
+        400,
+        600
+      ]
+    }
+  },
+  "layout_hints": [
+    "hand-drawn illustration banded across the full hero width",
+    "wordmark overlapping the illustration's lower third",
+    "four-up product grid below"
+  ]
+}

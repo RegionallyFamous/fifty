@@ -1,0 +1,311 @@
+{
+  "model": "gpt-image-2",
+  "prompts": {
+    "WO-BORROWED-NOSTALGIA": "Square product photograph. A small cream-linen envelope sealed with a cobalt wax circle, resting on aged cream paper beside a single pressed dried flower and a folded handwritten letter, all on a warm putty linen surface. Hard side-lighting from the left casts a clean geometric shadow. Scarlet, cobalt, and butter accents. No text, no logos.",
+    "WO-BOTTLED-MORNING": "Square product photograph. A squat amber glass bottle with a ground-glass stopper sits on a cream card stock sheet. A small cobalt circle of paper and a butter-yellow square card are arranged beside it. Morning directional light from upper-left, sharp shadow geometry on linen surface. No text, no logos.",
+    "WO-CHAOS-SEASONING": "Square product photograph. A small matte ceramic jar with a tight-fitting lid sits open, fine pale powder dusted around its base on cream paper. A cobalt triangle card and a scarlet circle of sealing wax nearby. Hard overhead studio light, linen background, Bauhaus palette. No text, no logos.",
+    "WO-COSMIC-MYSTERY-BOX": "Square product photograph. A compact square rigid box wrapped in deep cobalt paper, closed with a butter-yellow linen ribbon tied in a flat bow. Resting on cream cartridge paper, one small scarlet circle sticker on the lid corner. Studio light from upper-right, crisp shadow. No text, no logos.",
+    "WO-DEJA-VU-SESSION": "Square product photograph. A cream moleskine-style notebook open to a blank spread, a short black pencil resting diagonally across the gutter. Beside it a cobalt circle of wax and a scarlet triangular paper flag bookmark. Warm directional light, linen tabletop, geometric shadows. No text, no logos.",
+    "WO-DISCOUNT-GRAVITY": "Square product photograph. A small spherical cream paperweight with a flat base, tilted slightly on a butter-yellow card square atop a cream linen surface. A cobalt ink bottle cap and a scarlet rubber band beside it. Hard angled light from the left, clean shadows. No text, no logos.",
+    "WO-DREAD-REPELLENT": "Square product photograph. A slim matte black glass atomizer bottle with a cream rubber bulb atomizer, standing upright on a cream card sheet. A cobalt square tile and a scarlet circle cut from card stock arranged around the base. Studio light casting sharp geometric shadow on linen. No text, no logos.",
+    "WO-FOG-IN-BOTTLE": "Square product photograph. A tall clear glass apothecary bottle sealed with a cork stopper, interior surface fogged with condensation, resting on cream cartridge paper. Cobalt and scarlet geometric card pieces flanking it. Diffused side-light from the left, linen surface, minimal. No text, no logos.",
+    "WO-FORBIDDEN-HONEY": "Square product photograph. A small hexagonal glass jar of deep amber honey, lid sealed with a scarlet wax circle, sitting on a cream linen cloth. A butter-yellow square card and a cobalt ink dropper beside it. Hard directional studio light from upper-left. No text, no logos.",
+    "WO-GENTLY-USED-LUCK": "Square product photograph. A single aged brass coin with a worn face resting inside a small cream paper envelope left open, a cobalt wax seal on the flap. A scarlet square card and butter-yellow triangle of paper alongside on linen. Warm raking light, deep shadows. No text, no logos.",
+    "WO-HANDCRAFTED-ECHO": "Square product photograph. A small cream ceramic bowl with a smooth interior, a single coiled strip of cream paper inside it, cobalt and scarlet geometric paper cut-outs scattered around on linen. Studio light from upper-right, precise shadow geometry. No text, no logos.",
+    "WO-HAUNTED-CANDLE": "Square product photograph. A thick cylindrical cream beeswax candle with a burned wick, standing on a cobalt square tile. Drips of solidified wax on the tile. A scarlet circle wax seal and a butter-yellow card strip beside it on cream paper surface. Side-light, deep shadows. No text, no logos.",
+    "WO-IMAGINARY-DEED": "Square product photograph. A folded cream heavyweight paper document, accordion-folded and bound with a scarlet linen ribbon, resting flat on a linen surface. A cobalt ink stamp pad and a brass seal press beside it. Hard directional light from upper-left. No text, no logos.",
+    "WO-INTERDIM-BAZAAR": "Square product photograph. A small flat cream wooden tray holding five miniature objects: a brass ring, a cobalt glass bead, a scarlet wax chip, a butter-yellow square tile, a tiny white card. Studio light overhead, linen background, clean geometric shadows. No text, no logos.",
+    "WO-INVISIBLE-UMBRELLA": "Square product photograph. A closed miniature cream fabric parasol with a turned-wood handle, lying on its side on cream cartridge paper. A cobalt circle card and scarlet triangle card propped against it. Warm directional light from left, geometric shadow. No text, no logos.",
+    "WO-LEFT-SOCK": "Square product photograph. A single hand-knitted cream wool sock folded in thirds on a cream paper sheet, a scarlet and cobalt geometric paper band wrapped around its middle. A butter-yellow square card beside it. Hard studio light from upper-right, linen surface. No text, no logos.",
+    "WO-LOST-RECIPE-TIME": "Square product photograph. A small cream recipe card, blank, tucked into a brass card clip, resting against a cream linen background. A cobalt ink bottle, scarlet wax stamp, and butter-yellow envelope flap visible beside it. Warm side-light, clean shadows. No text, no logos.",
+    "WO-MEMORY-FOAM-MEMORY": "Square product photograph. A small square block of pale cream foam with a geometric indentation pressed into its top surface, sitting on cream card stock. A cobalt circle and scarlet triangle of paper beside it. Hard overhead light, sharp shadow on linen. No text, no logos.",
+    "WO-MONDAY-KIT": "Square product photograph. A compact cream canvas pouch with a brass zip, lying flat open to reveal a black pencil, a scarlet eraser block, and a cobalt ink cartridge inside. Butter-yellow square card under the pouch. Studio light from upper-left on linen. No text, no logos.",
+    "WO-MOON-DUST": "Square product photograph. A small circular cream ceramic dish holding a pinch of fine pale silver-grey powder. A cobalt circle card and scarlet triangle snippet arranged beside it on cream cartridge paper. Hard directional light from upper-left, geometric shadows on linen. No text, no logos.",
+    "WO-ONE-HAND-CLAPPING": "Square product photograph. A single cream cotton glove, right hand only, laid flat on cream linen with fingers slightly spread. A cobalt square card and scarlet circle wax seal placed at the wrist. Warm raking studio light from left, deep geometric shadow. No text, no logos.",
+    "WO-POCKET-THUNDER": "Square product photograph. A compact cream matte cylinder tube, sealed at both ends with cobalt wax, resting on a scarlet card square atop cream paper. A butter-yellow triangle card propped beside it. Hard directional studio light, crisp shadow geometry. No text, no logos.",
+    "WO-PORTABLE-HOLE": "Square product photograph. A flat circle of deep black matte felt, perfectly round, resting on cream card stock. A cobalt square tile and scarlet triangle of card placed at its edge. Hard overhead studio light, extreme contrast shadow on linen. No text, no logos.",
+    "WO-SENSORY-STARTER": "Square product photograph. A small cream paper gift box open to reveal five textural sample squares: rough linen, smooth card, cork, felt, and woven straw. Cobalt and scarlet geometric cards tucked beside them. Warm side-light, linen surface. No text, no logos.",
+    "WO-SILENCE-JAR": "Square product photograph. A wide-mouth clear glass jar with an airtight rubber-sealed lid, completely empty and sealed, standing on a butter-yellow square card. A cobalt circle and scarlet triangle of paper beside it on cream linen. Studio light from upper-left, clean shadow. No text, no logos.",
+    "WO-SPARE-KEY-NOWHERE": "Square product photograph. A single antique brass skeleton key resting on a cream paper envelope, a cobalt wax seal on the envelope flap, a scarlet card square beneath the key. Butter-yellow card strip beside it. Hard raking studio light on linen, deep shadow. No text, no logos.",
+    "WO-SPARE-TUESDAY": "Square product photograph. A blank cream desk calendar leaf, one page, folded and standing upright on a cobalt square tile. A scarlet circle seal and a butter-yellow triangle card propped against it on cream cartridge paper. Studio light from upper-right. No text, no logos.",
+    "WO-TANGIBLE-WIFI": "Square product photograph. A compact cream card box with a grid of small holes punched in its lid, resting on cream linen. A scarlet circle wax seal on the box side, a cobalt square card and butter-yellow triangle beside it. Hard directional studio light, geometric shadow. No text, no logos.",
+    "WO-VOID-SAMPLER": "Square product photograph. A shallow cream paper tray sectioned into four squares, each holding a different color of pigment powder: cobalt blue, scarlet red, butter yellow, and white. Hard overhead studio light, linen surface, geometric shadows. No text, no logos.",
+    "WO-WHISPERING-STONE": "Square product photograph. A smooth oval river stone in warm grey resting on a folded cream paper square. A cobalt ink dot and a scarlet wax chip placed beside it. A butter-yellow card strip under the stone. Hard directional studio light from upper-left, clean linen surface. No text, no logos."
+  },
+  "provider": "openai",
+  "records": [
+    {
+      "attempt": 1,
+      "filename": "product-wo-cosmic-mystery-box.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A compact square rigid box wrapped in deep cobalt paper, closed with a butter-yellow linen ribbon tied in a flat bow. Resting on cream cartridge paper, one small scarlet circle sticker on the lid corner. Studio light from upper-right, crisp shadow. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-COSMIC-MYSTERY-BOX",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-dread-repellent.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A slim matte black glass atomizer bottle with a cream rubber bulb atomizer, standing upright on a cream card sheet. A cobalt square tile and a scarlet circle cut from card stock arranged around the base. Studio light casting sharp geometric shadow on linen. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-DREAD-REPELLENT",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-bottled-morning.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A squat amber glass bottle with a ground-glass stopper sits on a cream card stock sheet. A small cobalt circle of paper and a butter-yellow square card are arranged beside it. Morning directional light from upper-left, sharp shadow geometry on linen surface. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-BOTTLED-MORNING",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-fog-in-bottle.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A tall clear glass apothecary bottle sealed with a cork stopper, interior surface fogged with condensation, resting on cream cartridge paper. Cobalt and scarlet geometric card pieces flanking it. Diffused side-light from the left, linen surface, minimal. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-FOG-IN-BOTTLE",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-discount-gravity.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small spherical cream paperweight with a flat base, tilted slightly on a butter-yellow card square atop a cream linen surface. A cobalt ink bottle cap and a scarlet rubber band beside it. Hard angled light from the left, clean shadows. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-DISCOUNT-GRAVITY",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-deja-vu-session.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A cream moleskine-style notebook open to a blank spread, a short black pencil resting diagonally across the gutter. Beside it a cobalt circle of wax and a scarlet triangular paper flag bookmark. Warm directional light, linen tabletop, geometric shadows. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-DEJA-VU-SESSION",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-borrowed-nostalgia.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small cream-linen envelope sealed with a cobalt wax circle, resting on aged cream paper beside a single pressed dried flower and a folded handwritten letter, all on a warm putty linen surface. Hard side-lighting from the left casts a clean geometric shadow. Scarlet, cobalt, and butter accents. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-BORROWED-NOSTALGIA",
+      "status": "generated"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-forbidden-honey.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small hexagonal glass jar of deep amber honey, lid sealed with a scarlet wax circle, sitting on a cream linen cloth. A butter-yellow square card and a cobalt ink dropper beside it. Hard directional studio light from upper-left. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-FORBIDDEN-HONEY",
+      "status": "failed"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-chaos-seasoning.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small matte ceramic jar with a tight-fitting lid sits open, fine pale powder dusted around its base on cream paper. A cobalt triangle card and a scarlet circle of sealing wax nearby. Hard overhead studio light, linen background, Bauhaus palette. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-CHAOS-SEASONING",
+      "status": "generated"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-handcrafted-echo.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small cream ceramic bowl with a smooth interior, a single coiled strip of cream paper inside it, cobalt and scarlet geometric paper cut-outs scattered around on linen. Studio light from upper-right, precise shadow geometry. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-HANDCRAFTED-ECHO",
+      "status": "failed"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-imaginary-deed.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A folded cream heavyweight paper document, accordion-folded and bound with a scarlet linen ribbon, resting flat on a linen surface. A cobalt ink stamp pad and a brass seal press beside it. Hard directional light from upper-left. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-IMAGINARY-DEED",
+      "status": "failed"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-interdim-bazaar.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small flat cream wooden tray holding five miniature objects: a brass ring, a cobalt glass bead, a scarlet wax chip, a butter-yellow square tile, a tiny white card. Studio light overhead, linen background, clean geometric shadows. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-INTERDIM-BAZAAR",
+      "status": "failed"
+    },
+    {
+      "attempt": 2,
+      "filename": "product-wo-gently-used-luck.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A single aged brass coin with a worn face resting inside a small cream paper envelope left open, a cobalt wax seal on the flap. A scarlet square card and butter-yellow triangle of paper alongside on linen. Warm raking light, deep shadows. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-GENTLY-USED-LUCK",
+      "status": "generated"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-left-sock.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A single hand-knitted cream wool sock folded in thirds on a cream paper sheet, a scarlet and cobalt geometric paper band wrapped around its middle. A butter-yellow square card beside it. Hard studio light from upper-right, linen surface. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-LEFT-SOCK",
+      "status": "failed"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-lost-recipe-time.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small cream recipe card, blank, tucked into a brass card clip, resting against a cream linen background. A cobalt ink bottle, scarlet wax stamp, and butter-yellow envelope flap visible beside it. Warm side-light, clean shadows. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-LOST-RECIPE-TIME",
+      "status": "generated"
+    },
+    {
+      "attempt": 2,
+      "filename": "product-wo-haunted-candle.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A thick cylindrical cream beeswax candle with a burned wick, standing on a cobalt square tile. Drips of solidified wax on the tile. A scarlet circle wax seal and a butter-yellow card strip beside it on cream paper surface. Side-light, deep shadows. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-HAUNTED-CANDLE",
+      "status": "generated"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-moon-dust.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small circular cream ceramic dish holding a pinch of fine pale silver-grey powder. A cobalt circle card and scarlet triangle snippet arranged beside it on cream cartridge paper. Hard directional light from upper-left, geometric shadows on linen. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-MOON-DUST",
+      "status": "failed"
+    },
+    {
+      "attempt": 3,
+      "filename": "product-wo-invisible-umbrella.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A closed miniature cream fabric parasol with a turned-wood handle, lying on its side on cream cartridge paper. A cobalt circle card and scarlet triangle card propped against it. Warm directional light from left, geometric shadow. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-INVISIBLE-UMBRELLA",
+      "status": "generated"
+    },
+    {
+      "attempt": 2,
+      "filename": "product-wo-one-hand-clapping.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A single cream cotton glove, right hand only, laid flat on cream linen with fingers slightly spread. A cobalt square card and scarlet circle wax seal placed at the wrist. Warm raking studio light from left, deep geometric shadow. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-ONE-HAND-CLAPPING",
+      "status": "generated"
+    },
+    {
+      "attempt": 2,
+      "filename": "product-wo-memory-foam-memory.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small square block of pale cream foam with a geometric indentation pressed into its top surface, sitting on cream card stock. A cobalt circle and scarlet triangle of paper beside it. Hard overhead light, sharp shadow on linen. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-MEMORY-FOAM-MEMORY",
+      "status": "generated"
+    },
+    {
+      "attempt": 3,
+      "filename": "product-wo-pocket-thunder.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A compact cream matte cylinder tube, sealed at both ends with cobalt wax, resting on a scarlet card square atop cream paper. A butter-yellow triangle card propped beside it. Hard directional studio light, crisp shadow geometry. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-POCKET-THUNDER",
+      "status": "generated"
+    },
+    {
+      "attempt": 4,
+      "filename": "product-wo-monday-kit.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A compact cream canvas pouch with a brass zip, lying flat open to reveal a black pencil, a scarlet eraser block, and a cobalt ink cartridge inside. Butter-yellow square card under the pouch. Studio light from upper-left on linen. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-MONDAY-KIT",
+      "status": "generated"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-portable-hole.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A flat circle of deep black matte felt, perfectly round, resting on cream card stock. A cobalt square tile and scarlet triangle of card placed at its edge. Hard overhead studio light, extreme contrast shadow on linen. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-PORTABLE-HOLE",
+      "status": "failed"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-sensory-starter.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small cream paper gift box open to reveal five textural sample squares: rough linen, smooth card, cork, felt, and woven straw. Cobalt and scarlet geometric cards tucked beside them. Warm side-light, linen surface. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-SENSORY-STARTER",
+      "status": "failed"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-void-sampler.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A shallow cream paper tray sectioned into four squares, each holding a different color of pigment powder: cobalt blue, scarlet red, butter yellow, and white. Hard overhead studio light, linen surface, geometric shadows. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-VOID-SAMPLER",
+      "status": "generated"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-spare-key-nowhere.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A single antique brass skeleton key resting on a cream paper envelope, a cobalt wax seal on the envelope flap, a scarlet card square beneath the key. Butter-yellow card strip beside it. Hard raking studio light on linen, deep shadow. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-SPARE-KEY-NOWHERE",
+      "status": "failed"
+    },
+    {
+      "attempt": 3,
+      "filename": "product-wo-spare-tuesday.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A blank cream desk calendar leaf, one page, folded and standing upright on a cobalt square tile. A scarlet circle seal and a butter-yellow triangle card propped against it on cream cartridge paper. Studio light from upper-right. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-SPARE-TUESDAY",
+      "status": "generated"
+    },
+    {
+      "attempt": 2,
+      "filename": "product-wo-silence-jar.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A wide-mouth clear glass jar with an airtight rubber-sealed lid, completely empty and sealed, standing on a butter-yellow square card. A cobalt circle and scarlet triangle of paper beside it on cream linen. Studio light from upper-left, clean shadow. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-SILENCE-JAR",
+      "status": "generated"
+    },
+    {
+      "attempt": 4,
+      "filename": "product-wo-whispering-stone.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A smooth oval river stone in warm grey resting on a folded cream paper square. A cobalt ink dot and a scarlet wax chip placed beside it. A butter-yellow card strip under the stone. Hard directional studio light from upper-left, clean linen surface. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-WHISPERING-STONE",
+      "status": "generated"
+    },
+    {
+      "attempt": 4,
+      "filename": "product-wo-tangible-wifi.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A compact cream card box with a grid of small holes punched in its lid, resting on cream linen. A scarlet circle wax seal on the box side, a cobalt square card and butter-yellow triangle beside it. Hard directional studio light, geometric shadow. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-TANGIBLE-WIFI",
+      "status": "generated"
+    }
+  ],
+  "schema": 2,
+  "status": "partial",
+  "theme": "bauhaus"
+}
