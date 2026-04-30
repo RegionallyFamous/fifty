@@ -690,7 +690,7 @@ if ( ! function_exists( 'xerox_render_account_dashboard' ) ) {
 }
 
 if ( ! function_exists( 'xerox_render_account_orders' ) ) {
-	function xerox_render_account_orders( int $current_page = 1 ): void {
+	function xerox_render_account_orders( $current_page = 1 ): void {
 		if ( ! function_exists( 'wc_get_orders' ) || ! is_user_logged_in() ) {
 			woocommerce_account_orders( $current_page );
 			return;
