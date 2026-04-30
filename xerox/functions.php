@@ -799,6 +799,14 @@ add_filter(
 );
 // === END body-class ===
 
+add_action(
+	'wp_head',
+	static function (): void {
+		echo '<style id="xerox-account-notice-button">.woocommerce-account .wc-block-components-notice-banner .woocommerce-Button{color:var(--wp--preset--color--contrast);background:var(--wp--preset--color--base);border:var(--wp--custom--border--width--hairline) solid var(--wp--preset--color--contrast);padding:var(--wp--preset--spacing--xs) var(--wp--preset--spacing--sm);min-height:32px;display:inline-flex;align-items:center;text-decoration:none}</style>';
+	},
+	99
+);
+
 // === BEGIN swatches ===
 //
 // Variation-attribute swatches on the variable PDP. Replaces the
