@@ -1,0 +1,56 @@
+{
+  "findings": [
+    {
+      "severity": "error",
+      "kind": "duplicate-h1",
+      "message": "2 visible <h1> elements on this page (samples: \"Cart\", \"Your selection holds nothing at present.\"). Pages should have exactly one <h1> for both SEO and a11y.",
+      "selector": "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(2) > div.wp-block-woocommerce-cart.alignwide > div.wp-block-woocommerce-empty-cart-block.wo-empty:nth-of-type(4) > h1.wp-block-heading.has-text-align-center",
+      "fingerprint": "count=2",
+      "count": 2,
+      "crop_path": "tmp/snaps/distillery/desktop/cart-empty.duplicate-h1.0.crop.jpg"
+    },
+    {
+      "severity": "info",
+      "kind": "inspect-selector-missing",
+      "message": "Selector `.wc-block-cart` matched 0 elements on this page.",
+      "selector": ".wc-block-cart"
+    },
+    {
+      "severity": "warn",
+      "kind": "a11y-heading-order",
+      "message": "Heading levels should only increase by one (1 node(s)) \u2014 first: .wp-block-column.wp-block-column-is-layout-flow.is-layout-flow:nth-child(2) > h3",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/heading-order?application=axeAPI",
+      "axe_impact": "moderate",
+      "axe_node_count": 1,
+      "axe_first_selectors": [
+        ".wp-block-column.wp-block-column-is-layout-flow.is-layout-flow:nth-child(2) > h3"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/distillery/desktop/cart-empty.a11y-heading-order.0.crop.jpg"
+    }
+  ],
+  "selectors": [
+    {
+      "selector": ".wc-block-cart",
+      "count": 0,
+      "instances": [],
+      "missing": true
+    }
+  ],
+  "dom": {
+    "width": 1280,
+    "height": 800,
+    "scrollWidth": 1280,
+    "scrollHeight": 1568
+  },
+  "bg_image_pairs": [],
+  "theme": "distillery",
+  "viewport": "desktop",
+  "route": "cart-empty",
+  "url": "http://127.0.0.1:9401/cart/",
+  "navigation_error": null,
+  "console": [],
+  "page_errors": [],
+  "network_failures": [],
+  "a11y_path": "tmp/snaps/distillery/desktop/cart-empty.a11y.json"
+}

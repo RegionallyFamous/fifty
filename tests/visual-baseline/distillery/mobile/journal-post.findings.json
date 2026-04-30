@@ -1,0 +1,52 @@
+{
+  "findings": [
+    {
+      "severity": "error",
+      "kind": "a11y-color-contrast",
+      "message": "Elements must meet minimum color contrast ratio thresholds (8 node(s)) \u2014 first: .wp-block-post-author-name",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+      "axe_impact": "serious",
+      "axe_node_count": 8,
+      "axe_first_selectors": [
+        ".wp-block-post-author-name",
+        "time[datetime=\"2026-04-10T14:00:00+00:00\"]",
+        ".wp-block-post-time-to-read"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/distillery/mobile/journal-post.a11y-color-contrast.0.crop.jpg"
+    }
+  ],
+  "selectors": [
+    {
+      "selector": ".entry-content.wp-block-post-content",
+      "count": 1,
+      "instances": [
+        {
+          "width": 342,
+          "height": 1320,
+          "visible": true,
+          "display": "flow-root",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "780px"
+        }
+      ]
+    }
+  ],
+  "dom": {
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "scrollHeight": 4719
+  },
+  "bg_image_pairs": [],
+  "theme": "distillery",
+  "viewport": "mobile",
+  "route": "journal-post",
+  "url": "http://127.0.0.1:9401/caring-for-your-portable-hole/",
+  "navigation_error": null,
+  "console": [],
+  "page_errors": [],
+  "network_failures": [],
+  "a11y_path": "tmp/snaps/distillery/mobile/journal-post.a11y.json"
+}

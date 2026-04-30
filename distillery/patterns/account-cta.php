@@ -16,7 +16,7 @@
 	<!-- /wp:heading -->
 
 	<!-- wp:paragraph {"align":"center","textColor":"base","style":{"spacing":{"margin":{"top":"0","bottom":"var:preset|spacing|md"}}}} -->
-	<p class="has-text-align-center has-base-color has-text-color" style="margin-top:0;margin-bottom:var(--wp--preset--spacing--md)"><?php esc_html_e( 'Your reservation ledger, preferred dispatch addresses, and noted selections — all secured behind a single sign-in. Returning? Continue precisely where you left off.', 'distillery' ); ?></p>
+	<p class="has-text-align-center has-base-color has-text-color" style="margin-top:0;margin-bottom:var(--wp--preset--spacing--md)"><?php esc_html_e( 'Your reservation ledger, cellar preferences, and noted selections — all secured behind a single sign-in. Returning? Continue precisely where you left off.', 'distillery' ); ?></p>
 	<!-- /wp:paragraph -->
 
 	<!-- wp:buttons {"layout":{"type":"flex","justifyContent":"center"},"style":{"spacing":{"blockGap":"var:preset|spacing|sm"}}} -->

@@ -1,0 +1,155 @@
+{
+  "findings": [
+    {
+      "severity": "error",
+      "kind": "a11y-color-contrast",
+      "message": "Elements must meet minimum color contrast ratio thresholds (1 node(s)) \u2014 first: .wp-block-post-terms__prefix",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+      "axe_impact": "serious",
+      "axe_node_count": 1,
+      "axe_first_selectors": [
+        ".wp-block-post-terms__prefix"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/distillery/desktop/product-variable.swatch-pick.a11y-color-contrast.0.crop.jpg"
+    }
+  ],
+  "selectors": [
+    {
+      "selector": "table.variations",
+      "count": 1,
+      "instances": [
+        {
+          "width": 402,
+          "height": 339,
+          "visible": true,
+          "display": "block",
+          "grid_template_columns": "none",
+          "min_width": "auto",
+          "max_width": "none"
+        }
+      ]
+    },
+    {
+      "selector": ".wo-swatch-wrap",
+      "count": 2,
+      "instances": [
+        {
+          "width": 291,
+          "height": 40,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        },
+        {
+          "width": 291,
+          "height": 40,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        }
+      ]
+    },
+    {
+      "selector": ".wo-swatch-group",
+      "count": 2,
+      "instances": [
+        {
+          "width": 291,
+          "height": 40,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "auto",
+          "max_width": "none"
+        },
+        {
+          "width": 291,
+          "height": 40,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "auto",
+          "max_width": "none"
+        }
+      ]
+    },
+    {
+      "selector": ".wo-swatch",
+      "count": 5,
+      "instances": [
+        {
+          "width": 86,
+          "height": 40,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "auto",
+          "max_width": "none"
+        },
+        {
+          "width": 97,
+          "height": 40,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "auto",
+          "max_width": "none"
+        },
+        {
+          "width": 84,
+          "height": 40,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "auto",
+          "max_width": "none"
+        },
+        {
+          "width": 40,
+          "height": 40,
+          "visible": true,
+          "display": "flex",
+          "grid_template_columns": "none",
+          "min_width": "40px",
+          "max_width": "none"
+        }
+      ]
+    },
+    {
+      "selector": ".wp-block-post-featured-image",
+      "count": 1,
+      "instances": [
+        {
+          "width": 660,
+          "height": 660,
+          "visible": true,
+          "display": "block",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        }
+      ]
+    }
+  ],
+  "dom": {
+    "width": 1280,
+    "height": 800,
+    "scrollWidth": 1280,
+    "scrollHeight": 2431
+  },
+  "bg_image_pairs": [],
+  "theme": "distillery",
+  "viewport": "desktop",
+  "route": "product-variable.swatch-pick",
+  "url": "http://127.0.0.1:9401/product/bottled-morning-variants/",
+  "navigation_error": null,
+  "console": [],
+  "page_errors": [],
+  "network_failures": [],
+  "a11y_path": "tmp/snaps/distillery/desktop/product-variable.swatch-pick.a11y.json"
+}

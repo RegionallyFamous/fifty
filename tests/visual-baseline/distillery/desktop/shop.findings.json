@@ -1,0 +1,65 @@
+{
+  "findings": [
+    {
+      "severity": "error",
+      "kind": "a11y-color-contrast",
+      "message": "Elements must meet minimum color contrast ratio thresholds (1 node(s)) \u2014 first: .wc-block-product-results-count",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+      "axe_impact": "serious",
+      "axe_node_count": 1,
+      "axe_first_selectors": [
+        ".wc-block-product-results-count"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/distillery/desktop/shop.a11y-color-contrast.0.crop.jpg"
+    }
+  ],
+  "selectors": [
+    {
+      "selector": ".wp-block-woocommerce-product-template",
+      "count": 1,
+      "instances": [
+        {
+          "width": 1200,
+          "height": 1734,
+          "visible": true,
+          "display": "grid",
+          "grid_template_columns": "284.188px 284.188px 284.188px 284.203px",
+          "min_width": "0px",
+          "max_width": "100%"
+        }
+      ]
+    },
+    {
+      "selector": ".wc-block-product-template",
+      "count": 1,
+      "instances": [
+        {
+          "width": 1200,
+          "height": 1734,
+          "visible": true,
+          "display": "grid",
+          "grid_template_columns": "284.188px 284.188px 284.188px 284.203px",
+          "min_width": "0px",
+          "max_width": "100%"
+        }
+      ]
+    }
+  ],
+  "dom": {
+    "width": 1280,
+    "height": 800,
+    "scrollWidth": 1280,
+    "scrollHeight": 3560
+  },
+  "bg_image_pairs": [],
+  "theme": "distillery",
+  "viewport": "desktop",
+  "route": "shop",
+  "url": "http://127.0.0.1:9401/shop/",
+  "navigation_error": null,
+  "console": [],
+  "page_errors": [],
+  "network_failures": [],
+  "a11y_path": "tmp/snaps/distillery/desktop/shop.a11y.json"
+}

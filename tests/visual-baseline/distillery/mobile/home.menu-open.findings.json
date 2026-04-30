@@ -1,0 +1,103 @@
+{
+  "findings": [
+    {
+      "severity": "warn",
+      "kind": "a11y-landmark-banner-is-top-level",
+      "message": "Banner landmark should not be contained in another landmark (1 node(s)) \u2014 first: .distillery-header",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/landmark-banner-is-top-level?application=axeAPI",
+      "axe_impact": "moderate",
+      "axe_node_count": 1,
+      "axe_first_selectors": [
+        ".distillery-header"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/distillery/mobile/home.menu-open.a11y-landmark-banner-is-top-level.0.crop.jpg"
+    },
+    {
+      "severity": "warn",
+      "kind": "a11y-landmark-contentinfo-is-top-level",
+      "message": "Contentinfo landmark should not be contained in another landmark (1 node(s)) \u2014 first: .has-subtle-background-color",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/landmark-contentinfo-is-top-level?application=axeAPI",
+      "axe_impact": "moderate",
+      "axe_node_count": 1,
+      "axe_first_selectors": [
+        ".has-subtle-background-color"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/distillery/mobile/home.menu-open.a11y-landmark-contentinfo-is-top-level.0.crop.jpg"
+    },
+    {
+      "severity": "warn",
+      "kind": "a11y-landmark-no-duplicate-banner",
+      "message": "Document should not have more than one banner landmark (1 node(s)) \u2014 first: .wp-site-blocks > header",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/landmark-no-duplicate-banner?application=axeAPI",
+      "axe_impact": "moderate",
+      "axe_node_count": 1,
+      "axe_first_selectors": [
+        ".wp-site-blocks > header"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/distillery/mobile/home.menu-open.a11y-landmark-no-duplicate-banner.0.crop.jpg"
+    },
+    {
+      "severity": "warn",
+      "kind": "a11y-landmark-no-duplicate-contentinfo",
+      "message": "Document should not have more than one contentinfo landmark (1 node(s)) \u2014 first: .wp-site-blocks > footer",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/landmark-no-duplicate-contentinfo?application=axeAPI",
+      "axe_impact": "moderate",
+      "axe_node_count": 1,
+      "axe_first_selectors": [
+        ".wp-site-blocks > footer"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/distillery/mobile/home.menu-open.a11y-landmark-no-duplicate-contentinfo.0.crop.jpg"
+    },
+    {
+      "severity": "warn",
+      "kind": "a11y-landmark-unique",
+      "message": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination (2 node(s)) \u2014 first: .wp-site-blocks > header",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/landmark-unique?application=axeAPI",
+      "axe_impact": "moderate",
+      "axe_node_count": 2,
+      "axe_first_selectors": [
+        ".wp-site-blocks > header",
+        ".wp-site-blocks > footer"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/distillery/mobile/home.menu-open.a11y-landmark-unique.0.crop.jpg"
+    }
+  ],
+  "selectors": [
+    {
+      "selector": ".wp-site-blocks > main",
+      "count": 1,
+      "instances": [
+        {
+          "width": 390,
+          "height": 3457,
+          "visible": true,
+          "display": "block",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "none"
+        }
+      ]
+    }
+  ],
+  "dom": {
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "scrollHeight": 4713
+  },
+  "bg_image_pairs": [],
+  "theme": "distillery",
+  "viewport": "mobile",
+  "route": "home.menu-open",
+  "url": "http://127.0.0.1:9401/",
+  "navigation_error": null,
+  "console": [],
+  "page_errors": [],
+  "network_failures": [],
+  "a11y_path": "tmp/snaps/distillery/mobile/home.menu-open.a11y.json"
+}
