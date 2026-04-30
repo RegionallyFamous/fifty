@@ -40,7 +40,7 @@
 				{
 					"slug": "muted",
 					"name": "Muted",
-					"color": "#a09a8e"
+					"color": "#56514a"
 				},
 				{
 					"slug": "border",
@@ -75,7 +75,7 @@
 				{
 					"slug": "accent",
 					"name": "Accent",
-					"color": "#e8400a"
+					"color": "#b83200"
 				},
 				{
 					"slug": "accent-soft",
@@ -173,27 +173,7 @@
 				{
 					"slug": "sans",
 					"name": "Sans",
-					"fontFamily": "\"Courier Prime\", Courier New, monospace",
-					"fontFace": [
-						{
-							"fontFamily": "Courier Prime",
-							"fontWeight": "400",
-							"fontStyle": "normal",
-							"fontDisplay": "swap",
-							"src": [
-								"file:./assets/fonts/sans-400.woff2"
-							]
-						},
-						{
-							"fontFamily": "Courier Prime",
-							"fontWeight": "700",
-							"fontStyle": "normal",
-							"fontDisplay": "swap",
-							"src": [
-								"file:./assets/fonts/sans-700.woff2"
-							]
-						}
-					]
+					"fontFamily": "\"Courier New\", Courier, monospace"
 				},
 				{
 					"slug": "serif",
@@ -208,27 +188,7 @@
 				{
 					"slug": "display",
 					"name": "Display",
-					"fontFamily": "\"Courier Prime\", Courier New, monospace",
-					"fontFace": [
-						{
-							"fontFamily": "Courier Prime",
-							"fontWeight": "400",
-							"fontStyle": "normal",
-							"fontDisplay": "swap",
-							"src": [
-								"file:./assets/fonts/display-400.woff2"
-							]
-						},
-						{
-							"fontFamily": "Courier Prime",
-							"fontWeight": "700",
-							"fontStyle": "normal",
-							"fontDisplay": "swap",
-							"src": [
-								"file:./assets/fonts/display-700.woff2"
-							]
-						}
-					]
+					"fontFamily": "\"Courier New\", Courier, monospace"
 				}
 			],
 			"fontSizes": [
