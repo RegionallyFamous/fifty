@@ -1,17 +1,13 @@
 name: publish demo site
 
-# Rebuild the GH Pages demo site (docs/) after any push to main.
-# This is deliberately separate from the theme-building pipeline:
-# design.py no longer runs bin/build-redirects.py as a per-theme phase.
-# Instead, this workflow owns the demo-publishing concern and runs once
-# per push (not once per theme), so concurrent batch builds don't race.
+# Rebuild and deploy the GH Pages demo site after any push to main.
+# Uses actions/deploy-pages so no git push to main is needed — GITHUB_TOKEN
+# with pages:write is sufficient, no PAT required.
 
 on:
   push:
     branches: [main]
     paths:
-      # Rebuild when a theme's blueprint or any shipped file changes —
-      # a new redirect page or landing-page entry may be needed.
       - "*/playground/blueprint.json"
       - "*/theme.json"
       - "docs/**"
@@ -19,25 +15,33 @@ on:
       - "bin/build-redirects.py"
       - "bin/_lib.py"
 
-  # Allow manual trigger from the Actions tab.
   workflow_dispatch:
 
 permissions:
-  contents: write   # needed to push the docs/ commit back to main
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deployment at a time; cancel in-progress if a newer push
+# lands while we're building.
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   publish:
-    name: rebuild & push docs/
+    name: rebuild & deploy to Pages
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
-          # Full history so we can commit + push without a detached HEAD.
           fetch-depth: 0
-          token: ${{ secrets.FIFTY_AUTO_PAT || github.token }}
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
@@ -47,14 +51,11 @@ jobs:
       - name: rebuild docs/
         run: python3 bin/build-redirects.py
 
-      - name: commit & push if docs/ changed
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/ mockups/
-          if git diff --cached --quiet; then
-            echo "No docs/ changes to push."
-          else
-            git commit -m "demo: auto-rebuild redirects [skip ci]"
-            git push
-          fi
+      - name: upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/
+
+      - name: deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
