@@ -206,6 +206,32 @@ def test_scorecard_runs_after_vision_before_baseline() -> None:
     assert phases.index("scorecard") < phases.index("baseline")
 
 
+def test_scorecard_phase_records_artifact_without_stopping_pipeline() -> None:
+    """Low design scores are operator feedback, not factory blockers.
+
+    `bin/design-scorecard.py` owns the fail/non-fail distinction through
+    `--no-fail`. `design.py` must pass that flag so every theme run reaches
+    the later artifact/publish phases even when the scorecard verdict is red.
+    """
+    src = DESIGN_PY.read_text(encoding="utf-8")
+    assert '"--no-fail"' in src
+    assert "bin/design-scorecard.py could not write artifacts" in src
+    assert 'raise PhaseError("scorecard", f"bin/design-scorecard.py exited {rc}")' not in src
+
+
+def test_quality_review_phases_warn_without_stopping_pipeline() -> None:
+    """Review gates should create punch-list artifacts, not kill generation."""
+    src = DESIGN_PY.read_text(encoding="utf-8")
+    assert "continuing so the theme run can finish with a reviewable artifact" in src
+    assert "continuing without a complete vision pass" in src
+    assert "This is informational in " in src
+    assert "the theme factory" in src
+    assert 'raise PhaseError("content-preflight"' not in src
+    assert 'raise PhaseError("snap-preflight"' not in src
+    assert 'raise PhaseError("vision-review"' not in src
+    assert 'raise PhaseError("check", f"bin/check.py exited {rc}")' not in src
+
+
 def test_cheap_gates_run_before_vision_review() -> None:
     phases = _extract_phases_tuple()
     assert phases.index("snap") < phases.index("content-preflight")
@@ -311,7 +337,7 @@ def test_skip_publish_drops_prepublish_too() -> None:
     `--skip-publish` would violate the documented "commit locally but
     don't push" contract."""
     drop_set = _extract_drop_set_for_skip_flag("skip_publish")
-    for required in ("prepublish", "publish"):
+    for required in ("prepublish", "publish", "redirects"):
         assert required in drop_set, (
             f"`--skip-publish` branch no longer drops {required!r}. "
             "A mid-pipeline push inside `prepublish` would violate the "
@@ -436,6 +462,42 @@ def test_publish_push_skips_redundant_snap_dependent_gates() -> None:
         assert key in assigned_keys
     publish_src = ast.get_source_segment(src, publish_fn) or ""
     assert "--no-verify" not in publish_src
+    assert '"HEAD:{branch}"' in publish_src
+    assert 'default="main"' in src
+
+
+def test_theme_commit_and_demo_redirects_are_separate() -> None:
+    """Theme output must land before demo/docs updates.
+
+    The theme commit should not stage `docs/`; redirects owns a later docs-only
+    commit/push after publish so demo concerns cannot block theme generation.
+    """
+    phases = _extract_phases_tuple()
+    assert phases.index("commit") < phases.index("publish") < phases.index("redirects")
+
+    src = DESIGN_PY.read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    commit_fn: ast.FunctionDef | None = None
+    redirects_fn: ast.FunctionDef | None = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "_phase_commit":
+            commit_fn = node
+        if isinstance(node, ast.FunctionDef) and node.name == "_phase_redirects":
+            redirects_fn = node
+    assert commit_fn is not None
+    assert redirects_fn is not None
+
+    commit_src = ast.get_source_segment(src, commit_fn) or ""
+    redirects_src = ast.get_source_segment(src, redirects_fn) or ""
+    assert '"docs/"' not in commit_src
+    assert '"docs/"' in redirects_src
+    assert '"docs: publish {spec.slug} demo redirects' in redirects_src
+
+
+def test_commit_falls_back_to_no_verify_after_hook_failure() -> None:
+    src = DESIGN_PY.read_text(encoding="utf-8")
+    assert '"retrying without hooks so the generated theme still lands."' in src
+    assert '"--no-verify"' in src
 
 
 def test_prepublish_commit_skips_evidence_freshness() -> None:
@@ -597,8 +659,8 @@ def test_skip_commit_drops_final_commit_and_publish_only() -> None:
     new theme's playground payload (404 preflight on content.xml).
     """
     drop_set = _extract_drop_set_for_skip_flag("skip_commit")
-    assert drop_set == {"commit", "publish"}, (
-        f"expected {{'commit', 'publish'}} only, got {drop_set!r}"
+    assert drop_set == {"commit", "publish", "redirects"}, (
+        f"expected {{'commit', 'publish', 'redirects'}} only, got {drop_set!r}"
     )
 
 

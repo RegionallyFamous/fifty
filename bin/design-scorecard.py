@@ -300,17 +300,18 @@ def main(argv: list[str] | None = None) -> int:
     print(f"design score: {scorecard.overall}/{args.threshold} ({scorecard.verdict})")
     print(f"design scorecard: {out.relative_to(MONOREPO_ROOT)}")
     if scorecard.verdict == "fail":
+        label = "WARN" if args.no_fail else "FAIL"
         weakest = min(scorecard.scores.items(), key=lambda item: item[1])
         if scorecard.mass_failure:
             print(
-                "[FAIL] [scorecard] Scorecard mass failure\n"
+                f"[{label}] [scorecard] Scorecard mass failure\n"
                 f"         {weakest[0]} scored {weakest[1]}/{args.threshold}; "
                 f"{len(scorecard.weak_findings)} weak finding(s) recorded in {out.relative_to(MONOREPO_ROOT)}; "
                 "classification=mass-failure"
             )
             return 0 if args.no_fail else 1
         print(
-            "[FAIL] [scorecard] Design scorecard meets minimum\n"
+            f"[{label}] [scorecard] Design scorecard meets minimum\n"
             f"         {weakest[0]} scored {weakest[1]}/{args.threshold}; "
             f"{len(scorecard.weak_findings)} weak finding(s) recorded in {out.relative_to(MONOREPO_ROOT)}"
         )

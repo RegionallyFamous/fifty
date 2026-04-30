@@ -16,12 +16,37 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
 MONOREPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _load_dotenv() -> None:
+    """Load key=value pairs from .env at the monorepo root into os.environ.
+
+    Only sets variables that are not already present in the environment,
+    so CI-injected values (GitHub Actions secrets, etc.) always take precedence.
+    Silently skips missing .env files — this is purely an opt-in local convenience.
+    """
+    env_path = MONOREPO_ROOT / ".env"
+    if not env_path.is_file():
+        return
+    for raw in env_path.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+_load_dotenv()
 
 # Files that can change rendered output for every theme. Keep this narrow:
 # unrelated tooling under bin/ must not turn a one-theme PR into a fleet gate.

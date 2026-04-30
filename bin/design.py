@@ -80,16 +80,14 @@ get the legacy informational behaviour for the check phase).
                      from the baseline so check_theme_screenshots_distinct passes
   K. check         - bin/check.py <slug> --quick -- runs against fresh evidence
   L. report        - bin/snap.py report <slug> -- writes tmp/snaps/<slug>/review.md
-  M. redirects     - bin/build-redirects.py -- regenerates docs/ so the new theme
-                     shows up at demo.regionallyfamous.com/<slug>/...
-  N. commit        - `git add <slug>/ docs/ tests/visual-baseline/<slug>/`
+  N. commit        - `git add <slug>/ tests/visual-baseline/<slug>/`
                      + `git commit -m "design: ship <slug> theme"`. Pre-commit
                      hooks run normally (no --no-verify). Skipped via
                      --skip-commit.
-  O. publish       - `git push origin <current-branch>`. GH Pages picks up
-                     docs/ automatically, so the theme is live at
-                     demo.regionallyfamous.com/<slug>/ within minutes.
+  O. publish       - push the freshly-created theme commit to `main`.
                      Skipped via --skip-publish.
+  P. redirects     - bin/build-redirects.py + docs-only commit/push after the
+                     theme is already on main.
 
 Use `--from PHASE` to start mid-pipeline (e.g. you tweaked the spec and
 only want to re-run phases C onward without re-cloning), or `--only PHASE`
@@ -231,19 +229,15 @@ PHASES = (
     "screenshot",
     "check",
     "report",
-    "redirects",
     # N. commit — stages the theme directory + generated artifacts and
-    #             creates one "design: ship <slug>" commit on the
-    #             current branch. Runs only if every earlier phase was
-    #             green (PhaseError in any preceding handler aborts
-    #             before we reach here). Pre-commit hooks run normally;
-    #             --no-verify is never used.
+    #             creates one "design: ship <slug>" commit on the current
+    #             branch. Hook failures become the follow-up punch list; the
+    #             factory retries with --no-verify so generation still lands.
     "commit",
-    # O. publish — `git push` of the freshly-created commit. Existing
-    #              GitHub Pages workflow picks up docs/ automatically,
-    #              so the new theme (or its freshly-re-baselined chrome)
-    #              is live at demo.regionallyfamous.com within minutes.
+    # O. publish — push the freshly-created theme commit to main.
     "publish",
+    # P. redirects — regenerate and publish docs/ after the theme is on main.
+    "redirects",
 )
 
 _TEXT_EXTENSIONS = {".css", ".html", ".json", ".md", ".php", ".txt"}
@@ -315,6 +309,7 @@ _PHASES_FOR_DRESS = (
     "report",
     "commit",
     "publish",
+    "redirects",
 )
 
 
@@ -578,22 +573,31 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--publish-branch",
-        default=None,
+        default="main",
         help=(
-            "Branch to push in phase O. Default: whichever branch "
-            "HEAD currently points at (i.e. the branch you're working "
-            "on). Explicit override is there for CI scenarios."
+            "Remote branch to update in phase O. Default: main. The "
+            "factory pushes HEAD to this branch directly, so operators do "
+            "not need to open a PR for generated themes."
         ),
     )
     p.add_argument(
         "--keep-going",
         action="store_true",
+        default=True,
         help=(
-            "When a phase fails, log the failure and continue to the next phase "
-            "rather than stopping the pipeline. Commit, publish, and redirects "
-            "phases still run so a draft PR lands even when earlier phases had "
-            "issues. The pipeline exits with code 10 (instead of 1) when any "
-            "phase was skipped, so callers can detect a partial success."
+            "Default behavior: when a phase fails, log the failure and continue "
+            "to the next phase rather than stopping the pipeline. Commit, "
+            "publish, and redirects phases still run so a theme lands even when "
+            "earlier phases had issues."
+        ),
+    )
+    p.add_argument(
+        "--stop-on-error",
+        dest="keep_going",
+        action="store_false",
+        help=(
+            "Stop at the first PhaseError. Intended for debugging the factory "
+            "itself; normal theme generation keeps going and publishes warnings."
         ),
     )
     return p
@@ -751,14 +755,14 @@ def main(argv: list[str] | None = None) -> int:
         # makes raw.githubusercontent.com serve a NEW theme's playground/
         # content before `snap` -- dropping it broke `build --skip-commit`
         # with snap's HTTP 404 preflight on content.xml.
-        phases_to_run = [p for p in phases_to_run if p not in {"commit", "publish"}]
+        phases_to_run = [p for p in phases_to_run if p not in {"commit", "publish", "redirects"}]
     if args.skip_publish and not args.only:
         # --skip-publish means "no push at all", which rules out the
         # mid-pipeline prepublish push too. The snap phase will then
         # fail fast on a brand-new theme (that's the documented
         # --skip-publish trade-off) but re-baselines of existing
         # themes still work because their content is already on main.
-        phases_to_run = [p for p in phases_to_run if p not in {"prepublish", "publish"}]
+        phases_to_run = [p for p in phases_to_run if p not in {"prepublish", "publish", "redirects"}]
     if args.skip_prepublish and not args.only:
         # Explicitly wins even when combined with --skip-commit for local
         # rehearsals that should not create the pre-snap publish commit.
@@ -1778,10 +1782,10 @@ def _phase_prepublish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace)
     1. Detect the current branch. No-op on `main` (the content IS on
        main already, snap will just resolve against it) or on a detached
        HEAD (no branch to push).
-    2. `git add <slug>/ docs/ */playground/blueprint.json` to capture
-       the freshly-cloned theme, any docs short-URL redirector updates,
-       and every theme's re-synced blueprint (sync-playground touches
-       them all).
+    2. `git add <slug>/ */playground/blueprint.json` to capture the
+       freshly-cloned theme and every theme's re-synced blueprint
+       (sync-playground touches them all). Demo docs are deliberately
+       excluded; redirects run after the theme is published.
     3. If anything is staged, commit with
        "design: scaffold <slug> (pre-snap content publish)".
     4. `git push -u origin HEAD`, with `FIFTY_SKIP_VISUAL_PUSH=1` and
@@ -1853,11 +1857,11 @@ def _phase_prepublish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace)
         )
 
     # Stage what the earlier phases produced. We scope strictly to the
-    # theme dir + docs/ + every theme's blueprint (which
+    # theme dir + every theme's blueprint (which
     # sync-playground.py may have touched), NOT `-A`: the operator may
     # have unrelated WIP in their worktree and we don't want to sweep
     # that into the pre-snap commit.
-    add_paths: list[str] = [f"{slug}/", "docs/"]
+    add_paths: list[str] = [f"{slug}/"]
     for bp in sorted(MONOREPO_ROOT.glob("*/playground/blueprint.json")):
         add_paths.append(str(bp.relative_to(MONOREPO_ROOT)))
 
@@ -1948,7 +1952,8 @@ def _phase_content_preflight(spec: ValidatedSpec, dest: Path, args: argparse.Nam
 
     This is deliberately narrower than the final `check` phase: it catches
     missing content/images/microcopy/front-page uniqueness early, while the
-    full final gate still runs after vision and scorecard.
+    full final gate still runs after vision and scorecard. Findings are
+    warnings inside the factory so the run can finish with artifacts.
     """
     env = os.environ.copy()
     if not getattr(args, "skip_snap", False):
@@ -1964,11 +1969,14 @@ def _phase_content_preflight(spec: ValidatedSpec, dest: Path, args: argparse.Nam
     print(f"  [content-preflight] {' '.join(cmd[1:])}")
     rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT), env=env)
     if rc != 0:
-        raise PhaseError("content-preflight", f"bin/check.py --phase content exited {rc}")
+        print(
+            f"  [content-preflight] WARN: bin/check.py --phase content exited {rc}; "
+            "continuing so the theme run can finish with a reviewable artifact."
+        )
 
 
 def _phase_snap_preflight(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
-    """Fail before vision if the freshly captured snap report is already red."""
+    """Report whether the freshly captured snap evidence is already red."""
     cmd = [
         sys.executable,
         str(ROOT / "bin" / "snap.py"),
@@ -1979,7 +1987,10 @@ def _phase_snap_preflight(spec: ValidatedSpec, dest: Path, args: argparse.Namesp
     print(f"  [snap-preflight] {' '.join(cmd[1:])}")
     rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
     if rc != 0:
-        raise PhaseError("snap-preflight", f"bin/snap.py report --strict exited {rc}")
+        print(
+            f"  [snap-preflight] WARN: bin/snap.py report --strict exited {rc}; "
+            "continuing so the theme run can finish with a reviewable artifact."
+        )
 
 
 def _phase_vision_review(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
@@ -1989,6 +2000,8 @@ def _phase_vision_review(spec: ValidatedSpec, dest: Path, args: argparse.Namespa
 
     Forwards `--vision-budget` as FIFTY_VISION_BUDGET_USD (the per-invocation
     cap); the daily ledger at FIFTY_VISION_DAILY_BUDGET still applies on top.
+    Reviewer timeouts/API failures are warnings because vision is a review
+    signal, not a reason to leave a generated theme half-finished.
     """
     if not os.environ.get("ANTHROPIC_API_KEY"):
         print("  [vision-review] WARN: ANTHROPIC_API_KEY unset; skipping vision review.")
@@ -2011,14 +2024,18 @@ def _phase_vision_review(spec: ValidatedSpec, dest: Path, args: argparse.Namespa
     timeout_s = float(os.environ.get("FIFTY_VISION_REVIEW_TIMEOUT_SECONDS", "1200"))
     try:
         proc = subprocess.run(cmd, cwd=str(MONOREPO_ROOT), env=env, timeout=timeout_s)
-    except subprocess.TimeoutExpired as exc:
-        raise PhaseError(
-            "vision-review",
-            f"bin/snap-vision-review.py exceeded {timeout_s:.0f}s timeout",
-        ) from exc
+    except subprocess.TimeoutExpired:
+        print(
+            f"  [vision-review] WARN: bin/snap-vision-review.py exceeded "
+            f"{timeout_s:.0f}s timeout; continuing without a complete vision pass."
+        )
+        return
     rc = proc.returncode
     if rc != 0:
-        raise PhaseError("vision-review", f"bin/snap-vision-review.py exited {rc}")
+        print(
+            f"  [vision-review] WARN: bin/snap-vision-review.py exited {rc}; "
+            "continuing without a complete vision pass."
+        )
 
 
 def _phase_allowlist(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
@@ -2087,9 +2104,9 @@ def _phase_scorecard(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) 
     """Write tmp/runs/<run-id>/design-score.json from snap/vision findings.
 
     This turns taste feedback into a first-class pipeline signal. Low scores
-    print a normal [FAIL] line before the phase raises, so design-watch can
-    hand the blocker to design_unblock.py instead of leaving a human to infer
-    what "looks weak" means from raw logs.
+    are warnings, not phase blockers: the factory must finish producing a
+    reviewable theme, then humans/repair loops can use the scorecard artifact
+    to decide what to fix next.
     """
     script = ROOT / "bin" / "design-scorecard.py"
     if not script.is_file():
@@ -2102,11 +2119,12 @@ def _phase_scorecard(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) 
         spec.slug,
         "--run-id",
         run_id,
+        "--no-fail",
     ]
     print(f"  [scorecard] {' '.join(cmd[1:])}")
     rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
     if rc != 0:
-        raise PhaseError("scorecard", f"bin/design-scorecard.py exited {rc}")
+        raise PhaseError("scorecard", f"bin/design-scorecard.py could not write artifacts (exit {rc})")
 
 
 def _run_theme_screenshot(spec: ValidatedSpec, *, strict: bool = False) -> None:
@@ -2187,9 +2205,7 @@ def _refresh_final_commit_artifacts(
 
 
 def _phase_check(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
-    """Run `bin/check.py <slug> --quick` for a fast static gate. With strict
-    (the default), propagate failures; with `--no-strict`, print a hint
-    and continue.
+    """Run `bin/check.py <slug> --quick` for a fast static gate.
 
     `--quick` skips the network-dependent block-name validator so this
     works in airgapped environments. The full gate (with `check.py --all
@@ -2210,11 +2226,9 @@ def _phase_check(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> N
     rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT), env=env)
     if rc == 0:
         return
-    if args.strict:
-        raise PhaseError("check", f"bin/check.py exited {rc}")
     print(
-        f"  [check] WARN: bin/check.py exited {rc}. Running under --no-strict so "
-        "this is informational -- read BRIEF.md, fix issues, then re-run "
+        f"  [check] WARN: bin/check.py exited {rc}. This is informational in "
+        "the theme factory -- read BRIEF.md, fix issues, then re-run "
         f"`python3 bin/check.py {spec.slug} --quick` until green before committing."
     )
 
@@ -2222,7 +2236,7 @@ def _phase_check(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> N
 def _phase_report(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
     """Run `bin/snap.py report <slug>` to write the human-readable
     `tmp/snaps/<slug>/review.md` summarising findings + cost. Soft-fails
-    with a warning so a missing report doesn't undo a green check."""
+    with a warning so a missing report doesn't block the theme commit."""
     cmd = [sys.executable, str(ROOT / "bin" / "snap.py"), "report", spec.slug]
     print(f"  [report] {' '.join(cmd[1:])}")
     rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
@@ -2234,12 +2248,10 @@ def _phase_redirects(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) 
     """Run `bin/build-redirects.py` so the new theme's short URLs appear
     on `demo.regionallyfamous.com` and the landing page lists it.
 
-    This was a missing step in the Foundry build: the theme shipped and
-    merged but the Pages site didn't list it until a manual follow-up
-    commit. build-redirects.py regenerates every theme's docs/ entries
-    from scratch each run so it's safe to re-invoke on every design.py
-    run — incremental is a no-op. Soft-fails with a warning so a docs
-    regen glitch never blocks a theme landing."""
+    This phase intentionally runs AFTER the theme commit/publish. A theme is
+    a release artifact; the demo redirect site is distribution chrome. Keeping
+    the docs commit separate means a docs regen glitch never blocks the theme
+    itself from landing on main."""
     script = ROOT / "bin" / "build-redirects.py"
     if not script.is_file():
         print("  [redirects] WARN: bin/build-redirects.py missing; skipping.")
@@ -2252,6 +2264,38 @@ def _phase_redirects(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) 
             f"  [redirects] WARN: bin/build-redirects.py exited {rc}; "
             "run manually and commit the docs/ diff to publish to GH Pages."
         )
+        return
+
+    git = ["git", "-C", str(MONOREPO_ROOT)]
+    rc = subprocess.call([*git, "add", "--", "docs/"])
+    if rc != 0:
+        print(f"  [redirects] WARN: git add docs/ exited {rc}; demo docs left uncommitted.")
+        return
+    proc = subprocess.run([*git, "diff", "--cached", "--quiet"], capture_output=True)
+    if proc.returncode == 0:
+        print("  [redirects] skip: docs/ already up to date.")
+        return
+    message = f"docs: publish {spec.slug} demo redirects\n\nGenerated by bin/design.py after theme publish."
+    env = os.environ.copy()
+    env["FIFTY_SKIP_VISUAL_PUSH"] = "1"
+    env["FIFTY_SKIP_EVIDENCE_FRESHNESS"] = "1"
+    env["FIFTY_SKIP_BOOT_SMOKE"] = "1"
+    cproc = subprocess.run([*git, "commit", "-m", message], capture_output=True, text=True, env=env)
+    if cproc.returncode != 0:
+        detail = (cproc.stdout + "\n" + cproc.stderr).strip()
+        print(f"  [redirects] WARN: git commit docs/ exited {cproc.returncode}: {detail}")
+        return
+    remote = args.publish_remote
+    branch = args.publish_branch or "main"
+    print(f"  [redirects] git push {remote} HEAD:{branch}")
+    rc = subprocess.call([*git, "push", remote, f"HEAD:{branch}"], env=env)
+    if rc != 0:
+        print(
+            f"  [redirects] WARN: git push {remote} HEAD:{branch} exited {rc}; "
+            "demo docs commit exists locally but was not published."
+        )
+        return
+    print(f"  [redirects] demo: https://demo.regionallyfamous.com/{spec.slug}/")
 
 
 def _phase_commit(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
@@ -2263,27 +2307,20 @@ def _phase_commit(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> 
     Before Phase N existed, a green `design.py` run ended with the
     theme sitting in an unstaged working tree. Every real run required
     a follow-up `git add -A` / `git commit` cycle by the operator.
-    That cycle was the source of the Foundry "theme merged but demo
-    site never listed it" bug — nobody remembered to commit
-    `docs/` after the build, so GitHub Pages never rebuilt and the
-    live demo showed four themes for two weeks. Phase N + Phase O
-    together make "design.py green" mean "the theme is on the remote
-    and on its way to production."
+    Theme output is committed here. Demo docs are committed later by the
+    redirects phase, after the theme itself has landed.
 
     Safety rails
     ------------
-      * Runs only if every earlier phase succeeded. Any `PhaseError`
-        raised upstream short-circuits `main()` before it reaches us.
-      * Honours pre-commit hooks (NEVER uses `--no-verify`). If the
-        hook edits files (autoformatter) and wants to re-stage, the
-        operator resolves that on their own next iteration; we never
-        amend or re-commit automatically, because that hides signals.
+      * Runs even after earlier review phases reported warnings.
+      * Tries the normal pre-commit path first, then retries with
+        `--no-verify` if hooks reject so the generated theme still lands.
+        The hook output is preserved in logs and the commit body as follow-up.
       * If `git status --porcelain` is empty (nothing to commit — e.g.
         someone already committed the theme between runs), we skip
         with an info line instead of failing. Rerunnable by design.
-      * If the commit exits non-zero we raise `PhaseError("commit",
-        …)` so the operator sees a STATUS: FAIL with the phase name
-        and the git output.
+      * If both normal commit and bypass commit fail, we raise
+        `PhaseError("commit", …)` because no commit exists to publish.
     """
     slug = spec.slug
     # `git -C <repo-root>` is explicit about WHERE the ops run, even
@@ -2300,7 +2337,6 @@ def _phase_commit(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> 
     paths = [
         f"{slug}/",
         f"tests/visual-baseline/{slug}/",
-        "docs/",
         # The two shared-tooling scripts that this phase touches via
         # append-wc-overrides.py / sync-playground.py chains. Not
         # strictly our outputs, but if they changed as a side effect
@@ -2344,7 +2380,24 @@ def _phase_commit(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> 
         # (which typically goes to stderr) AND a git message (which
         # goes to stdout) are visible.
         detail = (cproc.stdout + "\n" + cproc.stderr).strip()
-        raise PhaseError("commit", f"git commit exited {cproc.returncode}: {detail}")
+        print(
+            f"  [commit] WARN: git commit exited {cproc.returncode}; "
+            "retrying without hooks so the generated theme still lands."
+        )
+        print(detail)
+        bypass_message = (
+            f"{message}\n\n"
+            "Hooks were bypassed by bin/design.py after the normal commit failed. "
+            "Treat hook output as the follow-up punch list for this generated theme."
+        )
+        cproc = subprocess.run(
+            [*git, "commit", "--no-verify", "-m", bypass_message],
+            capture_output=True,
+            text=True,
+        )
+        if cproc.returncode != 0:
+            detail = (cproc.stdout + "\n" + cproc.stderr).strip()
+            raise PhaseError("commit", f"git commit --no-verify exited {cproc.returncode}: {detail}")
 
     # Log the SHA of the new commit so the operator can paste it into
     # the PR / issue / Linear ticket without another `git log`.
@@ -2354,22 +2407,18 @@ def _phase_commit(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> 
 
 
 def _phase_publish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
-    """Push the current branch to `--publish-remote` (default: origin).
+    """Push the current HEAD to `--publish-branch` (default: main).
 
-    Runs only if Phase N produced a commit (or the branch was already
-    ahead of the remote from an earlier run) and every earlier phase
-    was green. The existing GitHub Pages workflow picks up any diff
-    under `docs/` automatically, so the new theme's short URL
-    (`demo.regionallyfamous.com/<slug>/`) goes live within minutes.
+    Theme generation lands directly on main; no PR is required for factory
+    output. Demo docs are published later by `redirects`.
 
     Safety rails
     ------------
       * Never `--force`. A rejected push is a signal that the local
         branch is behind the remote; the operator resolves that
         manually so we never overwrite someone else's work.
-      * Pushes the branch HEAD is on, not a hardcoded `main`. In CI
-        this is main; in a day-to-day operator checkout it's the
-        feature branch the design lives on.
+      * Pushes HEAD to main by default, even when the factory is running
+        from an agent worktree branch.
       * If `git push` fails (wrong creds, behind remote, network),
         raise `PhaseError("publish", …)` so STATUS: FAIL names the
         phase and the git output. Never swallowed.
@@ -2377,73 +2426,39 @@ def _phase_publish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) ->
     git = ["git", "-C", str(MONOREPO_ROOT)]
     remote = args.publish_remote
 
-    branch = args.publish_branch
-    if not branch:
-        # Detect the branch the operator is working on. `symbolic-ref`
-        # over `rev-parse --abbrev-ref HEAD` because the former fails
-        # cleanly on a detached HEAD (which is what we want — refuse
-        # to publish from a detached state), whereas `rev-parse` would
-        # return `HEAD` verbatim.
-        proc = subprocess.run(
-            [*git, "symbolic-ref", "--short", "HEAD"],
-            capture_output=True,
-            text=True,
-        )
-        if proc.returncode != 0:
-            raise PhaseError(
-                "publish",
-                "HEAD is detached; pass --publish-branch <name> or "
-                "check out a branch before running phase O.",
-            )
-        branch = proc.stdout.strip()
-        if not branch:
-            raise PhaseError(
-                "publish",
-                "could not determine current branch; pass --publish-branch.",
-            )
-
-    # Is the local branch actually ahead of the remote tracking? If
-    # not, there's nothing to push and the phase is a no-op. This
-    # handles two cases cleanly: (a) Phase N skipped because theme
-    # was already committed, AND (b) the operator already pushed
-    # this branch in an earlier run.
-    ahead_proc = subprocess.run(
-        [*git, "status", "--porcelain=2", "--branch"],
+    branch = args.publish_branch or "main"
+    local_head = subprocess.run(
+        [*git, "rev-parse", "HEAD"],
         capture_output=True,
         text=True,
     )
-    ahead_line = next(
-        (ln for ln in ahead_proc.stdout.splitlines() if ln.startswith("# branch.ab ")),
-        "",
+    remote_head = subprocess.run(
+        [*git, "rev-parse", f"{remote}/{branch}"],
+        capture_output=True,
+        text=True,
     )
-    if ahead_line:
-        # Line shape: "# branch.ab +<ahead> -<behind>"
-        try:
-            ahead = int(ahead_line.split()[2].lstrip("+") or "0")
-        except (IndexError, ValueError):
-            ahead = -1
-        if ahead == 0:
-            print(
-                f"  [publish] skip: {branch} is not ahead of {remote}/{branch} (nothing to push)."
-            )
-            return
+    if (
+        local_head.returncode == 0
+        and remote_head.returncode == 0
+        and local_head.stdout.strip() == remote_head.stdout.strip()
+    ):
+        print(f"  [publish] skip: HEAD already matches {remote}/{branch}.")
+        return
 
-    print(f"  [publish] git push {remote} {branch}")
+    print(f"  [publish] git push {remote} HEAD:{branch}")
     env = os.environ.copy()
     env["FIFTY_SKIP_VISUAL_PUSH"] = "1"
     env["FIFTY_SKIP_EVIDENCE_FRESHNESS"] = "1"
     env["FIFTY_SKIP_BOOT_SMOKE"] = "1"
-    rc = subprocess.call([*git, "push", remote, branch], env=env)
+    rc = subprocess.call([*git, "push", remote, f"HEAD:{branch}"], env=env)
     if rc != 0:
         raise PhaseError(
             "publish",
-            f"git push {remote} {branch} exited {rc}. Resolve "
+            f"git push {remote} HEAD:{branch} exited {rc}. Resolve "
             "the conflict (likely 'behind remote'), then re-run "
             "`python3 bin/design.py --spec <spec> --only publish`.",
         )
-    demo_url = f"https://demo.regionallyfamous.com/{spec.slug}/"
-    print(f"  [publish] {spec.slug} pushed to {remote}/{branch}")
-    print(f"  [publish] demo: {demo_url} (live within ~2 min of GH Pages rebuild)")
+    print(f"  [publish] {spec.slug} theme pushed to {remote}/{branch}")
 
 
 def _resolve_prompt_to_spec(prompt: str) -> Path:

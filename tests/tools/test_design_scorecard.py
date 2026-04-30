@@ -103,3 +103,42 @@ def test_mass_failure_classification_groups_top_findings() -> None:
     assert groups[0].category == "visual_distinctness"
     assert groups[0].kind == "vision:brand-violation"
     assert groups[0].count == 6
+
+
+def test_no_fail_prints_warning_and_exits_zero(tmp_path, monkeypatch, capsys) -> None:
+    m = _load_module()
+    theme = "example"
+    root = tmp_path
+    (root / theme).mkdir()
+    (root / theme / "theme.json").write_text("{}", encoding="utf-8")
+    snap_dir = root / "tmp" / "snaps" / theme / "desktop"
+    snap_dir.mkdir(parents=True)
+    (snap_dir / "home.png").write_bytes(b"png")
+    (snap_dir / "home.findings.json").write_text(
+        json.dumps(
+            {
+                "route": "home",
+                "viewport": "desktop",
+                "findings": [
+                    {
+                        "kind": "vision:brand-violation",
+                        "severity": "error",
+                        "message": "generic storefront chrome",
+                    }
+                    for _ in range(6)
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(m, "MONOREPO_ROOT", root)
+    monkeypatch.setattr(m, "resolve_theme_root", lambda slug: root / slug)
+
+    rc = m.main([theme, "--run-id", "proof", "--no-fail"])
+
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "[WARN] [scorecard] Scorecard mass failure" in out
+    assert "[FAIL] [scorecard]" not in out
+    assert (root / "tmp" / "runs" / "proof" / "design-score.json").is_file()
