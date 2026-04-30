@@ -14,7 +14,6 @@ from pathlib import Path
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 BIN_DIR = REPO_ROOT / "bin"
 if str(BIN_DIR) not in sys.path:
@@ -222,7 +221,12 @@ def test_signals_for_photo_led_hero_are_different():
     import _design_target_lib as dt
 
     meta = _meta(
-        tags={"palette": ["sand"], "type": "modern-serif", "sector": "florist", "hero": "photo-led"},
+        tags={
+            "palette": ["sand"],
+            "type": "modern-serif",
+            "sector": "florist",
+            "hero": "photo-led",
+        },
     )
     target = dt.derive_target_from_meta("test-photo", meta)
     assert target.composition["hero"] == "photo-led"
@@ -391,7 +395,9 @@ def test_render_design_target_cli_round_trip(tmp_path, monkeypatch):
     assert rc == 0
 
     new_theme = json.loads((theme_dir / "theme.json").read_text(encoding="utf-8"))
-    by_slug = {entry["slug"]: entry["color"].lower() for entry in new_theme["settings"]["color"]["palette"]}
+    by_slug = {
+        entry["slug"]: entry["color"].lower() for entry in new_theme["settings"]["color"]["palette"]
+    }
     # Obel's success #2F7A4D MUST be gone now — the deterministic alert
     # retoner replaced it with something derived from agitprop's
     # paper+ink anchors.

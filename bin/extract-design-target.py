@@ -217,7 +217,7 @@ def _refine_target_with_vision(base: dt.DesignTarget, mockup: Path) -> dt.Design
     except vlib.VisionError as exc:
         print(f"   {base.slug}: vision call failed ({exc}); using deterministic target")
         return base
-    except Exception as exc:  # noqa: BLE001 — defensive; never crash extract
+    except Exception as exc:
         print(f"   {base.slug}: unexpected vision error ({exc}); using deterministic target")
         return base
 
@@ -316,7 +316,7 @@ def _coerce_hex(value: object, allowed: set[str]) -> str | None:
         return None
     try:
         norm = dt.normalize_hex(value)
-    except Exception:  # noqa: BLE001 — bad hex from model
+    except Exception:
         return None
     if not allowed:
         return norm
@@ -338,7 +338,7 @@ def _closest_allowed(hex_value: str, allowed: set[str], *, max_distance: int) ->
         cand_rgb = _rgb_for(cand)
         if not cand_rgb:
             continue
-        distance = sum((a - b) ** 2 for a, b in zip(target_rgb, cand_rgb)) ** 0.5
+        distance = sum((a - b) ** 2 for a, b in zip(target_rgb, cand_rgb, strict=True)) ** 0.5
         if best is None or distance < best[0]:
             best = (distance, cand)
     if best is None or best[0] > max_distance:
@@ -349,7 +349,7 @@ def _closest_allowed(hex_value: str, allowed: set[str], *, max_distance: int) ->
 def _rgb_for(hex_value: str) -> tuple[int, int, int] | None:
     try:
         norm = dt.normalize_hex(hex_value).lstrip("#")
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
     if len(norm) != 6:
         return None

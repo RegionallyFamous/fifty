@@ -658,7 +658,7 @@ def make_brief(spec: ValidatedSpec, theme_root: Path) -> str:
             target_palette = _dt_lib.expand_palette(target)
             target_source_method = (target.source or {}).get("method")
             target_accent_evidence = (target.source or {}).get("accent_evidence")
-        except Exception:  # noqa: BLE001 — never crash brief generation on a target read
+        except Exception:
             target_palette = None
 
     lines: list[str] = []

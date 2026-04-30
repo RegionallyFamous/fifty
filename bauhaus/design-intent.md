@@ -18,7 +18,7 @@ Bauhaus stationery press: circle + square + triangle hero icon, red + yellow + b
 
 ## Palette
 
-Paper `#f3e9cc` · ink `#1f5191` · accent `#d62616`. Every other slug below is
+Paper `#f3e9cc` · ink `#111111` · accent `#d62616`. Every other slug below is
 derived from the brand palette; the alert family (success / warning / error
 / info) is retoned to sit on top of paper without hijacking the brand.
 
@@ -27,11 +27,11 @@ derived from the brand palette; the alert family (success / warning / error
 | `base` | `#f3e9cc` | page background (paper) |
 | `surface` | `#faf5e8` | cards / panels |
 | `subtle` | `#eae0c3` | gentle dividers |
-| `contrast` | `#1f5191` | body text (ink) |
+| `contrast` | `#111111` | body text (ink) |
 | `accent` | `#d62616` | CTA + brand highlight |
 | `accent-soft` | `#edbea4` | tinted accent band |
 | `primary` | `#d62616` | resting brand action |
-| `primary-hover` | `#a83135` | hover state |
+| `primary-hover` | `#a52115` | hover state |
 
 **Forbidden uses**:
 

@@ -12,10 +12,10 @@
   },
   "palette": {
     "paper": "#f3e9cc",
-    "ink": "#1f5191",
+    "ink": "#111111",
     "accent": "#d62616",
     "chrome_warm": "#cfc4a9",
-    "chrome_cool": "#d62616"
+    "chrome_cool": "#1f5191"
   },
   "type": {
     "display": {
@@ -59,6 +59,7 @@
     "mockup": "mockups/mockup-bauhaus.png",
     "method": "vision-from-mockup",
     "extracted_at": "2026-04-30T21:48:57+00:00",
-    "accent_evidence": "The wordmark 'BAUHAUS' in the header uses this red, and the thick border framing the nav bar repeats it — it is the first flat brand color the eye lands on and frames every call-to-action area."
+    "accent_evidence": "The wordmark 'BAUHAUS' in the header uses this red, and the thick border framing the nav bar repeats it \u2014 it is the first flat brand color the eye lands on and frames every call-to-action area.",
+    "ink_evidence": "The mockup uses black for the BAUHAUS PRESS wordmark, masthead border, product-card frames, and primary body labels; cobalt is a geometric accent, not body ink."
   }
 }

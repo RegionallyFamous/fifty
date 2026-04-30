@@ -232,7 +232,7 @@ class DesignTarget:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "DesignTarget":
+    def from_dict(cls, data: dict[str, Any]) -> DesignTarget:
         if not isinstance(data, dict):
             raise ValueError("design-target must be a JSON object")
         if data.get("schema") != 1:
@@ -711,7 +711,7 @@ def derive_target_from_meta(slug: str, meta: dict[str, Any]) -> DesignTarget:
         source={
             "mockup": f"mockups/mockup-{slug}.png",
             "method": "deterministic-from-meta",
-            "extracted_at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
+            "extracted_at": _dt.datetime.now(_dt.UTC).isoformat(timespec="seconds"),
         },
     )
 
