@@ -553,14 +553,62 @@ def _rewrite_wc_microcopy_block(theme_root: Path, spec: dict, *, quiet: bool = F
     return rewrites
 
 
+def _collect_sibling_replacements(theme_root: Path) -> set[str]:
+    """Gather every microcopy-overrides VALUE that sibling themes already
+    use, plus every rendered string in their templates / parts / patterns.
+
+    The LLM tends to converge on similar wording when two themes share an
+    era + sector. Passing this set into the prompt as a "forbidden-output"
+    list prevents bauhaus from picking the same wording distillery picked
+    five themes ago.
+    """
+    used: set[str] = set()
+    slug = theme_root.name
+    for other in iter_themes(stages=()):
+        if other.name == slug:
+            continue
+        # Override JSONs are the highest-signal source: those are the
+        # exact strings the OTHER theme decided to render.
+        overrides_path = other / "microcopy-overrides.json"
+        if overrides_path.is_file():
+            try:
+                data = json.loads(overrides_path.read_text(encoding="utf-8"))
+                used.update(str(v) for v in data.values() if isinstance(v, str))
+            except (json.JSONDecodeError, OSError):
+                pass
+        # Belt-and-braces: also fold in the rendered strings (catches
+        # any edits that bypassed the override JSON).
+        for sub in ("templates", "parts", "patterns"):
+            d = other / sub
+            if not d.is_dir():
+                continue
+            for p in d.rglob("*"):
+                if p.suffix not in {".html", ".php"}:
+                    continue
+                try:
+                    text = p.read_text(encoding="utf-8", errors="replace")
+                except OSError:
+                    continue
+                for s in _extract_strings(text):
+                    used.add(s)
+    return used
+
+
 def _generate_overrides_with_api(
     theme_root: Path,
     duplicates: dict[str, str],
     spec: dict,
     *,
     quiet: bool = False,
+    max_attempts: int = 2,
 ) -> dict[str, str]:
-    """Call the Anthropic API to generate voice-appropriate replacements."""
+    """Call the Anthropic API to generate voice-appropriate replacements.
+
+    Convergence-resistant: every attempt passes the FULL set of strings
+    other themes already use as "forbidden output". After the first
+    attempt the post-call scrubber retries any value that landed in the
+    forbidden set or duplicates an earlier value in this same response.
+    """
     try:
         import anthropic
     except ImportError:
@@ -576,9 +624,20 @@ def _generate_overrides_with_api(
     slug = theme_root.name
     voice = spec.get("voice", "")
     tagline = spec.get("tagline", "")
+    sibling_used = _collect_sibling_replacements(theme_root)
+    sibling_used_normalised = {_normalise(s) for s in sibling_used if _normalise(s)}
 
-    pairs = "\n".join(f'  "{k}"' for k in sorted(duplicates))
-    prompt = f"""\
+    accumulated: dict[str, str] = {}
+    remaining = dict(duplicates)
+    attempt = 0
+    while remaining and attempt < max_attempts:
+        attempt += 1
+        # Sample a representative slice of forbidden strings — too long
+        # a list bloats the prompt and the model starts truncating.
+        forbidden_sample = _sample_forbidden(sibling_used, n=120)
+        forbidden_block = "\n".join(f'  "{s}"' for s in sorted(forbidden_sample))
+        pairs = "\n".join(f'  "{k}"' for k in sorted(remaining))
+        prompt = f"""\
 You are rewriting marketing copy for a fictional WooCommerce storefront theme.
 
 Theme name: {spec.get("name", slug)}
@@ -590,35 +649,83 @@ Rewrite EACH of the following strings so it:
 2. Is clearly different from the original (different words, not just capitalisation)
 3. Is 12 or more characters long after stripping punctuation
 4. Does NOT contain the original string as a substring (to prevent double-substitution)
+5. Is NOT identical to any string in the FORBIDDEN list below — those are
+   already used by sibling themes. Sibling themes converging on the same
+   wording is the failure mode this prompt exists to prevent.
+
+If you cannot produce a non-forbidden alternative within the voice, lean
+into the theme's most idiosyncratic vocabulary (its tagline, its motifs).
+Two themes can both feel "warm and editorial" and still pick distinct
+wording for the same concept.
 
 Return ONLY a JSON object where every key is one of the input strings (verbatim) and
-the value is the rewritten replacement.  Include ALL strings, even if only lightly
-tweaked.  No explanation, no code fence.
+the value is the rewritten replacement. Include ALL strings, even if only lightly
+tweaked. No explanation, no code fence.
+
+FORBIDDEN strings (already used by sibling themes — must not appear as values):
+{forbidden_block or "  (no siblings yet)"}
 
 Strings to rewrite:
 {pairs}
 """
 
-    try:
-        client = anthropic.Anthropic(api_key=api_key)
-        message = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=4096,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = getattr(message.content[0], "text", "").strip()
-        if not raw:
-            return {}
-        # Strip markdown code fences if present
-        raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
-        overrides = json.loads(raw)
-        if not quiet:
-            print(f"  [{slug}] API generated {len(overrides)} override(s)")
-        return overrides
-    except Exception as exc:
-        if not quiet:
-            print(f"  [{slug}] API error: {exc}; falling back to static table")
-        return {}
+        try:
+            client = anthropic.Anthropic(api_key=api_key)
+            message = client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=4096,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            raw = getattr(message.content[0], "text", "").strip()
+            if not raw:
+                break
+            raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
+            overrides = json.loads(raw)
+        except Exception as exc:
+            if not quiet:
+                print(f"  [{slug}] API error: {exc}; falling back to static table")
+            break
+
+        # Filter: drop any value that's still forbidden, then merge.
+        accepted: dict[str, str] = {}
+        rejected: dict[str, str] = {}
+        for key, value in overrides.items():
+            if not isinstance(value, str) or not value:
+                continue
+            n = _normalise(value)
+            if n and n in sibling_used_normalised:
+                rejected[key] = value
+                continue
+            # Within-response uniqueness too.
+            if any(_normalise(v) == n for v in accepted.values()):
+                rejected[key] = value
+                continue
+            accepted[key] = value
+            if n:
+                sibling_used_normalised.add(n)
+
+        accumulated.update(accepted)
+        remaining = {k: v for k, v in remaining.items() if k not in accumulated}
+        if rejected and not quiet:
+            print(
+                f"  [{slug}] API attempt {attempt}: accepted {len(accepted)}, "
+                f"rejected {len(rejected)} forbidden duplicate(s); "
+                f"{len(remaining)} still pending"
+            )
+        elif not quiet:
+            print(f"  [{slug}] API attempt {attempt}: generated {len(accepted)} override(s)")
+
+    return accumulated
+
+
+def _sample_forbidden(used: set[str], *, n: int) -> list[str]:
+    """Cap the prompt size — pick the longest (most distinctive) strings
+    so the model has clear examples of what NOT to produce.
+    """
+    if len(used) <= n:
+        return sorted(used)
+    by_length = sorted(used, key=lambda s: (-len(s), s))
+    return by_length[:n]
 
 
 # ---------------------------------------------------------------------------

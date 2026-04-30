@@ -58,6 +58,34 @@
       ".wo-account-login-grid"
     ]
   },
+  "agitprop:desktop:cart-filled": {
+    "narrow-wc-block": [
+      ".wc-block-cart-items"
+    ]
+  },
+  "agitprop:desktop:cart-filled.line-remove": {
+    "narrow-wc-block": [
+      ".wc-block-cart-items"
+    ]
+  },
+  "agitprop:desktop:checkout-filled.return-to-cart-visible": {
+    "a11y-autocomplete-valid": [
+      "*"
+    ],
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "agitprop:desktop:my-account": {
+    "narrow-wc-block": [
+      ".wo-account-login-grid"
+    ]
+  },
+  "bauhaus:desktop:home": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
   "chonk:desktop:cart-filled": {
     "narrow-wc-block": [
       ".wc-block-cart-items"
@@ -358,29 +386,6 @@
     ],
     "a11y-color-contrast": [
       "*"
-    ]
-  },
-  "agitprop:desktop:cart-filled": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "agitprop:desktop:cart-filled.line-remove": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "agitprop:desktop:checkout-filled.return-to-cart-visible": {
-    "a11y-autocomplete-valid": [
-      "*"
-    ],
-    "a11y-color-contrast": [
-      "*"
-    ]
-  },
-  "agitprop:desktop:my-account": {
-    "narrow-wc-block": [
-      ".wo-account-login-grid"
     ]
   }
 }

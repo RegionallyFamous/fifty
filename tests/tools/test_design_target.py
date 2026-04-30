@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pytest
 
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 BIN_DIR = REPO_ROOT / "bin"
 if str(BIN_DIR) not in sys.path:
@@ -221,12 +222,7 @@ def test_signals_for_photo_led_hero_are_different():
     import _design_target_lib as dt
 
     meta = _meta(
-        tags={
-            "palette": ["sand"],
-            "type": "modern-serif",
-            "sector": "florist",
-            "hero": "photo-led",
-        },
+        tags={"palette": ["sand"], "type": "modern-serif", "sector": "florist", "hero": "photo-led"},
     )
     target = dt.derive_target_from_meta("test-photo", meta)
     assert target.composition["hero"] == "photo-led"
@@ -395,9 +391,7 @@ def test_render_design_target_cli_round_trip(tmp_path, monkeypatch):
     assert rc == 0
 
     new_theme = json.loads((theme_dir / "theme.json").read_text(encoding="utf-8"))
-    by_slug = {
-        entry["slug"]: entry["color"].lower() for entry in new_theme["settings"]["color"]["palette"]
-    }
+    by_slug = {entry["slug"]: entry["color"].lower() for entry in new_theme["settings"]["color"]["palette"]}
     # Obel's success #2F7A4D MUST be gone now — the deterministic alert
     # retoner replaced it with something derived from agitprop's
     # paper+ink anchors.
@@ -412,3 +406,191 @@ def test_render_design_target_cli_round_trip(tmp_path, monkeypatch):
     assert "manifesto" in intent
     # And critically: NOT "quiet, considered, editorial" (Obel's voice)
     assert "quiet, considered" not in intent
+
+
+# --------------------------------------------------------------------------- #
+# Vision refinement (extract --from-mockup)                                    #
+# --------------------------------------------------------------------------- #
+def _load_extract_module():
+    """Import bin/extract-design-target.py as a module (its hyphenated
+    filename means a normal `import` doesn't work).
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "extract_design_target", BIN_DIR / "extract-design-target.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_vision_refinement_overrides_accent_when_in_palette():
+    """The deterministic classifier picks the most-saturated hex as
+    accent; for Bauhaus that's yellow, but the buttons in the mockup
+    are red. Vision refinement must override accent only when the
+    proposed hex actually appears in the mockup's palette.
+    """
+    import _design_target_lib as dt
+
+    extract = _load_extract_module()
+    base = dt.derive_target_from_meta(
+        "bauhaus",
+        {
+            "slug": "bauhaus",
+            "name": "Bauhaus",
+            "blurb": "circle + square + triangle hero icon, red + yellow + blue + cream.",
+            "tags": {
+                "palette": ["scarlet", "butter", "cobalt", "cream"],
+                "type": "geometric-sans",
+                "era": "pre-1950",
+                "sector": "stationery",
+                "hero": "illustration-led",
+            },
+            "palette_hex": ["#f3e9cc", "#ebc309", "#d62616", "#1f5191", "#cfc4a9"],
+            "type_specimen": "Display: Universal. Body: Futura Book.",
+        },
+    )
+    assert base.palette["accent"].lower() == "#ebc309"  # yellow (most saturated)
+
+    refined = extract._apply_vision_refinement(
+        base,
+        '{"accent_hex": "#d62616", "accent_evidence": "Primary CTA buttons on the home page paint the accent in scarlet.", "ink_hex": null, "paper_hex": null, "register_override": "playful", "hero_kind_override": null, "ornament_override": "geometric", "primary_motif": "circle + square + triangle ornaments overlap the wordmark"}',
+        allowed_hexes={"#f3e9cc", "#ebc309", "#d62616", "#1f5191", "#cfc4a9"},
+    )
+    assert refined.palette["accent"].lower() == "#d62616"
+    assert refined.voice["register"] == "playful"
+    assert refined.composition["ornament"] == "geometric"
+    assert refined.composition["hero"] == base.composition["hero"]
+    assert "circle + square + triangle" in (refined.voice.get("preferred_motifs") or [""])[0]
+    assert refined.source["method"] == "vision-from-mockup"
+    assert "primary cta" in refined.source.get("accent_evidence", "").lower()
+
+
+def test_vision_refinement_rejects_hex_outside_mockup_palette():
+    """Hard floor: the model can refine which palette role goes where,
+    but it cannot invent a color that isn't actually in the mockup.
+    """
+    import _design_target_lib as dt
+
+    extract = _load_extract_module()
+    base = dt.derive_target_from_meta(
+        "agitprop",
+        {
+            "slug": "agitprop",
+            "name": "Agitprop",
+            "blurb": "constructivist storefront",
+            "tags": {
+                "palette": ["scarlet", "black", "cream"],
+                "type": "geometric-sans",
+                "era": "pre-1950",
+                "sector": "art-print",
+                "hero": "type-led",
+            },
+            "palette_hex": ["#e7dcc2", "#be2428", "#110e07", "#aea894", "#726c5e"],
+            "type_specimen": "Display: Bebas Neue. Body: Roboto Condensed.",
+        },
+    )
+    original_accent = base.palette["accent"]
+    refined = extract._apply_vision_refinement(
+        base,
+        '{"accent_hex": "#00ff00", "accent_evidence": "hallucinated lime", "ink_hex": null, "paper_hex": null, "register_override": null, "hero_kind_override": null, "ornament_override": null, "primary_motif": null}',
+        allowed_hexes={"#e7dcc2", "#be2428", "#110e07", "#aea894", "#726c5e"},
+    )
+    assert refined.palette["accent"] == original_accent  # untouched
+
+
+def test_vision_refinement_snaps_near_match_to_canonical_hex():
+    """Vision models routinely read `#FFE600` as `#FFE500` because of
+    JPEG anti-aliasing on the mockup. We accept a small Lab distance
+    and snap to the canonical value the meta declares.
+    """
+    import _design_target_lib as dt
+
+    extract = _load_extract_module()
+    base = dt.derive_target_from_meta(
+        "bauhaus",
+        {
+            "slug": "bauhaus",
+            "name": "Bauhaus",
+            "blurb": "...",
+            "tags": {
+                "palette": ["scarlet", "butter", "cobalt", "cream"],
+                "type": "geometric-sans",
+                "era": "pre-1950",
+                "sector": "stationery",
+                "hero": "illustration-led",
+            },
+            "palette_hex": ["#f3e9cc", "#ebc309", "#d62616", "#1f5191", "#cfc4a9"],
+            "type_specimen": "Display: Universal. Body: Futura Book.",
+        },
+    )
+    # Model reports #d52615 (one bit off the canonical #d62616). The
+    # snap should accept it and write the canonical value.
+    refined = extract._apply_vision_refinement(
+        base,
+        '{"accent_hex": "#d52615", "accent_evidence": "scarlet button", "ink_hex": null, "paper_hex": null, "register_override": null, "hero_kind_override": null, "ornament_override": null, "primary_motif": null}',
+        allowed_hexes={"#f3e9cc", "#ebc309", "#d62616", "#1f5191", "#cfc4a9"},
+    )
+    assert refined.palette["accent"].lower() == "#d62616"
+
+
+def test_vision_refinement_handles_malformed_response():
+    """A model that returns prose, an empty string, or invalid JSON
+    must not crash — we fall back to the deterministic target.
+    """
+    import _design_target_lib as dt
+
+    extract = _load_extract_module()
+    base = dt.derive_target_from_meta(
+        "agitprop",
+        {
+            "slug": "agitprop",
+            "name": "Agitprop",
+            "blurb": "...",
+            "tags": {
+                "palette": ["scarlet"],
+                "type": "geometric-sans",
+                "era": "pre-1950",
+                "sector": "art-print",
+                "hero": "type-led",
+            },
+            "palette_hex": ["#e7dcc2", "#be2428", "#110e07"],
+            "type_specimen": "Display: Bebas. Body: Roboto.",
+        },
+    )
+    for raw in ("", "I cannot help with that", "{ broken json", "```python\nprint(1)\n```"):
+        refined = extract._apply_vision_refinement(base, raw, allowed_hexes=set())
+        assert refined.palette == base.palette
+        assert refined.voice == base.voice
+
+
+def test_vision_refinement_strips_code_fences():
+    """Real models love wrapping JSON in ```json fences. Strip them."""
+    import _design_target_lib as dt
+
+    extract = _load_extract_module()
+    base = dt.derive_target_from_meta(
+        "bauhaus",
+        {
+            "slug": "bauhaus",
+            "name": "Bauhaus",
+            "blurb": "...",
+            "tags": {
+                "palette": ["scarlet", "butter", "cobalt", "cream"],
+                "type": "geometric-sans",
+                "era": "pre-1950",
+                "sector": "stationery",
+                "hero": "illustration-led",
+            },
+            "palette_hex": ["#f3e9cc", "#ebc309", "#d62616", "#1f5191", "#cfc4a9"],
+            "type_specimen": "Display: Universal. Body: Futura Book.",
+        },
+    )
+    fenced = '```json\n{"accent_hex": "#d62616", "accent_evidence": "scarlet CTA", "ink_hex": null, "paper_hex": null, "register_override": null, "hero_kind_override": null, "ornament_override": null, "primary_motif": null}\n```'
+    refined = extract._apply_vision_refinement(
+        base,
+        fenced,
+        allowed_hexes={"#f3e9cc", "#ebc309", "#d62616", "#1f5191", "#cfc4a9"},
+    )
+    assert refined.palette["accent"].lower() == "#d62616"

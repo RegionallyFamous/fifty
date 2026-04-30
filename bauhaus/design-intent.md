@@ -14,11 +14,11 @@ Anything stated here becomes a thing the reviewer will flag when violated.
 Bauhaus stationery press: circle + square + triangle hero icon, red + yellow + blue + cream, Universal-style geometric type.
 
 - **Register**: editorial
-- **Preferred motifs**: —
+- **Preferred motifs**: overlapping primary-color circle, square, and triangle arranged in Bauhaus compositional hierarchy on cream ground
 
 ## Palette
 
-Paper `#f3e9cc` · ink `#1f5191` · accent `#ebc309`. Every other slug below is
+Paper `#f3e9cc` · ink `#1f5191` · accent `#d62616`. Every other slug below is
 derived from the brand palette; the alert family (success / warning / error
 / info) is retoned to sit on top of paper without hijacking the brand.
 
@@ -28,10 +28,10 @@ derived from the brand palette; the alert family (success / warning / error
 | `surface` | `#faf5e8` | cards / panels |
 | `subtle` | `#eae0c3` | gentle dividers |
 | `contrast` | `#1f5191` | body text (ink) |
-| `accent` | `#ebc309` | CTA + brand highlight |
-| `accent-soft` | `#f1e1a1` | tinted accent band |
-| `primary` | `#ebc309` | resting brand action |
-| `primary-hover` | `#b8a62b` | hover state |
+| `accent` | `#d62616` | CTA + brand highlight |
+| `accent-soft` | `#edbea4` | tinted accent band |
+| `primary` | `#d62616` | resting brand action |
+| `primary-hover` | `#a83135` | hover state |
 
 **Forbidden uses**:
 
@@ -55,7 +55,7 @@ derived from the brand palette; the alert family (success / warning / error
 
 - **Hero**: neutral
 - **Density**: balanced
-- **Ornament**: none
+- **Ornament**: geometric
 - **Borders**: hairline
 - **Photography**: neutral
 

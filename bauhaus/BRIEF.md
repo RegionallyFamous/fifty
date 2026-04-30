@@ -22,20 +22,30 @@ These hints came from the spec. Restructure `templates/front-page.html` and any 
 
 ## Palette applied
 
+_The 16-slug palette below was expanded from the brand hexes_ _after the vision-from-mockup refinement pass; it matches what `theme.json` actually paints._
+
+**Why accent landed where it did**:
+
+> The wordmark 'BAUHAUS' in the header uses this red, and the thick border framing the nav bar repeats it — it is the first flat brand color the eye lands on and frames every call-to-action area.
+
 | Slug | Hex |
 |------|-----|
-| `accent` | `#c8281a` |
-| `accent-soft` | `#ecb4af` |
-| `base` | `#f5efe6` |
-| `border` | `#b8b3ac` |
-| `contrast` | `#1f1b16` |
-| `muted` | `#fcfaf8` |
-| `primary` | `#1f1b16` |
-| `primary-hover` | `#4c4945` |
-| `secondary` | `#191612` |
-| `subtle` | `#f9f5f0` |
-| `surface` | `#ffffff` |
-| `tertiary` | `#13100d` |
+| `accent` | `#d62616` |
+| `accent-soft` | `#edbea4` |
+| `base` | `#f3e9cc` |
+| `border` | `#1f5191` |
+| `contrast` | `#1f5191` |
+| `error` | `#a8251e` |
+| `info` | `#1f4e8a` |
+| `muted` | `#8d8573` |
+| `primary` | `#d62616` |
+| `primary-hover` | `#a83135` |
+| `secondary` | `#cc2415` |
+| `subtle` | `#eae0c3` |
+| `success` | `#393724` |
+| `surface` | `#faf5e8` |
+| `tertiary` | `#9b5647` |
+| `warning` | `#7a4a1a` |
 
 Run `python3 bin/check-contrast.py` (if it exists in this repo) before locking the palette. Verify every pairing in the WCAG table at `.claude/skills/build-block-theme-variant/SKILL.md` step 5.
 

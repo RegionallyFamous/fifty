@@ -5,13 +5,15 @@
   "voice": {
     "summary": "Bauhaus stationery press: circle + square + triangle hero icon, red + yellow + blue + cream, Universal-style geometric type.",
     "register": "editorial",
-    "preferred_motifs": [],
+    "preferred_motifs": [
+      "overlapping primary-color circle, square, and triangle arranged in Bauhaus compositional hierarchy on cream ground"
+    ],
     "forbidden_words": []
   },
   "palette": {
     "paper": "#f3e9cc",
     "ink": "#1f5191",
-    "accent": "#ebc309",
+    "accent": "#d62616",
     "chrome_warm": "#cfc4a9",
     "chrome_cool": "#d62616"
   },
@@ -43,7 +45,7 @@
   "composition": {
     "hero": "neutral",
     "density": "balanced",
-    "ornament": "none",
+    "ornament": "geometric",
     "borders": "hairline",
     "photography_style": "neutral"
   },
@@ -55,7 +57,8 @@
   ],
   "source": {
     "mockup": "mockups/mockup-bauhaus.png",
-    "method": "deterministic-from-meta",
-    "extracted_at": "2026-04-30T21:31:31+00:00"
+    "method": "vision-from-mockup",
+    "extracted_at": "2026-04-30T21:48:57+00:00",
+    "accent_evidence": "The wordmark 'BAUHAUS' in the header uses this red, and the thick border framing the nav bar repeats it — it is the first flat brand color the eye lands on and frames every call-to-action area."
   }
 }

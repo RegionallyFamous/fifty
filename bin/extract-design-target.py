@@ -122,16 +122,238 @@ def _extract_from_mockup(slug: str) -> dt.DesignTarget:
     return refined
 
 
-def _refine_target_with_vision(base: dt.DesignTarget, mockup: Path) -> dt.DesignTarget:
-    """Placeholder for the vision refinement pass.
+_VISION_SYSTEM_PROMPT = """You are an art director critiquing a stationery-store concept mockup.
 
-    The deterministic-from-meta path covers everything we need today, so
-    the first cut of this CLI ships with the API hook stubbed out and
-    returns the deterministic target unchanged. Wiring the real
-    Anthropic call is a follow-up; the schema and the rest of the
-    pipeline are already production.
+The mockup shows two desktop browser windows side-by-side: a HOME page on
+the left, and a SHOP / category page on the right. They share the same
+brand identity. Your job is to look at the mockup and answer five
+questions about how the brand uses color, type, and ornament. The
+answers feed a deterministic theme generator, so they have to be
+precise and JSON-shaped.
+
+The deterministic generator already extracted a baseline palette and
+voice from the concept's metadata. Your refinements LAYER ON TOP — you
+can override specific roles where the mockup makes the right answer
+obvious, but you cannot invent new colors that aren't in the mockup.
+When unsure, say so by returning null for that field.
+
+Return STRICT JSON with this shape and nothing else (no prose, no code
+fence):
+
+{
+  "accent_hex": "#rrggbb" | null,
+  "accent_evidence": "<= 200 chars: which element in the mockup uses this color and why it's the brand's 'this is the action' signal",
+  "ink_hex": "#rrggbb" | null,
+  "paper_hex": "#rrggbb" | null,
+  "register_override": "editorial" | "playful" | "scientific" | "industrial" | "decorative" | null,
+  "hero_kind_override": "photo-led" | "illustration-led" | "type-led" | "neutral" | null,
+  "ornament_override": "geometric" | "organic" | "linear" | "decorative" | "none" | null,
+  "primary_motif": "<= 120 chars: one short phrase describing the most distinctive recurring shape, decoration, or pattern that should appear in the rendered theme"
+}
+
+Heuristics for choosing accent_hex:
+- It's the color of the primary call-to-action button on the home page.
+  If the home doesn't show a button, fall back to the price tag, the
+  'shop now' link, or whatever element a customer's eye lands on first
+  after the wordmark.
+- It is NOT the page background (paper) or the body-text color (ink).
+- It is NOT a photograph's pixel — only flat brand marks count.
+
+Heuristics for ink_hex / paper_hex:
+- paper = the dominant background tone of the page chrome (usually
+  cream, grey, white, off-white, dark navy / black for dark themes).
+- ink = the body-text color used for paragraphs and nav links.
+- These are sanity checks; only override if the deterministic
+  classifier obviously missed.
+
+If the mockup has no clear answer for a field, return null. Better
+to leave it null than to guess wrong.
+"""
+
+
+def _refine_target_with_vision(base: dt.DesignTarget, mockup: Path) -> dt.DesignTarget:
+    """Vision-API refinement of the deterministic target.
+
+    Calls Claude with the mockup PNG + a tight JSON-shape prompt and
+    layers the response onto `base`. The deterministic target is a
+    floor: any field the model returns null for stays untouched, any
+    hex it returns gets sanity-checked against the meta's
+    `palette_hex` (so the model can't invent a color the mockup
+    doesn't actually contain).
+
+    On any failure (budget cap, API error, malformed JSON) we log a
+    warning and return `base` unchanged — the deterministic path is
+    always good enough.
     """
-    return base
+    import os
+
+    import _vision_lib as vlib
+
+    meta_path = _meta_path(base.slug)
+    meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.is_file() else {}
+    allowed_hexes = {dt.normalize_hex(h) for h in (meta.get("palette_hex") or [])}
+
+    user_prompt = (
+        f"Concept slug: {base.slug}\n"
+        f"Concept tagline: {meta.get('blurb', '(no blurb)')}\n"
+        f"Concept palette (allowed hexes): {', '.join(sorted(allowed_hexes)) or '(none declared)'}\n"
+        f"\nReturn the JSON described in the system prompt."
+    )
+
+    try:
+        response = vlib.vision_completion(
+            png_path=mockup,
+            system_prompt=_VISION_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            theme=base.slug,
+            route="mockup",
+            viewport="design",
+            api_key=os.environ.get("ANTHROPIC_API_KEY"),
+            max_output_tokens=600,
+        )
+    except vlib.BudgetExceededError as exc:
+        print(f"   {base.slug}: vision budget exceeded ({exc}); using deterministic target")
+        return base
+    except vlib.VisionError as exc:
+        print(f"   {base.slug}: vision call failed ({exc}); using deterministic target")
+        return base
+    except Exception as exc:  # noqa: BLE001 — defensive; never crash extract
+        print(f"   {base.slug}: unexpected vision error ({exc}); using deterministic target")
+        return base
+
+    refined = _apply_vision_refinement(base, response.raw_text, allowed_hexes)
+    print(
+        f"   {base.slug}: vision refined target "
+        f"(in={response.input_tokens} out={response.output_tokens} ${response.cost_usd:.4f})"
+    )
+    return refined
+
+
+def _apply_vision_refinement(
+    base: dt.DesignTarget,
+    raw_text: str,
+    allowed_hexes: set[str],
+) -> dt.DesignTarget:
+    """Parse the model's JSON response and merge onto `base`.
+
+    Defensive against every flavor of malformed response: surrounding
+    prose, code fences, partial JSON, hallucinated hexes that aren't
+    in the mockup. Any unparseable field is silently dropped — the
+    deterministic floor wins.
+    """
+    text = (raw_text or "").strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        text = "\n".join(lines[1:-1] if lines[-1].strip().startswith("```") else lines[1:])
+    start, end = text.find("{"), text.rfind("}")
+    if start < 0 or end <= start:
+        print(f"   {base.slug}: vision response not JSON; using deterministic target")
+        return base
+    try:
+        parsed = json.loads(text[start : end + 1])
+    except json.JSONDecodeError as exc:
+        print(f"   {base.slug}: vision JSON malformed ({exc}); using deterministic target")
+        return base
+
+    refined_palette = dict(base.palette)
+    accent_hex = _coerce_hex(parsed.get("accent_hex"), allowed_hexes)
+    if accent_hex and accent_hex != base.palette.get("accent"):
+        refined_palette["accent"] = accent_hex
+    ink_hex = _coerce_hex(parsed.get("ink_hex"), allowed_hexes)
+    if ink_hex and ink_hex != base.palette.get("ink"):
+        refined_palette["ink"] = ink_hex
+    paper_hex = _coerce_hex(parsed.get("paper_hex"), allowed_hexes)
+    if paper_hex and paper_hex != base.palette.get("paper"):
+        refined_palette["paper"] = paper_hex
+
+    voice = dict(base.voice)
+    register_override = parsed.get("register_override")
+    if isinstance(register_override, str) and register_override in dt.REGISTER_KINDS:
+        voice["register"] = register_override
+    primary_motif = parsed.get("primary_motif")
+    if isinstance(primary_motif, str) and primary_motif.strip():
+        existing_motifs = list(voice.get("preferred_motifs") or [])
+        motif = primary_motif.strip()
+        if motif not in existing_motifs:
+            existing_motifs.insert(0, motif)
+        voice["preferred_motifs"] = existing_motifs[:3]
+
+    composition = dict(base.composition)
+    hero_override = parsed.get("hero_kind_override")
+    if isinstance(hero_override, str) and hero_override in dt.HERO_KINDS:
+        composition["hero"] = hero_override
+    ornament_override = parsed.get("ornament_override")
+    if isinstance(ornament_override, str) and ornament_override in dt.ORNAMENT_KINDS:
+        composition["ornament"] = ornament_override
+
+    accent_evidence = parsed.get("accent_evidence") if isinstance(parsed, dict) else None
+    refined_source = {**base.source, "method": "vision-from-mockup"}
+    if isinstance(accent_evidence, str) and accent_evidence.strip():
+        refined_source["accent_evidence"] = accent_evidence.strip()[:240]
+
+    return dt.DesignTarget(
+        schema=base.schema,
+        slug=base.slug,
+        name=base.name,
+        voice=voice,
+        palette=refined_palette,
+        type=base.type,
+        composition=composition,
+        required_signals=list(base.required_signals),
+        forbidden_signals=list(base.forbidden_signals),
+        source=refined_source,
+    )
+
+
+def _coerce_hex(value: object, allowed: set[str]) -> str | None:
+    """Normalize a hex string from the model and gate it against the
+    declared mockup palette. We deliberately allow a 6-unit Lab distance
+    of slop because the model frequently reads `#FFE600` as `#FFE500`
+    when the swatch is anti-aliased; if the closest declared hex is
+    visually adjacent we accept it and snap to the canonical value.
+    """
+    if not isinstance(value, str):
+        return None
+    try:
+        norm = dt.normalize_hex(value)
+    except Exception:  # noqa: BLE001 — bad hex from model
+        return None
+    if not allowed:
+        return norm
+    if norm in allowed:
+        return norm
+    closest = _closest_allowed(norm, allowed, max_distance=18)
+    return closest
+
+
+def _closest_allowed(hex_value: str, allowed: set[str], *, max_distance: int) -> str | None:
+    """Return the allowed hex closest in RGB distance to `hex_value`,
+    or None if every allowed hex is further than `max_distance`.
+    """
+    target_rgb = _rgb_for(hex_value)
+    if not target_rgb:
+        return None
+    best: tuple[float, str] | None = None
+    for cand in allowed:
+        cand_rgb = _rgb_for(cand)
+        if not cand_rgb:
+            continue
+        distance = sum((a - b) ** 2 for a, b in zip(target_rgb, cand_rgb)) ** 0.5
+        if best is None or distance < best[0]:
+            best = (distance, cand)
+    if best is None or best[0] > max_distance:
+        return None
+    return best[1]
+
+
+def _rgb_for(hex_value: str) -> tuple[int, int, int] | None:
+    try:
+        norm = dt.normalize_hex(hex_value).lstrip("#")
+    except Exception:  # noqa: BLE001
+        return None
+    if len(norm) != 6:
+        return None
+    return (int(norm[0:2], 16), int(norm[2:4], 16), int(norm[4:6], 16))
 
 
 def main(argv: list[str] | None = None) -> int:

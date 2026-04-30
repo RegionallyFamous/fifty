@@ -640,7 +640,27 @@ def make_brief(spec: ValidatedSpec, theme_root: Path) -> str:
     swap) and the judgment phase (microcopy voice, structural restyle,
     product photography). It records the spec inputs verbatim so the agent
     has the design intent in front of it without re-reading the spec file.
+
+    When `<theme_root>/design-target.json` exists (target-driven flow), the
+    palette section reflects the EXPANDED 16-slug palette from the target,
+    not the partial spec palette — otherwise the brief lies about what
+    `theme.json` actually paints.
     """
+    target_palette: dict[str, str] | None = None
+    target_source_method: str | None = None
+    target_accent_evidence: str | None = None
+    target_path = theme_root / "design-target.json"
+    if target_path.is_file():
+        try:
+            import _design_target_lib as _dt_lib
+
+            target = _dt_lib.read_target(target_path)
+            target_palette = _dt_lib.expand_palette(target)
+            target_source_method = (target.source or {}).get("method")
+            target_accent_evidence = (target.source or {}).get("accent_evidence")
+        except Exception:  # noqa: BLE001 — never crash brief generation on a target read
+            target_palette = None
+
     lines: list[str] = []
     lines.append(f"# {spec.name} — design brief")
     lines.append("")
@@ -686,13 +706,33 @@ def make_brief(spec: ValidatedSpec, theme_root: Path) -> str:
         )
         lines.append("")
 
-    if spec.palette:
+    palette_for_brief = target_palette if target_palette else spec.palette
+    if palette_for_brief:
         lines.append("## Palette applied")
         lines.append("")
+        if target_palette:
+            method_note = (
+                "via the deterministic `bin/extract-design-target.py` + "
+                "`bin/render-design-target.py` chain"
+                if target_source_method == "deterministic-from-meta"
+                else "after the vision-from-mockup refinement pass"
+                if target_source_method == "vision-from-mockup"
+                else "from `design-target.json`"
+            )
+            lines.append(
+                f"_The 16-slug palette below was expanded from the brand hexes_ "
+                f"_{method_note}; it matches what `theme.json` actually paints._"
+            )
+            lines.append("")
+            if target_accent_evidence:
+                lines.append("**Why accent landed where it did**:")
+                lines.append("")
+                lines.append(f"> {target_accent_evidence}")
+                lines.append("")
         lines.append("| Slug | Hex |")
         lines.append("|------|-----|")
-        for slug in sorted(spec.palette):
-            lines.append(f"| `{slug}` | `{spec.palette[slug]}` |")
+        for slug in sorted(palette_for_brief):
+            lines.append(f"| `{slug}` | `{palette_for_brief[slug]}` |")
         lines.append("")
         lines.append(
             "Run `python3 bin/check-contrast.py` (if it exists in this repo) before locking "
