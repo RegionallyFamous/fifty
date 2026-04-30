@@ -40,7 +40,7 @@
 				{
 					"slug": "muted",
 					"name": "Muted",
-					"color": "#56514a"
+					"color": "#2e2c28"
 				},
 				{
 					"slug": "border",
@@ -1874,7 +1874,7 @@
 				},
 				"color": {
 					"background": "var(--wp--preset--color--accent)",
-					"text": "var(--wp--preset--color--contrast)"
+					"text": "var(--wp--preset--color--base)"
 				},
 				"border": {
 					"radius": "0",
