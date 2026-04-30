@@ -34,42 +34,55 @@ per-theme checklist this playbook wraps.
    has them at module scope) in a pre-batch PR, or run the LLM
    path for those slugs.
 
-3. Decide on LLM spend. `--concept-spec-mode llm` (default) calls
-   Anthropic once per slug; `--concept-spec-mode no-llm` is free.
-   See plan §B.6 (LLM spend / rate-limit exposure) for the
-   `FIFTY_LLM_BUDGET_USD` env var's current state.
+3. Decide on LLM spend. `--concept-spec-mode no-llm` is the default
+   and is free/offline. `--concept-spec-mode llm` calls the vision
+   model once per slug for a more polished spec. Batch runs also honor
+   `--budget-usd` / `FIFTY_VISION_DAILY_BUDGET` before each theme so a
+   run halts cleanly at the daily cap instead of failing mid-theme.
 
 ## Kicking off the batch
 
 ```bash
 python3 bin/design-batch.py \
   --from-concepts \
-  --concept-slugs "agave apiary brine cathode cobbler" \
-  --concept-spec-mode llm \
+  --concept-slugs "agave,apiary,brine,cathode,cobbler" \
+  --concept-spec-mode no-llm \
   --limit 5
 ```
 
 - `--limit N` is a safety stop -- even if `--concept-slugs` lists 10,
   only the first 5 run. Keeps a typo from spawning 50 branches.
-- Omit `--concept-slugs` to let the script discover every unbuilt
-  concept (i.e. concepts without a `<slug>/` directory). `--limit`
-  is still honored.
-- The batch runs each theme through `bin/concept-to-spec.py` ->
-  `bin/design.py` -> `bin/snap.py boot`. Each theme that passes
-  `boot` is committed in its own git worktree with a branch named
-  `batch/<run-id>/<slug>`.
+- Omit `--concept-slugs` to let the script discover every concept on
+  the bench. `--limit` is still honored.
+- The default path is progressive: each theme gets its own worktree,
+  runs `bin/design.py build`, opens a draft PR as soon as there is a
+  runnable artifact, then runs `bin/design.py dress` on the same
+  branch. Use `--single-shot` only when you want the legacy "open a PR
+  after every phase succeeds" behavior.
+- Branches are named `agent/batch-<run-id>-<slug>`. Reusing the same
+  `--run-id` resumes passed themes; `--no-resume` forces a fresh local
+  worktree and removes stale generated remote batch branches.
+- By default, children run through `bin/design-watch.py`, which can
+  self-heal, record repair attempts, and keep the live `STATUS.md`
+  file current. Use `--no-self-heal` only when debugging the watcher.
+- Use `--keep-going` for proof runs where you want a draft PR and
+  evidence even when a phase cannot be fully repaired. The PR remains
+  draft until verification/factory-defect promotion says it is safe.
 
 Output: `tmp/batch-<run-id>.json` records the per-theme outcome:
-`ok | spec_fail | design_fail | boot_fail`. Scan this first rather
-than reading every worktree.
+`passed | failed | skipped | budget_capped`, plus worktree, branch,
+PR URL, verify status, rescue artifacts, factory defects, and grouped
+prevention layers. Scan this first rather than reading every worktree.
 
 ## Mid-batch monitoring
 
-- `bin/build-theme-status.py` (Tier 2.2) regenerates
-  `docs/themes/index.html` on every push to main. During the batch,
-  run it locally (`python3 bin/build-theme-status.py`) to see which
-  of your in-flight themes have boots / microcopy / images / vision
-  green.
+- Each in-flight theme has
+  `tmp/runs/batch-<run-id>-<slug>-<stage>/STATUS.md` inside its
+  worktree. This is the first place to look for current phase,
+  screenshot progress, active blocker, and next action.
+- `bin/build-theme-status.py` regenerates `docs/themes/index.html`.
+  During the batch, run it locally (`python3 bin/build-theme-status.py`)
+  to see which themes have boots / microcopy / images / vision green.
 - `bin/snap.py rebaseline --drifted --dry-run` (Tier 1.4) -- if mid-
   batch you see drift on unrelated themes, it's almost certainly a
   Chromium bump on the runner. Confirm with
@@ -92,13 +105,13 @@ If deterministic mode works but LLM mode doesn't, the LLM's JSON is
 off-schema for `bin/design.py`. Re-run the batch with
 `--concept-spec-mode no-llm` for that slug only.
 
-### A slug fails `design.py`
+### A slug fails `design.py` / `design-watch.py`
 
-Design.py failures are almost always "spec references a palette role
-or token name that clone.py doesn't know about". Read
-`tmp/design-<slug>.log`, then either hand-edit
-`tmp/specs/<slug>.json` and rerun `python3 bin/design.py
-tmp/specs/<slug>.json`, or skip the slug and move on.
+Read the stage-specific `STATUS.md` and `summary.json` under the
+child worktree's `tmp/runs/` directory. If self-healing ran, also read
+`repair-attempts.jsonl` and `factory-defects.jsonl`. The batch report
+will point to these files. Rerun with `--retry-failed` after fixing
+the blocker, or `--no-resume` when you want a completely fresh proof.
 
 ### A slug fails `boot`
 
@@ -134,9 +147,9 @@ debt that was fine with fewer themes. Treat as either:
 
 ## End-of-batch wrap
 
-1. Review `tmp/batch-<run-id>.json` -- every `ok` row should have a
-   PR open (or merged); every `*_fail` row should have a line in
-   [docs/day-0-smoke.md](day-0-smoke.md) or a follow-up plan.
+1. Review `tmp/batch-<run-id>.json` -- every `passed` row should have
+   a PR open (or merged); every `failed` row should point at a status
+   file, rescue artifact, or follow-up plan.
 
 2. Run `python3 bin/check.py --save-baseline-failures` only from a
    detached worktree pointing at `origin/main` AFTER the batch has
@@ -147,7 +160,13 @@ debt that was fine with fewer themes. Treat as either:
    dominant cost (spec, manual, check iteration, or shoot). The Tier
    prioritization rechecks against this measurement at every batch.
 
-4. Archive `tmp/batch-<run-id>.json` if you want a long-term record;
+4. If you want the GH Pages demo site to publish after a batch without
+   relying on per-theme PRs touching `docs/`, run the batch with
+   `--publish-demo` or run `python3 bin/build-redirects.py` once after
+   the theme PRs merge. `publish-demo.yml` deploys the generated
+   `docs/` artifact via GitHub Pages.
+
+5. Archive `tmp/batch-<run-id>.json` if you want a long-term record;
    otherwise `tmp/` is cleaned up by the next `bin/design-batch.py`
    run.
 

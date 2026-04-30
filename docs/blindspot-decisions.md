@@ -44,29 +44,30 @@ Updating rules:
 
 ## B.2 Per-theme, per-gate timing telemetry
 
-- **Decision:** **defer**. Add only when the next batch's wall-time
-  exceeds 2 hours for 10 themes (the plan's threshold).
-- **Why:** at N?20 a human can still eyeball slow steps from the
-  existing CI logs. The Tier 2.2 dashboard
-  (`bin/build-theme-status.py` -> `docs/themes/index.html`) surfaces
-  per-theme PASS/FAIL state, which covers the "which theme is
-  broken?" case without per-gate wall time. Adding a telemetry
-  format now risks picking fields we regret later.
-- **Landing site when triggered:**
-  `bin/check.py --json-timing tmp/check-timing.json` and a
-  `duration_ms` field on every snap cell manifest. A one-page
-  `docs/observability.md` records the reading format.
+- **Decision:** **partially shipped**. `bin/design.py` writes
+  per-phase durations into each run's `summary.json`; `bin/design-batch.py`
+  records per-theme elapsed time, verification state, and rescue
+  artifacts in `tmp/batch-<run-id>.json`. Defer deeper per-gate timing
+  until this is not enough.
+- **Why:** the current run summaries answer the immediate question:
+  "which phase or theme is slow?" without introducing a second telemetry
+  format. The Tier 2.2 dashboard (`bin/build-theme-status.py` ->
+  `docs/themes/index.html`) still covers the public PASS/FAIL view.
+- **Landing site when triggered:** add `duration_ms` to snap cell
+  manifests and a one-page `docs/observability.md` that explains how
+  to read phase, snap-cell, and CI timing together.
 - **Trigger to revisit:** a batch of 10 themes takes >2 hours AND
-  no one can point at which step dominated.
+  `summary.json` / `tmp/batch-<run-id>.json` do not identify the
+  dominant phase.
 
 ## B.3 Deterministic design.py output
 
-- **Decision:** **trust but verify before batch #2**.
+- **Decision:** **trust but verify on any generator refactor**.
 - **Why:** if `bin/design.py` is non-deterministic on the same spec,
   a recovery re-run during a Chromium rebaseline will churn diffs
   on otherwise-untouched themes, and the PR review signal degrades.
-- **Verification procedure** (~20 min, run once before the next
-  multi-theme batch):
+- **Verification procedure** (~20 min, run before a large batch or
+  after changing generator phases):
   1. Pick a recently-shipped slug with a clean `tmp/specs/<slug>.json`.
   2. In two parallel git worktrees (`git worktree add ../check-a` +
      `../check-b`), run `python3 bin/design.py tmp/specs/<slug>.json`
@@ -81,26 +82,25 @@ Updating rules:
 
 ## B.4 Imagery + content variety
 
-- **Decision:** **log to `tmp/images-needed.md` per theme, sourcing
-  stays manual for now.** Revisit after the next batch if the
-  manual image sourcing dominates wall time.
-- **Why:** auto-generated images have licensing/copyright
-  uncertainty, and a stock library with 2000+ tagged images is a
-  multi-day project. Meanwhile, the existing manual flow produces
-  good taste and passes
-  `check_{product,hero}_images_unique_across_themes`.
+- **Decision:** **generated first pass, human review before shipping.**
+  `bin/generate-product-photos.py` now creates per-theme product,
+  category, and page/post hero images during the design pipeline.
+  Operators still review the images for taste, licensing posture, and
+  theme fit before promotion.
+- **Why:** the factory needs a complete visual payload to boot, snap,
+  and verify without manual intervention. The uniqueness gates still
+  catch duplicate product/hero imagery, while human review catches
+  taste and rights questions that a deterministic check cannot.
 - **Operator flow:**
-  - `readiness.json.gates.images_unique` stays `false` until the
-    theme has 5+ distinct hero / product / category images committed.
-  - Before shipping, eyeball
-    `tmp/images-needed.md` (a future `check_theme_readiness` can
-    emit this list; today operators produce it by hand from the
-    images that failed the uniqueness check).
-- **Trigger to revisit:** a batch spends >50% of its wall time on
-  image sourcing -- at which point the two options are (a) image-gen
-  with a licensed model + copyright audit, or (b) commit to a
-  licensed stock library with deterministic per-theme assignment.
-  Record the decision as an addendum to this section.
+  - Let `bin/design.py` run its `photos` phase.
+  - Review `<slug>/playground/images/` and the generated
+    `product-images.json` / `category-images.json` maps.
+  - Keep `readiness.json.gates.images_unique` false until the
+    uniqueness checks and visual review are clean.
+- **Trigger to revisit:** a batch spends >50% of wall time repairing
+  generated imagery, or a licensing/compliance review rejects the
+  generated-image approach. The likely next option is a licensed stock
+  library with deterministic per-theme assignment.
 
 ## B.5 Concurrency safety of check.py / snap.py under worktrees
 
@@ -126,22 +126,24 @@ Updating rules:
 
 ## B.6 LLM spend / rate-limit exposure
 
-- **Decision:** **ship a spend logger before batch #2.** Skip the
-  hard budget ceiling until we have a measured cost per batch.
+- **Decision:** **shipped.** Vision/LLM-backed flows write an
+  append-only spend ledger and batch runs enforce a daily cap before
+  each theme.
 - **Why:** a 100-theme rollout with LLM-assisted concept-to-spec +
   spec-from-prompt + snap-vision-review will hit Anthropic dozens of
   times. Without a log we have no way to argue the budget case or
-  catch a runaway batch. A hard ceiling (`FIFTY_LLM_BUDGET_USD` abort)
-  is tempting but premature -- we'd likely pick the wrong number.
+  catch a runaway batch. A per-day cap is now safer than guessing a
+  lifetime project budget.
 - **Operator flow:**
-  - Append-only `tmp/llm-spend.log` written by every LLM-backed
-    script (`bin/_vision_lib.py` as the shared site). Format:
-    `<iso-timestamp>\t<script>\t<model>\t<input_tokens>\t<output_tokens>\t<est_usd>`.
-  - `--no-llm` / `--dry-run` flags on each script. `bin/concept-to-spec.py`
-    already has this (Tier 1.2). Audit for coverage before batch #2.
-- **Trigger for hard ceiling:** after one real batch, if the measured
-  spend curve looks like it would exceed $50 / batch at N=100, add
-  `FIFTY_LLM_BUDGET_USD` as an abort.
+  - Append-only `tmp/vision-spend.jsonl` written through
+    `bin/_vision_lib.py`.
+  - `FIFTY_VISION_DAILY_BUDGET` / `--budget-usd` gates batch runs
+    before each theme.
+  - `--no-llm` / `--dry-run` flags remain the escape hatch for local
+    rehearsals.
+- **Trigger for next change:** if non-vision LLM calls grow outside
+  `_vision_lib.py`, move the ledger naming from "vision" to a generic
+  LLM spend ledger without losing historical entries.
 
 ---
 

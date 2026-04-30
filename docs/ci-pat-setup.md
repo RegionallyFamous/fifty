@@ -1,6 +1,6 @@
 # `FIFTY_AUTO_PAT` — one-time setup
 
-This repo's automation commits back into PR branches from two
+This repo's PR automation may commit back into PR branches from two
 workflows:
 
 - `.github/workflows/first-baseline.yml` — seeds
@@ -10,9 +10,9 @@ workflows:
   snaps to the committed baseline tree and regenerates
   `<theme>/screenshot.png`.
 
-Both want the push that lands those auto-commits to **retrigger the
-PR's checks** (`check.yml` / `visual.yml`) so the PR can go green and
-auto-merge without a human in the loop.
+Those PR-branch pushes need to **retrigger the PR's checks**
+(`check.yml` / `visual.yml`) so the PR can go green and auto-merge
+without a human in the loop.
 
 GitHub deliberately blocks this when the push is attributed to the
 default `GITHUB_TOKEN`:
@@ -30,10 +30,15 @@ To close the loop we push with a **classic personal access token
 re-run and auto-merge lands when they're green.
 
 Without the PAT everything still works — first-baseline still commits
-baselines, visual.yml still rebaselines — but a human has to kick CI
-to re-evaluate the PR (close+reopen, or push an empty commit). The
+baselines, visual.yml still rebaselines — but a human may have to kick
+CI to re-evaluate the PR (close+reopen, or push an empty commit). The
 workflows print a loud `::warning::` when this fallback path is in
 effect so you never silently stall.
+
+This PAT is **not** needed for the public demo site. `publish-demo.yml`
+uses `actions/upload-pages-artifact` + `actions/deploy-pages` with the
+default `GITHUB_TOKEN` and `pages:write` permission, so docs/ and
+mockups/ deployment no longer requires a push-to-main token.
 
 ## Setup (one-time, ~3 minutes)
 
@@ -84,12 +89,14 @@ into the same `FIFTY_AUTO_PAT` secret, revoke the old token at
 
 ## What we don't do with this PAT
 
+- **Publish the demo site.** GH Pages deployment is handled by
+  `publish-demo.yml` with `pages:write`; do not reuse this PAT for
+  Pages.
 - **Merge commits on main.** Branch-protection rules on `main`
   require a PR review; `FIFTY_AUTO_PAT` intentionally does not grant
   the permissions that would let a workflow bypass this. If someone
-  later wants push-to-main automation (for `check.yml` → docs/snaps
-  or docs/themes regen), use a separate secret with a narrower scope
-  or a GitHub App.
+  later wants push-to-main automation, use a separate secret with a
+  narrower scope or a GitHub App.
 - **Push to unrelated repos.** Fine-grained PATs are scoped to
   `RegionallyFamous/fifty` exactly. Classic PATs are scoped to all
   your repos — using the fine-grained variant is the mitigation.

@@ -1,10 +1,9 @@
 # Day-0 smoke batch
 
-> **Status:** template. Fill in the timings + findings below before starting
-> Tier 1 infrastructure work. Context: this doc was drafted alongside
-> the pre-100-themes hardening plan (Cursor-local, not checked in);
-> the tier conclusions now live in
-> [`docs/shipping-a-theme.md`](shipping-a-theme.md) and
+> **Status:** historical calibration template. The original Tier 1
+> infrastructure work has landed; keep this document as the worksheet
+> for the next real multi-theme smoke batch. Current operator guidance
+> lives in [`docs/shipping-a-theme.md`](shipping-a-theme.md) and
 > [`docs/batch-playbook.md`](batch-playbook.md).
 >
 > **Why this exists:** the hardening plan assumes certain steps are slow
@@ -17,7 +16,9 @@
 
 ## How to run it
 
-Pick 3-5 un-shipped concepts from `bin/concept_seed.py::CONCEPTS`.
+Pick 3-5 concepts from the bench at
+[`demo.regionallyfamous.com/concepts/`](https://demo.regionallyfamous.com/concepts/)
+or from `bin/concept_seed.py::CONCEPTS`.
 Suggested spread (covers different `hero_composition` / `sector` /
 `era` axes so one slow concept doesn't skew the average):
 
@@ -30,24 +31,22 @@ Suggested spread (covers different `hero_composition` / `sector` /
 For each theme, record:
 
 1. **Spec authoring** (wall clock, minutes)
-   -- did you hand-write the `design.py` spec JSON, or start from
-   `bin/spec-from-prompt.py`? How many revisions before it produced a
-   usable clone?
+   -- did you use `bin/concept-to-spec.py --no-llm`, the LLM mode, or
+   hand-write the JSON? How many revisions before it validated?
 
 2. **design.py run** (wall clock, minutes; Chromium log if it crashed)
    -- `python3 bin/design.py tmp/specs/<slug>.json`
    -- from clone start to "snap baseline promoted".
 
-3. **Manual WooCommerce microcopy pass** (wall clock)
-   -- how many strings did you end up changing in `functions.php`
-   beyond what `bin/personalize-microcopy.py` produced?
+3. **Microcopy review** (wall clock)
+   -- how many generated strings did you change after
+   `bin/generate-microcopy.py`?
 
-4. **Product imagery pass** (wall clock + image count)
-   -- where did images come from (generated / licensed / hand-shot)?
+4. **Product imagery review** (wall clock + image count)
+   -- how much generated imagery did you replace or repair?
 
-5. **Front-page restructure** (wall clock + pattern count changed)
-   -- how many patterns did you touch to make the front-page visually
-   distinct from the Obel clone skeleton?
+5. **Front-page review** (wall clock + pattern count changed)
+   -- how many generated front-page changes did you keep or repair?
 
 6. **check.py iteration loop** (count + wall clock)
    -- how many `python3 bin/check.py --all --offline` -> fix -> rerun
