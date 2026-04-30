@@ -1,0 +1,38 @@
+<!-- wp:group {"tagName":"header","align":"full","className":"xerox-header","style":{"spacing":{"blockGap":"0","padding":{"top":"var:preset|spacing|md","bottom":"var:preset|spacing|md"}},"border":{"bottom":{"color":"var:preset|color|contrast","width":"var:custom|border|width|thick","style":"solid"}}},"backgroundColor":"base","layout":{"type":"constrained","contentSize":"var(--wp--style--global--wide-size)"}} -->
+<header class="wp-block-group alignfull xerox-header has-base-background-color has-background" style="border-bottom-color:var(--wp--preset--color--contrast);border-bottom-style:solid;border-bottom-width:var(--wp--custom--border--width--thick);padding-top:var(--wp--preset--spacing--md);padding-bottom:var(--wp--preset--spacing--md)">
+
+	<!-- wp:group {"align":"full","style":{"spacing":{"padding":{"top":"0","bottom":"0"}}},"layout":{"type":"constrained","contentSize":"var(--wp--style--global--wide-size)"}} -->
+	<div class="wp-block-group alignfull" style="padding-top:0;padding-bottom:0">
+		<!-- wp:group {"align":"wide","layout":{"type":"flex","flexWrap":"nowrap","justifyContent":"space-between","verticalAlignment":"center"},"style":{"spacing":{"blockGap":"var:preset|spacing|lg"}}} -->
+		<div class="wp-block-group alignwide">
+
+			<!-- wp:group {"className":"xerox-header__brand","layout":{"type":"flex","flexWrap":"nowrap","verticalAlignment":"center"},"style":{"spacing":{"blockGap":"var:preset|spacing|sm"}}} -->
+			<div class="wp-block-group xerox-header__brand">
+				<!-- wp:site-logo {"width":36} /-->
+				<!-- wp:site-title {"level":0} /-->
+			</div>
+			<!-- /wp:group -->
+
+			<!-- wp:navigation {"overlayMenu":"mobile","icon":"menu","overlayBackgroundColor":"contrast","overlayTextColor":"accent","className":"xerox-header__nav","layout":{"type":"flex","setCascadingProperties":true,"justifyContent":"center","flexWrap":"nowrap"},"style":{"spacing":{"blockGap":"var:preset|spacing|md"}},"ariaLabel":"Primary"} -->
+				<!-- wp:navigation-link {"label":"Shop","url":"/shop/","kind":"custom","isTopLevelLink":true} /-->
+				<!-- wp:navigation-link {"label":"Lookbook","url":"/lookbook/","kind":"custom","isTopLevelLink":true} /-->
+				<!-- wp:navigation-link {"label":"Journal","url":"/journal/","kind":"custom","isTopLevelLink":true} /-->
+				<!-- wp:navigation-link {"label":"About","url":"/about/","kind":"custom","isTopLevelLink":true} /-->
+				<!-- wp:navigation-link {"label":"Contact","url":"/contact/","kind":"custom","isTopLevelLink":true} /-->
+			<!-- /wp:navigation -->
+
+			<!-- wp:group {"className":"xerox-header__utility","layout":{"type":"flex","flexWrap":"nowrap","verticalAlignment":"center"},"style":{"spacing":{"blockGap":"var:preset|spacing|sm"}}} -->
+			<div class="wp-block-group xerox-header__utility">
+				<!-- wp:search {"label":"Search","showLabel":false,"placeholder":"Search products…","buttonText":"Search","buttonPosition":"button-only","buttonUseIcon":true,"className":"xerox-header__search"} /-->
+				<!-- wp:woocommerce/customer-account {"displayStyle":"icon_only","iconStyle":"line","iconClass":"xerox-header__account"} /-->
+				<!-- wp:woocommerce/mini-cart {"miniCartIcon":"bag","hasHiddenPrice":true,"className":"xerox-header__cart"} /-->
+			</div>
+			<!-- /wp:group -->
+
+		</div>
+		<!-- /wp:group -->
+	</div>
+	<!-- /wp:group -->
+
+</header>
+<!-- /wp:group -->
