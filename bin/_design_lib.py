@@ -35,6 +35,7 @@ slugs the spec doesn't touch are left alone.
 """
 from __future__ import annotations
 
+import copy
 import json
 import re
 from dataclasses import dataclass, field
@@ -503,6 +504,131 @@ def apply_fonts(theme_json: dict[str, Any], fonts: dict[str, dict[str, Any]]) ->
             del entry["fontFace"]
 
     return theme_json
+
+
+TOKEN_PATCH_KEYS = frozenset(
+    {
+        "schema",
+        "spacing_sizes",
+        "shadow_presets",
+        "custom_radius",
+        "custom_border_width",
+        "styles_css_append",
+    }
+)
+
+
+def _replace_or_append_by_slug(
+    entries: list[Any],
+    *,
+    slug: str,
+    field: str,
+    value: str,
+    name: str | None = None,
+) -> None:
+    for entry in entries:
+        if isinstance(entry, dict) and entry.get("slug") == slug:
+            entry[field] = value
+            return
+    entries.append(
+        {
+            "slug": slug,
+            "name": name or _title_case_slug(slug),
+            field: value,
+        }
+    )
+
+
+def apply_token_patches(theme_json: dict[str, Any], patches: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of ``theme_json`` with design-token patches applied.
+
+    The input shape is intentionally narrow because this is fed by an LLM
+    during the design pipeline. The model may tune spacing sizes, shadow
+    presets, radius tokens, border-width tokens, and append top-level
+    ``styles.css`` only. Palette, fonts, templates, and arbitrary theme.json
+    paths stay out of bounds.
+    """
+
+    unknown = set(patches) - TOKEN_PATCH_KEYS
+    if unknown:
+        raise ValueError(f"unknown token patch key(s): {', '.join(sorted(unknown))}")
+
+    out = copy.deepcopy(theme_json)
+    settings = out.setdefault("settings", {})
+
+    spacing_sizes = patches.get("spacing_sizes")
+    if spacing_sizes is not None:
+        if not isinstance(spacing_sizes, list):
+            raise ValueError("spacing_sizes must be a list")
+        spacing = settings.setdefault("spacing", {})
+        entries = spacing.setdefault("spacingSizes", [])
+        if not isinstance(entries, list):
+            raise ValueError("settings.spacing.spacingSizes must be a list")
+        for item in spacing_sizes:
+            if not isinstance(item, dict):
+                raise ValueError("spacing_sizes entries must be objects")
+            slug = str(item.get("slug") or "").strip()
+            size = str(item.get("size") or "").strip()
+            if not slug or not size:
+                raise ValueError("spacing_sizes entries require slug and size")
+            name = str(item.get("name") or "") or None
+            _replace_or_append_by_slug(entries, slug=slug, field="size", value=size, name=name)
+
+    shadow_presets = patches.get("shadow_presets")
+    if shadow_presets is not None:
+        if not isinstance(shadow_presets, list):
+            raise ValueError("shadow_presets must be a list")
+        shadow = settings.setdefault("shadow", {})
+        entries = shadow.setdefault("presets", [])
+        if not isinstance(entries, list):
+            raise ValueError("settings.shadow.presets must be a list")
+        for item in shadow_presets:
+            if not isinstance(item, dict):
+                raise ValueError("shadow_presets entries must be objects")
+            slug = str(item.get("slug") or "").strip()
+            value = str(item.get("shadow") or "").strip()
+            if not slug or not value:
+                raise ValueError("shadow_presets entries require slug and shadow")
+            name = str(item.get("name") or "") or None
+            _replace_or_append_by_slug(entries, slug=slug, field="shadow", value=value, name=name)
+
+    custom_radius = patches.get("custom_radius")
+    if custom_radius is not None:
+        if not isinstance(custom_radius, dict):
+            raise ValueError("custom_radius must be an object")
+        custom = settings.setdefault("custom", {})
+        radius = custom.setdefault("radius", {})
+        if not isinstance(radius, dict):
+            raise ValueError("settings.custom.radius must be an object")
+        for slug, value in custom_radius.items():
+            radius[str(slug)] = str(value)
+
+    custom_border_width = patches.get("custom_border_width")
+    if custom_border_width is not None:
+        if not isinstance(custom_border_width, dict):
+            raise ValueError("custom_border_width must be an object")
+        custom = settings.setdefault("custom", {})
+        border = custom.setdefault("border", {})
+        if not isinstance(border, dict):
+            raise ValueError("settings.custom.border must be an object")
+        width = border.setdefault("width", {})
+        if not isinstance(width, dict):
+            raise ValueError("settings.custom.border.width must be an object")
+        for slug, value in custom_border_width.items():
+            width[str(slug)] = str(value)
+
+    styles_css_append = patches.get("styles_css_append")
+    if styles_css_append is not None:
+        if not isinstance(styles_css_append, str):
+            raise ValueError("styles_css_append must be a string")
+        snippet = styles_css_append.strip()
+        if snippet:
+            styles = out.setdefault("styles", {})
+            css = str(styles.get("css") or "")
+            if snippet not in css:
+                styles["css"] = (css.rstrip() + "\n\n" + snippet + "\n").lstrip()
+
+    return out
 
 
 def make_brief(spec: ValidatedSpec, theme_root: Path) -> str:

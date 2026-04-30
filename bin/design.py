@@ -135,6 +135,7 @@ from _design_lib import (  # noqa: E402
     ValidatedSpec,
     apply_fonts,
     apply_palette,
+    apply_token_patches,
     example_spec,
     make_brief,
     serialize_theme_json,
@@ -191,14 +192,18 @@ PHASES = (
     #                  layout fails when two themes cloned from the same
     #                  source have the same block-sequence fingerprint.
     "frontpage",
-    # H. index — moved to AFTER seed/sync/photos/microcopy/frontpage so
-    #            INDEX.md reflects the final state of templates/parts/
-    #            patterns (including any microcopy changes or front-page
-    #            restructuring).  Running it before seed was the source of
-    #            the "INDEX.md in sync" check failure: the phase wrote an
-    #            INDEX based on the just-cloned state, then later phases
-    #            modified the same files, leaving INDEX stale at check
-    #            time.
+    # G¾¾. design-tokens — consume the frontpage agent's style_directives +
+    #                       mini home snap and generate token-patches.json,
+    #                       then apply it to theme.json so the theme stops
+    #                       reading as a palette-swapped source clone.
+    "design-tokens",
+    # H. index — moved to AFTER seed/sync/photos/microcopy/frontpage/design-
+    #            tokens so INDEX.md reflects the final state of templates/
+    #            parts/patterns and token files. Running it before seed was
+    #            the source of the "INDEX.md in sync" check failure: the
+    #            phase wrote an INDEX based on the just-cloned state, then
+    #            later phases modified the same files, leaving INDEX stale
+    #            at check time.
     "index",
     # F½. prepublish — commit + push the scaffolded theme BEFORE snap.
     #                  The blueprint inlines `raw.githubusercontent.com`
@@ -278,6 +283,7 @@ _PHASES_FOR_BUILD = (
     "photos",
     "microcopy",
     "frontpage",
+    "design-tokens",
     "index",
     "prepublish",
     "snap",
@@ -298,6 +304,7 @@ _PHASES_FOR_DRESS = (
     "photos",
     "microcopy",
     "frontpage",
+    "design-tokens",
     "snap",
     "allowlist",
     "content-preflight",
@@ -845,6 +852,40 @@ def _phase_clone(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> N
         raise PhaseError("clone", f"bin/clone.py exited {rc}")
 
 
+def _mockup_path_for_theme(slug: str) -> Path | None:
+    for candidate in (
+        MONOREPO_ROOT / "mockups" / f"mockup-{slug}.png",
+        MONOREPO_ROOT / "docs" / "mockups" / f"{slug}.png",
+    ):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _update_design_intent_mockup(theme_root: Path, mockup: Path) -> bool:
+    intent_path = theme_root / "design-intent.md"
+    if not intent_path.is_file():
+        return False
+    body = intent_path.read_text(encoding="utf-8")
+    rel = mockup.relative_to(MONOREPO_ROOT).as_posix()
+    section = (
+        "## Mockup\n\n"
+        f"`{rel}` — concept mockup used as the visual reference for automated "
+        "layout selection, token tuning, and mockup-divergence review.\n"
+    )
+    marker = "## Mockup"
+    if marker in body:
+        start = body.index(marker)
+        next_section = body.find("\n## ", start + len(marker))
+        updated = body[:start] + section + ("\n" + body[next_section + 1 :] if next_section != -1 else "")
+    else:
+        updated = body.rstrip() + "\n\n" + section
+    if updated == body:
+        return False
+    intent_path.write_text(updated, encoding="utf-8")
+    return True
+
+
 def _phase_apply(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
     """Apply palette + fonts to `<slug>/theme.json`, write `<slug>/BRIEF.md`."""
     theme_json_path = dest / "theme.json"
@@ -880,6 +921,13 @@ def _phase_apply(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> N
     brief_path = dest / "BRIEF.md"
     brief_path.write_text(make_brief(spec, dest), encoding="utf-8")
     print(f"  [apply] wrote {brief_path.relative_to(MONOREPO_ROOT)}")
+
+    mockup = _mockup_path_for_theme(spec.slug)
+    if mockup and _update_design_intent_mockup(dest, mockup):
+        print(
+            f"  [apply] wrote {(dest / 'design-intent.md').relative_to(MONOREPO_ROOT)} "
+            f"mockup reference ({mockup.relative_to(MONOREPO_ROOT)})"
+        )
 
     spec_path = dest / "spec.json"
     spec_path.write_text(
@@ -1604,6 +1652,40 @@ def _phase_frontpage(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) 
             )
     elif agent.is_file():
         print("  [frontpage] ANTHROPIC_API_KEY not set; structural restyle skipped.")
+
+
+def _phase_design_tokens(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
+    """Generate and apply token patches from mockup + frontpage evidence."""
+
+    agent = ROOT / "bin" / "design-agent.py"
+    patches_path = dest / "token-patches.json"
+    if agent.is_file() and os.environ.get("ANTHROPIC_API_KEY") and not patches_path.is_file():
+        mode = "--keep-going" if (args.keep_going or not args.strict) else "--strict"
+        cmd = [sys.executable, str(agent), "--theme", spec.slug, "--task", "tokens", mode]
+        print(f"  [design-tokens] {' '.join(cmd[1:])}")
+        rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
+        if rc != 0:
+            if args.strict and not args.keep_going:
+                raise PhaseError("design-tokens", f"bin/design-agent.py --task tokens exited {rc}")
+            print(f"  [design-tokens] WARN: design-agent.py --task tokens exited {rc}; continuing.")
+    elif not patches_path.is_file():
+        print("  [design-tokens] ANTHROPIC_API_KEY unset or design-agent.py missing; skipping.")
+        return
+
+    if not patches_path.is_file():
+        print("  [design-tokens] no token-patches.json to apply; skipping.")
+        return
+
+    theme_json_path = dest / "theme.json"
+    try:
+        theme_json = json.loads(theme_json_path.read_text(encoding="utf-8"))
+        patches = json.loads(patches_path.read_text(encoding="utf-8"))
+        updated = apply_token_patches(theme_json, patches)
+    except Exception as exc:
+        raise PhaseError("design-tokens", f"failed to apply {patches_path}: {exc}") from exc
+
+    theme_json_path.write_text(serialize_theme_json(updated), encoding="utf-8")
+    print(f"  [design-tokens] applied {patches_path.relative_to(MONOREPO_ROOT)}")
 
 
 def _wait_for_cdn(slug: str, branch: str, timeout_s: int = 60) -> None:
@@ -2406,6 +2488,7 @@ _PHASE_HANDLERS = {
     "photos": _phase_photos,
     "microcopy": _phase_microcopy,
     "frontpage": _phase_frontpage,
+    "design-tokens": _phase_design_tokens,
     "prepublish": _phase_prepublish,
     "snap": _phase_snap,
     "allowlist": _phase_allowlist,

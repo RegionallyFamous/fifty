@@ -21,6 +21,7 @@ import pytest
 from _design_lib import (
     apply_fonts,
     apply_palette,
+    apply_token_patches,
     example_spec,
     make_brief,
     serialize_theme_json,
@@ -213,6 +214,21 @@ def _theme_json_fixture() -> dict:
                     {"slug": "display", "name": "Display", "fontFamily": "Georgia, serif"},
                 ],
             },
+            "spacing": {
+                "spacingSizes": [
+                    {"slug": "sm", "name": "Small", "size": "1rem"},
+                    {"slug": "md", "name": "Medium", "size": "2rem"},
+                ],
+            },
+            "shadow": {
+                "presets": [
+                    {"slug": "md", "name": "Medium", "shadow": "0 1px 2px rgba(0,0,0,0.1)"}
+                ],
+            },
+            "custom": {
+                "radius": {"sm": "4px", "md": "8px", "lg": "16px"},
+                "border": {"width": {"hairline": "1px", "thick": "2px"}},
+            },
         },
         "styles": {"css": "/* preserved */"},
     }
@@ -394,6 +410,51 @@ def test_apply_fonts_idempotent():
     apply_fonts(tj2, payload)
     apply_fonts(tj2, payload)
     assert tj1 == tj2
+
+
+# ---------------------------------------------------------------------------
+# apply_token_patches
+# ---------------------------------------------------------------------------
+
+
+def test_apply_token_patches_updates_allowed_tokens_and_css():
+    tj = _theme_json_fixture()
+    updated = apply_token_patches(
+        tj,
+        {
+            "schema": 1,
+            "spacing_sizes": [{"slug": "sm", "size": "0.5rem"}],
+            "shadow_presets": [{"slug": "md", "shadow": "0 2px 8px rgba(0,0,0,0.2)"}],
+            "custom_radius": {"sm": "0", "md": "0"},
+            "custom_border_width": {"thick": "3px"},
+            "styles_css_append": ".wp-block-button__link { border-radius: 0; }",
+        },
+    )
+
+    assert tj["settings"]["spacing"]["spacingSizes"][0]["size"] == "1rem"
+    by_spacing = {e["slug"]: e for e in updated["settings"]["spacing"]["spacingSizes"]}
+    by_shadow = {e["slug"]: e for e in updated["settings"]["shadow"]["presets"]}
+    assert by_spacing["sm"]["size"] == "0.5rem"
+    assert by_shadow["md"]["shadow"] == "0 2px 8px rgba(0,0,0,0.2)"
+    assert updated["settings"]["custom"]["radius"]["sm"] == "0"
+    assert updated["settings"]["custom"]["border"]["width"]["thick"] == "3px"
+    assert ".wp-block-button__link" in updated["styles"]["css"]
+
+
+def test_apply_token_patches_rejects_unknown_keys():
+    with pytest.raises(ValueError, match="unknown token patch"):
+        apply_token_patches(_theme_json_fixture(), {"palette": {"base": "#000000"}})
+
+
+def test_apply_token_patches_idempotent():
+    tj = _theme_json_fixture()
+    patch = {
+        "spacing_sizes": [{"slug": "sm", "size": "0.5rem"}],
+        "styles_css_append": ".wp-block-button__link { border-radius: 0; }",
+    }
+    once = apply_token_patches(tj, patch)
+    twice = apply_token_patches(once, patch)
+    assert once == twice
 
 
 # ---------------------------------------------------------------------------
