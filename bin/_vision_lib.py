@@ -1049,6 +1049,7 @@ def review_image(
     *,
     png_path: Path,
     intent_md: str,
+    mockup_path: Path | None = None,
     theme: str = "",
     route: str = "",
     viewport: str = "",
@@ -1106,6 +1107,13 @@ def review_image(
         route_purpose=route_purpose,
         kinds_allowlist=phase_allowlist,
     )
+    if mockup_path is not None:
+        user_prompt = (
+            "Image order: the first image is the rendered screenshot under review. "
+            "The second image is the original concept mockup; use it to judge "
+            "`vision:mockup-divergent` and brand fidelity.\n\n"
+            + user_prompt
+        )
 
     resp = vision_completion(
         png_path=png_path,
@@ -1120,6 +1128,7 @@ def review_image(
         max_output_tokens=max_output_tokens,
         ledger_path=ledger_path,
         daily_budget_usd=daily_budget_usd,
+        extra_png_paths=[mockup_path] if mockup_path is not None else None,
     )
 
     findings = (

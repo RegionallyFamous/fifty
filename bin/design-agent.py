@@ -9,6 +9,8 @@ Tasks:
   frontpage  Read the concept context and rewrite templates/front-page.html.
              Each candidate is validated with the editor-parity block
              validator before it is kept.
+  tokens     Compare the concept mockup and freshly rendered home snap, then
+             write token-patches.json for design.py to apply to theme.json.
   photos     Ask Claude for product-photo prompts and, when an image API key
              is available, generate real JPEGs. In strict mode, missing API
              keys or provider failures fail the phase instead of falling back.
@@ -18,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import concurrent.futures
 import csv
 import html
 import json
@@ -32,11 +35,13 @@ import urllib.error
 import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from threading import Lock
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "bin"))
 
+from _design_lib import apply_token_patches  # noqa: E402
 from _lib import resolve_theme_root  # noqa: E402
 
 DEFAULT_MODEL = "claude-sonnet-4-6"
@@ -144,8 +149,13 @@ def _load_spec_context(slug: str, theme_root: Path) -> dict[str, Any]:
 
 
 def _mockup_path(slug: str) -> Path | None:
-    path = ROOT / "mockups" / f"mockup-{slug}.png"
-    return path if path.is_file() else None
+    for candidate in (
+        ROOT / "mockups" / f"mockup-{slug}.png",
+        ROOT / "docs" / "mockups" / f"{slug}.png",
+    ):
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def _strip_code_fence(raw: str) -> str:
@@ -248,6 +258,7 @@ def _completion(
     mockup: Path | None,
     model: str,
     max_output_tokens: int,
+    extra_png_paths: list[Path] | None = None,
 ) -> str:
     try:
         if mockup is not None:
@@ -262,6 +273,7 @@ def _completion(
                 viewport="mockup",
                 model=model,
                 max_output_tokens=max_output_tokens,
+                extra_png_paths=extra_png_paths,
             ).raw_text
 
         from _vision_lib import text_completion
@@ -458,6 +470,9 @@ Return JSON with exactly these keys:
 Rules:
 - Pick one of the registered `layout_id` values only.
 - Slot copy must be shopper-facing and brand-specific, but concise.
+- Style directives must be token-actionable only: spacing density, corner radius,
+  shadow presence, border weight, card chrome, section density, and color usage.
+  Omit markup, SVG, background-image, copy, and product-label directives.
 - Do not invent forms, scripts, custom blocks, shortcodes, or raw CSS.
 """
     return system, prompt
@@ -812,6 +827,170 @@ def run_frontpage(
     return 0 if evidence_ok else 1
 
 
+def _token_schema_excerpt(theme_root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Return (full theme.json, patchable token excerpt) for the token agent."""
+
+    theme_json = _read_json(theme_root / "theme.json")
+    settings = theme_json.get("settings", {})
+    custom = settings.get("custom", {})
+    excerpt = {
+        "settings.spacing.spacingSizes": settings.get("spacing", {}).get("spacingSizes", []),
+        "settings.shadow.presets": settings.get("shadow", {}).get("presets", []),
+        "settings.custom.radius": custom.get("radius", {}),
+        "settings.custom.border.width": custom.get("border", {}).get("width", {}),
+        "styles.css_tail": str(theme_json.get("styles", {}).get("css") or "")[-4000:],
+    }
+    return theme_json, excerpt
+
+
+def _frontpage_style_directives(slug: str) -> list[str]:
+    payload = _read_json(_agent_dir(slug) / "frontpage-result.json")
+    choice = payload.get("choice") if isinstance(payload.get("choice"), dict) else {}
+    directives = choice.get("style_directives") if isinstance(choice, dict) else []
+    if not isinstance(directives, list):
+        return []
+    return [str(item).strip() for item in directives if str(item).strip()]
+
+
+def _home_snap_path(slug: str) -> Path | None:
+    for candidate in (
+        ROOT / "tmp" / "snaps" / slug / "desktop" / "home.png",
+        ROOT / "tmp" / "snaps" / slug / "mobile" / "home.png",
+    ):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _token_prompt(
+    slug: str,
+    context: dict[str, Any],
+    token_excerpt: dict[str, Any],
+    directives: list[str],
+    *,
+    mockup: Path | None,
+    snap: Path | None,
+) -> tuple[str, str]:
+    if mockup is not None and snap is not None:
+        image_context = (
+            f"- First image: concept mockup `{_safe_rel(mockup)}`\n"
+            f"- Second image: current rendered home snap `{_safe_rel(snap)}`"
+        )
+    elif mockup is not None:
+        image_context = f"- First image: concept mockup `{_safe_rel(mockup)}`"
+    elif snap is not None:
+        image_context = f"- First image: current rendered home snap `{_safe_rel(snap)}`"
+    else:
+        image_context = "- No images available; use concept context and token schema only."
+    system = (
+        "You are a senior WordPress block-theme designer. Return only JSON. "
+        "You may tune design tokens and append top-level theme.json styles.css, "
+        "but you must not invent templates, raw HTML, scripts, plugins, palette "
+        "slugs, or font families."
+    )
+    prompt = f"""\
+Tune `{slug}` so the rendered theme better matches the concept mockup.
+
+Image context:
+{image_context}
+
+Concept context:
+{json.dumps(context, indent=2, ensure_ascii=False)[:12000]}
+
+Front-page style directives from the layout classifier:
+{json.dumps(directives, indent=2, ensure_ascii=False)[:6000]}
+
+Patchable current theme.json token excerpt:
+{json.dumps(token_excerpt, indent=2, ensure_ascii=False)[:12000]}
+
+Return JSON with exactly this shape. Omit a key or use an empty value when no
+change is needed. Use ONLY existing spacing/shadow/radius/border slugs unless a
+new slug is genuinely required. Keep `styles_css_append` small and token-based
+(`var:preset|...` or `var(--wp--preset--...)`), never hardcode unrelated colors.
+
+```json
+{{
+  "schema": 1,
+  "spacing_sizes": [
+    {{ "slug": "sm", "size": "0.5rem" }}
+  ],
+  "shadow_presets": [
+    {{ "slug": "md", "shadow": "0 2px 8px rgba(18,10,0,0.18)" }}
+  ],
+  "custom_radius": {{ "sm": "0", "md": "0", "lg": "0" }},
+  "custom_border_width": {{ "thick": "3px" }},
+  "styles_css_append": "/* tiny token-based CSS only, or empty string */"
+}}
+```
+"""
+    return system, prompt
+
+
+def run_tokens(
+    theme_root: Path,
+    *,
+    dry_run: bool,
+    model: str,
+    keep_going: bool,
+    force: bool,
+) -> int:
+    slug = theme_root.name
+    out_path = theme_root / "token-patches.json"
+    if out_path.is_file() and not force:
+        print(f"  [design-agent/tokens] {out_path.relative_to(ROOT)} exists; reusing it.")
+        return 0
+
+    theme_json, token_excerpt = _token_schema_excerpt(theme_root)
+    if not theme_json:
+        print(f"design-agent tokens: {theme_root / 'theme.json'} missing or invalid", file=sys.stderr)
+        return 1
+
+    context = _load_spec_context(slug, theme_root)
+    directives = _frontpage_style_directives(slug)
+    mockup = _mockup_path(slug)
+    snap = _home_snap_path(slug)
+    system, prompt = _token_prompt(
+        slug,
+        context,
+        token_excerpt,
+        directives,
+        mockup=mockup,
+        snap=snap,
+    )
+    primary = mockup or snap
+    extras = [snap] if mockup is not None and snap is not None else None
+
+    if dry_run:
+        print("---- DESIGN AGENT TOKENS PROMPT (dry-run) ----")
+        print(f"primary_image: {_safe_rel(primary) if primary else '(text-only)'}")
+        print(f"extra_images: {[ _safe_rel(p) for p in extras or [] ]}")
+        print(prompt)
+        print("---- END PROMPT ----")
+        return 0
+
+    try:
+        raw = _completion(
+            prompt=prompt,
+            system_prompt=system,
+            mockup=primary,
+            model=model,
+            max_output_tokens=5000,
+            extra_png_paths=extras,
+        )
+        patches = _parse_json_object(raw)
+        patches.setdefault("schema", 1)
+        apply_token_patches(theme_json, patches)
+    except Exception as exc:
+        print(f"  [design-agent/tokens] {exc}", file=sys.stderr)
+        if not keep_going:
+            return 1
+        return 0
+
+    _write_json(out_path, patches)
+    print(f"  [design-agent/tokens] wrote {_safe_rel(out_path)}")
+    return 0
+
+
 def _product_map(theme_root: Path) -> dict[str, str]:
     path = theme_root / "playground" / "content" / "product-images.json"
     data = _read_json(path)
@@ -1125,38 +1304,63 @@ def run_photos(theme_root: Path, *, dry_run: bool, model: str, keep_going: bool)
     written = 0
     records: list[dict[str, Any]] = []
     images_dir = theme_root / "playground" / "images"
-    for sku, filename in sorted(products.items()):
-        image_prompt = prompt_map.get(sku)
-        if not image_prompt:
-            continue
+
+    # Build the work list (SKUs that have a prompt).
+    work_items = [
+        (sku, filename, prompt_map[sku])
+        for sku, filename in sorted(products.items())
+        if prompt_map.get(sku)
+    ]
+
+    # Parallelise image-API calls.  OpenAI's image endpoint is rate-limited
+    # by requests-per-minute (not by token budget), so 8 concurrent calls
+    # saturates typical Tier-1/2 limits without approaching the per-minute
+    # cap.  FAL is similarly concurrency-friendly.  A Lock guards the shared
+    # `written` counter and `records` list so threads can append safely.
+    _MAX_WORKERS = int(os.environ.get("FIFTY_PHOTO_WORKERS", "8"))
+    _lock = Lock()
+
+    def _generate_one(item: tuple[str, str, str]) -> None:
+        nonlocal written
+        sku, filename, image_prompt = item
         dest = images_dir / filename
         try:
             _write_image_bytes(dest, generator(image_prompt))
-            written += 1
-            records.append(
-                {
-                    "sku": sku,
-                    "filename": filename,
-                    "provider": provider,
-                    "model": provider_model,
-                    "prompt": image_prompt,
-                    "status": "generated",
-                }
-            )
+            with _lock:
+                written += 1
+                records.append(
+                    {
+                        "sku": sku,
+                        "filename": filename,
+                        "provider": provider,
+                        "model": provider_model,
+                        "prompt": image_prompt,
+                        "status": "generated",
+                    }
+                )
             print(f"  [design-agent/photos] generated {dest.relative_to(ROOT)}")
         except Exception as exc:
-            records.append(
-                {
-                    "sku": sku,
-                    "filename": filename,
-                    "provider": provider,
-                    "model": provider_model,
-                    "prompt": image_prompt,
-                    "status": "failed",
-                    "error": str(exc),
-                }
-            )
+            with _lock:
+                records.append(
+                    {
+                        "sku": sku,
+                        "filename": filename,
+                        "provider": provider,
+                        "model": provider_model,
+                        "prompt": image_prompt,
+                        "status": "failed",
+                        "error": str(exc),
+                    }
+                )
             print(f"  [design-agent/photos] {sku} failed: {exc}", file=sys.stderr)
+
+    total = len(work_items)
+    print(
+        f"  [design-agent/photos] generating {total} image(s) "
+        f"({_MAX_WORKERS} concurrent, provider={provider})"
+    )
+    with concurrent.futures.ThreadPoolExecutor(max_workers=_MAX_WORKERS) as pool:
+        list(pool.map(_generate_one, work_items))
 
     status = "generated" if written else "placeholder-fallback"
     _write_photo_manifest(
@@ -1204,8 +1408,9 @@ def run_photos(theme_root: Path, *, dry_run: bool, model: str, keep_going: bool)
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--theme", required=True, metavar="SLUG")
-    parser.add_argument("--task", choices=("frontpage", "photos"), required=True)
+    parser.add_argument("--task", choices=("frontpage", "photos", "tokens"), required=True)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--force", action="store_true", help="Regenerate existing generated artifacts.")
     parser.add_argument("--max-rounds", type=int, default=3)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--strict", action="store_true", help="Fail hard when required evidence is missing.")
@@ -1231,6 +1436,14 @@ def main(argv: list[str] | None = None) -> int:
             model=args.model,
             keep_going=args.keep_going or not args.strict,
             score_threshold=args.score_threshold,
+        )
+    if args.task == "tokens":
+        return run_tokens(
+            theme_root,
+            dry_run=args.dry_run,
+            model=args.model,
+            keep_going=args.keep_going or not args.strict,
+            force=args.force,
         )
     return run_photos(
         theme_root,

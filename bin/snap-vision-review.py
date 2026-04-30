@@ -66,6 +66,7 @@ Exit codes
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -193,6 +194,16 @@ def _intent_md(theme_root: Path) -> str | None:
     if not p.exists():
         return None
     return p.read_text(encoding="utf-8", errors="replace")
+
+
+def _mockup_path(theme: str) -> Path | None:
+    for candidate in (
+        REPO_ROOT / "mockups" / f"mockup-{theme}.png",
+        REPO_ROOT / "docs" / "mockups" / f"{theme}.png",
+    ):
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def _discover_items(
@@ -355,6 +366,8 @@ def review_one(
     phase: str = VISION_PHASE_ALL,
 ) -> ReviewResult:
     png_bytes = item.png_path.read_bytes()
+    mockup = _mockup_path(item.theme)
+    mockup_fp = hashlib.sha256(mockup.read_bytes()).hexdigest() if mockup is not None else ""
     fp = fingerprint_inputs(
         png_bytes=png_bytes,
         intent_md=intent_md,
@@ -363,7 +376,7 @@ def review_one(
         # Fold phase into the cache key so a switch between `content`
         # and `all` doesn't serve stale structural findings (the prompt
         # differs + the output allowlist differs).
-        extra=f"{item.theme}/{item.route}/{item.viewport}/{phase}",
+        extra=f"{item.theme}/{item.route}/{item.viewport}/{phase}/{mockup_fp}",
     )
 
     if use_cache and item.fingerprint_path.exists():
@@ -387,6 +400,7 @@ def review_one(
         resp: VisionResponse = review_image(
             png_path=item.png_path,
             intent_md=intent_md,
+            mockup_path=mockup,
             theme=item.theme,
             route=item.route,
             viewport=item.viewport,
