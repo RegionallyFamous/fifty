@@ -24,7 +24,7 @@
 				<!-- wp:quote <?php echo wp_json_encode( array( 'citation' => __( 'Alex M.', 'xerox' ) ) ); ?> -->
 				<blockquote class="wp-block-quote">
 					<!-- wp:paragraph -->
-					<p><?php esc_html_e( 'Xerox parcel-room copy 368f3e', 'xerox' ); ?></p>
+					<p><?php esc_html_e( 'Showed up looking like contraband from a better timeline.', 'xerox' ); ?></p>
 					<!-- /wp:paragraph -->
 					<cite><?php esc_html_e( 'Alex M.', 'xerox' ); ?></cite>
 				</blockquote>
@@ -41,7 +41,7 @@
 				<!-- wp:quote <?php echo wp_json_encode( array( 'citation' => __( 'Sam P.', 'xerox' ) ) ); ?> -->
 				<blockquote class="wp-block-quote">
 					<!-- wp:paragraph -->
-					<p><?php esc_html_e( 'Xerox parcel-room copy 589ee8', 'xerox' ); ?></p>
+					<p><?php esc_html_e( 'Packed like a basement show poster, survived the mail, looked excellent.', 'xerox' ); ?></p>
 					<!-- /wp:paragraph -->
 					<cite><?php esc_html_e( 'Sam P.', 'xerox' ); ?></cite>
 				</blockquote>
@@ -58,7 +58,7 @@
 				<!-- wp:quote <?php echo wp_json_encode( array( 'citation' => __( 'Jordan K.', 'xerox' ) ) ); ?> -->
 				<blockquote class="wp-block-quote">
 					<!-- wp:paragraph -->
-					<p><?php esc_html_e( 'Xerox parcel-room copy f5bbef', 'xerox' ); ?></p>
+					<p><?php esc_html_e( 'I bought one as a joke and now it lives on my desk full time.', 'xerox' ); ?></p>
 					<!-- /wp:paragraph -->
 					<cite><?php esc_html_e( 'Jordan K.', 'xerox' ); ?></cite>
 				</blockquote>

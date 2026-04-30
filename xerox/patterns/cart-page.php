@@ -47,16 +47,16 @@
 <!-- /wp:heading -->
 
 <!-- wp:paragraph {"align":"center","className":"wo-empty__lede","textColor":"secondary"} -->
-<p class="has-text-align-center has-secondary-color has-text-color wo-empty__lede"><?php esc_html_e( 'Xerox parcel-room copy a2a1ae', 'xerox' ); ?></p>
+<p class="has-text-align-center has-secondary-color has-text-color wo-empty__lede"><?php esc_html_e( 'No packets in the basket. Start with a loud thing and see what happens.', 'xerox' ); ?></p>
 <!-- /wp:paragraph -->
 
 <!-- wp:buttons {"layout":{"type":"flex","justifyContent":"center"},"style":{"spacing":{"margin":{"top":"var:preset|spacing|md"}}}} -->
 <div class="wp-block-buttons" style="margin-top:var(--wp--preset--spacing--md)"><!-- wp:button -->
-<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop/"><?php esc_html_e( 'Xerox counter bad5bf', 'xerox' ); ?></a></div>
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop/"><?php esc_html_e( 'Back to the racks', 'xerox' ); ?></a></div>
 <!-- /wp:button -->
 
 <!-- wp:button {"className":"is-style-outline","textColor":"contrast"} -->
-<div class="wp-block-button is-style-outline"><a class="wp-block-button__link has-contrast-color has-text-color wp-element-button" href="/journal/"><?php esc_html_e( 'Xerox counter 6ab82d', 'xerox' ); ?></a></div>
+<div class="wp-block-button is-style-outline"><a class="wp-block-button__link has-contrast-color has-text-color wp-element-button" href="/journal/"><?php esc_html_e( 'Read the field notes', 'xerox' ); ?></a></div>
 <!-- /wp:button --></div>
 <!-- /wp:buttons --></div>
 <!-- /wp:woocommerce/empty-cart-block --></div>

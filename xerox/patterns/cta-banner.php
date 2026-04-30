@@ -14,13 +14,13 @@
 	<!-- wp:group {"align":"wide","layout":{"type":"flex","flexWrap":"wrap","justifyContent":"space-between","verticalAlignment":"center"}} -->
 	<div class="wp-block-group alignwide">
 		<!-- wp:heading {"level":3,"fontSize":"xl"} -->
-		<h3 class="wp-block-heading has-xl-font-size"><?php esc_html_e( 'Xerox parcel-room copy 984db6', 'xerox' ); ?></h3>
+		<h3 class="wp-block-heading has-xl-font-size"><?php esc_html_e( 'Miss the drop and you read about it later.', 'xerox' ); ?></h3>
 		<!-- /wp:heading -->
 
 		<!-- wp:buttons -->
 		<div class="wp-block-buttons">
 			<!-- wp:button -->
-			<div class="wp-block-button"><a class="wp-block-button__link wp-element-button"><?php esc_html_e( 'Xerox counter 202e67', 'xerox' ); ?></a></div>
+			<div class="wp-block-button"><a class="wp-block-button__link wp-element-button"><?php esc_html_e( 'Raid the shop', 'xerox' ); ?></a></div>
 			<!-- /wp:button -->
 		</div>
 		<!-- /wp:buttons -->

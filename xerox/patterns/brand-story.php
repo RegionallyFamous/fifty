@@ -20,11 +20,11 @@
 			<!-- /wp:paragraph -->
 
 			<!-- wp:heading {"level":2} -->
-			<h2 class="wp-block-heading"><?php esc_html_e( 'Xerox parcel-room copy 800e7e', 'xerox' ); ?></h2>
+			<h2 class="wp-block-heading"><?php esc_html_e( 'Born at the copy desk, sold from the back table.', 'xerox' ); ?></h2>
 			<!-- /wp:heading -->
 
 			<!-- wp:paragraph {"textColor":"secondary","fontSize":"md"} -->
-			<p class="has-secondary-color has-text-color has-md-font-size"><?php esc_html_e( 'Xerox parcel-room copy b0549e', 'xerox' ); ?></p>
+			<p class="has-secondary-color has-text-color has-md-font-size"><?php esc_html_e( 'We stock useful weirdness: shelf objects, joke artifacts, pocket props, and small proofs that taste is not dead.', 'xerox' ); ?></p>
 			<!-- /wp:paragraph -->
 
 			<!-- wp:buttons -->

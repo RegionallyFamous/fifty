@@ -18,7 +18,7 @@
 		<!-- /wp:paragraph -->
 
 		<!-- wp:heading {"textAlign":"center","level":2} -->
-		<h2 class="wp-block-heading has-text-align-center"><?php esc_html_e( 'Xerox counter 6af9b8', 'xerox' ); ?></h2>
+		<h2 class="wp-block-heading has-text-align-center"><?php esc_html_e( 'Fresh from the copier', 'xerox' ); ?></h2>
 		<!-- /wp:heading -->
 	</div>
 	<!-- /wp:group -->

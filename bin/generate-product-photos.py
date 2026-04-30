@@ -423,6 +423,31 @@ def _hero_title_from_filename(filename: str) -> str:
     return " ".join(w.capitalize() for w in stem.split("-"))
 
 
+def _source_slug(theme_root: Path) -> str | None:
+    spec_path = theme_root / "spec.json"
+    if not spec_path.is_file():
+        return None
+    try:
+        payload = json.loads(spec_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    source = str(payload.get("source") or "").strip()
+    return source or None
+
+
+def _matches_source_image(theme_root: Path, image_path: Path) -> bool:
+    source = _source_slug(theme_root)
+    if not source:
+        return False
+    source_path = MONOREPO_ROOT / source / "playground" / "images" / image_path.name
+    if not source_path.is_file() or not image_path.is_file():
+        return False
+    try:
+        return image_path.read_bytes() == source_path.read_bytes()
+    except OSError:
+        return False
+
+
 def _build_product_images_json(content_dir: Path, images_dir: Path) -> dict[str, str]:
     """Derive SKU → filename map from the WC CSV, or from existing images.
 
@@ -566,7 +591,7 @@ def generate_photos_for_theme(
         images_dir.glob("wonders-post-*.png")
     )
     for dest in hero_files:
-        if dest.exists() and not force:
+        if dest.exists() and not force and not _matches_source_image(theme_root, dest):
             continue
         _make_hero_placeholder(_hero_title_from_filename(dest.name), dest.stem, slug, palette, dest)
         written += 1

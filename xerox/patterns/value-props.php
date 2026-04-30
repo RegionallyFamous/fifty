@@ -16,10 +16,10 @@
 		<!-- wp:column -->
 		<div class="wp-block-column">
 			<!-- wp:heading {"level":3,"fontSize":"lg"} -->
-			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Xerox counter f7a29a', 'xerox' ); ?></h3>
+			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Postage on us', 'xerox' ); ?></h3>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph {"textColor":"secondary"} -->
-			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Xerox parcel-room copy 1dddaa', 'xerox' ); ?></p>
+			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Orders over fifty ship on our dime, taped twice, no ceremony.', 'xerox' ); ?></p>
 			<!-- /wp:paragraph -->
 		</div>
 		<!-- /wp:column -->
@@ -27,10 +27,10 @@
 		<!-- wp:column -->
 		<div class="wp-block-column">
 			<!-- wp:heading {"level":3,"fontSize":"lg"} -->
-			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Xerox counter 69f38d', 'xerox' ); ?></h3>
+			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'No quiet checkout', 'xerox' ); ?></h3>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph {"textColor":"secondary"} -->
-			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Xerox parcel-room copy 8acbfe', 'xerox' ); ?></p>
+			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Thirty days to send it back if the magic does not stick.', 'xerox' ); ?></p>
 			<!-- /wp:paragraph -->
 		</div>
 		<!-- /wp:column -->
@@ -41,7 +41,7 @@
 			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'BUILT HEAVY', 'xerox' ); ?></h3>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph {"textColor":"secondary"} -->
-			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Xerox parcel-room copy 7821f3', 'xerox' ); ?></p>
+			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Not luxury. Not disposable. Built for repeated use and bad lighting.', 'xerox' ); ?></p>
 			<!-- /wp:paragraph -->
 		</div>
 		<!-- /wp:column -->

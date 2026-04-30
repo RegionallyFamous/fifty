@@ -331,14 +331,14 @@ Read this file at the start of any LLM session to discover the project's structu
 - `base` = #e8e4d8 (Base)
 - `surface` = #f0ecdf (Surface)
 - `subtle` = #d6d1c4 (Subtle)
-- `muted` = #a09a8e (Muted)
+- `muted` = #2e2c28 (Muted)
 - `border` = #1a1a18 (Border)
-- `tertiary` = #6b6760 (Tertiary)
+- `tertiary` = #4f4b45 (Tertiary)
 - `secondary` = #2e2c28 (Secondary)
 - `contrast` = #0d0d0b (Contrast)
 - `primary` = #0d0d0b (Primary)
 - `primary-hover` = #2e2c28 (Primary Hover)
-- `accent` = #e8400a (Accent)
+- `accent` = #b83200 (Accent)
 - `accent-soft` = #f5c4b0 (Accent Soft)
 - `secondary-accent` = #FF3C8A (Secondary Accent)
 - `tertiary-accent` = #1F4FE0 (Tertiary Accent)
@@ -364,10 +364,10 @@ Read this file at the start of any LLM session to discover the project's structu
 
 ### Font families
 
-- `sans` = Courier Prime
+- `sans` = Courier New
 - `serif` = Iowan Old Style
 - `mono` = ui-monospace
-- `display` = Courier Prime
+- `display` = Courier New
 
 ### Spacing scale
 

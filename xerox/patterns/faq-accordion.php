@@ -26,7 +26,7 @@
 			<!-- wp:accordion-panel -->
 			<div role="region" class="wp-block-accordion-panel">
 				<!-- wp:paragraph -->
-				<p><?php esc_html_e( 'Xerox parcel-room copy f0165f', 'xerox' ); ?></p>
+				<p><?php esc_html_e( 'We take cards, wallets, and whatever WooCommerce lets through the till.', 'xerox' ); ?></p>
 				<!-- /wp:paragraph -->
 			</div>
 			<!-- /wp:accordion-panel -->
@@ -42,7 +42,7 @@
 			<!-- wp:accordion-panel -->
 			<div role="region" class="wp-block-accordion-panel">
 				<!-- wp:paragraph -->
-				<p><?php esc_html_e( 'Xerox parcel-room copy 6daa35', 'xerox' ); ?></p>
+				<p><?php esc_html_e( 'We pack in small batches. If it is gone, blame the other weirdos.', 'xerox' ); ?></p>
 				<!-- /wp:paragraph -->
 			</div>
 			<!-- /wp:accordion-panel -->
@@ -58,7 +58,7 @@
 			<!-- wp:accordion-panel -->
 			<div role="region" class="wp-block-accordion-panel">
 				<!-- wp:paragraph -->
-				<p><?php esc_html_e( 'Xerox parcel-room copy 997810', 'xerox' ); ?></p>
+				<p><?php esc_html_e( 'Most items ship in two business days, unless the universe gets funny.', 'xerox' ); ?></p>
 				<!-- /wp:paragraph -->
 			</div>
 			<!-- /wp:accordion-panel -->
@@ -74,7 +74,7 @@
 			<!-- wp:accordion-panel -->
 			<div role="region" class="wp-block-accordion-panel">
 				<!-- wp:paragraph -->
-				<p><?php esc_html_e( 'Xerox parcel-room copy 25bbf5', 'xerox' ); ?></p>
+				<p><?php esc_html_e( 'Hit reply on any receipt. A real person reads it, then fixes the problem.', 'xerox' ); ?></p>
 				<!-- /wp:paragraph -->
 			</div>
 			<!-- /wp:accordion-panel -->
@@ -90,7 +90,7 @@
 			<!-- wp:accordion-panel -->
 			<div role="region" class="wp-block-accordion-panel">
 				<!-- wp:paragraph -->
-				<p><?php esc_html_e( 'Xerox parcel-room copy 1fad8f', 'xerox' ); ?></p>
+				<p><?php esc_html_e( 'Yes. The catalog moves fast, but the weird stuff comes back around.', 'xerox' ); ?></p>
 				<!-- /wp:paragraph -->
 			</div>
 			<!-- /wp:accordion-panel -->

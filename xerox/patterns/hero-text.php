@@ -16,11 +16,11 @@
 	<!-- /wp:paragraph -->
 
 	<!-- wp:heading {"level":1,"textAlign":"center","fontSize":"4xl"} -->
-	<h1 class="wp-block-heading has-text-align-center has-4-xl-font-size"><?php esc_html_e( 'Xerox parcel-room copy 878c19', 'xerox' ); ?></h1>
+	<h1 class="wp-block-heading has-text-align-center has-4-xl-font-size"><?php esc_html_e( 'Goods with toner on their hands.', 'xerox' ); ?></h1>
 	<!-- /wp:heading -->
 
 	<!-- wp:paragraph {"align":"center","fontSize":"md","style":{"spacing":{"margin":{"top":"var:preset|spacing|md","bottom":"var:preset|spacing|lg"}}},"textColor":"secondary"} -->
-	<p class="has-text-align-center has-secondary-color has-text-color has-md-font-size" style="margin-top:var(--wp--preset--spacing--md);margin-bottom:var(--wp--preset--spacing--lg)"><?php esc_html_e( 'Xerox parcel-room copy 82db3b', 'xerox' ); ?></p>
+	<p class="has-text-align-center has-secondary-color has-text-color has-md-font-size" style="margin-top:var(--wp--preset--spacing--md);margin-bottom:var(--wp--preset--spacing--lg)"><?php esc_html_e( 'Small-batch objects for people who dog-ear catalogs and keep the best trash.', 'xerox' ); ?></p>
 	<!-- /wp:paragraph -->
 
 	<!-- wp:buttons {"layout":{"type":"flex","justifyContent":"center"}} -->
