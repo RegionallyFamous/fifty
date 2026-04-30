@@ -1,0 +1,12 @@
+[
+	{
+		"fg": "contrast",
+		"bg": "accent",
+		"reason": "Dark-theme constraint: accent (#D06030) is used only as text on dark backgrounds, never as a panel/chip background. Cream-on-rust and rust-on-cream cannot both satisfy 4.5:1 with a single warm hue; the rust occupies a mid-luminance zone that is too bright to be a background for cream text and too dark to be used as background for dark text. Accent panels use the 'primary' slug (#6B2E08) which passes 8.16:1. See bin/check-contrast.py dark-theme note."
+	},
+	{
+		"fg": "accent",
+		"bg": "contrast",
+		"reason": "Same dark-theme constraint as contrast-on-accent (see above)."
+	}
+]

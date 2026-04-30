@@ -1,0 +1,50 @@
+{
+  "slug": "noir",
+  "name": "Noir",
+  "tagline": "Trench coats, fedoras, alibis",
+  "voice": "Write like a hard-boiled narrator — clipped, atmospheric, and always a little suspicious.",
+  "source": "selvedge",
+  "palette": {
+    "base": "#0d0d0d",
+    "surface": "#1a1a1a",
+    "subtle": "#252525",
+    "muted": "#3a3a3a",
+    "border": "#2e2e2e",
+    "tertiary": "#5a5a5a",
+    "secondary": "#9a9a9a",
+    "contrast": "#f0e8d8",
+    "primary": "#c8102e",
+    "primary-hover": "#a00d24",
+    "accent": "#c8102e",
+    "accent-soft": "#3d0810"
+  },
+  "fonts": {
+    "display": {
+      "family": "Libre Bodoni",
+      "fallback": "Georgia, serif",
+      "google_font": true,
+      "weights": [
+        700
+      ]
+    },
+    "sans": {
+      "family": "Inter",
+      "fallback": "system-ui, sans-serif",
+      "google_font": true,
+      "weights": [
+        400,
+        500,
+        700
+      ]
+    }
+  },
+  "layout_hints": [
+    "Full-bleed dark photo hero with venetian-blind shadow overlay",
+    "Large italic serif headline left-aligned over hero image",
+    "Single scarlet CTA button centered below headline",
+    "Four-column product grid with dark card backgrounds and scarlet add-to-cart buttons",
+    "Thin scarlet rule separating header from navigation",
+    "Footer in charcoal with cream footer tagline centered and copyright flanked by nav links",
+    "Navigation in all-caps condensed sans, horizontally centered below masthead"
+  ]
+}
