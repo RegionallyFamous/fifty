@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "slug": "basalt",
+  "name": "Basalt",
+  "voice": {
+    "summary": "Mineral-grey ceramics: matte slate, charcoal, single warm clay accent.",
+    "register": "workshop",
+    "preferred_motifs": [],
+    "forbidden_words": []
+  },
+  "palette": {
+    "paper": "#ffffff",
+    "ink": "#2c2d2c",
+    "accent": "#535352",
+    "chrome_warm": "#cccccc",
+    "chrome_cool": "#8d8e8d"
+  },
+  "type": {
+    "display": {
+      "family": "Söhne",
+      "fallback": "Impact, Arial Narrow, sans-serif",
+      "google_font": true,
+      "weights": [
+        400
+      ]
+    },
+    "sans": {
+      "family": "Söhne",
+      "fallback": "system-ui, Helvetica, Arial, sans-serif",
+      "google_font": true,
+      "weights": [
+        400,
+        700
+      ]
+    },
+    "serif": null,
+    "rules": {
+      "display_dominates_hero": false,
+      "all_caps_ok_in_display": true,
+      "letter_spacing_max_body": 0.05
+    }
+  },
+  "composition": {
+    "hero": "photo-led",
+    "density": "balanced",
+    "ornament": "geometric",
+    "borders": "hairline",
+    "photography_style": "neutral"
+  },
+  "required_signals": [
+    "Photographic hero with subject clearly framed",
+    "Display headline takes <40% of the hero height",
+    "Geometric tile or grid ornament visible at hero or footer",
+    "Borders are 1px hairlines in a chrome tone",
+    "Maker / process / workshop vocabulary, batch + edition language"
+  ],
+  "forbidden_signals": [
+    "All-caps display headline filling the hero",
+    "Hard 2px+ borders (reads as poster, breaks editorial register)"
+  ],
+  "source": {
+    "mockup": "mockups/mockup-basalt.png",
+    "method": "deterministic-from-meta",
+    "extracted_at": "2026-04-30T20:49:43+00:00"
+  }
+}

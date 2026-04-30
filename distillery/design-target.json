@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "slug": "distillery",
+  "name": "Distillery",
+  "voice": {
+    "summary": "Small-batch spirits: amber bottle photography, ink + cream labels, copper still.",
+    "register": "workshop",
+    "preferred_motifs": [],
+    "forbidden_words": []
+  },
+  "palette": {
+    "paper": "#efe7cf",
+    "ink": "#100400",
+    "accent": "#91532e",
+    "chrome_warm": "#afb3a4",
+    "chrome_cool": "#163526"
+  },
+  "type": {
+    "display": {
+      "family": "Roslindale",
+      "fallback": "system-ui, Helvetica, Arial, sans-serif",
+      "google_font": true,
+      "weights": [
+        400
+      ]
+    },
+    "sans": {
+      "family": "Crimson Pro",
+      "fallback": "system-ui, Helvetica, Arial, sans-serif",
+      "google_font": true,
+      "weights": [
+        400,
+        700
+      ]
+    },
+    "rules": {
+      "display_dominates_hero": false,
+      "all_caps_ok_in_display": false,
+      "letter_spacing_max_body": 0.05
+    }
+  },
+  "composition": {
+    "hero": "photo-led",
+    "density": "balanced",
+    "ornament": "etched",
+    "borders": "hairline",
+    "photography_style": "neutral"
+  },
+  "required_signals": [
+    "Photographic hero with subject clearly framed",
+    "Display headline takes <40% of the hero height",
+    "Etched / botanical line art accenting the hero or footer",
+    "Borders are 1px hairlines in a chrome tone",
+    "Maker / process / workshop vocabulary, batch + edition language"
+  ],
+  "forbidden_signals": [
+    "All-caps display headline filling the hero",
+    "Drop-shadows or gradients used as decoration",
+    "Hard 2px+ borders (reads as poster, breaks editorial register)"
+  ],
+  "source": {
+    "mockup": "mockups/mockup-distillery.png",
+    "method": "deterministic-from-meta",
+    "extracted_at": "2026-04-30T20:49:43+00:00"
+  }
+}

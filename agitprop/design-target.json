@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "slug": "agitprop",
+  "name": "Agitprop",
+  "voice": {
+    "summary": "Soviet constructivist storefront: scarlet + black, slabs of geometric type, diagonal blocks.",
+    "register": "manifesto",
+    "preferred_motifs": [],
+    "forbidden_words": []
+  },
+  "palette": {
+    "paper": "#e7dcc2",
+    "ink": "#110e07",
+    "accent": "#be2428",
+    "chrome_warm": "#aea894",
+    "chrome_cool": "#726c5e"
+  },
+  "type": {
+    "display": {
+      "family": "Bebas Neue",
+      "fallback": "Impact, Arial Narrow, sans-serif",
+      "google_font": true,
+      "weights": [
+        400
+      ]
+    },
+    "sans": {
+      "family": "Roboto Condensed",
+      "fallback": "system-ui, Helvetica, Arial, sans-serif",
+      "google_font": true,
+      "weights": [
+        400,
+        700
+      ]
+    },
+    "serif": null,
+    "rules": {
+      "display_dominates_hero": true,
+      "all_caps_ok_in_display": true,
+      "letter_spacing_max_body": 0.05
+    }
+  },
+  "composition": {
+    "hero": "type-led",
+    "density": "tight",
+    "ornament": "diagonal",
+    "borders": "hard",
+    "photography_style": "high-contrast-poster"
+  },
+  "required_signals": [
+    "All-caps display headline that dominates the hero",
+    "Primary CTA reads as a slab, not a pill",
+    "Diagonal accent blocks behind the hero subject",
+    "Borders are hard 1–2px contrast lines, not hairlines",
+    "Imperative microcopy (verbs first, no marketing softeners)",
+    "Hero display heading may consume up to 50% of viewport height"
+  ],
+  "forbidden_signals": [
+    "Photographic hero with the headline reduced to caption size",
+    "Default rounded button radius — buttons should be slabs",
+    "Lifestyle phrasing (curated, considered, mindful)"
+  ],
+  "source": {
+    "mockup": "mockups/mockup-agitprop.png",
+    "method": "deterministic-from-meta",
+    "extracted_at": "2026-04-30T20:37:48+00:00"
+  }
+}

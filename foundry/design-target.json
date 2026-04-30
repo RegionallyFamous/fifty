@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "slug": "foundry",
+  "name": "Foundry",
+  "voice": {
+    "summary": "Victorian apothecary: cream + rust, antique serif display, ornamental dividers.",
+    "register": "workshop",
+    "preferred_motifs": [],
+    "forbidden_words": []
+  },
+  "palette": {
+    "paper": "#f0e8d5",
+    "ink": "#141414",
+    "accent": "#877a64",
+    "chrome_warm": "#b2ab9f",
+    "chrome_cool": "#50504d"
+  },
+  "type": {
+    "display": {
+      "family": "Antique No",
+      "fallback": "system-ui, Helvetica, Arial, sans-serif",
+      "google_font": true,
+      "weights": [
+        400
+      ]
+    },
+    "sans": {
+      "family": "Crimson Pro",
+      "fallback": "system-ui, Helvetica, Arial, sans-serif",
+      "google_font": true,
+      "weights": [
+        400,
+        700
+      ]
+    },
+    "rules": {
+      "display_dominates_hero": true,
+      "all_caps_ok_in_display": false,
+      "letter_spacing_max_body": 0.05
+    }
+  },
+  "composition": {
+    "hero": "type-led",
+    "density": "tight",
+    "ornament": "etched",
+    "borders": "hard",
+    "photography_style": "neutral"
+  },
+  "required_signals": [
+    "All-caps display headline that dominates the hero",
+    "Primary CTA reads as a slab, not a pill",
+    "Etched / botanical line art accenting the hero or footer",
+    "Borders are hard 1–2px contrast lines, not hairlines",
+    "Maker / process / workshop vocabulary, batch + edition language",
+    "Hero display heading may consume up to 50% of viewport height"
+  ],
+  "forbidden_signals": [
+    "Photographic hero with the headline reduced to caption size",
+    "Drop-shadows or gradients used as decoration",
+    "Default rounded button radius — buttons should be slabs"
+  ],
+  "source": {
+    "mockup": "mockups/mockup-foundry.png",
+    "method": "deterministic-from-meta",
+    "extracted_at": "2026-04-30T20:49:43+00:00"
+  }
+}

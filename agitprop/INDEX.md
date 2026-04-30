@@ -159,6 +159,7 @@ Read this file at the start of any LLM session to discover the project's structu
 |-- CHANGELOG.md
 |-- contrast-skip.json
 |-- design-intent.md
+|-- design-target.json
 |-- functions.php
 |-- INDEX.md
 |-- microcopy-overrides.json
@@ -335,21 +336,21 @@ Read this file at the start of any LLM session to discover the project's structu
 ### Colors
 
 - `base` = #e7dcc2 (Base)
-- `surface` = #f1e8cc (Surface)
-- `subtle` = #F2F1EC (Subtle)
-- `muted` = #726c5e (Muted)
+- `surface` = #f4efe4 (Surface)
+- `subtle` = #d9cfb6 (Subtle)
+- `muted` = #827d6e (Muted)
 - `border` = #110e07 (Border)
-- `tertiary` = #aea894 (Tertiary)
-- `secondary` = #726c5e (Secondary)
+- `tertiary` = #656155 (Tertiary)
+- `secondary` = #676155 (Secondary)
 - `contrast` = #110e07 (Contrast)
 - `primary` = #be2428 (Primary)
-- `primary-hover` = #3D3D3D (Primary Hover)
+- `primary-hover` = #931e20 (Primary Hover)
 - `accent` = #be2428 (Accent)
-- `accent-soft` = #EFD9C3 (Accent Soft)
-- `success` = #2F7A4D (Success)
-- `warning` = #B58231 (Warning)
-- `error` = #B33A3A (Error)
-- `info` = #3A6FB3 (Info)
+- `accent-soft` = #deb4a0 (Accent Soft)
+- `success` = #353726 (Success)
+- `warning` = #7a4a1a (Warning)
+- `error` = #9f2426 (Error)
+- `info` = #1f4e8a (Info)
 
 ### Font sizes
 

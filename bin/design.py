@@ -145,6 +145,21 @@ from _lib import MONOREPO_ROOT  # noqa: E402
 PHASES = (
     "validate",
     "clone",
+    # B½. target — extract `<slug>/design-target.json` from the concept
+    #              metadata (or, when `--from-mockup` is wired in, from
+    #              the mockup PNG itself) and render the per-theme
+    #              `<slug>/design-intent.md` rubric from it. Replaces
+    #              the old "clone Obel's design-intent.md verbatim"
+    #              behavior, which made the vision reviewer grade every
+    #              theme against Obel's "quiet, considered, editorial"
+    #              brief regardless of what the mockup actually wanted.
+    #              Also fills every chrome slug (subtle, accent-soft,
+    #              muted, secondary, tertiary, primary-hover, success/
+    #              warning/error/info) deterministically from the brand
+    #              palette so the spec's partial palette doesn't leave
+    #              Obel's olive-tan / ochre / blue-grey utility colors
+    #              on a scarlet-and-cream concept.
+    "target",
     "apply",
     # D½. contrast — after palette + cloned markup are in place, rewrite
     #                any block whose resolved (textColor, backgroundColor)
@@ -270,6 +285,7 @@ class PhaseError(RuntimeError):
 _PHASES_FOR_BUILD = (
     "validate",
     "clone",
+    "target",
     "apply",
     "contrast",
     "seed",
@@ -890,6 +906,58 @@ def _update_design_intent_mockup(theme_root: Path, mockup: Path) -> bool:
     return True
 
 
+def _phase_target(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
+    """Build a per-theme `<slug>/design-target.json` and render
+    `<slug>/design-intent.md` from it before `apply` runs.
+
+    The target is the deterministic, mockup-derived input that the rest
+    of the factory consumes. It replaces three previous behaviors:
+
+    * The clone phase used to copy `obel/design-intent.md` verbatim —
+      the reviewer then graded every theme against "quiet, considered,
+      editorial" no matter what the mockup actually wanted.
+    * `_phase_apply` only wrote the palette slugs the spec named; every
+      other slug kept Obel's value, which is why scarlet-and-cream
+      concepts shipped with Obel's olive `success` / ochre `warning`
+      / blue `info` and a *grey* `primary-hover`.
+    * The LLM `design-tokens` phase tried to fix both of those after the
+      fact via JSON patches that intermittently failed to parse.
+
+    Skipped silently if no `mockups/<slug>.meta.json` exists (this
+    phase is best-effort: a theme without metadata gets the legacy
+    spec-only behavior).
+    """
+    extract = ROOT / "bin" / "extract-design-target.py"
+    render = ROOT / "bin" / "render-design-target.py"
+    if not extract.is_file() or not render.is_file():
+        print("  [target] WARN: extractor / renderer missing; skipping target build.")
+        return
+
+    target_path = dest / "design-target.json"
+    if not target_path.is_file():
+        cmd = [sys.executable, str(extract), spec.slug]
+        print(f"  [target] {' '.join(cmd[1:])}")
+        rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
+        if rc != 0:
+            # Soft fail: a missing meta or a broken concept queue is a
+            # warn, not a blocker. Downstream phases will still run with
+            # the spec-only path that the legacy `apply` used.
+            print(
+                f"  [target] WARN: extract-design-target.py exited {rc}; "
+                f"continuing without per-theme target."
+            )
+            return
+
+    cmd = [sys.executable, str(render), spec.slug]
+    print(f"  [target] {' '.join(cmd[1:])}")
+    rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
+    if rc != 0:
+        print(
+            f"  [target] WARN: render-design-target.py exited {rc}; "
+            f"design-intent.md may be stale."
+        )
+
+
 def _phase_apply(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
     """Apply palette + fonts to `<slug>/theme.json`, write `<slug>/BRIEF.md`."""
     theme_json_path = dest / "theme.json"
@@ -901,37 +969,72 @@ def _phase_apply(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> N
     except json.JSONDecodeError as e:
         raise PhaseError("apply", f"{theme_json_path} is not valid JSON: {e}") from e
 
-    # Warn about background-critical slugs the spec didn't cover BEFORE
-    # the palette lands — the `check` phase's `check_palette_polarity_
-    # coherent` will hard-fail downstream if any of these stay stale,
-    # but catching the problem at apply time is cheaper for the operator
-    # (they can extend the spec and re-run instead of sitting through
-    # the full snap cycle).
-    _warn_uncovered_polarity_slugs(theme_json, spec)
+    # When the `target` phase ran, `<slug>/design-target.json` is on
+    # disk and the renderer has already written the full 16-slug
+    # expansion + per-theme typography. The spec's partial palette is
+    # a strict subset of the same brand hexes, so re-applying it here
+    # would either be a no-op (best case) or would overwrite the
+    # target's chrome ladder with the spec's stale chrome (worst case).
+    # We skip the palette/font rewrite in that case and let the target
+    # be the source of truth.
+    target_path = dest / "design-target.json"
+    target_drove_palette = target_path.is_file()
 
-    if spec.palette:
-        apply_palette(theme_json, spec.palette)
-        _repair_sale_badge_text_contrast(theme_json)
+    if target_drove_palette:
+        print(
+            f"  [apply] palette + fonts already written by target phase "
+            f"({target_path.relative_to(MONOREPO_ROOT)}); skipping spec rewrite."
+        )
+    else:
+        # Warn about background-critical slugs the spec didn't cover BEFORE
+        # the palette lands — the `check` phase's `check_palette_polarity_
+        # coherent` will hard-fail downstream if any of these stay stale,
+        # but catching the problem at apply time is cheaper for the operator
+        # (they can extend the spec and re-run instead of sitting through
+        # the full snap cycle).
+        _warn_uncovered_polarity_slugs(theme_json, spec)
+
+        if spec.palette:
+            apply_palette(theme_json, spec.palette)
+            _repair_sale_badge_text_contrast(theme_json)
+        if spec.fonts:
+            apply_fonts(theme_json, spec.fonts)
+
+    # Always run the structural mobile/sale-badge repairs — they touch
+    # markup invariants, not the palette, and the target renderer
+    # doesn't own them.
     _repair_site_title_mobile_overflow(theme_json)
     _repair_product_reviews_mobile_overflow(theme_json)
-    if spec.fonts:
-        apply_fonts(theme_json, spec.fonts)
+    if target_drove_palette:
+        # The renderer already wrote palette + fonts; the only mutations
+        # we performed here are the mobile/sale-badge structural repairs,
+        # so re-serialize so those land.
+        _repair_sale_badge_text_contrast(theme_json)
 
     theme_json_path.write_text(serialize_theme_json(theme_json), encoding="utf-8")
-    print(
-        f"  [apply] wrote {theme_json_path.relative_to(MONOREPO_ROOT)} ({len(spec.palette)} color(s), {len(spec.fonts)} font slot(s))"
-    )
+    if target_drove_palette:
+        print(f"  [apply] wrote {theme_json_path.relative_to(MONOREPO_ROOT)} (target-driven)")
+    else:
+        print(
+            f"  [apply] wrote {theme_json_path.relative_to(MONOREPO_ROOT)} "
+            f"({len(spec.palette)} color(s), {len(spec.fonts)} font slot(s))"
+        )
 
     brief_path = dest / "BRIEF.md"
     brief_path.write_text(make_brief(spec, dest), encoding="utf-8")
     print(f"  [apply] wrote {brief_path.relative_to(MONOREPO_ROOT)}")
 
-    mockup = _mockup_path_for_theme(spec.slug)
-    if mockup and _update_design_intent_mockup(dest, mockup):
-        print(
-            f"  [apply] wrote {(dest / 'design-intent.md').relative_to(MONOREPO_ROOT)} "
-            f"mockup reference ({mockup.relative_to(MONOREPO_ROOT)})"
-        )
+    # The per-theme `design-intent.md` is now produced by the `target`
+    # phase from `design-target.json`. We only fall back to patching the
+    # cloned (Obel-verbatim) intent file with a Mockup section when the
+    # target phase didn't run (no concept metadata for this theme).
+    if not (dest / "design-target.json").is_file():
+        mockup = _mockup_path_for_theme(spec.slug)
+        if mockup and _update_design_intent_mockup(dest, mockup):
+            print(
+                f"  [apply] wrote {(dest / 'design-intent.md').relative_to(MONOREPO_ROOT)} "
+                f"mockup reference ({mockup.relative_to(MONOREPO_ROOT)})"
+            )
 
     spec_path = dest / "spec.json"
     spec_path.write_text(
@@ -2499,6 +2602,7 @@ def _resolve_prompt_to_spec(prompt: str) -> Path:
 _PHASE_HANDLERS = {
     "validate": _phase_validate,
     "clone": _phase_clone,
+    "target": _phase_target,
     "apply": _phase_apply,
     "contrast": _phase_contrast,
     "index": _phase_index,

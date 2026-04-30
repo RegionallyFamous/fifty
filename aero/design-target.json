@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "slug": "aero",
+  "name": "Aero",
+  "voice": {
+    "summary": "Y2K iridescent shop: holographic pastels, glassy chrome buttons, sparkle product cards.",
+    "register": "playful",
+    "preferred_motifs": [],
+    "forbidden_words": []
+  },
+  "palette": {
+    "paper": "#ffd1b8",
+    "ink": "#0059e7",
+    "accent": "#4481e4",
+    "chrome_warm": "#d5c7f4",
+    "chrome_cool": "#95b2d3"
+  },
+  "type": {
+    "display": {
+      "family": "Bank Gothic",
+      "fallback": "system-ui, Helvetica, Arial, sans-serif",
+      "google_font": true,
+      "weights": [
+        400
+      ]
+    },
+    "sans": {
+      "family": "Inter",
+      "fallback": "system-ui, Helvetica, Arial, sans-serif",
+      "google_font": true,
+      "weights": [
+        400,
+        700
+      ]
+    },
+    "rules": {
+      "display_dominates_hero": false,
+      "all_caps_ok_in_display": false,
+      "letter_spacing_max_body": 0.05
+    }
+  },
+  "composition": {
+    "hero": "photo-led",
+    "density": "balanced",
+    "ornament": "geometric",
+    "borders": "hairline",
+    "photography_style": "neutral"
+  },
+  "required_signals": [
+    "Photographic hero with subject clearly framed",
+    "Display headline takes <40% of the hero height",
+    "Geometric tile or grid ornament visible at hero or footer",
+    "Borders are 1px hairlines in a chrome tone"
+  ],
+  "forbidden_signals": [
+    "All-caps display headline filling the hero",
+    "Hard 2px+ borders (reads as poster, breaks editorial register)"
+  ],
+  "source": {
+    "mockup": "mockups/mockup-aero.png",
+    "method": "deterministic-from-meta",
+    "extracted_at": "2026-04-30T20:49:43+00:00"
+  }
+}

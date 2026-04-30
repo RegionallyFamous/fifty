@@ -161,6 +161,7 @@ Read this file at the start of any LLM session to discover the project's structu
 |-- BRIEF.md
 |-- CHANGELOG.md
 |-- design-intent.md
+|-- design-target.json
 |-- functions.php
 |-- INDEX.md
 |-- microcopy-overrides.json
@@ -328,24 +329,24 @@ Read this file at the start of any LLM session to discover the project's structu
 
 ### Colors
 
-- `base` = #e8e4d8 (Base)
-- `surface` = #f0ecdf (Surface)
-- `subtle` = #d6d1c4 (Subtle)
-- `muted` = #2e2c28 (Muted)
-- `border` = #1a1a18 (Border)
-- `tertiary` = #4f4b45 (Tertiary)
-- `secondary` = #2e2c28 (Secondary)
-- `contrast` = #0d0d0b (Contrast)
-- `primary` = #0d0d0b (Primary)
-- `primary-hover` = #2e2c28 (Primary Hover)
-- `accent` = #b83200 (Accent)
-- `accent-soft` = #f5c4b0 (Accent Soft)
+- `base` = #f4f3ec (Base)
+- `surface` = #fafaf6 (Surface)
+- `subtle` = #e3e2dc (Subtle)
+- `muted` = #8c8c8a (Muted)
+- `border` = #2d2d2c (Border)
+- `tertiary` = #6f6f6e (Tertiary)
+- `secondary` = #6f6f6e (Secondary)
+- `contrast` = #2d2d2c (Contrast)
+- `primary` = #f1764c (Primary)
+- `primary-hover` = #c06444 (Primary Hover)
+- `accent` = #f1764c (Accent)
+- `accent-soft` = #f3d8c9 (Accent Soft)
 - `secondary-accent` = #FF3C8A (Secondary Accent)
 - `tertiary-accent` = #1F4FE0 (Tertiary Accent)
-- `success` = #00B86B (Success)
-- `warning` = #FF8C1A (Warning)
-- `error` = #FF2222 (Error)
-- `info` = #1F4FE0 (Info)
+- `success` = #3d432c (Success)
+- `warning` = #7a4a1a (Warning)
+- `error` = #b34534 (Error)
+- `info` = #1f4e8a (Info)
 
 ### Font sizes
 
@@ -364,10 +365,10 @@ Read this file at the start of any LLM session to discover the project's structu
 
 ### Font families
 
-- `sans` = Courier New
+- `sans` = Courier Prime
 - `serif` = Iowan Old Style
-- `mono` = ui-monospace
-- `display` = Courier New
+- `mono` = JetBrains Mono
+- `display` = Courier Bold
 
 ### Spacing scale
 

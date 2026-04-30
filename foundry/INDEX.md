@@ -168,6 +168,7 @@ Read this file at the start of any LLM session to discover the project's structu
 |-- CHANGELOG.md
 |-- contrast-skip.json
 |-- design-intent.md
+|-- design-target.json
 |-- functions.php
 |-- INDEX.md
 |-- readiness.json

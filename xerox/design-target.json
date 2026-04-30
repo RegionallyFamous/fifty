@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "slug": "xerox",
+  "name": "Xerox",
+  "voice": {
+    "summary": "Xerographed zine shop: high-contrast greyscale, copy-machine streaks, staple-bound feel.",
+    "register": "editorial",
+    "preferred_motifs": [],
+    "forbidden_words": []
+  },
+  "palette": {
+    "paper": "#f4f3ec",
+    "ink": "#2d2d2c",
+    "accent": "#f1764c",
+    "chrome_warm": "#b0b0ad",
+    "chrome_cool": "#717170"
+  },
+  "type": {
+    "display": {
+      "family": "Courier Bold",
+      "fallback": "Menlo, Consolas, monospace",
+      "google_font": true,
+      "weights": [
+        400
+      ]
+    },
+    "sans": {
+      "family": "Courier Prime",
+      "fallback": "system-ui, Helvetica, Arial, sans-serif",
+      "google_font": true,
+      "weights": [
+        400,
+        700
+      ]
+    },
+    "serif": null,
+    "mono": {
+      "family": "JetBrains Mono",
+      "fallback": "Menlo, Consolas, monospace",
+      "google_font": true,
+      "weights": [
+        400
+      ]
+    },
+    "rules": {
+      "display_dominates_hero": false,
+      "all_caps_ok_in_display": true,
+      "letter_spacing_max_body": 0.05
+    }
+  },
+  "composition": {
+    "hero": "neutral",
+    "density": "balanced",
+    "ornament": "none",
+    "borders": "hairline",
+    "photography_style": "neutral"
+  },
+  "required_signals": [
+    "Borders are 1px hairlines in a chrome tone"
+  ],
+  "forbidden_signals": [
+    "Hard 2px+ borders (reads as poster, breaks editorial register)"
+  ],
+  "source": {
+    "mockup": "mockups/mockup-xerox.png",
+    "method": "deterministic-from-meta",
+    "extracted_at": "2026-04-30T20:49:55+00:00"
+  }
+}

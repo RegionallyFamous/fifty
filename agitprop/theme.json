@@ -30,17 +30,17 @@
 				{
 					"slug": "surface",
 					"name": "Surface",
-					"color": "#f1e8cc"
+					"color": "#f4efe4"
 				},
 				{
 					"slug": "subtle",
 					"name": "Subtle",
-					"color": "#F2F1EC"
+					"color": "#d9cfb6"
 				},
 				{
 					"slug": "muted",
 					"name": "Muted",
-					"color": "#726c5e"
+					"color": "#827d6e"
 				},
 				{
 					"slug": "border",
@@ -50,12 +50,12 @@
 				{
 					"slug": "tertiary",
 					"name": "Tertiary",
-					"color": "#aea894"
+					"color": "#656155"
 				},
 				{
 					"slug": "secondary",
 					"name": "Secondary",
-					"color": "#726c5e"
+					"color": "#676155"
 				},
 				{
 					"slug": "contrast",
@@ -70,7 +70,7 @@
 				{
 					"slug": "primary-hover",
 					"name": "Primary Hover",
-					"color": "#3D3D3D"
+					"color": "#931e20"
 				},
 				{
 					"slug": "accent",
@@ -80,27 +80,27 @@
 				{
 					"slug": "accent-soft",
 					"name": "Accent Soft",
-					"color": "#EFD9C3"
+					"color": "#deb4a0"
 				},
 				{
 					"slug": "success",
 					"name": "Success",
-					"color": "#2F7A4D"
+					"color": "#353726"
 				},
 				{
 					"slug": "warning",
 					"name": "Warning",
-					"color": "#B58231"
+					"color": "#7a4a1a"
 				},
 				{
 					"slug": "error",
 					"name": "Error",
-					"color": "#B33A3A"
+					"color": "#9f2426"
 				},
 				{
 					"slug": "info",
 					"name": "Info",
-					"color": "#3A6FB3"
+					"color": "#1f4e8a"
 				}
 			],
 			"gradients": [
@@ -163,7 +163,7 @@
 				{
 					"slug": "sans",
 					"name": "Sans",
-					"fontFamily": "\"Roboto Condensed\", Arial Narrow, Helvetica, Arial, sans-serif",
+					"fontFamily": "\"Roboto Condensed\", system-ui, Helvetica, Arial, sans-serif",
 					"fontFace": [
 						{
 							"fontFamily": "Roboto Condensed",
