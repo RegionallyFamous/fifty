@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -30,6 +31,9 @@ from _lib import MONOREPO_ROOT, resolve_theme_root
 
 SCAN_DIRS = ("templates", "parts", "patterns")
 SCAN_EXT = {".html", ".php"}
+_PHP_I18N_PREFIX_RE = re.compile(
+    r"(?:__|_e|esc_html_e|esc_html__|esc_attr_e|esc_attr__)\(\s*'$"
+)
 
 
 def _check_cascade_safety(overrides: dict[str, str]) -> list[tuple[str, str]]:
@@ -39,6 +43,39 @@ def _check_cascade_safety(overrides: dict[str, str]) -> list[tuple[str, str]]:
         for needle, repl in overrides.items()
         if needle in repl
     ]
+
+
+def _php_single_quote_escape(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("'", "\\'")
+
+
+def _replacement_for_context(text: str, start: int, end: int, replacement: str) -> str:
+    """Escape replacements when the match is inside a PHP single-quoted i18n literal."""
+
+    before = text[max(0, start - 120) : start]
+    after = text[end : end + 80]
+    if _PHP_I18N_PREFIX_RE.search(before) and re.match(r"'\s*[,)]", after):
+        return _php_single_quote_escape(replacement)
+    return replacement
+
+
+def _replace_contextual(text: str, needle: str, replacement: str) -> tuple[str, int]:
+    """Replace literal matches, adapting the replacement to the local syntax."""
+
+    parts: list[str] = []
+    count = 0
+    pos = 0
+    while True:
+        idx = text.find(needle, pos)
+        if idx == -1:
+            parts.append(text[pos:])
+            break
+        end = idx + len(needle)
+        parts.append(text[pos:idx])
+        parts.append(_replacement_for_context(text, idx, end, replacement))
+        count += 1
+        pos = end
+    return "".join(parts), count
 
 
 def apply_overrides(
@@ -69,8 +106,7 @@ def apply_overrides(
             for needle, replacement in overrides.items():
                 if needle not in updated:
                     continue
-                count = updated.count(needle)
-                updated = updated.replace(needle, replacement)
+                updated, count = _replace_contextual(updated, needle, replacement)
                 file_subs += count
             if updated != original:
                 files_touched += 1

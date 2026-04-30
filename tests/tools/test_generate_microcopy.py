@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 BIN_DIR = REPO_ROOT / "bin"
@@ -96,3 +98,65 @@ def test_extract_strings_handles_php_escaped_apostrophes() -> None:
     )
 
     assert "GRAB ONE BEFORE THEY\\'RE GONE." in strings
+
+
+def test_api_generation_uses_current_anthropic_model(monkeypatch, tmp_path: Path) -> None:
+    gm = _load_module()
+    calls = []
+
+    class FakeMessages:
+        def create(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(
+                content=[
+                    SimpleNamespace(
+                        text=json.dumps({"Original checkout copy": "Case closed at the register"})
+                    )
+                ]
+            )
+
+    class FakeAnthropic:
+        def __init__(self, *, api_key: str):
+            assert api_key == "test-key"
+            self.messages = FakeMessages()
+
+    monkeypatch.setitem(
+        sys.modules,
+        "anthropic",
+        SimpleNamespace(Anthropic=FakeAnthropic),
+    )
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+    theme = tmp_path / "noir"
+    theme.mkdir()
+    overrides = gm._generate_overrides_with_api(
+        theme,
+        {"Original checkout copy": "duplicate"},
+        {"name": "Noir", "voice": "hard-boiled"},
+        quiet=True,
+    )
+
+    assert overrides == {"Original checkout copy": "Case closed at the register"}
+    assert calls
+    assert calls[0]["model"] == "claude-sonnet-4-6"
+
+
+def test_find_stale_generated_copy_detects_old_fallback_strings(tmp_path: Path) -> None:
+    gm = _load_module()
+    theme = tmp_path / "noir"
+    templates = theme / "templates"
+    templates.mkdir(parents=True)
+    (templates / "front-page.html").write_text(
+        """<!-- wp:paragraph -->
+<p>Noir parcel-room copy 977655</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Real copy that should stay.</p>
+<!-- /wp:paragraph -->
+""",
+        encoding="utf-8",
+    )
+
+    stale = gm._find_stale_generated_copy(theme)
+
+    assert stale == {"Noir parcel-room copy 977655": "stale-generated-copy"}

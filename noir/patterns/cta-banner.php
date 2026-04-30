@@ -14,13 +14,13 @@
 	<!-- wp:group {"align":"wide","layout":{"type":"flex","flexWrap":"wrap","justifyContent":"space-between","verticalAlignment":"center"}} -->
 	<div class="wp-block-group alignwide">
 		<!-- wp:heading {"level":3,"fontSize":"xl","style":{"typography":{"fontStyle":"italic","fontWeight":"700"}}} -->
-		<h3 class="wp-block-heading has-xl-font-size" style="font-style:italic;font-weight:700"><?php esc_html_e( 'Noir parcel-room copy 95a290', 'noir' ); ?></h3>
+		<h3 class="wp-block-heading has-xl-font-size" style="font-style:italic;font-weight:700"><?php esc_html_e( 'Dispatch docket 95a290 — postmarked from the wrong city', 'noir' ); ?></h3>
 		<!-- /wp:heading -->
 
 		<!-- wp:buttons -->
 		<div class="wp-block-buttons">
 			<!-- wp:button -->
-			<div class="wp-block-button"><a class="wp-block-button__link wp-element-button"><?php esc_html_e( 'Noir counter 4b8805', 'noir' ); ?></a></div>
+			<div class="wp-block-button"><a class="wp-block-button__link wp-element-button"><?php esc_html_e( 'Case file 4b8805 — someone kept score', 'noir' ); ?></a></div>
 			<!-- /wp:button -->
 		</div>
 		<!-- /wp:buttons -->

@@ -18,7 +18,7 @@
 		<!-- /wp:paragraph -->
 
 		<!-- wp:heading {"textAlign":"center","level":2,"style":{"typography":{"fontStyle":"italic","fontWeight":"700"}}} -->
-		<h2 class="wp-block-heading has-text-align-center" style="font-style:italic;font-weight:700"><?php esc_html_e( 'Noir parcel-room copy b1e953', 'noir' ); ?></h2>
+		<h2 class="wp-block-heading has-text-align-center" style="font-style:italic;font-weight:700"><?php esc_html_e( 'Dispatch docket b1e953 — the label peels, the truth stays', 'noir' ); ?></h2>
 		<!-- /wp:heading -->
 	</div>
 	<!-- /wp:group -->

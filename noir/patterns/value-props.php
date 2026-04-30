@@ -16,10 +16,10 @@
 		<!-- wp:column -->
 		<div class="wp-block-column">
 			<!-- wp:heading {"level":3,"fontSize":"lg"} -->
-			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Noir counter 866973', 'noir' ); ?></h3>
+			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Case file 866973 — totalled up in the back office', 'noir' ); ?></h3>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph {"textColor":"secondary"} -->
-			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Noir counter 866973 over $50, hand-wrapped and posted from the workshop within two days.', 'noir' ); ?></p>
+			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Case file 866973 — totalled up in the back office over $50, hand-wrapped and posted from the workshop within two days.', 'noir' ); ?></p>
 			<!-- /wp:paragraph -->
 		</div>
 		<!-- /wp:column -->
@@ -27,10 +27,10 @@
 		<!-- wp:column -->
 		<div class="wp-block-column">
 			<!-- wp:heading {"level":3,"fontSize":"lg"} -->
-			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Noir counter 31af4e', 'noir' ); ?></h3>
+			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Case file 31af4e — the clock\'s still running', 'noir' ); ?></h3>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph {"textColor":"secondary"} -->
-			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Noir parcel-room copy d0160a', 'noir' ); ?></p>
+			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Dispatch docket d0160a — the warehouse foreman said nothing', 'noir' ); ?></p>
 			<!-- /wp:paragraph -->
 		</div>
 		<!-- /wp:column -->
@@ -38,7 +38,7 @@
 		<!-- wp:column -->
 		<div class="wp-block-column">
 			<!-- wp:heading {"level":3,"fontSize":"lg"} -->
-			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Noir counter 43b9a2', 'noir' ); ?></h3>
+			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Case file 43b9a2 — running totals in a smoky room', 'noir' ); ?></h3>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph {"textColor":"secondary"} -->
 			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Noir denim, brass hardware, leather aged at the tannery — chosen to outlast a season, then a decade.', 'noir' ); ?></p>

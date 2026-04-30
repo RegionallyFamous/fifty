@@ -347,6 +347,39 @@ def _find_duplicates(theme_root: Path) -> dict[str, str]:
     return duplicates
 
 
+_STALE_GENERATED_COPY_RE = re.compile(
+    r"\b[A-Z][A-Za-z0-9 &'-]{0,60}\s+"
+    r"(?:parcel-room copy|counter|service desk note)\s+[0-9a-f]{6}\b"
+)
+
+
+def _find_stale_generated_copy(theme_root: Path) -> dict[str, str]:
+    """Return old generic fallback strings that should be rewritten.
+
+    A previous model-name typo made API generation fail closed into strings
+    like ``Noir parcel-room copy 977655``. They are technically distinct, so
+    duplicate detection will never revisit them. Treat the generator's own
+    placeholder shape as rewrite debt whenever the microcopy phase is rerun.
+    """
+
+    stale: dict[str, str] = {}
+    for sub in ("templates", "parts", "patterns"):
+        d = theme_root / sub
+        if not d.is_dir():
+            continue
+        for p in d.rglob("*"):
+            if p.suffix not in {".html", ".php"}:
+                continue
+            try:
+                text = p.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            for string in _extract_strings(text):
+                if _STALE_GENERATED_COPY_RE.search(string):
+                    stale[string] = "stale-generated-copy"
+    return stale
+
+
 _CONTENT_RE = re.compile(
     r'"content"\s*:\s*"((?:[^"\\]|\\.)*)"|<(?:h[1-6]|p|li|button|a|figcaption|blockquote)[^>]*>(.*?)</(?:h[1-6]|p|li|button|a|figcaption|blockquote)>',
     re.DOTALL,
@@ -522,7 +555,7 @@ def _generate_overrides_with_api(
     voice = spec.get("voice", "")
     tagline = spec.get("tagline", "")
 
-    pairs = "\n".join(f'  "{k}"' for k in sorted(duplicates)[:50])
+    pairs = "\n".join(f'  "{k}"' for k in sorted(duplicates))
     prompt = f"""\
 You are rewriting marketing copy for a fictional WooCommerce storefront theme.
 
@@ -547,7 +580,7 @@ Strings to rewrite:
     try:
         client = anthropic.Anthropic(api_key=api_key)
         message = client.messages.create(
-            model="claude-claude-sonnet-4-5-20251022",
+            model="claude-sonnet-4-6",
             max_tokens=4096,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -597,10 +630,17 @@ def generate_overrides(
 
     # API generation for any remaining duplicates
     duplicates = _find_duplicates(theme_root)
+    stale_generated = _find_stale_generated_copy(theme_root)
+    duplicates.update(stale_generated)
     if not no_api:
         missing = {k: v for k, v in duplicates.items() if k not in overrides}
         if missing and not quiet:
-            print(f"  [{slug}] {len(missing)} duplicate(s) not covered by static table; trying API")
+            stale_count = sum(1 for v in missing.values() if v == "stale-generated-copy")
+            detail = (
+                f"{len(missing)} string(s) not covered by static table"
+                + (f" ({stale_count} stale generated)" if stale_count else "")
+            )
+            print(f"  [{slug}] {detail}; trying API")
         api_overrides = _generate_overrides_with_api(theme_root, missing, spec, quiet=quiet)
         overrides.update(api_overrides)
 

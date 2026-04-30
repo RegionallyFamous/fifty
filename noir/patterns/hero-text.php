@@ -12,15 +12,15 @@
 <!-- wp:group {"align":"full","backgroundColor":"accent-soft","style":{"spacing":{"padding":{"top":"var:preset|spacing|3-xl","bottom":"var:preset|spacing|3-xl","left":"var:preset|spacing|lg","right":"var:preset|spacing|lg"}}},"layout":{"type":"constrained"}} -->
 <div class="wp-block-group alignfull has-accent-soft-background-color has-background" style="padding-top:var(--wp--preset--spacing--3-xl);padding-right:var(--wp--preset--spacing--lg);padding-bottom:var(--wp--preset--spacing--3-xl);padding-left:var(--wp--preset--spacing--lg)">
 	<!-- wp:paragraph {"align":"center","fontSize":"xs","style":{"typography":{"letterSpacing":"var:custom|letter-spacing|wider","textTransform":"uppercase"}},"textColor":"tertiary"} -->
-	<p class="has-text-align-center has-tertiary-color has-text-color has-xs-font-size" style="letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase"><?php esc_html_e( 'Noir counter d0cc25', 'noir' ); ?></p>
+	<p class="has-text-align-center has-tertiary-color has-text-color has-xs-font-size" style="letter-spacing:var(--wp--custom--letter-spacing--wider);text-transform:uppercase"><?php esc_html_e( 'Case file d0cc25 — ciphered in the fog', 'noir' ); ?></p>
 	<!-- /wp:paragraph -->
 
 	<!-- wp:heading {"level":1,"textAlign":"center","fontSize":"4-xl","style":{"typography":{"fontStyle":"italic","fontWeight":"700","lineHeight":"var(--wp--custom--line-height--tighter)"}}} -->
-	<h1 class="wp-block-heading has-text-align-center has-4-xl-font-size" style="font-style:italic;font-weight:700;line-height:var(--wp--custom--line-height--tighter)"><?php esc_html_e( 'Noir parcel-room copy bfae3a', 'noir' ); ?></h1>
+	<h1 class="wp-block-heading has-text-align-center has-4-xl-font-size" style="font-style:italic;font-weight:700;line-height:var(--wp--custom--line-height--tighter)"><?php esc_html_e( 'Dispatch docket bfae3a — transit records scrubbed clean', 'noir' ); ?></h1>
 	<!-- /wp:heading -->
 
 	<!-- wp:paragraph {"align":"center","fontSize":"md","style":{"spacing":{"margin":{"top":"var:preset|spacing|md","bottom":"var:preset|spacing|lg"}}},"textColor":"secondary"} -->
-	<p class="has-text-align-center has-secondary-color has-text-color has-md-font-size" style="margin-top:var(--wp--preset--spacing--md);margin-bottom:var(--wp--preset--spacing--lg)"><?php esc_html_e( 'Noir parcel-room copy 2bfbba', 'noir' ); ?></p>
+	<p class="has-text-align-center has-secondary-color has-text-color has-md-font-size" style="margin-top:var(--wp--preset--spacing--md);margin-bottom:var(--wp--preset--spacing--lg)"><?php esc_html_e( 'Dispatch docket 2bfbba — left on the doorstep at dawn', 'noir' ); ?></p>
 	<!-- /wp:paragraph -->
 
 	<!-- wp:buttons {"layout":{"type":"flex","justifyContent":"center"}} -->

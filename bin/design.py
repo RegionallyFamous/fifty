@@ -1440,12 +1440,14 @@ def _phase_sync(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> No
 
 
 def _phase_photos(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
-    """Generate per-theme product photos and category covers using Pillow.
+    """Generate concept-aware product photos and category covers.
 
-    Calls `bin/generate-product-photos.py --theme <slug>`.  Idempotent:
-    skips any file that already exists on disk.  After writing new JPGs,
-    the script re-runs `seed-playground-content.py` so the CSV/XML refs
-    are updated.
+    When ``ANTHROPIC_API_KEY`` is available, first delegates to
+    ``bin/design-agent.py --task photos`` so the phase can brief real
+    product photography from the concept context and use an image API if one
+    is configured. The agent falls back to the Pillow generator when no image
+    API key is available. If the agent itself fails, this phase falls back to
+    the existing deterministic Pillow generator.
 
     Why here (after sync, before prepublish)
     ----------------------------------------
@@ -1472,6 +1474,17 @@ def _phase_photos(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> 
         print(
             "  [photos] WARN: playground/generate-images.py missing; hero placeholders remain seeded."
         )
+
+    agent = ROOT / "bin" / "design-agent.py"
+    if agent.is_file() and os.environ.get("ANTHROPIC_API_KEY"):
+        cmd = [sys.executable, str(agent), "--theme", spec.slug, "--task", "photos"]
+        print(f"  [photos] {' '.join(cmd[1:])}")
+        rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
+        if rc == 0:
+            return
+        print(f"  [photos] WARN: design-agent.py --task photos exited {rc}; using fallback.")
+    elif agent.is_file():
+        print("  [photos] ANTHROPIC_API_KEY not set; using Pillow fallback.")
 
     # Run the palette-derived generator last. Legacy per-theme scripts may
     # clone a source theme's page/post PNGs byte-for-byte; this pass writes
@@ -1512,12 +1525,14 @@ def _phase_microcopy(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) 
 
 
 def _phase_frontpage(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
-    """Ensure the front-page layout fingerprint is unique vs every other theme.
+    """Ensure the front-page is unique and concept-aware.
 
-    Calls `bin/diversify-front-page.py --theme <slug>` which adds a
-    ``wo-layout-<slug>`` className to the first ``wp:group`` direct child of
-    ``<main>`` in ``templates/front-page.html``.  If the fingerprint is
-    already unique, the script is a no-op.
+    First calls `bin/diversify-front-page.py --theme <slug>` to add the
+    ``wo-layout-<slug>`` className safety net for
+    `check_front_page_unique_layout`. Then, when ``ANTHROPIC_API_KEY`` is
+    available, calls ``bin/design-agent.py --task frontpage`` to rewrite the
+    actual composition against the concept context and validate the resulting
+    block markup.
 
     `check_front_page_unique_layout` fails when a cloned theme has the
     same direct-child sequence as its source (e.g. both obel and agave
@@ -1534,6 +1549,19 @@ def _phase_frontpage(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) 
     rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
     if rc != 0:
         raise PhaseError("frontpage", f"bin/diversify-front-page.py exited {rc}")
+
+    agent = ROOT / "bin" / "design-agent.py"
+    if agent.is_file() and os.environ.get("ANTHROPIC_API_KEY"):
+        cmd = [sys.executable, str(agent), "--theme", spec.slug, "--task", "frontpage"]
+        print(f"  [frontpage] {' '.join(cmd[1:])}")
+        rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
+        if rc != 0:
+            print(
+                "  [frontpage] WARN: design-agent.py --task frontpage failed; "
+                "layout class fallback remains applied."
+            )
+    elif agent.is_file():
+        print("  [frontpage] ANTHROPIC_API_KEY not set; structural restyle skipped.")
 
 
 def _phase_prepublish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
