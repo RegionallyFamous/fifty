@@ -146,6 +146,17 @@ def test_built_concepts_partition_by_theme_slugs(br, fake_mockups) -> None:
     assert {c["slug"] for c in built} == {"multi"}
 
 
+def test_bench_override_keeps_built_concept_in_queue(br, fake_mockups, monkeypatch) -> None:
+    """Some concepts intentionally return to the bench even when an
+    experimental same-slug theme directory still exists."""
+    monkeypatch.setattr(br, "BENCH_OVERRIDE_CONCEPT_SLUGS", {"multi"})
+
+    unbuilt, built = br.discover_concepts({"multi"})
+
+    assert {c["slug"] for c in unbuilt} == {"single", "multi"}
+    assert built == []
+
+
 def test_queue_card_body_links_to_detail_page(br, fake_mockups) -> None:
     """Track-B contract: the queue card body now links to
     `concepts/<slug>/`, not to a GitHub issue. The 'Pick this one'

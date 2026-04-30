@@ -434,11 +434,11 @@ def render_theme_card(
 #
 # `mockups/mockup-<slug>.png` is the canonical place we drop a hand-drawn
 # (or AI-rendered) mock for a candidate theme before deciding whether to
-# build it. A concept is "shipped" once a sibling theme directory with the
-# same slug exists at the monorepo root (e.g. mockup-aero.png + aero/).
-# The concepts page surfaces every mockup that *doesn't* yet have a paired
-# theme directory, so the Proprietor can browse the queue and pick the
-# next one to build.
+# build it. By default, a concept is "shipped" once a sibling theme
+# directory with the same slug exists at the monorepo root (e.g.
+# mockup-aero.png + aero/). BENCH_OVERRIDE_CONCEPT_SLUGS lets us put a
+# concept back on the bench even if an old/experimental theme directory
+# still exists.
 #
 # We deliberately re-host the mockup PNGs under docs/mockups/<slug>.png
 # rather than hot-linking raw.githubusercontent. This keeps the page
@@ -458,6 +458,7 @@ def render_theme_card(
 # back to the old PNG.
 CONCEPT_MOCKUP_RE = re.compile(r"^mockup-([a-z0-9][a-z0-9-]*)\.png$")
 CONCEPT_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+BENCH_OVERRIDE_CONCEPT_SLUGS = {"agave", "basalt", "ember", "noir"}
 
 # Recognised additional images inside a multi-image concept directory.
 # Order matters: it's the order the carousel walks them. ``home`` is
@@ -568,6 +569,7 @@ def discover_concepts(built_theme_slugs: set[str]) -> tuple[list[dict], list[dic
             candidates.append(slug)
             seen.add(slug)
 
+    effective_built_theme_slugs = built_theme_slugs - BENCH_OVERRIDE_CONCEPT_SLUGS
     unbuilt: list[dict] = []
     built: list[dict] = []
     for slug in sorted(candidates):
@@ -585,7 +587,7 @@ def discover_concepts(built_theme_slugs: set[str]) -> tuple[list[dict], list[dic
             "views": views,
             "hero": views[0][1],
         }
-        (built if slug in built_theme_slugs else unbuilt).append(record)
+        (built if slug in effective_built_theme_slugs else unbuilt).append(record)
     return unbuilt, built
 
 
@@ -1459,8 +1461,10 @@ def build(*, dry_run: bool = False) -> int:
     # Concept queue page. Built theme slugs are derived from the live
     # `themes` list above (via `iter_themes()`, which is the canonical
     # "what shipped" source) so a concept flips from queue -> shipped
-    # automatically when its theme directory lands.
-    built_slugs = {t.name for t in themes}
+    # automatically when its theme directory lands. The explicit bench
+    # override is for concepts we want to invite rebuilding even though
+    # an old/experimental sibling theme directory still exists.
+    built_slugs = {t.name for t in themes} - BENCH_OVERRIDE_CONCEPT_SLUGS
     unbuilt, built_concepts = discover_concepts(built_slugs)
     for concept in unbuilt + built_concepts:
         # Copy every view (single-image concepts have just `home`,
