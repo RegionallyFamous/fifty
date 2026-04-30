@@ -217,6 +217,7 @@ PHASES = (
     #                  squash-merge collapses them on the final PR.
     "prepublish",
     "snap",
+    "allowlist",
     "content-preflight",
     "snap-preflight",
     "vision-review",
@@ -280,6 +281,7 @@ _PHASES_FOR_BUILD = (
     "index",
     "prepublish",
     "snap",
+    "allowlist",
     "baseline",
     "screenshot",
     "check",
@@ -297,6 +299,7 @@ _PHASES_FOR_DRESS = (
     "microcopy",
     "frontpage",
     "snap",
+    "allowlist",
     "content-preflight",
     "snap-preflight",
     "vision-review",
@@ -1475,9 +1478,35 @@ def _phase_photos(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> 
             "  [photos] WARN: playground/generate-images.py missing; hero placeholders remain seeded."
         )
 
+    # ── Preflight: warn early if image-generation keys are absent ────────────
+    # The design agent (photo-briefing step) needs ANTHROPIC_API_KEY to build
+    # per-product prompts; the actual image API needs OPENAI_API_KEY or FAL_KEY.
+    # Without an image key the agent completes all its Claude calls and THEN
+    # discovers it cannot generate images — 1–2 min wasted before the fallback
+    # kicks in. Check both now so the operator can add the key to .env and
+    # restart before burning time.
+    _has_image_key = bool(
+        os.environ.get("OPENAI_API_KEY") or os.environ.get("FAL_KEY")
+    )
+    if not _has_image_key:
+        _env_hint = (
+            "Add OPENAI_API_KEY (or FAL_KEY) to the .env file at the monorepo root:\n"
+            "  echo 'OPENAI_API_KEY=sk-...' >> .env\n"
+            "Then re-run from --from photos."
+        )
+        if not args.keep_going:
+            raise PhaseError(
+                "photos",
+                f"No image-generation key found (OPENAI_API_KEY / FAL_KEY unset).\n{_env_hint}",
+            )
+        print(
+            f"  [photos] WARN: no OPENAI_API_KEY or FAL_KEY; product photos will be "
+            f"Pillow placeholders.\n{_env_hint}"
+        )
+
     agent = ROOT / "bin" / "design-agent.py"
     if agent.is_file() and os.environ.get("ANTHROPIC_API_KEY"):
-        mode = "--keep-going" if args.keep_going else "--strict"
+        mode = "--keep-going" if (args.keep_going or not args.strict) else "--strict"
         cmd = [sys.executable, str(agent), "--theme", spec.slug, "--task", "photos", mode]
         print(f"  [photos] {' '.join(cmd[1:])}")
         rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
@@ -1560,12 +1589,14 @@ def _phase_frontpage(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) 
 
     agent = ROOT / "bin" / "design-agent.py"
     if agent.is_file() and os.environ.get("ANTHROPIC_API_KEY"):
-        mode = "--keep-going" if args.keep_going else "--strict"
+        # Pass --keep-going when either --keep-going or --no-strict was given so
+        # a high-confidence layout that snaps poorly doesn't abort the pipeline.
+        mode = "--keep-going" if (args.keep_going or not args.strict) else "--strict"
         cmd = [sys.executable, str(agent), "--theme", spec.slug, "--task", "frontpage", mode]
         print(f"  [frontpage] {' '.join(cmd[1:])}")
         rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
         if rc != 0:
-            if not args.keep_going:
+            if not args.keep_going and args.strict:
                 raise PhaseError("frontpage", f"bin/design-agent.py --task frontpage exited {rc}")
             print(
                 "  [frontpage] WARN: design-agent.py --task frontpage failed; "
@@ -1573,6 +1604,66 @@ def _phase_frontpage(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) 
             )
     elif agent.is_file():
         print("  [frontpage] ANTHROPIC_API_KEY not set; structural restyle skipped.")
+
+
+def _wait_for_cdn(slug: str, branch: str, timeout_s: int = 60) -> None:
+    """Poll raw.githubusercontent.com until the theme's content.xml is reachable.
+
+    GitHub's CDN typically propagates a new push within 5–20 seconds.  Without
+    this wait, ``bin/snap.py shoot`` can boot Playground, which fetches
+    ``content.xml`` from raw.githubusercontent before the CDN has indexed the
+    fresh commit, receives a 404 HTML page, and dies with "W&O CSV looked
+    malformed: fewer than 2 lines after trim."
+
+    We poll the *branch-specific* URL (not main) because the prepublish push
+    targets the feature branch, which may not be on main at all.
+    """
+    import time
+    try:
+        import urllib.request
+        urllib_available = True
+    except ImportError:
+        urllib_available = False
+
+    if not urllib_available:
+        print("  [prepublish] urllib unavailable; skipping CDN wait (hoping for the best).")
+        return
+
+    from _lib import GITHUB_ORG, GITHUB_REPO
+    url = (
+        f"https://raw.githubusercontent.com/{GITHUB_ORG}/{GITHUB_REPO}"
+        f"/{branch}/{slug}/playground/content/content.xml"
+    )
+    deadline = time.monotonic() + timeout_s
+    attempt = 0
+    while time.monotonic() < deadline:
+        attempt += 1
+        try:
+            with urllib.request.urlopen(url, timeout=10) as resp:
+                first_bytes = resp.read(64)
+                if b"<?xml" in first_bytes or b"<rss" in first_bytes or len(first_bytes) > 10:
+                    elapsed = int(time.monotonic() - (deadline - timeout_s))
+                    print(
+                        f"  [prepublish] CDN ready after ~{elapsed}s "
+                        f"(attempt {attempt}; {url})"
+                    )
+                    return
+        except Exception:
+            pass
+        wait = min(5, deadline - time.monotonic())
+        if wait <= 0:
+            break
+        if attempt == 1:
+            print(f"  [prepublish] waiting for CDN to index {branch}/{slug}/…", end="", flush=True)
+        else:
+            print(".", end="", flush=True)
+        time.sleep(wait)
+    print()  # newline after dots
+    print(
+        f"  [prepublish] WARN: CDN did not serve {url} within {timeout_s}s. "
+        "The snap phase may still succeed if GitHub's edge cache catches up; "
+        "if snap dies with 'W&O CSV malformed', re-run with --from snap."
+    )
 
 
 def _phase_prepublish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
@@ -1753,6 +1844,7 @@ def _phase_prepublish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace)
             "with `--from prepublish`.",
         )
     print(f"  [prepublish] {remote}/{branch} ready; raw.githubusercontent will serve {branch}")
+    _wait_for_cdn(slug, branch)
 
 
 def _phase_snap(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
@@ -1845,6 +1937,52 @@ def _phase_vision_review(spec: ValidatedSpec, dest: Path, args: argparse.Namespa
     rc = proc.returncode
     if rc != 0:
         raise PhaseError("vision-review", f"bin/snap-vision-review.py exited {rc}")
+
+
+def _phase_allowlist(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
+    """Seed the heuristics allowlist for brand-new themes.
+
+    When a theme is cloned for the first time its snap findings are all new,
+    so every axe-core error fires the gate even if those errors come from
+    inherited upstream WooCommerce markup that the team has already decided to
+    tolerate on the source theme.  Running ``bin/snap.py allowlist regenerate``
+    here (before ``check``) establishes an initial baseline so only FUTURE
+    regressions block the build — exactly the same step that was done manually
+    for the distillery theme.
+
+    Guard: only regenerate when the theme has NO existing allowlist cells.
+    An already-shipped theme with an established allowlist must never have
+    its entries silently wiped by a re-run of design.py, so we skip this
+    phase if the theme already has entries in the file.
+    """
+    allowlist_path = (
+        MONOREPO_ROOT / "tests" / "visual-baseline" / "heuristics-allowlist.json"
+    )
+    if allowlist_path.is_file():
+        try:
+            allow = json.loads(allowlist_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            allow = {}
+        theme_prefix = f"{spec.slug}:"
+        has_entries = any(k.startswith(theme_prefix) for k in allow)
+        if has_entries:
+            print(f"  [allowlist] {spec.slug} already has allowlist entries; skipping regenerate.")
+            return
+    cmd = [
+        sys.executable,
+        str(ROOT / "bin" / "snap.py"),
+        "allowlist",
+        "regenerate",
+        "--theme",
+        spec.slug,
+    ]
+    print(f"  [allowlist] seeding initial heuristics allowlist for new theme {spec.slug}")
+    print(f"  [allowlist] {' '.join(cmd[1:])}")
+    rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
+    if rc != 0:
+        # Non-fatal: a missing allowlist just means new findings fail the gate,
+        # which is the correct outcome for a broken theme. Don't block the build.
+        print(f"  [allowlist] WARN: snap.py allowlist regenerate exited {rc}; continuing.")
 
 
 def _phase_baseline(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> None:
@@ -2270,6 +2408,7 @@ _PHASE_HANDLERS = {
     "frontpage": _phase_frontpage,
     "prepublish": _phase_prepublish,
     "snap": _phase_snap,
+    "allowlist": _phase_allowlist,
     "content-preflight": _phase_content_preflight,
     "snap-preflight": _phase_snap_preflight,
     "vision-review": _phase_vision_review,

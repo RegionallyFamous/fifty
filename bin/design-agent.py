@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import concurrent.futures
 import csv
 import html
 import json
@@ -32,6 +33,7 @@ import urllib.error
 import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from threading import Lock
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1125,38 +1127,63 @@ def run_photos(theme_root: Path, *, dry_run: bool, model: str, keep_going: bool)
     written = 0
     records: list[dict[str, Any]] = []
     images_dir = theme_root / "playground" / "images"
-    for sku, filename in sorted(products.items()):
-        image_prompt = prompt_map.get(sku)
-        if not image_prompt:
-            continue
+
+    # Build the work list (SKUs that have a prompt).
+    work_items = [
+        (sku, filename, prompt_map[sku])
+        for sku, filename in sorted(products.items())
+        if prompt_map.get(sku)
+    ]
+
+    # Parallelise image-API calls.  OpenAI's image endpoint is rate-limited
+    # by requests-per-minute (not by token budget), so 8 concurrent calls
+    # saturates typical Tier-1/2 limits without approaching the per-minute
+    # cap.  FAL is similarly concurrency-friendly.  A Lock guards the shared
+    # `written` counter and `records` list so threads can append safely.
+    _MAX_WORKERS = int(os.environ.get("FIFTY_PHOTO_WORKERS", "8"))
+    _lock = Lock()
+
+    def _generate_one(item: tuple[str, str, str]) -> None:
+        nonlocal written
+        sku, filename, image_prompt = item
         dest = images_dir / filename
         try:
             _write_image_bytes(dest, generator(image_prompt))
-            written += 1
-            records.append(
-                {
-                    "sku": sku,
-                    "filename": filename,
-                    "provider": provider,
-                    "model": provider_model,
-                    "prompt": image_prompt,
-                    "status": "generated",
-                }
-            )
+            with _lock:
+                written += 1
+                records.append(
+                    {
+                        "sku": sku,
+                        "filename": filename,
+                        "provider": provider,
+                        "model": provider_model,
+                        "prompt": image_prompt,
+                        "status": "generated",
+                    }
+                )
             print(f"  [design-agent/photos] generated {dest.relative_to(ROOT)}")
         except Exception as exc:
-            records.append(
-                {
-                    "sku": sku,
-                    "filename": filename,
-                    "provider": provider,
-                    "model": provider_model,
-                    "prompt": image_prompt,
-                    "status": "failed",
-                    "error": str(exc),
-                }
-            )
+            with _lock:
+                records.append(
+                    {
+                        "sku": sku,
+                        "filename": filename,
+                        "provider": provider,
+                        "model": provider_model,
+                        "prompt": image_prompt,
+                        "status": "failed",
+                        "error": str(exc),
+                    }
+                )
             print(f"  [design-agent/photos] {sku} failed: {exc}", file=sys.stderr)
+
+    total = len(work_items)
+    print(
+        f"  [design-agent/photos] generating {total} image(s) "
+        f"({_MAX_WORKERS} concurrent, provider={provider})"
+    )
+    with concurrent.futures.ThreadPoolExecutor(max_workers=_MAX_WORKERS) as pool:
+        list(pool.map(_generate_one, work_items))
 
     status = "generated" if written else "placeholder-fallback"
     _write_photo_manifest(

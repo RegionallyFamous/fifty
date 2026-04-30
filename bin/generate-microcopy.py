@@ -234,6 +234,28 @@ _ALWAYS_REWRITE_IF_PRESENT = (
     "This season\\'s picks",
 )
 
+# Structural section-label headings that appear in templates (order-confirmation,
+# checkout, cart, account) cloned verbatim from Obel.  They are short, functional
+# labels ("Dispatch address", "Contact information", etc.) that the duplicate
+# check flags but the API prompt often misses because they can be lost in a long
+# list of longer strings.  We force them into the API call as a separate batch so
+# they always get voice-appropriate replacements.
+_TEMPLATE_STRUCTURAL_LABELS = (
+    "Dispatch address",
+    "Billing address",
+    "Shipping address",
+    "Delivery address",
+    "Contact information",
+    "Order details",
+    "Order summary",
+    "Payment method",
+    "What happens next",
+    "Returns within 30 days",
+    "30-day returns",
+    "Free returns",
+    "Made to last",
+)
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -632,6 +654,14 @@ def generate_overrides(
     duplicates = _find_duplicates(theme_root)
     stale_generated = _find_stale_generated_copy(theme_root)
     duplicates.update(stale_generated)
+
+    # Structural template labels that duplicate-detection can miss when they
+    # are outnumbered by longer body-copy strings in the API batch.  Add any
+    # that are actually present in this theme so they're always rewritten.
+    for label in _TEMPLATE_STRUCTURAL_LABELS:
+        if label not in duplicates and _theme_source_contains(theme_root, label):
+            duplicates[label] = "_structural-label"
+
     if not no_api:
         missing = {k: v for k, v in duplicates.items() if k not in overrides}
         if missing and not quiet:

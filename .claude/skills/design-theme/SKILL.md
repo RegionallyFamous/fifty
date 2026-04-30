@@ -129,24 +129,25 @@ snapshots the canonical list and fails loudly on drift.
 | 10 | **index** | `bin/build-index.py` refreshes the theme INDEX.md | Hard fail |
 | 11 | **prepublish** | Scoped `git add <slug>/` + commit + push so `raw.githubusercontent.com` can serve playground assets before snap | Skipped with `--skip-publish`; snap will 404 without it on a fresh theme |
 | 12 | **snap** | `bin/snap.py shoot <slug>` | Skipped with `--skip-snap`; leaves no screenshot evidence |
-| 13 | **content-preflight** | `bin/check.py <slug> --quick --phase content` catches missing content, duplicate copy, and image-map defects before paid vision | Hard fail before vision review |
-| 14 | **snap-preflight** | `bin/snap.py report <slug> --strict` fails if the fresh screenshot evidence is already red | Hard fail before vision review |
-| 15 | **vision-review** | `bin/snap-vision-review.py` against each cell — LLM critique against `<slug>/design-intent.md` | Skipped silently when `ANTHROPIC_API_KEY` is unset; in a release pipeline treat the skip as a WARN, not a PASS |
-| 16 | **scorecard** | `bin/design-scorecard.py <slug>` writes `tmp/runs/<run-id>/design-score.json` + contact sheet from snap/vision findings | Hard fail below threshold; mass failures stop instead of repairing |
-| 17 | **baseline** | `bin/snap.py baseline <slug>` (writes `tests/visual-baseline/<slug>/`) | Hard fail |
-| 18 | **screenshot** | `bin/build-theme-screenshots.py <slug>` replaces the WP admin card screenshot with a crop of this theme's home page | Hard fail |
-| 19 | **check** | `bin/check.py <slug> --quick` | **Strict by default** — any failure aborts. `--no-strict` demotes to a warning (prototype-only; never ship in that mode) |
-| 20 | **report** | `bin/snap.py report <slug>` prints the tiered `STATUS: PASS/WARN/FAIL` | Non-pass aborts unless `--no-strict` |
-| 21 | **redirects** | `bin/build-redirects.py` rebuilds all `docs/` demo-site redirectors — **not run by `design.py build`** (demo site is a separate concern); invoke with `--only redirects` or via `design-batch.py --publish-demo` | Soft fail (warning only) |
-| 22 | **commit** | Stages `<slug>/` + generated artifacts and creates one `design: ship <slug>` commit | Skipped with `--skip-commit`; runs only if every earlier phase was green |
-| 23 | **publish** | `git push` of the freshly-created commit | Skipped with `--skip-publish` |
+| 13 | **allowlist** | `bin/snap.py allowlist regenerate --theme <slug>` — seeds the heuristics allowlist for brand-new themes so inherited upstream WC findings don't block the build; skipped when the theme already has entries | Only runs once per theme (guarded by existing-entries check) |
+| 14 | **content-preflight** | `bin/check.py <slug> --quick --phase content` catches missing content, duplicate copy, and image-map defects before paid vision | Hard fail before vision review |
+| 15 | **snap-preflight** | `bin/snap.py report <slug> --strict` fails if the fresh screenshot evidence is already red | Hard fail before vision review |
+| 16 | **vision-review** | `bin/snap-vision-review.py` against each cell — LLM critique against `<slug>/design-intent.md` | Skipped silently when `ANTHROPIC_API_KEY` is unset; in a release pipeline treat the skip as a WARN, not a PASS |
+| 17 | **scorecard** | `bin/design-scorecard.py <slug>` writes `tmp/runs/<run-id>/design-score.json` + contact sheet from snap/vision findings | Hard fail below threshold; mass failures stop instead of repairing |
+| 18 | **baseline** | `bin/snap.py baseline <slug>` (writes `tests/visual-baseline/<slug>/`) | Hard fail |
+| 19 | **screenshot** | `bin/build-theme-screenshots.py <slug>` replaces the WP admin card screenshot with a crop of this theme's home page | Hard fail |
+| 20 | **check** | `bin/check.py <slug> --quick` | **Strict by default** — any failure aborts. `--no-strict` demotes to a warning (prototype-only; never ship in that mode) |
+| 21 | **report** | `bin/snap.py report <slug>` prints the tiered `STATUS: PASS/WARN/FAIL` | Non-pass aborts unless `--no-strict` |
+| 22 | **redirects** | `bin/build-redirects.py` rebuilds all `docs/` demo-site redirectors — **not run by `design.py build`** (demo site is a separate concern); invoke with `--only redirects` or via `design-batch.py --publish-demo` | Soft fail (warning only) |
+| 23 | **commit** | Stages `<slug>/` + generated artifacts and creates one `design: ship <slug>` commit | Skipped with `--skip-commit`; runs only if every earlier phase was green |
+| 24 | **publish** | `git push` of the freshly-created commit | Skipped with `--skip-publish` |
 
 > **Demo site is separate from theme building.** `design.py build` omits the `redirects` phase — per-theme builds never touch `docs/`. The demo site updates via two paths: (1) `design-batch.py --publish-demo` runs `build-redirects.py` once after all theme PRs are open; (2) the `publish-demo.yml` CI workflow runs automatically on every push to `main` so the site stays current after PR merges. To rebuild manually at any time: `python3 bin/design.py --only redirects`.
 
 **Strict is the default.** `bin/design.py` ships with `strict=True` as of
-Spring 2026. A `STATUS: PASS` at phase 16 (`check`) and a `STATUS: PASS`
-at phase 17 (`report`) are both required before the orchestrator will
-reach phase 19 (`commit`). Passing `--no-strict` demotes check / report
+Spring 2026. A `STATUS: PASS` at phase 20 (`check`) and a `STATUS: PASS`
+at phase 21 (`report`) are both required before the orchestrator will
+reach phase 23 (`commit`). Passing `--no-strict` demotes check / report
 to informational — **never use it for a release**. Prototype flags
 (`--no-strict`, `--skip-snap`, and running with `ANTHROPIC_API_KEY`
 unset so vision-review skips) explicitly produce an **incubating** theme
@@ -190,7 +191,7 @@ python3 bin/design.py build --spec tmp/<slug>.json
 python3 bin/design.py dress <slug>
 ```
 
-- **`design.py build`** runs the deterministic structural phases — `validate, clone, apply, contrast, seed, sync, index, prepublish, snap, baseline, screenshot, check, report, commit, publish`. The `redirects` phase is excluded (demo site is a separate concern — see note above). The `check` phase runs with `--phase structural`, which skips the 10 content-fit checks (product-image diversity, per-theme microcopy uniqueness, front-page fingerprint, etc.) that only pass AFTER `dress` has regenerated per-theme photography and microcopy. It does NOT call a vision model. Re-running `build` after a CSS / token / markup tweak is the tight inner loop (5–10 min).
+- **`design.py build`** runs the deterministic structural phases — `validate, clone, apply, contrast, seed, sync, photos, microcopy, frontpage, index, prepublish, snap, allowlist, baseline, screenshot, check, report, commit, publish`. The `redirects` phase is excluded (demo site is a separate concern — see note above). The `check` phase runs with `--phase structural`, which skips the 10 content-fit checks (product-image diversity, per-theme microcopy uniqueness, front-page fingerprint, etc.) that only pass AFTER `dress` has regenerated per-theme photography and microcopy. It does NOT call a vision model. Re-running `build` after a CSS / token / markup tweak is the tight inner loop (5–10 min).
 - **`design.py dress`** runs the content-fit phases — `photos, microcopy, frontpage, snap, vision-review, scorecard, check, report, commit, publish`. The `check` phase runs with `--phase all` (every check must pass before promotion), and `vision-review` runs with `--phase content` so the reviewer focuses on the catalogue-fit lens (photography-mismatch, color-clash, brand-violation, mockup-divergent) instead of re-grading structural complaints that `build` already gated. `scorecard` converts that evidence into a repairable design-quality artifact. This is the outer loop that burns vision-review budget (≈ $0.30 / run).
 - **`dress`** requires the theme to already exist on disk — preflight checks for `<slug>/theme.json` and `<slug>/playground/blueprint.json` and exits 2 with a "run build first" message if either is missing.
 - Each subcommand emits its own verdict banner on green (`BUILD OK — ...` / `DRESS OK — ...`) and lands its own commit (`design: build <slug> (structurally sound)` / `design: dress <slug> (content-fit)`).
