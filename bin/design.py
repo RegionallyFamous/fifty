@@ -571,6 +571,17 @@ def _build_parser() -> argparse.ArgumentParser:
             "on). Explicit override is there for CI scenarios."
         ),
     )
+    p.add_argument(
+        "--keep-going",
+        action="store_true",
+        help=(
+            "When a phase fails, log the failure and continue to the next phase "
+            "rather than stopping the pipeline. Commit, publish, and redirects "
+            "phases still run so a draft PR lands even when earlier phases had "
+            "issues. The pipeline exits with code 10 (instead of 1) when any "
+            "phase was skipped, so callers can detect a partial success."
+        ),
+    )
     return p
 
 
@@ -741,18 +752,34 @@ def main(argv: list[str] | None = None) -> int:
     print(f"design.py: running phases {' -> '.join(phases_to_run)} for `{spec.slug}`")
 
     dest = MONOREPO_ROOT / spec.slug
-    try:
-        for phase in phases_to_run:
-            handler = _PHASE_HANDLERS[phase]
+    skipped_phases: list[tuple[str, str]] = []  # (phase, reason) for --keep-going log
+    for phase in phases_to_run:
+        handler = _PHASE_HANDLERS[phase]
+        try:
             handler(spec, dest, args)
             _run_phase_invariants(spec, dest, phase)
-    except PhaseError as e:
-        phase, detail = e.args
-        print(f"\nSTATUS: FAIL (phase {phase})", file=sys.stderr)
-        print(f"  {detail}", file=sys.stderr)
-        return 1
+        except PhaseError as e:
+            _phase, detail = e.args
+            if args.keep_going:
+                print(
+                    f"\nSTATUS: SKIP (phase {_phase}) — keep-going mode",
+                    file=sys.stderr,
+                )
+                print(f"  {detail}", file=sys.stderr)
+                print("  Continuing to next phase.", file=sys.stderr)
+                skipped_phases.append((_phase, detail))
+                continue
+            print(f"\nSTATUS: FAIL (phase {_phase})", file=sys.stderr)
+            print(f"  {detail}", file=sys.stderr)
+            return 1
 
-    print("\nSTATUS: PASS")
+    if skipped_phases:
+        print("\nSTATUS: PARTIAL")
+        print(f"  Skipped {len(skipped_phases)} phase(s) due to errors (--keep-going):")
+        for ph, reason in skipped_phases:
+            print(f"    • {ph}: {reason}")
+    else:
+        print("\nSTATUS: PASS")
     print(f"  Theme:  {dest}")
     print(f"  Brief:  {dest / 'BRIEF.md'}")
     if subcommand == "build":
@@ -761,7 +788,9 @@ def main(argv: list[str] | None = None) -> int:
         print(DRESS_OK_BANNER.format(slug=spec.slug))
     else:
         print("  Next:   read BRIEF.md, then continue with .claude/skills/design-theme.")
-    return 0
+    # rc 10 = partial success: all phases ran but some had errors (--keep-going).
+    # rc 0  = clean pass: no phases skipped.
+    return 10 if skipped_phases else 0
 
 
 def _select_phases(from_phase: str, only: str | None) -> list[str]:

@@ -465,7 +465,9 @@ def _run_design_cmd(
             cmd.append("--keep-going")
         cmd.extend(["--", *design_cmd])
     else:
-        cmd = [sys.executable, "bin/design.py", *design_cmd]
+        # No watcher — pass --keep-going directly to design.py.
+        extra = ["--keep-going"] if opts.keep_going and "--keep-going" not in design_cmd else []
+        cmd = [sys.executable, "bin/design.py", *design_cmd, *extra]
 
     env = os.environ.copy()
     # Each worker gets its own Playground port so concurrency doesn't

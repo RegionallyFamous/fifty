@@ -388,7 +388,7 @@ def parse_line(state: WatchState, line: str, now: float) -> list[dict[str, Any]]
         events.append({"type": "no_strict_warning"})
         return events
 
-    m = re.search(r"STATUS:\s+(PASS|FAIL)(?:\s+\(phase ([^)]+)\))?", clean)
+    m = re.search(r"STATUS:\s+(PASS|FAIL|PARTIAL|SKIP)(?:\s+\(phase ([^)]+)\))?", clean)
     if m:
         state.final_status = m.group(1).lower()
         if m.group(2):
@@ -409,6 +409,12 @@ def plain_status(
         if verdict == "ship-pass":
             return "Working", f"[{elapsed}] {name} is ready to ship. All required checks passed."
         if verdict == "prototype-pass":
+            if state.kept_going_past_phase:
+                return (
+                    "Needs attention",
+                    f"[{elapsed}] {name} completed (keep-going mode). "
+                    f"PR was opened. {len(state.check_failures)} issue(s) remain for a follow-up.",
+                )
             if not state.check_failures:
                 return (
                     "Needs attention",
@@ -471,9 +477,11 @@ def plain_status(
 
 
 def classify_verdict(state: WatchState) -> str:
-    if state.returncode == 0 and not state.no_strict and not state.check_failures:
-        return "ship-pass"
-    if state.returncode == 0:
+    # rc 10 = design.py partial success (--keep-going skipped some phases).
+    # Treat it as prototype-pass so the watcher doesn't re-enter repair loops.
+    if state.returncode in (0, 10) and not state.no_strict and not state.check_failures:
+        return "ship-pass" if state.returncode == 0 else "prototype-pass"
+    if state.returncode in (0, 10):
         return "prototype-pass" if state.no_strict or state.saw_no_strict_warning else "ship-pass"
     return "blocked"
 
@@ -1362,6 +1370,10 @@ def main(argv: list[str] | None = None) -> int:
     if not script_path.is_absolute():
         script_path = ROOT / script_path
     is_design_script = script_path.resolve() == (ROOT / "bin" / "design.py").resolve()
+    # Propagate --keep-going into the design.py child args so every phase
+    # inside the pipeline is non-fatal, not just the watcher-level skip.
+    if watch_args.keep_going and is_design_script and "--keep-going" not in design_args:
+        design_args = [*design_args, "--keep-going"]
     command = [sys.executable, "-u", str(script_path), *design_args]
     now = time.time()
     slug = infer_slug(design_args) if is_design_script else script_path.stem
