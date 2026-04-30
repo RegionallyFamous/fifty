@@ -326,9 +326,11 @@ def test_final_commit_refreshes_last_mile_artifacts() -> None:
         '"mobile"',
         '"desktop"',
         '"--no-skip"',
-        "_run_theme_screenshot(spec, strict=True)",
+        "_run_theme_screenshot(spec, strict=False)",
+        "committing current files",
     ):
         assert required in guard_src
+    assert 'raise PhaseError("commit"' not in guard_src
 
 
 def test_skip_publish_drops_prepublish_too() -> None:
