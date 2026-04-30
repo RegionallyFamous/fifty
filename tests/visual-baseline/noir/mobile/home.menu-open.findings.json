@@ -1,19 +1,86 @@
 {
   "findings": [
     {
-      "severity": "error",
+      "severity": "info",
       "kind": "a11y-color-contrast",
-      "message": "Elements must meet minimum color contrast ratio thresholds (3 node(s)) \u2014 first: .wp-container-core-group-is-layout-885a5dd6 > .has-sm-font-size > a[href$=\"shop\"]",
+      "message": "Elements must meet minimum color contrast ratio thresholds (3 node(s)) \u2014 first: .post-1049 > .wp-block-post-excerpt > .wp-block-post-excerpt__more-text > .wp-block-post-excerpt__more-link",
       "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
       "axe_impact": "serious",
       "axe_node_count": 3,
       "axe_first_selectors": [
-        ".wp-container-core-group-is-layout-885a5dd6 > .has-sm-font-size > a[href$=\"shop\"]",
-        ".wp-container-core-group-is-layout-68c576da.is-content-justification-space-between.is-nowrap > .has-sm-font-size > a[href$=\"shop\"]",
-        ".has-sm-font-size > a[href$=\"journal\"]"
+        ".post-1049 > .wp-block-post-excerpt > .wp-block-post-excerpt__more-text > .wp-block-post-excerpt__more-link",
+        ".post-1051 > .wp-block-post-excerpt > .wp-block-post-excerpt__more-text > .wp-block-post-excerpt__more-link",
+        ".post-1053 > .wp-block-post-excerpt > .wp-block-post-excerpt__more-text > .wp-block-post-excerpt__more-link"
       ],
       "axe_suppressed": {},
+      "allowlisted": true,
       "crop_path": "tmp/snaps/noir/mobile/home.menu-open.a11y-color-contrast.0.crop.jpg"
+    },
+    {
+      "severity": "warn",
+      "kind": "a11y-landmark-banner-is-top-level",
+      "message": "Banner landmark should not be contained in another landmark (1 node(s)) \u2014 first: .noir-header",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/landmark-banner-is-top-level?application=axeAPI",
+      "axe_impact": "moderate",
+      "axe_node_count": 1,
+      "axe_first_selectors": [
+        ".noir-header"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/noir/mobile/home.menu-open.a11y-landmark-banner-is-top-level.0.crop.jpg"
+    },
+    {
+      "severity": "warn",
+      "kind": "a11y-landmark-contentinfo-is-top-level",
+      "message": "Contentinfo landmark should not be contained in another landmark (1 node(s)) \u2014 first: .has-subtle-background-color",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/landmark-contentinfo-is-top-level?application=axeAPI",
+      "axe_impact": "moderate",
+      "axe_node_count": 1,
+      "axe_first_selectors": [
+        ".has-subtle-background-color"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/noir/mobile/home.menu-open.a11y-landmark-contentinfo-is-top-level.0.crop.jpg"
+    },
+    {
+      "severity": "warn",
+      "kind": "a11y-landmark-no-duplicate-banner",
+      "message": "Document should not have more than one banner landmark (1 node(s)) \u2014 first: .wp-site-blocks > header",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/landmark-no-duplicate-banner?application=axeAPI",
+      "axe_impact": "moderate",
+      "axe_node_count": 1,
+      "axe_first_selectors": [
+        ".wp-site-blocks > header"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/noir/mobile/home.menu-open.a11y-landmark-no-duplicate-banner.0.crop.jpg"
+    },
+    {
+      "severity": "warn",
+      "kind": "a11y-landmark-no-duplicate-contentinfo",
+      "message": "Document should not have more than one contentinfo landmark (1 node(s)) \u2014 first: .wp-site-blocks > footer",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/landmark-no-duplicate-contentinfo?application=axeAPI",
+      "axe_impact": "moderate",
+      "axe_node_count": 1,
+      "axe_first_selectors": [
+        ".wp-site-blocks > footer"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/noir/mobile/home.menu-open.a11y-landmark-no-duplicate-contentinfo.0.crop.jpg"
+    },
+    {
+      "severity": "warn",
+      "kind": "a11y-landmark-unique",
+      "message": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination (2 node(s)) \u2014 first: .wp-site-blocks > header",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/landmark-unique?application=axeAPI",
+      "axe_impact": "moderate",
+      "axe_node_count": 2,
+      "axe_first_selectors": [
+        ".wp-site-blocks > header",
+        ".wp-site-blocks > footer"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/noir/mobile/home.menu-open.a11y-landmark-unique.0.crop.jpg"
     },
     {
       "severity": "info",
@@ -30,7 +97,7 @@
       "instances": [
         {
           "width": 390,
-          "height": 5452,
+          "height": 4000,
           "visible": true,
           "display": "block",
           "grid_template_columns": "none",
@@ -44,18 +111,18 @@
     "width": 390,
     "height": 844,
     "scrollWidth": 390,
-    "scrollHeight": 7149
+    "scrollHeight": 5833
   },
   "bg_image_pairs": [],
   "theme": "noir",
   "viewport": "mobile",
   "route": "home.menu-open",
-  "url": "http://127.0.0.1:9401/",
+  "url": "http://127.0.0.1:9402/",
   "navigation_error": null,
   "console": [
     {
       "type": "warning",
-      "text": "Failed to decode downloaded font: http://127.0.0.1:9401/wp-content/themes/noir/assets/fonts/sans-400.woff2"
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-400.woff2"
     },
     {
       "type": "warning",
@@ -63,7 +130,7 @@
     },
     {
       "type": "warning",
-      "text": "Failed to decode downloaded font: http://127.0.0.1:9401/wp-content/themes/noir/assets/fonts/sans-500.woff2"
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-500.woff2"
     },
     {
       "type": "warning",
@@ -71,7 +138,7 @@
     },
     {
       "type": "warning",
-      "text": "Failed to decode downloaded font: http://127.0.0.1:9401/wp-content/themes/noir/assets/fonts/sans-700.woff2"
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-700.woff2"
     },
     {
       "type": "warning",
@@ -79,7 +146,7 @@
     },
     {
       "type": "warning",
-      "text": "Failed to decode downloaded font: http://127.0.0.1:9401/wp-content/themes/noir/assets/fonts/display-700.woff2"
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/display-700.woff2"
     },
     {
       "type": "warning",
@@ -87,7 +154,7 @@
     },
     {
       "type": "warning",
-      "text": "Failed to decode downloaded font: http://127.0.0.1:9401/wp-content/themes/noir/assets/fonts/sans-400.woff2"
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-400.woff2"
     },
     {
       "type": "warning",
@@ -95,7 +162,7 @@
     },
     {
       "type": "warning",
-      "text": "Failed to decode downloaded font: http://127.0.0.1:9401/wp-content/themes/noir/assets/fonts/sans-500.woff2"
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-500.woff2"
     },
     {
       "type": "warning",
@@ -103,7 +170,7 @@
     },
     {
       "type": "warning",
-      "text": "Failed to decode downloaded font: http://127.0.0.1:9401/wp-content/themes/noir/assets/fonts/sans-700.woff2"
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-700.woff2"
     },
     {
       "type": "warning",
@@ -111,7 +178,7 @@
     },
     {
       "type": "warning",
-      "text": "Failed to decode downloaded font: http://127.0.0.1:9401/wp-content/themes/noir/assets/fonts/display-700.woff2"
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/display-700.woff2"
     },
     {
       "type": "warning",

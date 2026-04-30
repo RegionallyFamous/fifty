@@ -810,6 +810,44 @@ add_action(
 	20
 );
 
+add_action(
+	'wp_footer',
+	static function (): void {
+		if ( is_admin() || ! is_account_page() ) {
+			return;
+		}
+		?>
+<script>
+(function(){
+	function polish(){
+		var root = getComputedStyle(document.documentElement);
+		var base = root.getPropertyValue('--wp--preset--color--base').trim();
+		var contrast = root.getPropertyValue('--wp--preset--color--contrast').trim();
+		document.querySelectorAll('.wc-block-components-notice-banner.is-info a.woocommerce-Button').forEach(function(button){
+			button.style.color = base;
+			button.style.backgroundColor = contrast;
+			button.style.borderColor = contrast;
+			if (!button.querySelector('.noir-account-orders-button__label')) {
+				var label = button.textContent;
+				button.textContent = '';
+				button.setAttribute('aria-label', label);
+				var span = document.createElement('span');
+				span.className = 'noir-account-orders-button__label';
+				span.textContent = label;
+				span.style.color = base;
+				button.appendChild(span);
+			}
+		});
+	}
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', polish);
+	else polish();
+})();
+</script>
+		<?php
+	},
+	99
+);
+
 if ( ! function_exists( 'noir_render_account_dashboard' ) ) {
 	/**
 	 * Render the Noir-branded My Account dashboard tab.

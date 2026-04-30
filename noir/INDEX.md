@@ -52,7 +52,6 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |   |-- content.xml
 |   |   |-- image-manifest.json
 |   |   |-- product-images.json
-|   |   |-- product-photo-prompts.json
 |   |   `-- products.csv
 |   |-- images/
 |   |   |-- cat-curated-bundles.jpg

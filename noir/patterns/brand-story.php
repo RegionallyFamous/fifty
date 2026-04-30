@@ -20,7 +20,7 @@
 			<!-- /wp:paragraph -->
 
 			<!-- wp:heading {"level":2} -->
-			<h2 class="wp-block-heading"><?php esc_html_e( 'Case file 937fc2 — every mark tells a story', 'noir' ); ?></h2>
+			<h2 class="wp-block-heading"><?php esc_html_e( 'No shortcuts. No alibis.', 'noir' ); ?></h2>
 			<!-- /wp:heading -->
 
 			<!-- wp:paragraph {"textColor":"secondary","fontSize":"md"} -->

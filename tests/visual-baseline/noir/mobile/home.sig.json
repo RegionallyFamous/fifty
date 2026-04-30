@@ -9,11 +9,11 @@
     },
     {
       "path": "parts/announcement-bar.html",
-      "sha": "1114833cf30dacc138e1359bfb3b5f144e933ae9c7cee113cb3862d8d4db124a"
+      "sha": "f4a77a94f4690b2727fa8b6a1c76cf790dfa955b8eedb411aa4cc3d25dc0ecdf"
     },
     {
       "path": "parts/footer.html",
-      "sha": "daeb7d99047ca6185b92265df81515140f278dbabee130bc725de4dcf76690a0"
+      "sha": "d9653c46e464e13020bd70fa60d576d45f2339ced07ef5ef8d652149a136feab"
     },
     {
       "path": "parts/header.html",
@@ -33,7 +33,7 @@
     },
     {
       "path": "playground/content/image-manifest.json",
-      "sha": "4d8ea41a6efb88590e898a940bb39bae8f916f88cdaaeac88cabca25a401a390"
+      "sha": "b2de5730bd265b4e25c88c2f34e7d6879e85f7c8a3d414b8ca2225d933cf6ded"
     },
     {
       "path": "playground/content/product-images.json",
@@ -333,11 +333,11 @@
     },
     {
       "path": "templates/front-page.html",
-      "sha": "5000bd0a892efe3b475b2f2cd7beabfba837935902a67cfa113690afa3a05a97"
+      "sha": "4ee7f44c64d2f6a8aedbfbc7b889ceb490576508f956196bc3d151cf9d0515e1"
     },
     {
       "path": "templates/home.html",
-      "sha": "c0784acd7e0d8c3b9cb7dbc64ccfd97c9b02ae7655550b035b92100023719b96"
+      "sha": "07752eb96116f0e3a7d7c3df95e9108b86e811eead23cccd654dca3934258d5d"
     },
     {
       "path": "templates/index.html",

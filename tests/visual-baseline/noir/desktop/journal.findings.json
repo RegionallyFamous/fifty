@@ -1,0 +1,203 @@
+{
+  "findings": [
+    {
+      "severity": "error",
+      "kind": "a11y-color-contrast",
+      "message": "Elements must meet minimum color contrast ratio thresholds (12 node(s)) \u2014 first: .has-text-align-center.has-tertiary-color.has-xs-font-size",
+      "axe_help_url": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+      "axe_impact": "serious",
+      "axe_node_count": 12,
+      "axe_first_selectors": [
+        ".has-text-align-center.has-tertiary-color.has-xs-font-size",
+        "time[datetime=\"2026-04-15T09:00:00+00:00\"]",
+        "time[datetime=\"2026-04-14T11:00:00+00:00\"]"
+      ],
+      "axe_suppressed": {},
+      "crop_path": "tmp/snaps/noir/desktop/journal.a11y-color-contrast.0.crop.jpg"
+    },
+    {
+      "severity": "info",
+      "kind": "console-warn-budget",
+      "message": "32 console warnings on this cell (>10). Consider triaging.",
+      "count": 32,
+      "max": 10
+    }
+  ],
+  "selectors": [
+    {
+      "selector": ".wp-block-query",
+      "count": 1,
+      "instances": [
+        {
+          "width": 1200,
+          "height": 2362,
+          "visible": true,
+          "display": "block",
+          "grid_template_columns": "none",
+          "min_width": "0px",
+          "max_width": "1440px"
+        }
+      ]
+    },
+    {
+      "selector": ".wp-block-post-template",
+      "count": 1,
+      "instances": [
+        {
+          "width": 1200,
+          "height": 2260,
+          "visible": true,
+          "display": "grid",
+          "grid_template_columns": "373.328px 373.328px 373.344px",
+          "min_width": "0px",
+          "max_width": "100%"
+        }
+      ]
+    }
+  ],
+  "dom": {
+    "width": 1280,
+    "height": 800,
+    "scrollWidth": 1280,
+    "scrollHeight": 4127
+  },
+  "bg_image_pairs": [],
+  "theme": "noir",
+  "viewport": "desktop",
+  "route": "journal",
+  "url": "http://127.0.0.1:9402/journal/",
+  "navigation_error": null,
+  "console": [
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-500.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-500.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-700.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-700.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/display-700.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/display-700.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-500.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-700.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/display-700.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-400.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-500.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/sans-700.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    },
+    {
+      "type": "warning",
+      "text": "Failed to decode downloaded font: http://127.0.0.1:9402/wp-content/themes/noir/assets/fonts/display-700.woff2"
+    },
+    {
+      "type": "warning",
+      "text": "OTS parsing error: invalid sfntVersion: 1008813135"
+    }
+  ],
+  "page_errors": [],
+  "network_failures": [],
+  "a11y_path": "tmp/snaps/noir/desktop/journal.a11y.json"
+}
