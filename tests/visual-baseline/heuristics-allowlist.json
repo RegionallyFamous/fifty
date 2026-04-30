@@ -76,6 +76,116 @@
       "*"
     ]
   },
+  "distillery:desktop:cart-empty": {
+    "duplicate-h1": [
+      "count=2"
+    ]
+  },
+  "distillery:desktop:category": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:desktop:journal": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:desktop:journal-post": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:desktop:my-account-orders": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:desktop:product-simple": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:desktop:product-simple.qty-increment": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:desktop:product-simple.reviews-open": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:desktop:product-variable": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:desktop:product-variable.swatch-pick": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:desktop:shop": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:mobile:cart-empty": {
+    "duplicate-h1": [
+      "count=2"
+    ]
+  },
+  "distillery:mobile:category": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:mobile:journal": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:mobile:journal-post": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:mobile:my-account-orders": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:mobile:product-simple": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:mobile:product-simple.qty-increment": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:mobile:product-simple.reviews-open": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:mobile:product-variable": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:mobile:product-variable.swatch-pick": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "distillery:mobile:shop": {
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
   "foundry:desktop:cart-filled": {
     "narrow-wc-block": [
       ".wc-block-cart-items"
@@ -144,9 +254,34 @@
       ".wo-account-login-grid"
     ]
   },
+  "noir:desktop:cart-filled": {
+    "narrow-wc-block": [
+      ".wc-block-cart-items"
+    ]
+  },
+  "noir:desktop:cart-filled.line-remove": {
+    "narrow-wc-block": [
+      ".wc-block-cart-items"
+    ]
+  },
+  "noir:desktop:checkout-filled.return-to-cart-visible": {
+    "a11y-autocomplete-valid": [
+      "*"
+    ]
+  },
   "noir:desktop:home": {
     "a11y-color-contrast": [
       "*"
+    ]
+  },
+  "noir:desktop:my-account": {
+    "element-overflow-x": [
+      "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid",
+      "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid > div.wo-account-login-form",
+      "div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid > div.wo-account-login-form > form.woocommerce-form.woocommerce-form-login"
+    ],
+    "narrow-wc-block": [
+      ".wo-account-login-grid"
     ]
   },
   "noir:mobile:home": {
@@ -198,31 +333,6 @@
     ]
   },
   "selvedge:desktop:my-account": {
-    "element-overflow-x": [
-      "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid",
-      "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid > div.wo-account-login-form",
-      "div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid > div.wo-account-login-form > form.woocommerce-form.woocommerce-form-login"
-    ],
-    "narrow-wc-block": [
-      ".wo-account-login-grid"
-    ]
-  },
-  "noir:desktop:cart-filled": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "noir:desktop:cart-filled.line-remove": {
-    "narrow-wc-block": [
-      ".wc-block-cart-items"
-    ]
-  },
-  "noir:desktop:checkout-filled.return-to-cart-visible": {
-    "a11y-autocomplete-valid": [
-      "*"
-    ]
-  },
-  "noir:desktop:my-account": {
     "element-overflow-x": [
       "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid",
       "#wp--skip-link--target > div.entry-content.alignwide:nth-of-type(3) > div.woocommerce > div.wo-account-login-grid > div.wo-account-login-form",
