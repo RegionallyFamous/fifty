@@ -1872,6 +1872,16 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--publish-demo",
+        action="store_true",
+        help=(
+            "After all theme PRs are open, run bin/build-redirects.py once "
+            "and push docs/ to main so the GH Pages demo site reflects the "
+            "new themes. Separated from per-theme builds so concurrent workers "
+            "never clobber each other's docs/ output. Default off."
+        ),
+    )
+    p.add_argument(
         "--single-shot",
         action="store_true",
         help=(
@@ -2301,10 +2311,72 @@ def main(argv: list[str] | None = None) -> int:
         f"[batch] done. report: {report_path}\n[batch] totals: {json.dumps(report.totals)}",
         file=sys.stderr,
     )
+
+    # Post-batch demo site publish (opt-in via --publish-demo).
+    # Runs build-redirects.py once after all themes have their PRs open,
+    # then commits and pushes docs/ to main.  Separated from per-theme
+    # builds so concurrent workers don't clobber each other's docs/ output.
+    if getattr(args, "publish_demo", False) and not args.dry_run:
+        _publish_demo(run_id)
+
     # Exit non-zero if any theme failed so CI/cron can notice.
     if report.totals.get("failed", 0) > 0:
         return 1
     return 0
+
+
+def _publish_demo(run_id: str) -> None:
+    """Rebuild the GH Pages demo site and push docs/ to main.
+
+    Runs build-redirects.py (which regenerates docs/ from scratch),
+    stages all docs/ changes, and commits + pushes to the current branch
+    (expected to be main in a batch context).  A failure here is logged
+    but never blocks the batch exit code — theme PRs already landed.
+    """
+    print("[batch] publishing demo site ...", file=sys.stderr)
+    redirects_script = ROOT / "bin" / "build-redirects.py"
+    if not redirects_script.is_file():
+        print("[batch] WARN: bin/build-redirects.py not found; skipping demo publish.", file=sys.stderr)
+        return
+
+    rc = subprocess.call([sys.executable, str(redirects_script)], cwd=str(ROOT))
+    if rc != 0:
+        print(f"[batch] WARN: build-redirects.py exited {rc}; docs/ not pushed.", file=sys.stderr)
+        return
+
+    # Check whether docs/ actually changed.
+    diff = subprocess.run(
+        ["git", "diff", "--quiet", "--cached", "--", "docs/"],
+        cwd=str(ROOT),
+    )
+    unstaged = subprocess.run(
+        ["git", "diff", "--quiet", "--", "docs/"],
+        cwd=str(ROOT),
+    )
+    if diff.returncode == 0 and unstaged.returncode == 0:
+        # Also check untracked files in docs/
+        untracked = subprocess.run(
+            ["git", "ls-files", "--others", "--exclude-standard", "docs/"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+        )
+        if not untracked.stdout.strip():
+            print("[batch] demo site: no docs/ changes to push.", file=sys.stderr)
+            return
+
+    subprocess.call(["git", "add", "docs/"], cwd=str(ROOT))
+    msg = f"demo: rebuild redirects after batch run {run_id}"
+    rc_commit = subprocess.call(["git", "commit", "-m", msg], cwd=str(ROOT))
+    if rc_commit != 0:
+        print("[batch] WARN: git commit for docs/ failed; nothing pushed.", file=sys.stderr)
+        return
+
+    rc_push = subprocess.call(["git", "push"], cwd=str(ROOT))
+    if rc_push == 0:
+        print("[batch] demo site published to GH Pages.", file=sys.stderr)
+    else:
+        print("[batch] WARN: git push for docs/ failed; run `git push` manually.", file=sys.stderr)
 
 
 if __name__ == "__main__":

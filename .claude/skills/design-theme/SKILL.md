@@ -137,9 +137,11 @@ snapshots the canonical list and fails loudly on drift.
 | 18 | **screenshot** | `bin/build-theme-screenshots.py <slug>` replaces the WP admin card screenshot with a crop of this theme's home page | Hard fail |
 | 19 | **check** | `bin/check.py <slug> --quick` | **Strict by default** — any failure aborts. `--no-strict` demotes to a warning (prototype-only; never ship in that mode) |
 | 20 | **report** | `bin/snap.py report <slug>` prints the tiered `STATUS: PASS/WARN/FAIL` | Non-pass aborts unless `--no-strict` |
-| 21 | **redirects** | `bin/build-redirects.py` regenerates the `docs/<slug>/` short-URL redirectors | Hard fail |
+| 21 | **redirects** | `bin/build-redirects.py` rebuilds all `docs/` demo-site redirectors — **not run by `design.py build`** (demo site is a separate concern); invoke with `--only redirects` or via `design-batch.py --publish-demo` | Soft fail (warning only) |
 | 22 | **commit** | Stages `<slug>/` + generated artifacts and creates one `design: ship <slug>` commit | Skipped with `--skip-commit`; runs only if every earlier phase was green |
 | 23 | **publish** | `git push` of the freshly-created commit | Skipped with `--skip-publish` |
+
+> **Demo site is separate from theme building.** `design.py build` omits the `redirects` phase — per-theme builds never touch `docs/`. The demo site updates via two paths: (1) `design-batch.py --publish-demo` runs `build-redirects.py` once after all theme PRs are open; (2) the `publish-demo.yml` CI workflow runs automatically on every push to `main` so the site stays current after PR merges. To rebuild manually at any time: `python3 bin/design.py --only redirects`.
 
 **Strict is the default.** `bin/design.py` ships with `strict=True` as of
 Spring 2026. A `STATUS: PASS` at phase 16 (`check`) and a `STATUS: PASS`
@@ -188,7 +190,7 @@ python3 bin/design.py build --spec tmp/<slug>.json
 python3 bin/design.py dress <slug>
 ```
 
-- **`design.py build`** runs the deterministic structural phases — `validate, clone, apply, contrast, seed, sync, index, prepublish, snap, baseline, screenshot, check, report, redirects, commit, publish`. The `check` phase runs with `--phase structural`, which skips the 10 content-fit checks (product-image diversity, per-theme microcopy uniqueness, front-page fingerprint, etc.) that only pass AFTER `dress` has regenerated per-theme photography and microcopy. It does NOT call a vision model. Re-running `build` after a CSS / token / markup tweak is the tight inner loop (5–10 min).
+- **`design.py build`** runs the deterministic structural phases — `validate, clone, apply, contrast, seed, sync, index, prepublish, snap, baseline, screenshot, check, report, commit, publish`. The `redirects` phase is excluded (demo site is a separate concern — see note above). The `check` phase runs with `--phase structural`, which skips the 10 content-fit checks (product-image diversity, per-theme microcopy uniqueness, front-page fingerprint, etc.) that only pass AFTER `dress` has regenerated per-theme photography and microcopy. It does NOT call a vision model. Re-running `build` after a CSS / token / markup tweak is the tight inner loop (5–10 min).
 - **`design.py dress`** runs the content-fit phases — `photos, microcopy, frontpage, snap, vision-review, scorecard, check, report, commit, publish`. The `check` phase runs with `--phase all` (every check must pass before promotion), and `vision-review` runs with `--phase content` so the reviewer focuses on the catalogue-fit lens (photography-mismatch, color-clash, brand-violation, mockup-divergent) instead of re-grading structural complaints that `build` already gated. `scorecard` converts that evidence into a repairable design-quality artifact. This is the outer loop that burns vision-review budget (≈ $0.30 / run).
 - **`dress`** requires the theme to already exist on disk — preflight checks for `<slug>/theme.json` and `<slug>/playground/blueprint.json` and exits 2 with a "run build first" message if either is missing.
 - Each subcommand emits its own verdict banner on green (`BUILD OK — ...` / `DRESS OK — ...`) and lands its own commit (`design: build <slug> (structurally sound)` / `design: dress <slug> (content-fit)`).

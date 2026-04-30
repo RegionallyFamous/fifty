@@ -284,9 +284,13 @@ _PHASES_FOR_BUILD = (
     "screenshot",
     "check",
     "report",
-    "redirects",
     "commit",
     "publish",
+    # "redirects" is intentionally omitted from the per-theme build pipeline.
+    # It rebuilds the entire docs/ demo site, which is a global operation that
+    # belongs in a post-batch step (design-batch.py --publish-demo) or a CI
+    # workflow, not in a per-theme run that may be one of many concurrent builds.
+    # To update redirects manually: python3 bin/design.py --only redirects
 )
 _PHASES_FOR_DRESS = (
     "photos",

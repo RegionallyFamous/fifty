@@ -1,0 +1,60 @@
+name: publish demo site
+
+# Rebuild the GH Pages demo site (docs/) after any push to main.
+# This is deliberately separate from the theme-building pipeline:
+# design.py no longer runs bin/build-redirects.py as a per-theme phase.
+# Instead, this workflow owns the demo-publishing concern and runs once
+# per push (not once per theme), so concurrent batch builds don't race.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # Rebuild when a theme's blueprint or any shipped file changes —
+      # a new redirect page or landing-page entry may be needed.
+      - "*/playground/blueprint.json"
+      - "*/theme.json"
+      - "docs/**"
+      - "mockups/**"
+      - "bin/build-redirects.py"
+      - "bin/_lib.py"
+
+  # Allow manual trigger from the Actions tab.
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to push the docs/ commit back to main
+
+jobs:
+  publish:
+    name: rebuild & push docs/
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Full history so we can commit + push without a detached HEAD.
+          fetch-depth: 0
+          token: ${{ secrets.FIFTY_AUTO_PAT || github.token }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: install deps
+        run: pip install -r requirements-dev.txt --quiet
+
+      - name: rebuild docs/
+        run: python3 bin/build-redirects.py
+
+      - name: commit & push if docs/ changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/ mockups/
+          if git diff --cached --quiet; then
+            echo "No docs/ changes to push."
+          else
+            git commit -m "demo: auto-rebuild redirects [skip ci]"
+            git push
+          fi
