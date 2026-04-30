@@ -10,14 +10,15 @@ Tasks:
              Each candidate is validated with the editor-parity block
              validator before it is kept.
   photos     Ask Claude for product-photo prompts and, when an image API key
-             is available, generate real JPEGs. Otherwise fall back to the
-             existing Pillow generator so the build keeps going.
+             is available, generate real JPEGs. In strict mode, missing API
+             keys or provider failures fail the phase instead of falling back.
 """
 
 from __future__ import annotations
 
 import argparse
 import base64
+import csv
 import html
 import json
 import os
@@ -352,17 +353,13 @@ def _heuristic_layout_choice(
     if any(token in text for token in ("poster", "brutalist", "bold", "zine", "campaign")):
         layout_id = "poster-cta-commerce-stack"
         rationale = "Concept language points to a poster-like, type-led commerce stack."
-    elif any(
-        token in text for token in ("magazine", "journal", "editorial", "publishing", "index")
-    ):
+    elif any(token in text for token in ("magazine", "journal", "editorial", "publishing", "index")):
         layout_id = "magazine-index-commerce"
         rationale = "Concept language emphasizes editorial or journal surfaces."
     elif any(token in text for token in ("center", "masthead", "fashion", "gallery", "luxury")):
         layout_id = "centered-masthead-editorial-grid"
         rationale = "Concept language favors a centered masthead and editorial product grid."
-    elif any(
-        token in text for token in ("photo", "cinematic", "hero image", "lookbook", "still life")
-    ):
+    elif any(token in text for token in ("photo", "cinematic", "hero image", "lookbook", "still life")):
         layout_id = "photo-hero-product-grid"
         rationale = "Concept language calls for a photo-led hero and product-first follow-through."
     return LayoutChoice(
@@ -376,9 +373,7 @@ def _heuristic_layout_choice(
     )
 
 
-def _mockup_requirement(
-    slug: str, *, keep_going: bool
-) -> tuple[Path | None, str, list[RepairProblem]]:
+def _mockup_requirement(slug: str, *, keep_going: bool) -> tuple[Path | None, str, list[RepairProblem]]:
     mockup = _mockup_path(slug)
     if mockup is not None:
         return mockup, "mockup", []
@@ -479,9 +474,7 @@ def _parse_layout_choice(
 ) -> LayoutChoice:
     layout_id = str(raw.get("layout_id") or "").strip()
     if layout_id not in layouts:
-        raise ValueError(
-            f"invalid layout_id {layout_id!r}; expected one of {', '.join(sorted(layouts))}"
-        )
+        raise ValueError(f"invalid layout_id {layout_id!r}; expected one of {', '.join(sorted(layouts))}")
     confidence_raw = raw.get("confidence", 0.5)
     try:
         confidence = (
@@ -582,9 +575,7 @@ def _write_repair_packet(slug: str, problems: list[RepairProblem]) -> Path | Non
     return path
 
 
-def _run_frontpage_evidence(
-    slug: str, *, keep_going: bool, threshold: int
-) -> tuple[dict[str, Any], list[RepairProblem], bool]:
+def _run_frontpage_evidence(slug: str, *, keep_going: bool, threshold: int) -> tuple[dict[str, Any], list[RepairProblem], bool]:
     result: dict[str, Any] = {
         "snapshots": [],
         "scorecard": None,
@@ -621,9 +612,7 @@ def _run_frontpage_evidence(
                 confidence=0.0,
                 source_files=[],
                 snapshots=result["snapshots"],
-                next_actions=[
-                    f"Home snap could not run ({exc}); inspect Playground before shipping."
-                ],
+                next_actions=[f"Home snap could not run ({exc}); inspect Playground before shipping."],
             )
         )
         result["status"] = "snap-failed"
@@ -676,9 +665,7 @@ def _run_frontpage_evidence(
                 confidence=0.0,
                 source_files=[],
                 snapshots=result["snapshots"],
-                next_actions=[
-                    f"Design scorecard could not run ({exc}); inspect snap evidence manually."
-                ],
+                next_actions=[f"Design scorecard could not run ({exc}); inspect snap evidence manually."],
             )
         )
         result["status"] = "score-failed"
@@ -697,9 +684,7 @@ def _run_frontpage_evidence(
                 confidence=0.45,
                 source_files=[_safe_rel(score_out)],
                 snapshots=result["snapshots"],
-                next_actions=[
-                    str(score_data.get("next_action") or "Inspect the scorecard weak findings.")
-                ],
+                next_actions=[str(score_data.get("next_action") or "Inspect the scorecard weak findings.")],
             )
         )
     return result, repairs, keep_going or score_data.get("verdict") == "pass"
@@ -714,9 +699,7 @@ def run_frontpage(
     keep_going: bool,
     score_threshold: int,
 ) -> int:
-    del (
-        max_rounds
-    )  # Skeleton rendering is deterministic; retry loops are for the old freehand path.
+    del max_rounds  # Skeleton rendering is deterministic; retry loops are for the old freehand path.
     slug = theme_root.name
     front_page = theme_root / "templates" / "front-page.html"
     if not front_page.is_file():
@@ -734,9 +717,7 @@ def run_frontpage(
 
     if dry_run:
         layouts = _load_layout_manifest()
-        choice = _heuristic_layout_choice(
-            slug, context, evidence_quality=evidence_quality, source="dry-run"
-        )
+        choice = _heuristic_layout_choice(slug, context, evidence_quality=evidence_quality, source="dry-run")
         print("---- DESIGN AGENT FRONTPAGE CLASSIFIER (dry-run) ----")
         print(f"mockup: {_safe_rel(mockup) if mockup else '(missing; meta-only mode)'}")
         print(f"available_layouts: {', '.join(sorted(layouts))}")
@@ -762,9 +743,7 @@ def run_frontpage(
                 confidence=fallback_choice.confidence,
                 source_files=[],
                 snapshots=[],
-                next_actions=[
-                    f"LLM layout classifier failed ({exc}); inspect heuristic layout choice."
-                ],
+                next_actions=[f"LLM layout classifier failed ({exc}); inspect heuristic layout choice."],
             )
         )
         choice = fallback_choice
@@ -837,6 +816,36 @@ def _product_map(theme_root: Path) -> dict[str, str]:
     path = theme_root / "playground" / "content" / "product-images.json"
     data = _read_json(path)
     return {str(k): str(v) for k, v in data.items()}
+
+
+def _derive_product_map(theme_root: Path) -> dict[str, str]:
+    """Create product-images.json from products.csv when a fresh seed lacks it."""
+    csv_path = theme_root / "playground" / "content" / "products.csv"
+    if not csv_path.is_file():
+        return {}
+
+    products: dict[str, str] = {}
+    with csv_path.open(newline="", encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            sku = (row.get("SKU") or "").strip()
+            if not sku or (row.get("Parent") or "").strip():
+                continue
+            images = [part.strip() for part in (row.get("Images") or "").split(",") if part.strip()]
+            filename = ""
+            for image in images:
+                candidate = image.rsplit("/", 1)[-1]
+                if candidate.startswith("product-wo-") and candidate.endswith(".jpg"):
+                    filename = candidate
+                    break
+            if not filename:
+                filename = f"product-{sku.lower().replace('_', '-')}.jpg"
+            products[sku] = filename
+
+    if products:
+        path = theme_root / "playground" / "content" / "product-images.json"
+        _write_json(path, products)
+        print(f"  [design-agent/photos] derived {_safe_rel(path)} ({len(products)} entries)")
+    return products
 
 
 def _product_name_from_filename(filename: str) -> str:
@@ -986,7 +995,7 @@ def _write_photo_manifest(
 
 def run_photos(theme_root: Path, *, dry_run: bool, model: str, keep_going: bool) -> int:
     slug = theme_root.name
-    products = _product_map(theme_root)
+    products = _product_map(theme_root) or _derive_product_map(theme_root)
     if not products:
         print(f"design-agent photos: no product-images.json entries for {slug}", file=sys.stderr)
         return 1
@@ -1010,7 +1019,8 @@ def run_photos(theme_root: Path, *, dry_run: bool, model: str, keep_going: bool)
             max_output_tokens=10000,
         )
     except RuntimeError as exc:
-        print(f"  [design-agent/photos] {exc}; falling back", file=sys.stderr)
+        fallback_note = "; falling back" if keep_going else "; failing strict photo phase"
+        print(f"  [design-agent/photos] {exc}{fallback_note}", file=sys.stderr)
         _write_photo_manifest(
             theme_root,
             prompts={},
@@ -1025,22 +1035,18 @@ def run_photos(theme_root: Path, *, dry_run: bool, model: str, keep_going: bool)
                 RepairProblem(
                     problem="photo-fallback",
                     confidence=0.35,
-                    source_files=[
-                        _safe_rel(
-                            theme_root / "playground" / "content" / "product-photo-prompts.json"
-                        )
-                    ],
+                    source_files=[_safe_rel(theme_root / "playground" / "content" / "product-photo-prompts.json")],
                     snapshots=[],
-                    next_actions=[
-                        "Retry photo generation with ANTHROPIC_API_KEY and OPENAI_API_KEY or FAL_KEY available."
-                    ],
+                    next_actions=["Retry photo generation with ANTHROPIC_API_KEY and OPENAI_API_KEY or FAL_KEY available."],
                 )
             ],
         )
         if repair_path:
             print(f"  [design-agent/photos] wrote {_safe_rel(repair_path)}", file=sys.stderr)
+        if not keep_going:
+            return 1
         rc = _fallback_photos(slug, force=True)
-        return 0 if keep_going else rc
+        return 0 if rc == 0 else rc
     try:
         parsed = _parse_json_object(raw)
     except Exception as exc:
@@ -1053,15 +1059,14 @@ def run_photos(theme_root: Path, *, dry_run: bool, model: str, keep_going: bool)
             status="placeholder-fallback",
             records=[{"error": f"prompt JSON parse failed: {exc}"}],
         )
+        if not keep_going:
+            return 1
         rc = _fallback_photos(slug, force=True)
-        return 0 if keep_going else rc
+        return 0 if rc == 0 else rc
 
     prompt_map_raw = parsed.get("prompts") or {}
     if not isinstance(prompt_map_raw, dict):
-        print(
-            "  [design-agent/photos] prompt response omitted `prompts`; falling back",
-            file=sys.stderr,
-        )
+        print("  [design-agent/photos] prompt response omitted `prompts`; falling back", file=sys.stderr)
         _write_photo_manifest(
             theme_root,
             prompts={},
@@ -1070,24 +1075,27 @@ def run_photos(theme_root: Path, *, dry_run: bool, model: str, keep_going: bool)
             status="placeholder-fallback",
             records=[{"error": "prompt response omitted prompts"}],
         )
+        if not keep_going:
+            return 1
         rc = _fallback_photos(slug, force=True)
-        return 0 if keep_going else rc
+        return 0 if rc == 0 else rc
     prompt_map = {str(k): str(v) for k, v in prompt_map_raw.items() if str(v).strip()}
 
     generator = None
     provider = "pillow"
     provider_model = "generate-product-photos.py"
-    if os.environ.get("FAL_KEY"):
-        generator = _generate_fal
-        provider = "fal"
-        provider_model = "fal-ai/flux/dev"
-    elif os.environ.get("OPENAI_API_KEY"):
+    if os.environ.get("OPENAI_API_KEY"):
         generator = _generate_openai
         provider = "openai"
         provider_model = OPENAI_IMAGE_MODEL
+    elif os.environ.get("FAL_KEY"):
+        generator = _generate_fal
+        provider = "fal"
+        provider_model = "fal-ai/flux/dev"
 
     if generator is None:
-        print("  [design-agent/photos] no FAL_KEY or OPENAI_API_KEY; using Pillow fallback")
+        fallback_note = "using Pillow fallback" if keep_going else "failing strict photo phase"
+        print(f"  [design-agent/photos] no FAL_KEY or OPENAI_API_KEY; {fallback_note}")
         _write_photo_manifest(
             theme_root,
             prompts=prompt_map,
@@ -1101,22 +1109,18 @@ def run_photos(theme_root: Path, *, dry_run: bool, model: str, keep_going: bool)
                 RepairProblem(
                     problem="photo-fallback",
                     confidence=0.45,
-                    source_files=[
-                        _safe_rel(
-                            theme_root / "playground" / "content" / "product-photo-prompts.json"
-                        )
-                    ],
+                    source_files=[_safe_rel(theme_root / "playground" / "content" / "product-photo-prompts.json")],
                     snapshots=[],
-                    next_actions=[
-                        "Set OPENAI_API_KEY or FAL_KEY for generated product photography."
-                    ],
+                    next_actions=["Set OPENAI_API_KEY or FAL_KEY for generated product photography."],
                 )
             ],
         )
         if repair_path:
             print(f"  [design-agent/photos] wrote {_safe_rel(repair_path)}", file=sys.stderr)
+        if not keep_going:
+            return 1
         rc = _fallback_photos(slug, force=True)
-        return 0 if keep_going else rc
+        return 0 if rc == 0 else rc
 
     written = 0
     records: list[dict[str, Any]] = []
@@ -1170,25 +1174,27 @@ def run_photos(theme_root: Path, *, dry_run: bool, model: str, keep_going: bool)
                 RepairProblem(
                     problem="photo-fallback",
                     confidence=0.45,
-                    source_files=[
-                        _safe_rel(
-                            theme_root / "playground" / "content" / "product-photo-prompts.json"
-                        )
-                    ],
+                    source_files=[_safe_rel(theme_root / "playground" / "content" / "product-photo-prompts.json")],
                     snapshots=[],
-                    next_actions=[
-                        "Inspect provider errors and retry photo generation before shipping."
-                    ],
+                    next_actions=["Inspect provider errors and retry photo generation before shipping."],
                 )
             ],
         )
         if repair_path:
             print(f"  [design-agent/photos] wrote {_safe_rel(repair_path)}", file=sys.stderr)
+        if not keep_going:
+            return 1
+    elif written != len(products) and not keep_going:
+        print(
+            f"  [design-agent/photos] generated {written}/{len(products)} product photos; failing strict photo phase",
+            file=sys.stderr,
+        )
+        return 1
 
     # Fill any missing category/hero/product images with the existing generator,
     # but do not overwrite real API-generated product photos.
     fallback_rc = _fallback_photos(slug, force=False)
-    if written == 0 and fallback_rc != 0:
+    if fallback_rc != 0:
         return 0 if keep_going else fallback_rc
     seed = ROOT / "bin" / "seed-playground-content.py"
     subprocess.call([sys.executable, str(seed), "--theme", slug], cwd=str(ROOT))
@@ -1202,12 +1208,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--max-rounds", type=int, default=3)
     mode = parser.add_mutually_exclusive_group()
-    mode.add_argument(
-        "--strict", action="store_true", help="Fail hard when required evidence is missing."
-    )
-    mode.add_argument(
-        "--keep-going", action="store_true", help="Emit repair packets and continue when possible."
-    )
+    mode.add_argument("--strict", action="store_true", help="Fail hard when required evidence is missing.")
+    mode.add_argument("--keep-going", action="store_true", help="Emit repair packets and continue when possible.")
     parser.add_argument("--score-threshold", type=int, default=FRONTPAGE_SCORE_THRESHOLD)
     parser.add_argument(
         "--model",

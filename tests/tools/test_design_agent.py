@@ -276,6 +276,76 @@ def test_photos_without_image_key_marks_placeholder_fallback(monkeypatch, tmp_pa
     assert manifest["provider"] == "pillow"
 
 
+def test_photos_strict_without_image_key_fails_instead_of_falling_back(
+    monkeypatch, tmp_path: Path
+) -> None:
+    da = _load_module()
+    theme = _minimal_theme(tmp_path)
+    fallback_called = False
+
+    def fake_fallback(slug, force=False):
+        nonlocal fallback_called
+        fallback_called = True
+        return 0
+
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("FAL_KEY", raising=False)
+    monkeypatch.setattr(da, "_agent_dir", lambda slug: tmp_path / "agent-output")
+    monkeypatch.setattr(
+        da,
+        "_completion",
+        lambda **kwargs: json.dumps({"prompts": {"WO-SAMPLE": "square product photo"}}),
+    )
+    monkeypatch.setattr(da, "_fallback_photos", fake_fallback)
+
+    rc = da.run_photos(theme, dry_run=False, model="test", keep_going=False)
+
+    assert rc == 1
+    assert fallback_called is False
+
+
+def test_photos_derives_product_map_from_products_csv(monkeypatch, tmp_path: Path) -> None:
+    da = _load_module()
+    theme = _minimal_theme(tmp_path)
+    (theme / "playground" / "content" / "product-images.json").unlink()
+    (theme / "playground" / "content" / "products.csv").write_text(
+        "\n".join(
+            [
+                "SKU,Type,Parent,Images",
+                "WO-SAMPLE,simple,,https://example.test/product-wo-sample.jpg",
+                "WO-SAMPLE-RED,variation,WO-SAMPLE,https://example.test/product-wo-sample-red.jpg",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(da, "_agent_dir", lambda slug: tmp_path / "agent-output")
+    monkeypatch.setattr(
+        da,
+        "_completion",
+        lambda **kwargs: json.dumps({"prompts": {"WO-SAMPLE": "square product photo"}}),
+    )
+    monkeypatch.setattr(da, "_generate_openai", lambda prompt: b"fake")
+
+    def fake_write_image_bytes(dest, raw):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(raw)
+
+    monkeypatch.setattr(da, "_write_image_bytes", fake_write_image_bytes)
+    monkeypatch.setattr(da, "_fallback_photos", lambda slug, force=False: 0)
+    monkeypatch.setattr(da.subprocess, "call", lambda *args, **kwargs: 0)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.delenv("FAL_KEY", raising=False)
+
+    rc = da.run_photos(theme, dry_run=False, model="test", keep_going=False)
+
+    product_map = json.loads(
+        (theme / "playground" / "content" / "product-images.json").read_text(encoding="utf-8")
+    )
+    assert rc == 0
+    assert product_map == {"WO-SAMPLE": "product-wo-sample.jpg"}
+
+
 def test_openai_and_fal_outputs_normalize_to_jpeg(tmp_path: Path) -> None:
     da = _load_module()
     pillow = pytest.importorskip("PIL.Image")
@@ -305,3 +375,49 @@ def test_openai_generation_uses_gpt_image_2(monkeypatch) -> None:
 
     assert raw == b"fake"
     assert seen["payload"]["model"] == "gpt-image-2"
+
+
+def test_photos_prefers_openai_when_fal_key_is_also_set(monkeypatch, tmp_path: Path) -> None:
+    da = _load_module()
+    theme = _minimal_theme(tmp_path)
+    calls: list[str] = []
+
+    monkeypatch.setattr(da, "_agent_dir", lambda slug: tmp_path / "agent-output")
+    monkeypatch.setattr(
+        da,
+        "_completion",
+        lambda **kwargs: json.dumps({"prompts": {"WO-SAMPLE": "square product photo"}}),
+    )
+
+    def fake_generate_openai(prompt):
+        calls.append("openai")
+        return b"fake"
+
+    def fake_generate_fal(prompt):
+        calls.append("fal")
+        return b"fake"
+
+    monkeypatch.setattr(da, "_generate_openai", fake_generate_openai)
+    monkeypatch.setattr(da, "_generate_fal", fake_generate_fal)
+
+    def fake_write_image_bytes(dest, raw):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(raw)
+
+    monkeypatch.setattr(da, "_write_image_bytes", fake_write_image_bytes)
+    monkeypatch.setattr(da, "_fallback_photos", lambda slug, force=False: 0)
+    monkeypatch.setattr(da.subprocess, "call", lambda *args, **kwargs: 0)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-openai")
+    monkeypatch.setenv("FAL_KEY", "test-fal")
+
+    rc = da.run_photos(theme, dry_run=False, model="test", keep_going=False)
+
+    manifest = json.loads(
+        (theme / "playground" / "content" / "product-photo-prompts.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert rc == 0
+    assert calls == ["openai"]
+    assert manifest["provider"] == "openai"
+    assert manifest["model"] == "gpt-image-2"

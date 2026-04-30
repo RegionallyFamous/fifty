@@ -980,9 +980,7 @@ def _assert_playground_payload_seeded(dest: Path) -> None:
         content / "content.xml",
         content / "products.csv",
     ]
-    missing = [
-        path.relative_to(MONOREPO_ROOT).as_posix() for path in required if not path.is_file()
-    ]
+    missing = [path.relative_to(MONOREPO_ROOT).as_posix() for path in required if not path.is_file()]
     if missing:
         _raise_or_report_invariant(
             "placeholder-images",
@@ -1028,9 +1026,7 @@ def _assert_hero_placeholders_not_source_copies(spec: ValidatedSpec, dest: Path)
     source_images = MONOREPO_ROOT / spec.source / "playground" / "images"
     images = dest / "playground" / "images"
     duplicates: list[str] = []
-    for path in sorted(images.glob("wonders-page-*.png")) + sorted(
-        images.glob("wonders-post-*.png")
-    ):
+    for path in sorted(images.glob("wonders-page-*.png")) + sorted(images.glob("wonders-post-*.png")):
         source_path = source_images / path.name
         if source_path.is_file() and path.read_bytes() == source_path.read_bytes():
             duplicates.append(path.name)
@@ -1491,7 +1487,12 @@ def _phase_photos(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> 
             raise PhaseError("photos", f"bin/design-agent.py --task photos exited {rc}")
         print(f"  [photos] WARN: design-agent.py --task photos exited {rc}; using fallback.")
     elif agent.is_file():
-        print("  [photos] ANTHROPIC_API_KEY not set; using Pillow fallback.")
+        if not args.keep_going:
+            raise PhaseError(
+                "photos",
+                "ANTHROPIC_API_KEY not set; strict product photography requires the design agent",
+            )
+        print("  [photos] ANTHROPIC_API_KEY not set; using Pillow fallback (--keep-going).")
 
     # Run the palette-derived generator last. Legacy per-theme scripts may
     # clone a source theme's page/post PNGs byte-for-byte; this pass writes

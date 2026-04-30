@@ -5,7 +5,7 @@ contract we care about:
 
 1. The script can be imported as a module (no syntax errors).
 2. The CLI registers `--check-only`, `--force`, `--no-strict-branch`,
-   `--no-verify`, `--demote`, and `--reason` flags.
+   `--no-verify`, `--no-publish`, `--remote`, `--demote`, and `--reason` flags.
 3. The internal gate functions correctly identify when a theme is
    missing readiness, design-intent, or playground content.
 4. The promotion flips `readiness.json` stage from `incubating` to
@@ -105,6 +105,8 @@ def test_cli_help_lists_required_flags():
         "--force",
         "--no-strict-branch",
         "--no-verify",
+        "--no-publish",
+        "--remote",
         "--demote",
         "--reason",
     ):
@@ -230,6 +232,73 @@ def test_gate_product_images_map_passes(promote_module, incubating_theme: Path):
     )
     result = promote_module._gate_product_images_map(incubating_theme)
     assert result.passed is True
+
+
+def test_gate_gpt_image_photos_requires_openai_manifest(promote_module, incubating_theme: Path):
+    (incubating_theme / "playground" / "content" / "product-images.json").write_text(
+        json.dumps({"WO-MUG": "product-wo-mug.jpg"}),
+        encoding="utf-8",
+    )
+    (incubating_theme / "playground" / "images" / "product-wo-mug.jpg").write_text(
+        "x", encoding="utf-8"
+    )
+
+    result = promote_module._gate_gpt_image_photos(incubating_theme)
+
+    assert result.passed is False
+    assert "product-photo-prompts.json" in result.detail
+
+
+def test_gate_gpt_image_photos_rejects_fallback_provider(promote_module, incubating_theme: Path):
+    content = incubating_theme / "playground" / "content"
+    (content / "product-images.json").write_text(
+        json.dumps({"WO-MUG": "product-wo-mug.jpg"}),
+        encoding="utf-8",
+    )
+    (content / "product-photo-prompts.json").write_text(
+        json.dumps(
+            {
+                "status": "generated",
+                "provider": "pillow",
+                "model": "generate-product-photos.py",
+                "records": [{"sku": "WO-MUG", "status": "generated"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = promote_module._gate_gpt_image_photos(incubating_theme)
+
+    assert result.passed is False
+    assert "gpt-image-2" in result.detail
+
+
+def test_gate_gpt_image_photos_passes_for_complete_openai_manifest(
+    promote_module, incubating_theme: Path
+):
+    content = incubating_theme / "playground" / "content"
+    images = incubating_theme / "playground" / "images"
+    (content / "product-images.json").write_text(
+        json.dumps({"WO-MUG": "product-wo-mug.jpg"}),
+        encoding="utf-8",
+    )
+    (images / "product-wo-mug.jpg").write_text("x", encoding="utf-8")
+    (content / "product-photo-prompts.json").write_text(
+        json.dumps(
+            {
+                "status": "generated",
+                "provider": "openai",
+                "model": "gpt-image-2",
+                "records": [{"sku": "WO-MUG", "status": "generated"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = promote_module._gate_gpt_image_photos(incubating_theme)
+
+    assert result.passed is True
+    assert "OpenAI/gpt-image-2" in result.detail
 
 
 def test_write_readiness_promotes_and_records_note(promote_module, incubating_theme: Path):

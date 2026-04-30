@@ -8,8 +8,9 @@ sweep. The closed-loop pipeline starts every clone as `incubating`
 the green CI gate.
 
 Usage:
-    python3 bin/promote-theme.py <slug>             # gate then promote
+    python3 bin/promote-theme.py <slug>             # gate, promote, commit, push
     python3 bin/promote-theme.py <slug> --check-only  # report only
+    python3 bin/promote-theme.py <slug> --no-publish  # promote locally only
     python3 bin/promote-theme.py <slug> --force     # promote past failures
                                                      # (records --force in
                                                      # readiness.notes; for
@@ -23,14 +24,17 @@ Promotion gates (every one MUST pass unless --force):
      (`bin/check.py::check_playground_content_seeded` semantics).
   4. `<slug>/playground/content/product-images.json` exists if the
      theme ships per-theme product photographs.
-  5. `bin/verify-theme.py <slug> --snap --strict` returns `passed`.
-  6. The current branch is pushed and in sync with origin (so the
-     `docs/` redirector built off the new readiness will resolve
-     to a real commit).
+  5. Product-photo prompts report provider=openai, model=gpt-image-2,
+     status=generated, and every product image was generated. Fallback
+     product art is not promotable.
+  6. `bin/verify-theme.py <slug> --snap --strict` returns `passed`.
+  7. The current branch is publishable (real branch, not behind origin).
 
 When all gates pass, `<slug>/readiness.json`'s `stage` flips to
 `shipping`, `last_checked` is stamped with today's UTC date, and a
-short audit note is appended to `notes`. Promotion is reversible: a
+short audit note is appended to `notes`. Then `docs/` is rebuilt,
+the theme/docs/baselines are committed, and the current branch is
+pushed so the GitHub Pages workflow deploys the public demo. Promotion is reversible: a
 later `bin/promote-theme.py <slug> --demote --reason "..."` flips
 the stage back to `incubating` so a regression doesn't have to
 disappear from the queue silently — it stays visible with a clear
@@ -46,6 +50,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -97,6 +102,16 @@ def _display_path(path: Path) -> str:
         return str(path.relative_to(MONOREPO_ROOT))
     except ValueError:
         return str(path)
+
+
+def _read_json(path: Path) -> dict:
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 def _gate_readiness_present(theme_root: Path) -> GateResult:
@@ -185,6 +200,75 @@ def _gate_product_images_map(theme_root: Path) -> GateResult:
             f"`python3 bin/seed-playground-content.py --theme {theme_root.name} --force`.",
         )
     return GateResult("product-images.json complete", True)
+
+
+def _gate_gpt_image_photos(theme_root: Path) -> GateResult:
+    map_path = theme_root / "playground" / "content" / "product-images.json"
+    products = _read_json(map_path)
+    if not products:
+        return GateResult(
+            "GPT Image 2 product photos generated",
+            False,
+            "playground/content/product-images.json is missing or empty.",
+        )
+
+    manifest_path_ = theme_root / "playground" / "content" / "product-photo-prompts.json"
+    manifest = _read_json(manifest_path_)
+    if not manifest:
+        return GateResult(
+            "GPT Image 2 product photos generated",
+            False,
+            "playground/content/product-photo-prompts.json is missing. "
+            "Run `bin/design-agent.py --task photos --strict` with OPENAI_API_KEY.",
+        )
+
+    provider = str(manifest.get("provider") or "")
+    model = str(manifest.get("model") or "")
+    status = str(manifest.get("status") or "")
+    if provider != "openai" or model != "gpt-image-2" or status != "generated":
+        return GateResult(
+            "GPT Image 2 product photos generated",
+            False,
+            f"photo manifest provider={provider!r}, model={model!r}, "
+            f"status={status!r}; expected provider='openai', model='gpt-image-2', "
+            "status='generated'.",
+        )
+
+    records = manifest.get("records") or []
+    if not isinstance(records, list):
+        records = []
+    generated = {
+        str(record.get("sku"))
+        for record in records
+        if isinstance(record, dict) and record.get("status") == "generated"
+    }
+    expected = {str(sku) for sku in products}
+    missing = sorted(expected - generated)
+    if missing:
+        return GateResult(
+            "GPT Image 2 product photos generated",
+            False,
+            f"{len(missing)} product(s) missing generated records: {', '.join(missing[:8])}",
+        )
+
+    image_dir = theme_root / "playground" / "images"
+    missing_files = [
+        str(filename)
+        for filename in products.values()
+        if not (image_dir / str(filename)).is_file()
+    ]
+    if missing_files:
+        return GateResult(
+            "GPT Image 2 product photos generated",
+            False,
+            f"{len(missing_files)} generated image file(s) missing: {', '.join(missing_files[:8])}",
+        )
+
+    return GateResult(
+        "GPT Image 2 product photos generated",
+        True,
+        f"{len(expected)} OpenAI/{model} product photo(s)",
+    )
 
 
 def _gate_verify_theme_snap(theme_root: Path, *, strict_branch: bool) -> GateResult:
@@ -314,21 +398,27 @@ def _gate_branch_pushed(theme_root: Path) -> GateResult:
             check=True,
         )
     except subprocess.CalledProcessError as e:
-        return GateResult("branch is pushed + in sync", False, str(e))
+        return GateResult("branch is publishable", False, str(e))
     head_line = proc.stdout.splitlines()[0] if proc.stdout else ""
-    if "ahead" in head_line:
+    if "behind" in head_line:
         return GateResult(
-            "branch is pushed + in sync",
+            "branch is publishable",
             False,
-            f"branch is ahead of origin: {head_line}. `git push` first.",
+            f"branch is behind origin: {head_line}. Pull/rebase before promoting.",
         )
     if "no branch" in head_line:
         return GateResult(
-            "branch is pushed + in sync",
+            "branch is publishable",
             False,
             "detached HEAD; promote from a real branch.",
         )
-    return GateResult("branch is pushed + in sync", True, head_line.strip("# "))
+    if "ahead" in head_line:
+        return GateResult(
+            "branch is publishable",
+            True,
+            f"{head_line.strip('# ')}; launch step will push the branch.",
+        )
+    return GateResult("branch is publishable", True, head_line.strip("# "))
 
 
 def _run_gates(
@@ -347,6 +437,7 @@ def _run_gates(
     results.append(_gate_design_intent(theme_root))
     results.append(_gate_playground_seeded(theme_root))
     results.append(_gate_product_images_map(theme_root))
+    results.append(_gate_gpt_image_photos(theme_root))
     if run_verify:
         results.append(_gate_verify_theme_snap(theme_root, strict_branch=strict_branch))
     if strict_branch:
@@ -367,8 +458,87 @@ def _write_readiness(theme_root: Path, readiness: Readiness, *, stage: str, note
     manifest_path(theme_root).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def _rebuild_docs() -> int:
+    script = MONOREPO_ROOT / "bin" / "build-redirects.py"
+    if not script.is_file():
+        print(f"{YELLOW}WARN{RESET}: bin/build-redirects.py missing; docs/ not rebuilt.")
+        return 1
+    print("Rebuilding docs/ redirect site...")
+    return subprocess.call([sys.executable, str(script)], cwd=str(MONOREPO_ROOT))
+
+
+def _current_branch() -> str:
+    proc = subprocess.run(
+        ["git", "branch", "--show-current"],
+        cwd=str(MONOREPO_ROOT),
+        capture_output=True,
+        text=True,
+    )
+    return proc.stdout.strip() if proc.returncode == 0 else ""
+
+
+def _commit_and_push_launch(theme_root: Path, *, remote: str) -> int:
+    branch = _current_branch()
+    if not branch:
+        print(f"{RED}FAILED{RESET}: cannot publish from detached HEAD.", file=sys.stderr)
+        return 1
+
+    slug = theme_root.name
+    add_paths = [
+        f"{slug}/",
+        "docs/",
+        f"tests/visual-baseline/{slug}/",
+        "tests/visual-baseline/heuristics-allowlist.json",
+    ]
+    existing_paths = [path for path in add_paths if (MONOREPO_ROOT / path).exists()]
+    rc = subprocess.call(["git", "add", "--", *existing_paths], cwd=str(MONOREPO_ROOT))
+    if rc != 0:
+        print(f"{RED}FAILED{RESET}: git add exited {rc}", file=sys.stderr)
+        return 1
+
+    diff = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=str(MONOREPO_ROOT))
+    if diff.returncode == 0:
+        print("  [launch] no staged diff to commit.")
+    else:
+        msg = f"design: launch {slug} demo"
+        rc = subprocess.call(
+            [
+                "git",
+                "commit",
+                "-m",
+                f"{msg}\n\nPromote {slug} to shipping and rebuild demo redirects.",
+            ],
+            cwd=str(MONOREPO_ROOT),
+        )
+        if rc != 0:
+            print(f"{RED}FAILED{RESET}: git commit exited {rc}", file=sys.stderr)
+            return 1
+        print(f"  [launch] committed: {msg}")
+
+    print(f"Publishing {branch} to {remote}...")
+    rc = subprocess.call(["git", "push", remote, "HEAD"], cwd=str(MONOREPO_ROOT))
+    if rc != 0:
+        print(f"{RED}FAILED{RESET}: git push exited {rc}", file=sys.stderr)
+        return 1
+    if branch == "main":
+        print(f"{GREEN}LAUNCHED{RESET}: GitHub Pages will deploy docs/ to the public demo site.")
+    else:
+        print(
+            f"{GREEN}PUBLISHED{RESET}: {remote}/{branch} is updated. "
+            "The public demo deploys when this branch lands on main."
+        )
+    return 0
+
+
 def cmd_promote(
-    slug: str, *, force: bool, check_only: bool, strict_branch: bool, run_verify: bool
+    slug: str,
+    *,
+    force: bool,
+    check_only: bool,
+    strict_branch: bool,
+    run_verify: bool,
+    publish: bool,
+    remote: str,
 ) -> int:
     try:
         theme_root = resolve_theme_root(slug)
@@ -423,7 +593,14 @@ def cmd_promote(
         f"({len(results)} gate(s); "
         f"{len(failed)} forced past)."
     )
-    return 0
+    docs_rc = _rebuild_docs()
+    if docs_rc != 0 and not force:
+        print(f"{RED}FAILED{RESET}: docs/ rebuild failed; demo launch blocked.")
+        return 1
+    if not publish:
+        print("  [launch] skipped (--no-publish). Commit and push readiness/docs manually.")
+        return 0
+    return _commit_and_push_launch(theme_root, remote=remote)
 
 
 def cmd_demote(slug: str, *, reason: str) -> int:
@@ -489,6 +666,19 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     p.add_argument(
+        "--no-publish",
+        action="store_true",
+        help=(
+            "flip readiness and rebuild docs locally, but do not create the "
+            "launch commit or push the branch."
+        ),
+    )
+    p.add_argument(
+        "--remote",
+        default=os.environ.get("FIFTY_PROMOTE_REMOTE", "origin"),
+        help="git remote to push after creating the launch commit (default: origin).",
+    )
+    p.add_argument(
         "--demote",
         action="store_true",
         help=(
@@ -513,6 +703,8 @@ def main(argv: list[str] | None = None) -> int:
         check_only=args.check_only,
         strict_branch=not args.no_strict_branch,
         run_verify=not args.no_verify,
+        publish=not args.no_publish,
+        remote=args.remote,
     )
 
 
