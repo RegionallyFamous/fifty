@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import html
 import json
 import os
 import re
@@ -25,9 +26,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
@@ -37,12 +39,35 @@ sys.path.insert(0, str(ROOT / "bin"))
 from _lib import resolve_theme_root  # noqa: E402
 
 DEFAULT_MODEL = "claude-sonnet-4-6"
+LAYOUTS_DIR = ROOT / "bin" / "design-layouts"
+FRONTPAGE_SCORE_THRESHOLD = 70
+OPENAI_IMAGE_MODEL = "gpt-image-2"
 
 
 @dataclass
 class ValidationResult:
     ok: bool
     detail: str
+
+
+@dataclass
+class LayoutChoice:
+    layout_id: str
+    confidence: float
+    rationale: str
+    evidence_quality: str
+    slot_copy: dict[str, str]
+    style_directives: list[str]
+    source: str
+
+
+@dataclass
+class RepairProblem:
+    problem: str
+    confidence: float
+    source_files: list[str]
+    snapshots: list[str]
+    next_actions: list[str]
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -186,13 +211,32 @@ def _run_block_validator(theme_root: Path) -> ValidationResult:
 
 def _write_candidate_if_valid(theme_root: Path, candidate: str) -> ValidationResult:
     front_page = theme_root / "templates" / "front-page.html"
-    original = front_page.read_text(encoding="utf-8")
     if not _block_comment_balance_ok(candidate):
         return ValidationResult(False, "candidate has unbalanced WordPress block comments")
-    front_page.write_text(candidate, encoding="utf-8")
-    result = _run_block_validator(theme_root)
-    if not result.ok:
-        front_page.write_text(original, encoding="utf-8")
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="design-agent-theme-") as tmp:
+            temp_theme = Path(tmp) / theme_root.name
+            temp_theme.mkdir(parents=True)
+            for file_name in ("theme.json", "style.css", "functions.php"):
+                src = theme_root / file_name
+                if src.is_file():
+                    shutil.copy2(src, temp_theme / file_name)
+            for dir_name in ("templates", "parts", "patterns"):
+                src_dir = theme_root / dir_name
+                if src_dir.is_dir():
+                    shutil.copytree(src_dir, temp_theme / dir_name)
+            temp_front_page = temp_theme / "templates" / "front-page.html"
+            temp_front_page.parent.mkdir(parents=True, exist_ok=True)
+            temp_front_page.write_text(candidate, encoding="utf-8")
+            result = _run_block_validator(temp_theme)
+    except Exception as exc:
+        return ValidationResult(False, f"temporary validation failed: {exc}")
+
+    if result.ok:
+        staged = front_page.with_suffix(".html.tmp")
+        staged.write_text(candidate, encoding="utf-8")
+        staged.replace(front_page)
     return result
 
 
@@ -232,44 +276,447 @@ def _completion(
         raise RuntimeError(f"LLM call failed: {exc}") from exc
 
 
-def _frontpage_prompt(
+def _agent_dir(slug: str) -> Path:
+    path = ROOT / "tmp" / "design-agent" / slug
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _safe_rel(path: Path) -> str:
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
+def _load_layout_manifest() -> dict[str, dict[str, Any]]:
+    manifest = _read_json(LAYOUTS_DIR / "manifest.json")
+    layouts: dict[str, dict[str, Any]] = {}
+    for entry in manifest.get("layouts") or []:
+        if not isinstance(entry, dict):
+            continue
+        layout_id = str(entry.get("id") or "").strip()
+        layout_file = LAYOUTS_DIR / str(entry.get("file") or "")
+        if layout_id and layout_file.is_file():
+            layouts[layout_id] = entry
+    if not layouts:
+        raise RuntimeError("no design layouts registered under bin/design-layouts")
+    return layouts
+
+
+def _layout_ids() -> list[str]:
+    return sorted(_load_layout_manifest())
+
+
+def _context_blob(context: dict[str, Any]) -> str:
+    parts = [
+        str(context.get("name") or ""),
+        str(context.get("tagline") or ""),
+        str(context.get("voice") or ""),
+        " ".join(str(item) for item in context.get("layout_hints") or []),
+        json.dumps(context.get("mockup_meta") or {}, sort_keys=True),
+        str(context.get("brief") or ""),
+    ]
+    return " ".join(parts).lower()
+
+
+def _default_slot_copy(slug: str, context: dict[str, Any]) -> dict[str, str]:
+    name = str(context.get("name") or slug.replace("-", " ").title())
+    tagline = str(context.get("tagline") or "").strip()
+    voice = str(context.get("voice") or "").strip()
+    dek = tagline or voice or f"{name} gathers strange goods into a shop with a point of view."
+    return {
+        "eyebrow": f"{name} dispatch",
+        "headline": name,
+        "dek": dek,
+        "cta_label": "Shop the collection",
+        "section_heading": "Featured oddities",
+        "category_heading": "Browse the departments",
+        "story_heading": "A shop with a sharper brief",
+        "story_body": dek,
+        "journal_heading": "Notes from the counter",
+    }
+
+
+def _heuristic_layout_choice(
     slug: str,
     context: dict[str, Any],
-    html: str,
-    previous_error: str = "",
+    *,
+    evidence_quality: str,
+    source: str = "heuristic",
+) -> LayoutChoice:
+    text = _context_blob(context)
+    layout_id = "split-hero-category-strip"
+    confidence = 0.58 if evidence_quality == "mockup" else 0.46
+    rationale = "Defaulted to a balanced split commerce layout from available concept text."
+    if any(token in text for token in ("poster", "brutalist", "bold", "zine", "campaign")):
+        layout_id = "poster-cta-commerce-stack"
+        rationale = "Concept language points to a poster-like, type-led commerce stack."
+    elif any(
+        token in text for token in ("magazine", "journal", "editorial", "publishing", "index")
+    ):
+        layout_id = "magazine-index-commerce"
+        rationale = "Concept language emphasizes editorial or journal surfaces."
+    elif any(token in text for token in ("center", "masthead", "fashion", "gallery", "luxury")):
+        layout_id = "centered-masthead-editorial-grid"
+        rationale = "Concept language favors a centered masthead and editorial product grid."
+    elif any(
+        token in text for token in ("photo", "cinematic", "hero image", "lookbook", "still life")
+    ):
+        layout_id = "photo-hero-product-grid"
+        rationale = "Concept language calls for a photo-led hero and product-first follow-through."
+    return LayoutChoice(
+        layout_id=layout_id,
+        confidence=confidence,
+        rationale=rationale,
+        evidence_quality=evidence_quality,
+        slot_copy=_default_slot_copy(slug, context),
+        style_directives=[],
+        source=source,
+    )
+
+
+def _mockup_requirement(
+    slug: str, *, keep_going: bool
+) -> tuple[Path | None, str, list[RepairProblem]]:
+    mockup = _mockup_path(slug)
+    if mockup is not None:
+        return mockup, "mockup", []
+
+    repairs: list[RepairProblem] = []
+    meta = ROOT / "mockups" / f"{slug}.meta.json"
+    paint = ROOT / "bin" / "paint-mockup.py"
+    if meta.is_file() and paint.is_file():
+        prompt_out = _agent_dir(slug) / "mockup-prompt.json"
+        proc = subprocess.run(
+            [sys.executable, str(paint), slug, "--json"],
+            cwd=str(ROOT),
+            text=True,
+            capture_output=True,
+            timeout=60,
+            check=False,
+        )
+        if proc.returncode == 0:
+            prompt_out.write_text(proc.stdout, encoding="utf-8")
+            source_files = [_safe_rel(meta), _safe_rel(prompt_out)]
+        else:
+            source_files = [_safe_rel(meta)]
+    else:
+        source_files = [_safe_rel(meta)] if meta.is_file() else []
+
+    repairs.append(
+        RepairProblem(
+            problem="missing-mockup",
+            confidence=0.4,
+            source_files=source_files,
+            snapshots=[],
+            next_actions=[
+                f"Generate mockups/mockup-{slug}.png from the concept card prompt before judging concept fit."
+            ],
+        )
+    )
+    if keep_going:
+        return None, "meta-only", repairs
+    return None, "missing", repairs
+
+
+def _classifier_prompt(
+    slug: str,
+    context: dict[str, Any],
+    layouts: dict[str, dict[str, Any]],
+    evidence_quality: str,
 ) -> tuple[str, str]:
     system = (
-        "You are a senior WordPress block-theme designer. Return only JSON. "
-        "You rewrite valid block markup, not prose. Preserve dynamic commerce "
-        "blocks and keep styling token-based."
+        "You are a design director choosing from a constrained WordPress front-page "
+        "layout system. Return only JSON. Do not write HTML."
     )
     prompt = f"""\
-Rewrite `{slug}/templates/front-page.html` so the home page matches the concept.
+Choose the best validated front-page skeleton for `{slug}`.
 
-Theme context:
+Evidence quality: {evidence_quality}
+
+Concept context:
 {json.dumps(context, indent=2)[:12000]}
 
-Current front-page.html:
-```html
-{html}
-```
+Available skeletons:
+{json.dumps(list(layouts.values()), indent=2)[:12000]}
+
+Return JSON with exactly these keys:
+{{
+  "layout_id": "one registered id",
+  "confidence": 0.0,
+  "rationale": "why this layout matches the concept",
+  "slot_copy": {{
+    "eyebrow": "...",
+    "headline": "...",
+    "dek": "...",
+    "cta_label": "...",
+    "section_heading": "...",
+    "category_heading": "...",
+    "story_heading": "...",
+    "story_body": "...",
+    "journal_heading": "..."
+  }},
+  "style_directives": ["short directive", "..."]
+}}
 
 Rules:
-- Return a JSON object with keys `rationale` and `front_page_html`.
-- `front_page_html` must be the full replacement file.
-- Preserve existing `wp:woocommerce/*`, `wp:query`, `wp:post-template`, and
-  `wp:terms-query` blocks unless moving them is necessary for the layout.
-- Use only core and WooCommerce blocks.
-- Use theme tokens such as `var:preset|color|accent`; do not introduce raw hex.
-- Do not use `core/html`, shortcodes, external scripts, or fake forms.
-- Make the composition match the layout hints, not merely the colors.
+- Pick one of the registered `layout_id` values only.
+- Slot copy must be shopper-facing and brand-specific, but concise.
+- Do not invent forms, scripts, custom blocks, shortcodes, or raw CSS.
 """
-    if previous_error:
-        prompt += f"\nPrevious candidate failed validation:\n{previous_error[:6000]}\n"
     return system, prompt
 
 
-def run_frontpage(theme_root: Path, *, dry_run: bool, max_rounds: int, model: str) -> int:
+def _parse_layout_choice(
+    raw: dict[str, Any],
+    *,
+    slug: str,
+    context: dict[str, Any],
+    layouts: dict[str, dict[str, Any]],
+    evidence_quality: str,
+    source: str,
+) -> LayoutChoice:
+    layout_id = str(raw.get("layout_id") or "").strip()
+    if layout_id not in layouts:
+        raise ValueError(
+            f"invalid layout_id {layout_id!r}; expected one of {', '.join(sorted(layouts))}"
+        )
+    confidence_raw = raw.get("confidence", 0.5)
+    try:
+        confidence = (
+            float(confidence_raw)
+            if isinstance(confidence_raw, (int, float))
+            else float(str(confidence_raw))
+        )
+    except (TypeError, ValueError):
+        confidence = 0.5
+    confidence = max(0.0, min(1.0, confidence))
+    defaults = _default_slot_copy(slug, context)
+    slot_raw = raw.get("slot_copy") or {}
+    slot_copy = dict(defaults)
+    if isinstance(slot_raw, dict):
+        for slot in layouts[layout_id].get("slots") or []:
+            value = str(slot_raw.get(slot) or "").strip()
+            if value:
+                slot_copy[str(slot)] = value
+    directives_raw = raw.get("style_directives") or []
+    directives = [str(item).strip() for item in directives_raw if str(item).strip()]
+    return LayoutChoice(
+        layout_id=layout_id,
+        confidence=confidence,
+        rationale=str(raw.get("rationale") or "").strip(),
+        evidence_quality=evidence_quality,
+        slot_copy=slot_copy,
+        style_directives=directives,
+        source=source,
+    )
+
+
+def _classify_layout(
+    slug: str,
+    context: dict[str, Any],
+    *,
+    mockup: Path | None,
+    evidence_quality: str,
+    model: str,
+) -> LayoutChoice:
+    layouts = _load_layout_manifest()
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        return _heuristic_layout_choice(slug, context, evidence_quality=evidence_quality)
+
+    system, prompt = _classifier_prompt(slug, context, layouts, evidence_quality)
+    raw = _completion(
+        prompt=prompt,
+        system_prompt=system,
+        mockup=mockup,
+        model=model,
+        max_output_tokens=5000,
+    )
+    parsed = _parse_json_object(raw)
+    return _parse_layout_choice(
+        parsed,
+        slug=slug,
+        context=context,
+        layouts=layouts,
+        evidence_quality=evidence_quality,
+        source="llm",
+    )
+
+
+def _render_layout(slug: str, choice: LayoutChoice) -> str:
+    layouts = _load_layout_manifest()
+    layout = layouts[choice.layout_id]
+    template = (LAYOUTS_DIR / str(layout["file"])).read_text(encoding="utf-8")
+    values = {slot: choice.slot_copy.get(slot, "") for slot in layout.get("slots") or []}
+    values["slug"] = slug
+
+    def repl(match: re.Match[str]) -> str:
+        key = match.group(1)
+        value = str(values.get(key, ""))
+        if key == "slug":
+            return re.sub(r"[^a-z0-9-]", "-", value.lower()).strip("-") or slug
+        return html.escape(value, quote=False)
+
+    return re.sub(r"\{\{([a-z0-9_]+)\}\}", repl, template).rstrip() + "\n"
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _write_repair_packet(slug: str, problems: list[RepairProblem]) -> Path | None:
+    if not problems:
+        return None
+    path = _agent_dir(slug) / "repair.json"
+    _write_json(
+        path,
+        {
+            "schema": 1,
+            "theme": slug,
+            "generated_at": time.time(),
+            "problems": [asdict(problem) for problem in problems],
+        },
+    )
+    return path
+
+
+def _run_frontpage_evidence(
+    slug: str, *, keep_going: bool, threshold: int
+) -> tuple[dict[str, Any], list[RepairProblem], bool]:
+    result: dict[str, Any] = {
+        "snapshots": [],
+        "scorecard": None,
+        "status": "skipped",
+    }
+    repairs: list[RepairProblem] = []
+    if os.environ.get("FIFTY_DESIGN_AGENT_SKIP_EVIDENCE") == "1":
+        result["reason"] = "FIFTY_DESIGN_AGENT_SKIP_EVIDENCE=1"
+        return result, repairs, True
+
+    snap_cmd = [
+        sys.executable,
+        str(ROOT / "bin" / "snap.py"),
+        "shoot",
+        slug,
+        "--routes",
+        "home",
+        "--viewports",
+        "mobile,desktop",
+    ]
+    try:
+        snap = subprocess.run(
+            snap_cmd,
+            cwd=str(ROOT),
+            text=True,
+            capture_output=True,
+            timeout=900,
+            check=False,
+        )
+    except Exception as exc:
+        repairs.append(
+            RepairProblem(
+                problem="low-layout-score",
+                confidence=0.0,
+                source_files=[],
+                snapshots=result["snapshots"],
+                next_actions=[
+                    f"Home snap could not run ({exc}); inspect Playground before shipping."
+                ],
+            )
+        )
+        result["status"] = "snap-failed"
+        result["snap_error"] = str(exc)
+        return result, repairs, keep_going
+    result["snap_returncode"] = snap.returncode
+    result["snapshots"] = [
+        f"tmp/snaps/{slug}/mobile/home.png",
+        f"tmp/snaps/{slug}/desktop/home.png",
+    ]
+    if snap.returncode != 0:
+        repairs.append(
+            RepairProblem(
+                problem="low-layout-score",
+                confidence=0.0,
+                source_files=[],
+                snapshots=result["snapshots"],
+                next_actions=["Re-run the home snap and inspect the snap output before shipping."],
+            )
+        )
+        result["status"] = "snap-failed"
+        return result, repairs, keep_going
+
+    score_out = _agent_dir(slug) / "frontpage-score.json"
+    score_cmd = [
+        sys.executable,
+        str(ROOT / "bin" / "design-scorecard.py"),
+        slug,
+        "--run-id",
+        f"design-agent-{slug}",
+        "--threshold",
+        str(threshold),
+        "--out",
+        str(score_out),
+        "--no-fail",
+    ]
+    try:
+        score = subprocess.run(
+            score_cmd,
+            cwd=str(ROOT),
+            text=True,
+            capture_output=True,
+            timeout=120,
+            check=False,
+        )
+    except Exception as exc:
+        repairs.append(
+            RepairProblem(
+                problem="low-layout-score",
+                confidence=0.0,
+                source_files=[],
+                snapshots=result["snapshots"],
+                next_actions=[
+                    f"Design scorecard could not run ({exc}); inspect snap evidence manually."
+                ],
+            )
+        )
+        result["status"] = "score-failed"
+        result["score_error"] = str(exc)
+        return result, repairs, keep_going
+    result["score_returncode"] = score.returncode
+    result["scorecard"] = _safe_rel(score_out)
+    score_data = _read_json(score_out)
+    result["score_overall"] = score_data.get("overall")
+    result["score_verdict"] = score_data.get("verdict")
+    result["status"] = "pass" if score_data.get("verdict") == "pass" else "fail"
+    if score_data.get("verdict") != "pass":
+        repairs.append(
+            RepairProblem(
+                problem="low-layout-score",
+                confidence=0.45,
+                source_files=[_safe_rel(score_out)],
+                snapshots=result["snapshots"],
+                next_actions=[
+                    str(score_data.get("next_action") or "Inspect the scorecard weak findings.")
+                ],
+            )
+        )
+    return result, repairs, keep_going or score_data.get("verdict") == "pass"
+
+
+def run_frontpage(
+    theme_root: Path,
+    *,
+    dry_run: bool,
+    max_rounds: int,
+    model: str,
+    keep_going: bool,
+    score_threshold: int,
+) -> int:
+    del (
+        max_rounds
+    )  # Skeleton rendering is deterministic; retry loops are for the old freehand path.
     slug = theme_root.name
     front_page = theme_root / "templates" / "front-page.html"
     if not front_page.is_file():
@@ -277,58 +724,113 @@ def run_frontpage(theme_root: Path, *, dry_run: bool, max_rounds: int, model: st
         return 1
 
     context = _load_spec_context(slug, theme_root)
-    mockup = _mockup_path(slug)
-    original = front_page.read_text(encoding="utf-8")
-    system, prompt = _frontpage_prompt(slug, context, original)
+    mockup, evidence_quality, repairs = _mockup_requirement(slug, keep_going=keep_going)
+    if evidence_quality == "missing":
+        repair_path = _write_repair_packet(slug, repairs)
+        if repair_path:
+            print(f"  [design-agent/frontpage] wrote {_safe_rel(repair_path)}", file=sys.stderr)
+        print(f"design-agent frontpage: missing mockups/mockup-{slug}.png", file=sys.stderr)
+        return 1
+
     if dry_run:
-        print("---- DESIGN AGENT FRONTPAGE PROMPT (dry-run) ----")
-        print(f"mockup: {mockup.relative_to(ROOT) if mockup else '(missing; text-only mode)'}")
-        print(prompt)
-        print("---- END PROMPT ----")
+        layouts = _load_layout_manifest()
+        choice = _heuristic_layout_choice(
+            slug, context, evidence_quality=evidence_quality, source="dry-run"
+        )
+        print("---- DESIGN AGENT FRONTPAGE CLASSIFIER (dry-run) ----")
+        print(f"mockup: {_safe_rel(mockup) if mockup else '(missing; meta-only mode)'}")
+        print(f"available_layouts: {', '.join(sorted(layouts))}")
+        print(json.dumps(asdict(choice), indent=2))
+        print("---- END CLASSIFIER ----")
         return 0
 
-    error = ""
-    for attempt in range(1, max_rounds + 1):
-        system, prompt = _frontpage_prompt(slug, context, front_page.read_text(encoding="utf-8"), error)
-        try:
-            raw = _completion(
-                prompt=prompt,
-                system_prompt=system,
-                mockup=mockup,
-                model=model,
-                max_output_tokens=12000,
+    try:
+        choice = _classify_layout(
+            slug,
+            context,
+            mockup=mockup,
+            evidence_quality=evidence_quality,
+            model=model,
+        )
+    except Exception as exc:
+        fallback_choice = _heuristic_layout_choice(
+            slug, context, evidence_quality=evidence_quality, source="heuristic-fallback"
+        )
+        repairs.append(
+            RepairProblem(
+                problem="validator-fallback",
+                confidence=fallback_choice.confidence,
+                source_files=[],
+                snapshots=[],
+                next_actions=[
+                    f"LLM layout classifier failed ({exc}); inspect heuristic layout choice."
+                ],
             )
-        except RuntimeError as exc:
-            error = f"attempt {attempt}: {exc}"
-            print(f"  [design-agent/frontpage] {error}", file=sys.stderr)
-            continue
-        try:
-            parsed = _parse_json_object(raw)
-        except Exception as exc:
-            error = f"attempt {attempt}: response was not parseable JSON: {exc}"
-            print(f"  [design-agent/frontpage] {error}", file=sys.stderr)
-            continue
-        candidate = str(parsed.get("front_page_html") or parsed.get("html") or "").strip()
-        if not candidate:
-            error = f"attempt {attempt}: response omitted `front_page_html`"
-            print(f"  [design-agent/frontpage] {error}", file=sys.stderr)
-            continue
-        result = _write_candidate_if_valid(theme_root, candidate)
-        if result.ok:
-            rationale = str(parsed.get("rationale") or "").strip()
-            print(f"  [design-agent/frontpage] accepted attempt {attempt}")
-            if rationale:
-                print(f"  [design-agent/frontpage] {rationale[:500]}")
-            return 0
-        error = result.detail
-        print(f"  [design-agent/frontpage] attempt {attempt} failed validation", file=sys.stderr)
+        )
+        choice = fallback_choice
 
-    # Safe fallback: restore original, then apply the layout-class-only guard.
-    front_page.write_text(original, encoding="utf-8")
-    fallback = ROOT / "bin" / "diversify-front-page.py"
-    subprocess.call([sys.executable, str(fallback), "--theme", slug], cwd=str(ROOT))
-    print("  [design-agent/frontpage] exhausted attempts; kept fallback layout class", file=sys.stderr)
-    return 1
+    candidate = _render_layout(slug, choice)
+    validation = _write_candidate_if_valid(theme_root, candidate)
+    if not validation.ok:
+        fallback_script = ROOT / "bin" / "diversify-front-page.py"
+        subprocess.call([sys.executable, str(fallback_script), "--theme", slug], cwd=str(ROOT))
+        repairs.append(
+            RepairProblem(
+                problem="validator-fallback",
+                confidence=choice.confidence,
+                source_files=[_safe_rel(front_page)],
+                snapshots=[],
+                next_actions=[
+                    "Selected skeleton failed block validation; inspect validator details in frontpage-result.json."
+                ],
+            )
+        )
+        result_payload = {
+            "schema": 1,
+            "theme": slug,
+            "selected_skeleton": choice.layout_id,
+            "choice": asdict(choice),
+            "validator": asdict(validation),
+            "snap_paths": [],
+            "scorecard": None,
+            "status": "validator-fallback",
+        }
+        _write_json(_agent_dir(slug) / "frontpage-result.json", result_payload)
+        repair_path = _write_repair_packet(slug, repairs)
+        if repair_path:
+            print(f"  [design-agent/frontpage] wrote {_safe_rel(repair_path)}", file=sys.stderr)
+        return 0 if keep_going else 1
+
+    evidence, evidence_repairs, evidence_ok = _run_frontpage_evidence(
+        slug,
+        keep_going=keep_going,
+        threshold=score_threshold,
+    )
+    repairs.extend(evidence_repairs)
+    result_payload = {
+        "schema": 1,
+        "theme": slug,
+        "selected_skeleton": choice.layout_id,
+        "choice": asdict(choice),
+        "validator": asdict(validation),
+        "snap_paths": evidence.get("snapshots", []),
+        "scorecard": evidence.get("scorecard"),
+        "score": {
+            "overall": evidence.get("score_overall"),
+            "verdict": evidence.get("score_verdict"),
+            "threshold": score_threshold,
+            "status": evidence.get("status"),
+        },
+        "status": "pass" if evidence_ok and not repairs else "needs-repair",
+    }
+    out = _agent_dir(slug) / "frontpage-result.json"
+    _write_json(out, result_payload)
+    repair_path = _write_repair_packet(slug, repairs)
+    print(f"  [design-agent/frontpage] selected {choice.layout_id} ({choice.confidence:.2f})")
+    print(f"  [design-agent/frontpage] wrote {_safe_rel(out)}")
+    if repair_path:
+        print(f"  [design-agent/frontpage] wrote {_safe_rel(repair_path)}", file=sys.stderr)
+    return 0 if evidence_ok else 1
 
 
 def _product_map(theme_root: Path) -> dict[str, str]:
@@ -403,7 +905,7 @@ def _generate_openai(prompt: str) -> bytes:
     data = _request_json(
         "https://api.openai.com/v1/images/generations",
         {"authorization": f"Bearer {key}"},
-        {"model": "gpt-image-1", "prompt": prompt, "size": "1024x1024", "n": 1},
+        {"model": OPENAI_IMAGE_MODEL, "prompt": prompt, "size": "1024x1024", "n": 1},
     )
     item = (data.get("data") or [{}])[0]
     if item.get("b64_json"):
@@ -444,9 +946,8 @@ def _write_image_bytes(dest: Path, raw: bytes) -> None:
             img = Image.open(tmp.name).convert("RGB")
             dest.parent.mkdir(parents=True, exist_ok=True)
             img.save(dest, "JPEG", quality=88)
-    except Exception:
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(raw)
+    except Exception as exc:
+        raise RuntimeError("provider output could not be normalized to JPEG") from exc
 
 
 def _fallback_photos(slug: str, *, force: bool = False) -> int:
@@ -457,7 +958,33 @@ def _fallback_photos(slug: str, *, force: bool = False) -> int:
     return subprocess.call(cmd, cwd=str(ROOT))
 
 
-def run_photos(theme_root: Path, *, dry_run: bool, model: str) -> int:
+def _write_photo_manifest(
+    theme_root: Path,
+    *,
+    prompts: dict[str, str],
+    provider: str,
+    model: str,
+    status: str,
+    records: list[dict[str, Any]] | None = None,
+) -> None:
+    slug = theme_root.name
+    prompt_manifest = theme_root / "playground" / "content" / "product-photo-prompts.json"
+    _write_json(
+        prompt_manifest,
+        {
+            "schema": 2,
+            "theme": slug,
+            "status": status,
+            "provider": provider,
+            "model": model,
+            "prompts": prompts,
+            "records": records or [],
+        },
+    )
+    print(f"  [design-agent/photos] wrote {_safe_rel(prompt_manifest)}")
+
+
+def run_photos(theme_root: Path, *, dry_run: bool, model: str, keep_going: bool) -> int:
     slug = theme_root.name
     products = _product_map(theme_root)
     if not products:
@@ -484,37 +1011,115 @@ def run_photos(theme_root: Path, *, dry_run: bool, model: str) -> int:
         )
     except RuntimeError as exc:
         print(f"  [design-agent/photos] {exc}; falling back", file=sys.stderr)
-        return _fallback_photos(slug, force=True)
+        _write_photo_manifest(
+            theme_root,
+            prompts={},
+            provider="pillow",
+            model="generate-product-photos.py",
+            status="placeholder-fallback",
+            records=[{"error": str(exc)}],
+        )
+        repair_path = _write_repair_packet(
+            slug,
+            [
+                RepairProblem(
+                    problem="photo-fallback",
+                    confidence=0.35,
+                    source_files=[
+                        _safe_rel(
+                            theme_root / "playground" / "content" / "product-photo-prompts.json"
+                        )
+                    ],
+                    snapshots=[],
+                    next_actions=[
+                        "Retry photo generation with ANTHROPIC_API_KEY and OPENAI_API_KEY or FAL_KEY available."
+                    ],
+                )
+            ],
+        )
+        if repair_path:
+            print(f"  [design-agent/photos] wrote {_safe_rel(repair_path)}", file=sys.stderr)
+        rc = _fallback_photos(slug, force=True)
+        return 0 if keep_going else rc
     try:
         parsed = _parse_json_object(raw)
     except Exception as exc:
         print(f"  [design-agent/photos] prompt JSON parse failed: {exc}", file=sys.stderr)
-        return _fallback_photos(slug, force=True)
+        _write_photo_manifest(
+            theme_root,
+            prompts={},
+            provider="pillow",
+            model="generate-product-photos.py",
+            status="placeholder-fallback",
+            records=[{"error": f"prompt JSON parse failed: {exc}"}],
+        )
+        rc = _fallback_photos(slug, force=True)
+        return 0 if keep_going else rc
 
     prompt_map_raw = parsed.get("prompts") or {}
     if not isinstance(prompt_map_raw, dict):
-        print("  [design-agent/photos] prompt response omitted `prompts`; falling back", file=sys.stderr)
-        return _fallback_photos(slug, force=True)
+        print(
+            "  [design-agent/photos] prompt response omitted `prompts`; falling back",
+            file=sys.stderr,
+        )
+        _write_photo_manifest(
+            theme_root,
+            prompts={},
+            provider="pillow",
+            model="generate-product-photos.py",
+            status="placeholder-fallback",
+            records=[{"error": "prompt response omitted prompts"}],
+        )
+        rc = _fallback_photos(slug, force=True)
+        return 0 if keep_going else rc
     prompt_map = {str(k): str(v) for k, v in prompt_map_raw.items() if str(v).strip()}
 
-    prompt_manifest = theme_root / "playground" / "content" / "product-photo-prompts.json"
-    prompt_manifest.write_text(
-        json.dumps({"schema": 1, "theme": slug, "prompts": prompt_map}, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    print(f"  [design-agent/photos] wrote {prompt_manifest.relative_to(ROOT)}")
-
     generator = None
+    provider = "pillow"
+    provider_model = "generate-product-photos.py"
     if os.environ.get("FAL_KEY"):
         generator = _generate_fal
+        provider = "fal"
+        provider_model = "fal-ai/flux/dev"
     elif os.environ.get("OPENAI_API_KEY"):
         generator = _generate_openai
+        provider = "openai"
+        provider_model = OPENAI_IMAGE_MODEL
 
     if generator is None:
         print("  [design-agent/photos] no FAL_KEY or OPENAI_API_KEY; using Pillow fallback")
-        return _fallback_photos(slug, force=True)
+        _write_photo_manifest(
+            theme_root,
+            prompts=prompt_map,
+            provider=provider,
+            model=provider_model,
+            status="placeholder-fallback",
+        )
+        repair_path = _write_repair_packet(
+            slug,
+            [
+                RepairProblem(
+                    problem="photo-fallback",
+                    confidence=0.45,
+                    source_files=[
+                        _safe_rel(
+                            theme_root / "playground" / "content" / "product-photo-prompts.json"
+                        )
+                    ],
+                    snapshots=[],
+                    next_actions=[
+                        "Set OPENAI_API_KEY or FAL_KEY for generated product photography."
+                    ],
+                )
+            ],
+        )
+        if repair_path:
+            print(f"  [design-agent/photos] wrote {_safe_rel(repair_path)}", file=sys.stderr)
+        rc = _fallback_photos(slug, force=True)
+        return 0 if keep_going else rc
 
     written = 0
+    records: list[dict[str, Any]] = []
     images_dir = theme_root / "playground" / "images"
     for sku, filename in sorted(products.items()):
         image_prompt = prompt_map.get(sku)
@@ -524,15 +1129,67 @@ def run_photos(theme_root: Path, *, dry_run: bool, model: str) -> int:
         try:
             _write_image_bytes(dest, generator(image_prompt))
             written += 1
+            records.append(
+                {
+                    "sku": sku,
+                    "filename": filename,
+                    "provider": provider,
+                    "model": provider_model,
+                    "prompt": image_prompt,
+                    "status": "generated",
+                }
+            )
             print(f"  [design-agent/photos] generated {dest.relative_to(ROOT)}")
         except Exception as exc:
+            records.append(
+                {
+                    "sku": sku,
+                    "filename": filename,
+                    "provider": provider,
+                    "model": provider_model,
+                    "prompt": image_prompt,
+                    "status": "failed",
+                    "error": str(exc),
+                }
+            )
             print(f"  [design-agent/photos] {sku} failed: {exc}", file=sys.stderr)
+
+    status = "generated" if written else "placeholder-fallback"
+    _write_photo_manifest(
+        theme_root,
+        prompts=prompt_map,
+        provider=provider,
+        model=provider_model,
+        status=status,
+        records=records,
+    )
+    if written == 0:
+        repair_path = _write_repair_packet(
+            slug,
+            [
+                RepairProblem(
+                    problem="photo-fallback",
+                    confidence=0.45,
+                    source_files=[
+                        _safe_rel(
+                            theme_root / "playground" / "content" / "product-photo-prompts.json"
+                        )
+                    ],
+                    snapshots=[],
+                    next_actions=[
+                        "Inspect provider errors and retry photo generation before shipping."
+                    ],
+                )
+            ],
+        )
+        if repair_path:
+            print(f"  [design-agent/photos] wrote {_safe_rel(repair_path)}", file=sys.stderr)
 
     # Fill any missing category/hero/product images with the existing generator,
     # but do not overwrite real API-generated product photos.
     fallback_rc = _fallback_photos(slug, force=False)
     if written == 0 and fallback_rc != 0:
-        return fallback_rc
+        return 0 if keep_going else fallback_rc
     seed = ROOT / "bin" / "seed-playground-content.py"
     subprocess.call([sys.executable, str(seed), "--theme", slug], cwd=str(ROOT))
     return 0
@@ -544,6 +1201,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--task", choices=("frontpage", "photos"), required=True)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--max-rounds", type=int, default=3)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--strict", action="store_true", help="Fail hard when required evidence is missing."
+    )
+    mode.add_argument(
+        "--keep-going", action="store_true", help="Emit repair packets and continue when possible."
+    )
+    parser.add_argument("--score-threshold", type=int, default=FRONTPAGE_SCORE_THRESHOLD)
     parser.add_argument(
         "--model",
         default=os.environ.get("FIFTY_DESIGN_AGENT_MODEL") or DEFAULT_MODEL,
@@ -562,8 +1227,15 @@ def main(argv: list[str] | None = None) -> int:
             dry_run=args.dry_run,
             max_rounds=max(1, args.max_rounds),
             model=args.model,
+            keep_going=args.keep_going or not args.strict,
+            score_threshold=args.score_threshold,
         )
-    return run_photos(theme_root, dry_run=args.dry_run, model=args.model)
+    return run_photos(
+        theme_root,
+        dry_run=args.dry_run,
+        model=args.model,
+        keep_going=args.keep_going or not args.strict,
+    )
 
 
 if __name__ == "__main__":

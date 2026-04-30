@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "layouts": [
+    {
+      "id": "photo-hero-product-grid",
+      "file": "photo-hero-product-grid.html",
+      "description": "Full-bleed editorial hero followed by category strip, product grid, story, and journal rows.",
+      "best_for": ["photo hero", "cinematic", "apparel", "premium commerce"],
+      "avoid_when": ["minimal catalogue", "no product imagery"],
+      "slots": ["eyebrow", "headline", "dek", "cta_label", "section_heading", "category_heading", "story_heading", "story_body", "journal_heading"],
+      "required_blocks": ["core/group", "core/cover", "core/buttons", "woocommerce/product-collection", "core/terms-query", "core/query"],
+      "trait_tags": {
+        "hero": ["photo-hero", "full-bleed", "cinematic"],
+        "commerce_density": ["medium", "grid"],
+        "nav_shape": ["standard"],
+        "era": ["editorial", "pre-1950", "contemporary"],
+        "visual_rhythm": ["stacked", "sectioned"]
+      }
+    },
+    {
+      "id": "centered-masthead-editorial-grid",
+      "file": "centered-masthead-editorial-grid.html",
+      "description": "Centered masthead with editorial intro, dense product grid, and journal-led lower section.",
+      "best_for": ["large centered brand", "magazine", "editorial", "fashion"],
+      "avoid_when": ["asymmetric hero", "poster design"],
+      "slots": ["eyebrow", "headline", "dek", "cta_label", "section_heading", "category_heading", "story_heading", "story_body", "journal_heading"],
+      "required_blocks": ["core/group", "core/buttons", "woocommerce/product-collection", "core/terms-query", "core/query"],
+      "trait_tags": {
+        "hero": ["type-led", "centered", "masthead"],
+        "commerce_density": ["high", "grid"],
+        "nav_shape": ["centered"],
+        "era": ["editorial", "modern", "pre-1950"],
+        "visual_rhythm": ["centered", "ordered"]
+      }
+    },
+    {
+      "id": "poster-cta-commerce-stack",
+      "file": "poster-cta-commerce-stack.html",
+      "description": "Poster-like typographic hero with strong CTA and stacked commerce modules.",
+      "best_for": ["poster", "bold typography", "brutalist", "campaign"],
+      "avoid_when": ["quiet luxury", "photo-led concept"],
+      "slots": ["eyebrow", "headline", "dek", "cta_label", "section_heading", "category_heading", "story_heading", "story_body", "journal_heading"],
+      "required_blocks": ["core/group", "core/buttons", "woocommerce/product-collection", "core/terms-query", "core/query"],
+      "trait_tags": {
+        "hero": ["poster", "type-led", "campaign"],
+        "commerce_density": ["medium", "stack"],
+        "nav_shape": ["standard"],
+        "era": ["postmodern", "brutalist", "contemporary"],
+        "visual_rhythm": ["bold", "stacked"]
+      }
+    },
+    {
+      "id": "split-hero-category-strip",
+      "file": "split-hero-category-strip.html",
+      "description": "Asymmetric hero with featured products beside copy, then a category strip and wider product grid.",
+      "best_for": ["split hero", "marketplace", "balanced commerce"],
+      "avoid_when": ["full bleed poster", "single product launch"],
+      "slots": ["eyebrow", "headline", "dek", "cta_label", "section_heading", "category_heading", "story_heading", "story_body", "journal_heading"],
+      "required_blocks": ["core/group", "core/columns", "core/buttons", "woocommerce/product-collection", "core/terms-query", "core/query"],
+      "trait_tags": {
+        "hero": ["split", "asymmetric", "commerce-led"],
+        "commerce_density": ["high", "grid"],
+        "nav_shape": ["standard"],
+        "era": ["contemporary", "heritage", "market"],
+        "visual_rhythm": ["asymmetric", "modular"]
+      }
+    },
+    {
+      "id": "magazine-index-commerce",
+      "file": "magazine-index-commerce.html",
+      "description": "Magazine-index composition with post-led editorial hierarchy and commerce woven through the page.",
+      "best_for": ["journal", "publishing", "culture shop", "editorial commerce"],
+      "avoid_when": ["pure product catalogue", "simple landing page"],
+      "slots": ["eyebrow", "headline", "dek", "cta_label", "section_heading", "category_heading", "story_heading", "story_body", "journal_heading"],
+      "required_blocks": ["core/group", "core/query", "woocommerce/product-collection", "core/terms-query"],
+      "trait_tags": {
+        "hero": ["editorial", "type-led", "journal"],
+        "commerce_density": ["low", "woven"],
+        "nav_shape": ["standard"],
+        "era": ["magazine", "editorial", "modern"],
+        "visual_rhythm": ["index", "alternating"]
+      }
+    }
+  ]
+}

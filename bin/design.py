@@ -980,7 +980,9 @@ def _assert_playground_payload_seeded(dest: Path) -> None:
         content / "content.xml",
         content / "products.csv",
     ]
-    missing = [path.relative_to(MONOREPO_ROOT).as_posix() for path in required if not path.is_file()]
+    missing = [
+        path.relative_to(MONOREPO_ROOT).as_posix() for path in required if not path.is_file()
+    ]
     if missing:
         _raise_or_report_invariant(
             "placeholder-images",
@@ -1026,7 +1028,9 @@ def _assert_hero_placeholders_not_source_copies(spec: ValidatedSpec, dest: Path)
     source_images = MONOREPO_ROOT / spec.source / "playground" / "images"
     images = dest / "playground" / "images"
     duplicates: list[str] = []
-    for path in sorted(images.glob("wonders-page-*.png")) + sorted(images.glob("wonders-post-*.png")):
+    for path in sorted(images.glob("wonders-page-*.png")) + sorted(
+        images.glob("wonders-post-*.png")
+    ):
         source_path = source_images / path.name
         if source_path.is_file() and path.read_bytes() == source_path.read_bytes():
             duplicates.append(path.name)
@@ -1477,11 +1481,14 @@ def _phase_photos(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) -> 
 
     agent = ROOT / "bin" / "design-agent.py"
     if agent.is_file() and os.environ.get("ANTHROPIC_API_KEY"):
-        cmd = [sys.executable, str(agent), "--theme", spec.slug, "--task", "photos"]
+        mode = "--keep-going" if args.keep_going else "--strict"
+        cmd = [sys.executable, str(agent), "--theme", spec.slug, "--task", "photos", mode]
         print(f"  [photos] {' '.join(cmd[1:])}")
         rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
         if rc == 0:
             return
+        if not args.keep_going:
+            raise PhaseError("photos", f"bin/design-agent.py --task photos exited {rc}")
         print(f"  [photos] WARN: design-agent.py --task photos exited {rc}; using fallback.")
     elif agent.is_file():
         print("  [photos] ANTHROPIC_API_KEY not set; using Pillow fallback.")
@@ -1552,10 +1559,13 @@ def _phase_frontpage(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) 
 
     agent = ROOT / "bin" / "design-agent.py"
     if agent.is_file() and os.environ.get("ANTHROPIC_API_KEY"):
-        cmd = [sys.executable, str(agent), "--theme", spec.slug, "--task", "frontpage"]
+        mode = "--keep-going" if args.keep_going else "--strict"
+        cmd = [sys.executable, str(agent), "--theme", spec.slug, "--task", "frontpage", mode]
         print(f"  [frontpage] {' '.join(cmd[1:])}")
         rc = subprocess.call(cmd, cwd=str(MONOREPO_ROOT))
         if rc != 0:
+            if not args.keep_going:
+                raise PhaseError("frontpage", f"bin/design-agent.py --task frontpage exited {rc}")
             print(
                 "  [frontpage] WARN: design-agent.py --task frontpage failed; "
                 "layout class fallback remains applied."

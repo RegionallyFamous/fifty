@@ -1,0 +1,68 @@
+<!-- wp:template-part {"slug":"header","tagName":"header"} /-->
+
+<!-- wp:group {"tagName":"main","align":"full","className":"wo-layout-{{slug}} wo-design-layout split-hero-category-strip","style":{"spacing":{"padding":{"top":"var:preset|spacing|2-xl","bottom":"var:preset|spacing|3-xl","left":"var:preset|spacing|lg","right":"var:preset|spacing|lg"}}},"layout":{"type":"constrained"}} -->
+<main class="wp-block-group alignfull wo-layout-{{slug}} wo-design-layout split-hero-category-strip" style="padding-top:var(--wp--preset--spacing--2-xl);padding-right:var(--wp--preset--spacing--lg);padding-bottom:var(--wp--preset--spacing--3-xl);padding-left:var(--wp--preset--spacing--lg)">
+<!-- wp:columns {"align":"wide","verticalAlignment":"center","style":{"spacing":{"blockGap":{"left":"var:preset|spacing|2-xl"},"padding":{"bottom":"var:preset|spacing|2-xl"}}}} -->
+<div class="wp-block-columns alignwide are-vertically-aligned-center" style="padding-bottom:var(--wp--preset--spacing--2-xl)"><!-- wp:column {"verticalAlignment":"center","width":"44%"} -->
+<div class="wp-block-column is-vertically-aligned-center" style="flex-basis:44%"><!-- wp:paragraph {"style":{"typography":{"textTransform":"uppercase","letterSpacing":"0.14em"}},"textColor":"accent","fontSize":"sm"} -->
+<p class="has-accent-color has-text-color has-sm-font-size" style="letter-spacing:0.14em;text-transform:uppercase">{{eyebrow}}</p>
+<!-- /wp:paragraph --><!-- wp:heading {"level":1,"fontSize":"5-xl"} -->
+<h1 class="wp-block-heading has-5-xl-font-size">{{headline}}</h1>
+<!-- /wp:heading --><!-- wp:paragraph {"textColor":"secondary","fontSize":"lg"} -->
+<p class="has-secondary-color has-text-color has-lg-font-size">{{dek}}</p>
+<!-- /wp:paragraph --><!-- wp:buttons -->
+<div class="wp-block-buttons"><!-- wp:button -->
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop/">{{cta_label}}</a></div>
+<!-- /wp:button --></div>
+<!-- /wp:buttons --></div>
+<!-- /wp:column --><!-- wp:column {"verticalAlignment":"center","width":"56%"} -->
+<div class="wp-block-column is-vertically-aligned-center" style="flex-basis:56%"><!-- wp:woocommerce/product-collection {"query":{"perPage":2,"pages":1,"offset":0,"postType":"product","order":"asc","orderBy":"title","search":"","exclude":[],"inherit":false,"taxQuery":[],"isProductCollectionBlock":true,"woocommerceOnSale":false,"woocommerceStockStatus":["instock","outofstock","onbackorder"],"woocommerceAttributes":[],"woocommerceHandPickedProducts":[],"filterable":false},"displayLayout":{"type":"flex","columns":2,"shrinkColumns":true},"dimensions":{"widthType":"fill"},"queryId":6} -->
+<div class="wp-block-woocommerce-product-collection"><!-- wp:woocommerce/product-template -->
+<!-- wp:woocommerce/product-image {"imageSizing":"thumbnail","isDescendentOfQueryLoop":true} /-->
+<!-- wp:post-title {"textAlign":"center","level":3,"isLink":true,"fontSize":"md","__woocommerceNamespace":"woocommerce/product-collection/product-title"} /-->
+<!-- wp:woocommerce/product-price {"isDescendentOfQueryLoop":true,"textAlign":"center"} /-->
+<!-- /wp:woocommerce/product-template --></div>
+<!-- /wp:woocommerce/product-collection --></div>
+<!-- /wp:column --></div>
+<!-- /wp:columns -->
+
+<!-- wp:group {"align":"wide","style":{"spacing":{"padding":{"top":"var:preset|spacing|lg","bottom":"var:preset|spacing|lg"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group alignwide" style="padding-top:var(--wp--preset--spacing--lg);padding-bottom:var(--wp--preset--spacing--lg)">
+<!-- wp:heading {"fontSize":"xl"} -->
+<h2 class="wp-block-heading has-xl-font-size">{{category_heading}}</h2>
+<!-- /wp:heading -->
+<!-- wp:terms-query {"term":"product_cat","columns":6,"showEmpty":true} -->
+<div class="wp-block-terms-query"><!-- wp:term-template -->
+<!-- wp:term-name {"isLink":true,"fontSize":"sm"} /-->
+<!-- /wp:term-template --></div>
+<!-- /wp:terms-query -->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:group {"align":"wide","style":{"spacing":{"padding":{"top":"var:preset|spacing|2-xl","bottom":"var:preset|spacing|2-xl"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group alignwide" style="padding-top:var(--wp--preset--spacing--2-xl);padding-bottom:var(--wp--preset--spacing--2-xl)">
+<!-- wp:heading {"fontSize":"2-xl"} -->
+<h2 class="wp-block-heading has-2-xl-font-size">{{section_heading}}</h2>
+<!-- /wp:heading -->
+<!-- wp:woocommerce/product-collection {"query":{"perPage":6,"pages":1,"offset":2,"postType":"product","order":"asc","orderBy":"title","search":"","exclude":[],"inherit":false,"taxQuery":[],"isProductCollectionBlock":true,"woocommerceOnSale":false,"woocommerceStockStatus":["instock","outofstock","onbackorder"],"woocommerceAttributes":[],"woocommerceHandPickedProducts":[],"filterable":false},"displayLayout":{"type":"flex","columns":3,"shrinkColumns":true},"dimensions":{"widthType":"fill"},"queryId":7} -->
+<div class="wp-block-woocommerce-product-collection"><!-- wp:woocommerce/product-template -->
+<!-- wp:woocommerce/product-image {"imageSizing":"thumbnail","isDescendentOfQueryLoop":true} /-->
+<!-- wp:post-title {"level":3,"isLink":true,"fontSize":"md","__woocommerceNamespace":"woocommerce/product-collection/product-title"} /-->
+<!-- wp:woocommerce/product-price {"isDescendentOfQueryLoop":true} /-->
+<!-- wp:woocommerce/product-button {"isDescendentOfQueryLoop":true} /-->
+<!-- /wp:woocommerce/product-template --></div>
+<!-- /wp:woocommerce/product-collection -->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:group {"align":"wide","layout":{"type":"constrained","contentSize":"860px"}} -->
+<div class="wp-block-group alignwide"><!-- wp:heading {"textAlign":"center","fontSize":"2-xl"} -->
+<h2 class="wp-block-heading has-text-align-center has-2-xl-font-size">{{story_heading}}</h2>
+<!-- /wp:heading --><!-- wp:paragraph {"align":"center","textColor":"secondary"} -->
+<p class="has-text-align-center has-secondary-color has-text-color">{{story_body}}</p>
+<!-- /wp:paragraph --></div>
+<!-- /wp:group -->
+</main>
+<!-- /wp:group -->
+
+<!-- wp:template-part {"slug":"footer","tagName":"footer"} /-->

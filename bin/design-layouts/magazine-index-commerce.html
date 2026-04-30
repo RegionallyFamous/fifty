@@ -1,0 +1,72 @@
+<!-- wp:template-part {"slug":"header","tagName":"header"} /-->
+
+<!-- wp:group {"tagName":"main","align":"full","className":"wo-layout-{{slug}} wo-design-layout magazine-index-commerce","style":{"spacing":{"padding":{"top":"var:preset|spacing|2-xl","bottom":"var:preset|spacing|3-xl","left":"var:preset|spacing|lg","right":"var:preset|spacing|lg"}}},"layout":{"type":"constrained"}} -->
+<main class="wp-block-group alignfull wo-layout-{{slug}} wo-design-layout magazine-index-commerce" style="padding-top:var(--wp--preset--spacing--2-xl);padding-right:var(--wp--preset--spacing--lg);padding-bottom:var(--wp--preset--spacing--3-xl);padding-left:var(--wp--preset--spacing--lg)">
+<!-- wp:group {"align":"wide","layout":{"type":"constrained","contentSize":"1180px"}} -->
+<div class="wp-block-group alignwide"><!-- wp:paragraph {"style":{"typography":{"textTransform":"uppercase","letterSpacing":"0.16em"}},"textColor":"accent","fontSize":"sm"} -->
+<p class="has-accent-color has-text-color has-sm-font-size" style="letter-spacing:0.16em;text-transform:uppercase">{{eyebrow}}</p>
+<!-- /wp:paragraph --><!-- wp:heading {"level":1,"fontSize":"6-xl"} -->
+<h1 class="wp-block-heading has-6-xl-font-size">{{headline}}</h1>
+<!-- /wp:heading --></div>
+<!-- /wp:group -->
+
+<!-- wp:columns {"align":"wide","style":{"spacing":{"blockGap":{"left":"var:preset|spacing|2-xl"},"padding":{"top":"var:preset|spacing|lg","bottom":"var:preset|spacing|2-xl"}}}} -->
+<div class="wp-block-columns alignwide" style="padding-top:var(--wp--preset--spacing--lg);padding-bottom:var(--wp--preset--spacing--2-xl)"><!-- wp:column {"width":"34%"} -->
+<div class="wp-block-column" style="flex-basis:34%"><!-- wp:paragraph {"textColor":"secondary","fontSize":"lg"} -->
+<p class="has-secondary-color has-text-color has-lg-font-size">{{dek}}</p>
+<!-- /wp:paragraph --><!-- wp:buttons -->
+<div class="wp-block-buttons"><!-- wp:button -->
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop/">{{cta_label}}</a></div>
+<!-- /wp:button --></div>
+<!-- /wp:buttons --></div>
+<!-- /wp:column --><!-- wp:column {"width":"66%"} -->
+<div class="wp-block-column" style="flex-basis:66%"><!-- wp:query {"queryId":8,"query":{"perPage":2,"pages":0,"offset":0,"postType":"post","order":"desc","orderBy":"date","author":"","search":"","exclude":[],"sticky":"","inherit":false},"displayLayout":{"type":"flex","columns":2}} -->
+<div class="wp-block-query"><!-- wp:post-template -->
+<!-- wp:post-featured-image {"isLink":true,"aspectRatio":"4/3"} /-->
+<!-- wp:post-title {"isLink":true,"fontSize":"xl"} /-->
+<!-- wp:post-excerpt {"moreText":"Read"} /-->
+<!-- /wp:post-template --></div>
+<!-- /wp:query --></div>
+<!-- /wp:column --></div>
+<!-- /wp:columns -->
+
+<!-- wp:group {"align":"wide","style":{"spacing":{"padding":{"top":"var:preset|spacing|2-xl","bottom":"var:preset|spacing|2-xl"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group alignwide" style="padding-top:var(--wp--preset--spacing--2-xl);padding-bottom:var(--wp--preset--spacing--2-xl)">
+<!-- wp:heading {"fontSize":"2-xl"} -->
+<h2 class="wp-block-heading has-2-xl-font-size">{{journal_heading}}</h2>
+<!-- /wp:heading -->
+<!-- wp:query {"queryId":9,"query":{"perPage":4,"pages":0,"offset":2,"postType":"post","order":"desc","orderBy":"date","author":"","search":"","exclude":[],"sticky":"","inherit":false},"displayLayout":{"type":"flex","columns":4}} -->
+<div class="wp-block-query"><!-- wp:post-template -->
+<!-- wp:post-title {"isLink":true,"fontSize":"lg"} /-->
+<!-- wp:post-date {"fontSize":"sm"} /-->
+<!-- /wp:post-template --></div>
+<!-- /wp:query -->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:group {"align":"wide","style":{"spacing":{"padding":{"top":"var:preset|spacing|2-xl","bottom":"var:preset|spacing|2-xl"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group alignwide" style="padding-top:var(--wp--preset--spacing--2-xl);padding-bottom:var(--wp--preset--spacing--2-xl)">
+<!-- wp:heading {"fontSize":"2-xl"} -->
+<h2 class="wp-block-heading has-2-xl-font-size">{{section_heading}}</h2>
+<!-- /wp:heading -->
+<!-- wp:woocommerce/product-collection {"query":{"perPage":4,"pages":1,"offset":0,"postType":"product","order":"asc","orderBy":"title","search":"","exclude":[],"inherit":false,"taxQuery":[],"isProductCollectionBlock":true,"woocommerceOnSale":false,"woocommerceStockStatus":["instock","outofstock","onbackorder"],"woocommerceAttributes":[],"woocommerceHandPickedProducts":[],"filterable":false},"displayLayout":{"type":"flex","columns":4,"shrinkColumns":true},"dimensions":{"widthType":"fill"},"queryId":10} -->
+<div class="wp-block-woocommerce-product-collection"><!-- wp:woocommerce/product-template -->
+<!-- wp:woocommerce/product-image {"imageSizing":"thumbnail","isDescendentOfQueryLoop":true} /-->
+<!-- wp:post-title {"level":3,"isLink":true,"fontSize":"md","__woocommerceNamespace":"woocommerce/product-collection/product-title"} /-->
+<!-- wp:woocommerce/product-price {"isDescendentOfQueryLoop":true} /-->
+<!-- /wp:woocommerce/product-template --></div>
+<!-- /wp:woocommerce/product-collection -->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:group {"align":"wide","layout":{"type":"constrained","contentSize":"900px"}} -->
+<div class="wp-block-group alignwide"><!-- wp:heading {"textAlign":"center","fontSize":"2-xl"} -->
+<h2 class="wp-block-heading has-text-align-center has-2-xl-font-size">{{story_heading}}</h2>
+<!-- /wp:heading --><!-- wp:paragraph {"align":"center","textColor":"secondary"} -->
+<p class="has-text-align-center has-secondary-color has-text-color">{{story_body}}</p>
+<!-- /wp:paragraph --></div>
+<!-- /wp:group -->
+</main>
+<!-- /wp:group -->
+
+<!-- wp:template-part {"slug":"footer","tagName":"footer"} /-->
