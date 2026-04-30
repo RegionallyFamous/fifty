@@ -49,7 +49,9 @@ Read this file at the start of any LLM session to discover the project's structu
 |   |-- content/
 |   |   |-- category-images.json
 |   |   |-- content.xml
+|   |   |-- image-manifest.json
 |   |   |-- product-images.json
+|   |   |-- product-photo-prompts.json
 |   |   `-- products.csv
 |   |-- images/
 |   |   |-- cat-curated-bundles.jpg
@@ -156,17 +158,21 @@ Read this file at the start of any LLM session to discover the project's structu
 |   `-- myaccount/
 |       `-- dashboard.php
 |-- AGENTS.md
+|-- BRIEF.md
 |-- CHANGELOG.md
 |-- design-intent.md
 |-- functions.php
 |-- INDEX.md
+|-- microcopy-overrides.json
 |-- readiness.json
 |-- README.md
 |-- readme.txt
 |-- screenshot.png
+|-- spec.json
 |-- style.css
 |-- SYSTEM-PROMPT.md
-`-- theme.json
+|-- theme.json
+`-- token-patches.json
 ```
 
 ## Templates
@@ -322,18 +328,18 @@ Read this file at the start of any LLM session to discover the project's structu
 
 ### Colors
 
-- `base` = #F5F1E8 (Base)
-- `surface` = #FFFFFF (Surface)
-- `subtle` = #EDE7D6 (Subtle)
-- `muted` = #E0D9C4 (Muted)
-- `border` = #000000 (Border)
-- `tertiary` = #5C5A52 (Tertiary)
-- `secondary` = #2A2A28 (Secondary)
-- `contrast` = #000000 (Contrast)
-- `primary` = #000000 (Primary)
-- `primary-hover` = #1F4FE0 (Primary Hover)
-- `accent` = #FFE600 (Accent)
-- `accent-soft` = #FFF7B8 (Accent Soft)
+- `base` = #e8e4d8 (Base)
+- `surface` = #f0ecdf (Surface)
+- `subtle` = #d6d1c4 (Subtle)
+- `muted` = #a09a8e (Muted)
+- `border` = #1a1a18 (Border)
+- `tertiary` = #6b6760 (Tertiary)
+- `secondary` = #2e2c28 (Secondary)
+- `contrast` = #0d0d0b (Contrast)
+- `primary` = #0d0d0b (Primary)
+- `primary-hover` = #2e2c28 (Primary Hover)
+- `accent` = #e8400a (Accent)
+- `accent-soft` = #f5c4b0 (Accent Soft)
 - `secondary-accent` = #FF3C8A (Secondary Accent)
 - `tertiary-accent` = #1F4FE0 (Tertiary Accent)
 - `success` = #00B86B (Success)
@@ -358,34 +364,34 @@ Read this file at the start of any LLM session to discover the project's structu
 
 ### Font families
 
-- `sans` = Helvetica Neue
+- `sans` = Courier Prime
 - `serif` = Iowan Old Style
 - `mono` = ui-monospace
-- `display` = Anton
+- `display` = Courier Prime
 
 ### Spacing scale
 
-- `2-xs` = clamp(0.25rem, 0.4vw + 0.1rem, 0.375rem)
-- `xs` = clamp(0.5rem, 0.6vw + 0.25rem, 0.75rem)
-- `sm` = clamp(0.75rem, 0.8vw + 0.5rem, 1rem)
-- `md` = clamp(1rem, 1vw + 0.75rem, 1.5rem)
-- `lg` = clamp(1.5rem, 2vw + 1rem, 2.5rem)
-- `xl` = clamp(2rem, 3vw + 1.25rem, 3.75rem)
-- `2-xl` = clamp(3rem, 5vw + 1.5rem, 5.5rem)
-- `3-xl` = clamp(4rem, 6vw + 2rem, 7.5rem)
-- `4-xl` = clamp(5rem, 8vw + 2.5rem, 10rem)
-- `5-xl` = clamp(6rem, 10vw + 3rem, 14rem)
+- `2-xs` = 0.25rem
+- `xs` = 0.5rem
+- `sm` = 0.75rem
+- `md` = 1rem
+- `lg` = 1.5rem
+- `xl` = 2rem
+- `2-xl` = 3rem
+- `3-xl` = 4rem
+- `4-xl` = 5rem
+- `5-xl` = 6rem
 
 ### Shadows
 
-- `xs` = 2px 2px 0 0 var(--wp--preset--color--contrast)
-- `sm` = 3px 3px 0 0 var(--wp--preset--color--contrast)
-- `md` = 4px 4px 0 0 var(--wp--preset--color--contrast)
-- `lg` = 6px 6px 0 0 var(--wp--preset--color--contrast)
-- `xl` = 8px 8px 0 0 var(--wp--preset--color--contrast)
-- `accent` = 6px 6px 0 0 var(--wp--preset--color--accent)
-- `secondary-accent` = 6px 6px 0 0 var(--wp--preset--color--secondary-accent)
-- `tertiary-accent` = 6px 6px 0 0 var(--wp--preset--color--tertiary-accent)
+- `xs` = none
+- `sm` = none
+- `md` = none
+- `lg` = none
+- `xl` = none
+- `accent` = none
+- `secondary-accent` = none
+- `tertiary-accent` = none
 - `inset` = inset 0 0 0 2px var(--wp--preset--color--contrast)
 
 ### Layout
