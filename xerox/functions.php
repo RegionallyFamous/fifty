@@ -606,6 +606,8 @@ add_action(
 		// dashboard tab.
 		remove_action( 'woocommerce_account_dashboard', 'wc_account_dashboard' );
 		add_action( 'woocommerce_account_dashboard', 'xerox_render_account_dashboard' );
+		remove_action( 'woocommerce_account_orders_endpoint', 'woocommerce_account_orders' );
+		add_action( 'woocommerce_account_orders_endpoint', 'xerox_render_account_orders' );
 	},
 	20
 );
@@ -686,6 +688,36 @@ if ( ! function_exists( 'xerox_render_account_dashboard' ) ) {
 		<?php
 	}
 }
+
+if ( ! function_exists( 'xerox_render_account_orders' ) ) {
+	function xerox_render_account_orders( int $current_page = 1 ): void {
+		if ( ! function_exists( 'wc_get_orders' ) || ! is_user_logged_in() ) {
+			woocommerce_account_orders( $current_page );
+			return;
+		}
+
+		$orders = wc_get_orders(
+			array(
+				'customer_id' => get_current_user_id(),
+				'limit'       => 1,
+				'return'      => 'ids',
+			)
+		);
+		if ( $orders ) {
+			woocommerce_account_orders( $current_page );
+			return;
+		}
+		?>
+<section class="wo-account-card wo-account-empty-orders">
+	<p class="wo-account-card__eyebrow"><?php esc_html_e( 'ORDER FILE', 'xerox' ); ?></p>
+	<h2 class="wo-account-card__title"><?php esc_html_e( 'NO SLIPS ON THE BOARD.', 'xerox' ); ?></h2>
+	<p class="wo-account-card__lede"><?php esc_html_e( 'The counter is clean. Pull fresh stock from the shop and the next receipt lands here.', 'xerox' ); ?></p>
+	<a class="wo-account-card__cta" href="<?php echo esc_url( wc_get_page_permalink( 'shop' ) ); ?>"><?php esc_html_e( 'BROWSE PRODUCTS', 'xerox' ); ?> <span aria-hidden="true">&rarr;</span></a>
+</section>
+		<?php
+	}
+}
+
 // Branded My Account login screen.
 //
 // The default WC login screen is two side-by-side forms ("Login" and
@@ -798,14 +830,6 @@ add_filter(
 	}
 );
 // === END body-class ===
-
-add_action(
-	'wp_head',
-	static function (): void {
-		echo '<style id="xerox-account-notice-button">.woocommerce-account .wc-block-components-notice-banner .woocommerce-Button{color:var(--wp--preset--color--contrast);background:var(--wp--preset--color--base);border:var(--wp--custom--border--width--hairline) solid var(--wp--preset--color--contrast);padding:var(--wp--preset--spacing--xs) var(--wp--preset--spacing--sm);min-height:32px;display:inline-flex;align-items:center;text-decoration:none}</style>';
-	},
-	99
-);
 
 // === BEGIN swatches ===
 //
