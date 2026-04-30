@@ -1,0 +1,44 @@
+{
+  "slug": "agitprop",
+  "name": "Agitprop",
+  "tagline": "Soviet constructivist storefront: scarlet and black editions, diagonal blocks, type as weapon.",
+  "voice": "urgent constructivist print shop: clipped campaign language, edition numbers, workshop dispatches, red-label CTAs, no softness or lifestyle phrasing.",
+  "source": "obel",
+  "palette": {
+    "base": "#e7dcc2",
+    "surface": "#f1e8cc",
+    "contrast": "#110e07",
+    "accent": "#be2428",
+    "primary": "#be2428",
+    "secondary": "#726c5e",
+    "tertiary": "#aea894",
+    "muted": "#726c5e",
+    "border": "#110e07"
+  },
+  "fonts": {
+    "display": {
+      "family": "Bebas Neue",
+      "fallback": "Impact, Arial Narrow, sans-serif",
+      "google_font": true,
+      "weights": [
+        400
+      ]
+    },
+    "sans": {
+      "family": "Roboto Condensed",
+      "fallback": "Arial Narrow, Helvetica, Arial, sans-serif",
+      "google_font": true,
+      "weights": [
+        400,
+        700
+      ]
+    }
+  },
+  "layout_hints": [
+    "type-led hero with enormous condensed slogan and red CTA slab",
+    "constructivist diagonal red and black blocks behind featured product art",
+    "shop grid as edition posters in rigid framed tiles",
+    "hard black borders, scarlet labels, asymmetric columns, no rounded corners",
+    "footer should feel like a print colophon, not a lifestyle brand footer"
+  ]
+}

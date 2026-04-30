@@ -1,0 +1,84 @@
+{
+  "custom_border_width": {
+    "hairline": "2px",
+    "thick": "3px"
+  },
+  "custom_radius": {
+    "lg": "0",
+    "md": "0",
+    "none": "0",
+    "pill": "0",
+    "sm": "0",
+    "xl": "0"
+  },
+  "schema": 1,
+  "shadow_presets": [
+    {
+      "shadow": "none",
+      "slug": "xs"
+    },
+    {
+      "shadow": "none",
+      "slug": "sm"
+    },
+    {
+      "shadow": "none",
+      "slug": "md"
+    },
+    {
+      "shadow": "none",
+      "slug": "lg"
+    },
+    {
+      "shadow": "none",
+      "slug": "xl"
+    },
+    {
+      "shadow": "none",
+      "slug": "inset"
+    }
+  ],
+  "spacing_sizes": [
+    {
+      "size": "0.25rem",
+      "slug": "2-xs"
+    },
+    {
+      "size": "0.375rem",
+      "slug": "xs"
+    },
+    {
+      "size": "0.5rem",
+      "slug": "sm"
+    },
+    {
+      "size": "0.875rem",
+      "slug": "md"
+    },
+    {
+      "size": "1.25rem",
+      "slug": "lg"
+    },
+    {
+      "size": "1.75rem",
+      "slug": "xl"
+    },
+    {
+      "size": "2.5rem",
+      "slug": "2-xl"
+    },
+    {
+      "size": "3.5rem",
+      "slug": "3-xl"
+    },
+    {
+      "size": "5rem",
+      "slug": "4-xl"
+    },
+    {
+      "size": "7rem",
+      "slug": "5-xl"
+    }
+  ],
+  "styles_css_append": "/* agitprop \u2014 constructivist hard-edge overrides */body.theme-agitprop{background-color:var(--wp--preset--color--base);}/* --- zero radius everywhere --- */body.theme-agitprop *,body.theme-agitprop *::before,body.theme-agitprop *::after{border-radius:0!important;box-shadow:none!important;}/* --- card frames: surface fill + contrast border --- */body.theme-agitprop .wc-block-grid__product,body.theme-agitprop .wc-block-product-template .wc-block-product,body.theme-agitprop li.product,body.theme-agitprop .wo-product-card,body.theme-agitprop .wp-block-woocommerce-product-collection .wc-block-product{background:var(--wp--preset--color--surface);border:3px solid var(--wp--preset--color--contrast)!important;padding:0;}/* --- no gaps between grid tiles \u2014 border acts as gutter --- */body.theme-agitprop .wc-block-product-template,body.theme-agitprop .wp-block-woocommerce-product-collection ul.wc-block-product-template,body.theme-agitprop ul.products{gap:0!important;row-gap:0!important;column-gap:0!important;}body.theme-agitprop .wc-block-product-template .wc-block-product+.wc-block-product,body.theme-agitprop li.product+li.product{margin-left:-3px;margin-top:-3px;}/* --- CTA buttons: scarlet slab, no radius, contrast outline --- */body.theme-agitprop .wp-block-button__link,body.theme-agitprop .wc-block-components-button,body.theme-agitprop .button,body.theme-agitprop button.wp-element-button,body.theme-agitprop a.button,body.theme-agitprop input[type=submit]{background:var(--wp--preset--color--primary)!important;color:var(--wp--preset--color--surface)!important;border:2px solid var(--wp--preset--color--contrast)!important;border-radius:0!important;box-shadow:none!important;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;padding:0.55em 1.1em;}body.theme-agitprop .wp-block-button__link:hover,body.theme-agitprop .wc-block-components-button:hover,body.theme-agitprop .button:hover,body.theme-agitprop button.wp-element-button:hover,body.theme-agitprop a.button:hover,body.theme-agitprop input[type=submit]:hover{background:var(--wp--preset--color--contrast)!important;color:var(--wp--preset--color--surface)!important;}/* --- product image containers: flush, no radius --- */body.theme-agitprop .wc-block-grid__product-image,body.theme-agitprop .wc-block-product-image,body.theme-agitprop .attachment-woocommerce_thumbnail{border-radius:0!important;display:block;}body.theme-agitprop .wc-block-grid__product-image img,body.theme-agitprop .wc-block-product-image img,body.theme-agitprop .attachment-woocommerce_thumbnail{border-radius:0!important;border-bottom:2px solid var(--wp--preset--color--contrast);}/* --- product title: contrast, condensed, uppercase --- */body.theme-agitprop .wc-block-grid__product-title,body.theme-agitprop .wc-block-components-product-name,body.theme-agitprop .wp-block-post-title,body.theme-agitprop h1,body.theme-agitprop h2,body.theme-agitprop h3{color:var(--wp--preset--color--contrast);text-transform:uppercase;letter-spacing:0.03em;}/* --- price labels: primary scarlet --- */body.theme-agitprop .wc-block-grid__product-price,body.theme-agitprop .wc-block-components-product-price,body.theme-agitprop .price{color:var(--wp--preset--color--primary)!important;font-weight:700;}/* --- section / row dividers: hard contrast rule --- */body.theme-agitprop .wp-block-group+.wp-block-group,body.theme-agitprop section+section{border-top:3px solid var(--wp--preset--color--contrast);}/* --- hero: tight padding, no softness --- */body.theme-agitprop .wo-hero,body.theme-agitprop .wp-block-cover,body.theme-agitprop .hero-section{border-bottom:3px solid var(--wp--preset--color--contrast);}/* --- header: scarlet strip behind logo area --- */body.theme-agitprop header.wp-block-group{background:var(--wp--preset--color--primary);border-bottom:3px solid var(--wp--preset--color--contrast)!important;}body.theme-agitprop .wp-block-site-title a,body.theme-agitprop .wp-block-navigation a{color:var(--wp--preset--color--surface)!important;text-transform:uppercase;letter-spacing:0.08em;}body.theme-agitprop .wp-block-navigation a:hover{color:var(--wp--preset--color--base)!important;}/* --- footer colophon: tight, muted, contrast rule --- */body.theme-agitprop footer.wp-block-group,body.theme-agitprop .wp-block-template-part:last-child{background:var(--wp--preset--color--contrast)!important;border-top:3px solid var(--wp--preset--color--contrast)!important;padding-top:var(--wp--preset--spacing--md)!important;padding-bottom:var(--wp--preset--spacing--md)!important;}body.theme-agitprop footer.wp-block-group *,body.theme-agitprop .wp-block-template-part:last-child *{color:var(--wp--preset--color--tertiary)!important;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;}/* --- add to cart / woo action buttons inherit slab style --- */body.theme-agitprop .added_to_cart,body.theme-agitprop .wc-forward{background:var(--wp--preset--color--contrast)!important;color:var(--wp--preset--color--surface)!important;border:2px solid var(--wp--preset--color--contrast)!important;border-radius:0!important;}/* --- notices: scarlet accent bar --- */body.theme-agitprop .woocommerce-message,body.theme-agitprop .wc-block-components-notice{border-left:4px solid var(--wp--preset--color--primary)!important;border-radius:0!important;background:var(--wp--preset--color--surface)!important;}/* --- quantity inputs: square --- */body.theme-agitprop input[type=number],body.theme-agitprop .wc-block-components-quantity-selector input{border:2px solid var(--wp--preset--color--contrast)!important;border-radius:0!important;background:var(--wp--preset--color--surface);}/* end agitprop */"
+}
