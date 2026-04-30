@@ -147,132 +147,148 @@
       "status": "skipped-existing"
     },
     {
+      "attempt": 1,
       "filename": "product-wo-invisible-umbrella.jpg",
       "model": "gpt-image-2",
       "prompt": "Square product photograph, flat cold fluorescent light. An empty closed umbrella sleeve \u2014 just the fabric tube \u2014 collapsed and taped shut with black electrical tape, lying on newsprint. Shadow shaped like an open umbrella projected by off-camera object onto newsprint. Near-monochrome, heavy grain. No text, no logos.",
       "provider": "openai",
       "sku": "WO-INVISIBLE-UMBRELLA",
-      "status": "skipped-existing"
+      "status": "generated"
     },
     {
+      "attempt": 1,
       "filename": "product-wo-left-sock.jpg",
       "model": "gpt-image-2",
       "prompt": "Square product photograph, harsh overhead fluorescent. A single thick grey wool sock, slightly worn heel, folded once on crumpled cream newsprint. A lone safety pin pierces the cuff. Near-monochrome, photocopy grain, deep shadow pooling beside the sock, crushed blacks. Tight square crop, no text, no logos.",
       "provider": "openai",
       "sku": "WO-LEFT-SOCK",
-      "status": "skipped-existing"
+      "status": "generated"
     },
     {
+      "attempt": 1,
       "filename": "product-wo-lost-recipe-time.jpg",
       "model": "gpt-image-2",
       "prompt": "Square product photograph, raking side light. A small weathered index card with illegible handwritten lines, pinned with a rusted safety pin to a scrap of torn newsprint. A broken pencil lies across the corner. Near-monochrome, heavy xerographic grain, faint smear marks, deep shadows. No logos, no readable text.",
       "provider": "openai",
       "sku": "WO-LOST-RECIPE-TIME",
-      "status": "skipped-existing"
+      "status": "generated"
     },
     {
+      "attempt": 1,
       "filename": "product-wo-memory-foam-memory.jpg",
       "model": "gpt-image-2",
       "prompt": "Square product photograph, soft diffused cold light with hard edge shadow. A small cube of off-white memory foam, compressed on one side with a deep thumbprint indent, sitting on crumpled newsprint. Near-monochrome, heavy photocopy grain, blown highlights on foam surface, crushed black shadow beneath. No text, no logos.",
       "provider": "openai",
       "sku": "WO-MEMORY-FOAM-MEMORY",
-      "status": "skipped-existing"
+      "status": "generated"
     },
     {
+      "attempt": 1,
       "filename": "product-wo-monday-kit.jpg",
       "model": "gpt-image-2",
       "prompt": "Square product photograph, harsh top-down fluorescent. A beat-up ziplock bag containing: a crumpled receipt, two aspirin, a dead AA battery, and a dull pencil stub. Laid flat on newsprint. Near-monochrome, extreme photocopy grain, deep shadows at bag edges, slightly overexposed center. No text, no logos.",
       "provider": "openai",
       "sku": "WO-MONDAY-KIT",
-      "status": "skipped-existing"
+      "status": "generated"
     },
     {
+      "attempt": 1,
       "filename": "product-wo-moon-dust.jpg",
       "model": "gpt-image-2",
       "prompt": "Square product photograph, single overhead hard light. A small open kraft paper envelope with fine grey-white powder spilling from the lip onto crumpled newsprint, a smeared dusting around it. Near-monochrome, heavy xerographic grain, blown highlights on powder pile, deep inkwell shadows. No text, no logos.",
       "provider": "openai",
       "sku": "WO-MOON-DUST",
-      "status": "skipped-existing"
+      "status": "generated"
     },
     {
+      "attempt": 1,
       "filename": "product-wo-one-hand-clapping.jpg",
       "model": "gpt-image-2",
       "prompt": "Square product photograph, raking fluorescent side light. A single worn leather work glove, fingers curled halfway, lying on newsprint. Its pair is absent \u2014 deliberate empty space to the right. Near-monochrome, heavy grain, photocopy streak across upper frame, deep cast shadow. No text, no logos.",
       "provider": "openai",
       "sku": "WO-ONE-HAND-CLAPPING",
-      "status": "skipped-existing"
+      "status": "generated"
     },
     {
+      "attempt": 1,
       "filename": "product-wo-pocket-thunder.jpg",
       "model": "gpt-image-2",
       "prompt": "Square product photograph, hard single-source light from above-left. A small dark metal tin the size of an Altoids box, dented lid, closed, resting on crumpled newsprint. A jagged hand-torn strip of black electrical tape seals the seam. Near-monochrome, heavy xerox grain, specular on tin edge, crushed blacks. No text, no logos.",
       "provider": "openai",
       "sku": "WO-POCKET-THUNDER",
-      "status": "skipped-existing"
+      "status": "generated"
     },
     {
+      "attempt": 1,
       "filename": "product-wo-portable-hole.jpg",
       "model": "gpt-image-2",
       "prompt": "Square product photograph, harsh overhead fluorescent. A folded square of matte black fabric \u2014 extremely dark, absorbing all light \u2014 lying flat on cream newsprint creating an illusion of a void in the paper. Safety pin in corner. High contrast, near-monochrome, heavy grain, edges blown. No text, no logos.",
       "provider": "openai",
       "sku": "WO-PORTABLE-HOLE",
-      "status": "skipped-existing"
+      "status": "generated"
     },
     {
+      "attempt": 1,
       "filename": "product-wo-sensory-starter.jpg",
       "model": "gpt-image-2",
       "prompt": "Square product photograph, side-raking cold light. A small cardboard box open-topped, containing a swatch of corduroy, a smooth river pebble, a piece of aluminum foil, and a strip of sandpaper. On newsprint. Near-monochrome, photocopy grain, detailed texture contrast between contents, deep shadow inside box. No text, no logos.",
       "provider": "openai",
       "sku": "WO-SENSORY-STARTER",
-      "status": "skipped-existing"
+      "status": "generated"
     },
     {
+      "attempt": 1,
       "filename": "product-wo-silence-jar.jpg",
       "model": "gpt-image-2",
       "prompt": "Square product photograph, flat cold overhead light. A small wide-mouth mason jar with lid tightly sealed, completely empty, sitting on crumpled cream newsprint. Reflection of fluorescent tube visible on glass. Near-monochrome, heavy photocopy grain, blown highlights on jar rim, deep shadow below. No text, no logos.",
       "provider": "openai",
       "sku": "WO-SILENCE-JAR",
-      "status": "skipped-existing"
+      "status": "generated"
     },
     {
+      "attempt": 1,
       "filename": "product-wo-spare-key-nowhere.jpg",
       "model": "gpt-image-2",
       "prompt": "Square product photograph, hard raking light from upper right. A single old brass key on a split ring, lying on crumpled newsprint beside a small torn paper tag. The tag is blank. Near-monochrome with faint warm brass tone desaturated, heavy xerographic grain, deep black shadow, paper texture prominent. No text, no logos.",
       "provider": "openai",
       "sku": "WO-SPARE-KEY-NOWHERE",
-      "status": "skipped-existing"
+      "status": "generated"
     },
     {
+      "attempt": 1,
       "filename": "product-wo-spare-tuesday.jpg",
       "model": "gpt-image-2",
       "prompt": "Square product photograph, harsh fluorescent overhead. A standard weekly pill organizer, Tuesday compartment open and empty, all others closed, lying on crumpled newsprint. Near-monochrome, heavy photocopy grain, specular highlights on plastic compartments, deep shadow in open slot. No text, no logos.",
       "provider": "openai",
       "sku": "WO-SPARE-TUESDAY",
-      "status": "skipped-existing"
+      "status": "generated"
     },
     {
+      "attempt": 1,
       "filename": "product-wo-tangible-wifi.jpg",
       "model": "gpt-image-2",
       "prompt": "Square product photograph, hard top-down fluorescent light. A tangle of old ethernet cable coiled loosely on crumpled newsprint, one end connector missing. A bent paperclip is threaded through a cable loop. Near-monochrome, extreme photocopy grain, cable casts hard shadow, crushed blacks. No text, no logos.",
       "provider": "openai",
       "sku": "WO-TANGIBLE-WIFI",
-      "status": "skipped-existing"
+      "status": "generated"
     },
     {
+      "attempt": 1,
       "filename": "product-wo-void-sampler.jpg",
       "model": "gpt-image-2",
       "prompt": "Square product photograph, dramatic single overhead spot. A matte black sample card \u2014 like a paint chip \u2014 lying on crumpled cream newsprint, entirely uniform black on its face, edges torn. Deep shadow merges with the card. Near-monochrome, heavy grain, extreme contrast, minimal detail in shadows. No text, no logos.",
       "provider": "openai",
       "sku": "WO-VOID-SAMPLER",
-      "status": "skipped-existing"
+      "status": "generated"
     },
     {
+      "attempt": 1,
       "filename": "product-wo-whispering-stone.jpg",
       "model": "gpt-image-2",
       "prompt": "Square product photograph, soft raking fluorescent light from one side. A single smooth grey river stone, palm-sized, sitting on crumpled cream newsprint. Faint surface scratches catch the raking light. Near-monochrome, heavy photocopy grain, long hard shadow to one side, subtle texture detail on stone surface. No text, no logos.",
       "provider": "openai",
       "sku": "WO-WHISPERING-STONE",
-      "status": "skipped-existing"
+      "status": "generated"
     }
   ],
   "schema": 2,
