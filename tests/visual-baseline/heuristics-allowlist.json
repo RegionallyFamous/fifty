@@ -341,5 +341,23 @@
     "narrow-wc-block": [
       ".wo-account-login-grid"
     ]
+  },
+  "xerox:desktop:cart-filled": {
+    "narrow-wc-block": [
+      ".wc-block-cart-items"
+    ]
+  },
+  "xerox:desktop:cart-filled.line-remove": {
+    "narrow-wc-block": [
+      ".wc-block-cart-items"
+    ]
+  },
+  "xerox:desktop:checkout-filled.return-to-cart-visible": {
+    "a11y-autocomplete-valid": [
+      "*"
+    ],
+    "a11y-color-contrast": [
+      "*"
+    ]
   }
 }

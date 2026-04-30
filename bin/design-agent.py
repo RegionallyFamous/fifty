@@ -169,13 +169,13 @@ def _strip_code_fence(raw: str) -> str:
 def _parse_json_object(raw: str) -> dict[str, Any]:
     text = _strip_code_fence(raw)
     try:
-        data = json.loads(text)
+        data = json.loads(text, strict=False)
     except json.JSONDecodeError:
         start = text.find("{")
         end = text.rfind("}")
         if start == -1 or end == -1 or end <= start:
             raise
-        data = json.loads(text[start : end + 1])
+        data = json.loads(text[start : end + 1], strict=False)
     if not isinstance(data, dict):
         raise ValueError("LLM response must be a JSON object")
     return data
@@ -1172,6 +1172,54 @@ def _write_photo_manifest(
     print(f"  [design-agent/photos] wrote {_safe_rel(prompt_manifest)}")
 
 
+def _existing_photo_prompts(theme_root: Path, products: dict[str, str]) -> dict[str, str]:
+    prompt_manifest = theme_root / "playground" / "content" / "product-photo-prompts.json"
+    if not prompt_manifest.is_file():
+        return {}
+    try:
+        payload = _read_json(prompt_manifest)
+    except Exception:
+        return {}
+    prompts = payload.get("prompts")
+    if not isinstance(prompts, dict):
+        return {}
+    out = {str(k): str(v) for k, v in prompts.items() if str(v).strip()}
+    if not any(sku in out for sku in products):
+        return {}
+    return out
+
+
+def _retry_delay_seconds(exc: Exception, attempt: int) -> float | None:
+    message = str(exc).lower()
+    if "429" not in message and "rate_limit" not in message:
+        return None
+    match = re.search(r"try again in (\d+)s", message)
+    if match:
+        return min(60.0, max(1.0, float(match.group(1)) + 1.0))
+    return min(60.0, 8.0 * attempt)
+
+
+def _matches_sibling_product_photo(theme_root: Path, image_path: Path) -> bool:
+    if not image_path.is_file():
+        return False
+    try:
+        image_bytes = image_path.read_bytes()
+    except OSError:
+        return False
+    for candidate in ROOT.iterdir():
+        if candidate == theme_root or not (candidate / "theme.json").is_file():
+            continue
+        sibling = candidate / "playground" / "images" / image_path.name
+        if not sibling.is_file():
+            continue
+        try:
+            if sibling.read_bytes() == image_bytes:
+                return True
+        except OSError:
+            continue
+    return False
+
+
 def run_photos(theme_root: Path, *, dry_run: bool, model: str, keep_going: bool) -> int:
     slug = theme_root.name
     products = _product_map(theme_root) or _derive_product_map(theme_root)
@@ -1189,76 +1237,83 @@ def run_photos(theme_root: Path, *, dry_run: bool, model: str, keep_going: bool)
         print("---- END PROMPT ----")
         return 0
 
-    try:
-        raw = _completion(
-            prompt=prompt,
-            system_prompt=system,
-            mockup=mockup,
-            model=model,
-            max_output_tokens=10000,
+    prompt_map = _existing_photo_prompts(theme_root, products)
+    if prompt_map:
+        print(
+            f"  [design-agent/photos] reusing {len(prompt_map)} prompt(s) from "
+            f"{_safe_rel(theme_root / 'playground' / 'content' / 'product-photo-prompts.json')}"
         )
-    except RuntimeError as exc:
-        fallback_note = "; falling back" if keep_going else "; failing strict photo phase"
-        print(f"  [design-agent/photos] {exc}{fallback_note}", file=sys.stderr)
-        _write_photo_manifest(
-            theme_root,
-            prompts={},
-            provider="pillow",
-            model="generate-product-photos.py",
-            status="placeholder-fallback",
-            records=[{"error": str(exc)}],
-        )
-        repair_path = _write_repair_packet(
-            slug,
-            [
-                RepairProblem(
-                    problem="photo-fallback",
-                    confidence=0.35,
-                    source_files=[_safe_rel(theme_root / "playground" / "content" / "product-photo-prompts.json")],
-                    snapshots=[],
-                    next_actions=["Retry photo generation with ANTHROPIC_API_KEY and OPENAI_API_KEY or FAL_KEY available."],
-                )
-            ],
-        )
-        if repair_path:
-            print(f"  [design-agent/photos] wrote {_safe_rel(repair_path)}", file=sys.stderr)
-        if not keep_going:
-            return 1
-        rc = _fallback_photos(slug, force=True)
-        return 0 if rc == 0 else rc
-    try:
-        parsed = _parse_json_object(raw)
-    except Exception as exc:
-        print(f"  [design-agent/photos] prompt JSON parse failed: {exc}", file=sys.stderr)
-        _write_photo_manifest(
-            theme_root,
-            prompts={},
-            provider="pillow",
-            model="generate-product-photos.py",
-            status="placeholder-fallback",
-            records=[{"error": f"prompt JSON parse failed: {exc}"}],
-        )
-        if not keep_going:
-            return 1
-        rc = _fallback_photos(slug, force=True)
-        return 0 if rc == 0 else rc
+    else:
+        try:
+            raw = _completion(
+                prompt=prompt,
+                system_prompt=system,
+                mockup=mockup,
+                model=model,
+                max_output_tokens=10000,
+            )
+        except RuntimeError as exc:
+            fallback_note = "; falling back" if keep_going else "; failing strict photo phase"
+            print(f"  [design-agent/photos] {exc}{fallback_note}", file=sys.stderr)
+            _write_photo_manifest(
+                theme_root,
+                prompts={},
+                provider="pillow",
+                model="generate-product-photos.py",
+                status="placeholder-fallback",
+                records=[{"error": str(exc)}],
+            )
+            repair_path = _write_repair_packet(
+                slug,
+                [
+                    RepairProblem(
+                        problem="photo-fallback",
+                        confidence=0.35,
+                        source_files=[_safe_rel(theme_root / "playground" / "content" / "product-photo-prompts.json")],
+                        snapshots=[],
+                        next_actions=["Retry photo generation with ANTHROPIC_API_KEY and OPENAI_API_KEY or FAL_KEY available."],
+                    )
+                ],
+            )
+            if repair_path:
+                print(f"  [design-agent/photos] wrote {_safe_rel(repair_path)}", file=sys.stderr)
+            if not keep_going:
+                return 1
+            rc = _fallback_photos(slug, force=True)
+            return 0 if rc == 0 else rc
+        try:
+            parsed = _parse_json_object(raw)
+        except Exception as exc:
+            print(f"  [design-agent/photos] prompt JSON parse failed: {exc}", file=sys.stderr)
+            _write_photo_manifest(
+                theme_root,
+                prompts={},
+                provider="pillow",
+                model="generate-product-photos.py",
+                status="placeholder-fallback",
+                records=[{"error": f"prompt JSON parse failed: {exc}"}],
+            )
+            if not keep_going:
+                return 1
+            rc = _fallback_photos(slug, force=True)
+            return 0 if rc == 0 else rc
 
-    prompt_map_raw = parsed.get("prompts") or {}
-    if not isinstance(prompt_map_raw, dict):
-        print("  [design-agent/photos] prompt response omitted `prompts`; falling back", file=sys.stderr)
-        _write_photo_manifest(
-            theme_root,
-            prompts={},
-            provider="pillow",
-            model="generate-product-photos.py",
-            status="placeholder-fallback",
-            records=[{"error": "prompt response omitted prompts"}],
-        )
-        if not keep_going:
-            return 1
-        rc = _fallback_photos(slug, force=True)
-        return 0 if rc == 0 else rc
-    prompt_map = {str(k): str(v) for k, v in prompt_map_raw.items() if str(v).strip()}
+        prompt_map_raw = parsed.get("prompts") or {}
+        if not isinstance(prompt_map_raw, dict):
+            print("  [design-agent/photos] prompt response omitted `prompts`; falling back", file=sys.stderr)
+            _write_photo_manifest(
+                theme_root,
+                prompts={},
+                provider="pillow",
+                model="generate-product-photos.py",
+                status="placeholder-fallback",
+                records=[{"error": "prompt response omitted prompts"}],
+            )
+            if not keep_going:
+                return 1
+            rc = _fallback_photos(slug, force=True)
+            return 0 if rc == 0 else rc
+        prompt_map = {str(k): str(v) for k, v in prompt_map_raw.items() if str(v).strip()}
 
     generator = None
     provider = "pillow"
@@ -1304,12 +1359,29 @@ def run_photos(theme_root: Path, *, dry_run: bool, model: str, keep_going: bool)
     written = 0
     records: list[dict[str, Any]] = []
     images_dir = theme_root / "playground" / "images"
+    existing = {
+        sku
+        for sku, filename in products.items()
+        if (images_dir / filename).is_file()
+        and not _matches_sibling_product_photo(theme_root, images_dir / filename)
+    }
+    for sku in sorted(existing):
+        records.append(
+            {
+                "sku": sku,
+                "filename": products[sku],
+                "provider": provider,
+                "model": provider_model,
+                "prompt": prompt_map.get(sku, ""),
+                "status": "skipped-existing",
+            }
+        )
 
     # Build the work list (SKUs that have a prompt).
     work_items = [
         (sku, filename, prompt_map[sku])
         for sku, filename in sorted(products.items())
-        if prompt_map.get(sku)
+        if prompt_map.get(sku) and sku not in existing
     ]
 
     # Parallelise image-API calls.  OpenAI's image endpoint is rate-limited
@@ -1324,45 +1396,60 @@ def run_photos(theme_root: Path, *, dry_run: bool, model: str, keep_going: bool)
         nonlocal written
         sku, filename, image_prompt = item
         dest = images_dir / filename
-        try:
-            _write_image_bytes(dest, generator(image_prompt))
-            with _lock:
-                written += 1
-                records.append(
-                    {
-                        "sku": sku,
-                        "filename": filename,
-                        "provider": provider,
-                        "model": provider_model,
-                        "prompt": image_prompt,
-                        "status": "generated",
-                    }
+        last_exc: Exception | None = None
+        for attempt in range(1, 5):
+            try:
+                _write_image_bytes(dest, generator(image_prompt))
+                with _lock:
+                    written += 1
+                    records.append(
+                        {
+                            "sku": sku,
+                            "filename": filename,
+                            "provider": provider,
+                            "model": provider_model,
+                            "prompt": image_prompt,
+                            "status": "generated",
+                            "attempt": attempt,
+                        }
+                    )
+                print(f"  [design-agent/photos] generated {dest.relative_to(ROOT)}")
+                return
+            except Exception as exc:
+                last_exc = exc
+                delay = _retry_delay_seconds(exc, attempt)
+                if delay is None or attempt == 4:
+                    break
+                print(
+                    f"  [design-agent/photos] {sku} rate-limited; retrying in {delay:.0f}s "
+                    f"(attempt {attempt}/4)",
+                    file=sys.stderr,
                 )
-            print(f"  [design-agent/photos] generated {dest.relative_to(ROOT)}")
-        except Exception as exc:
-            with _lock:
-                records.append(
-                    {
-                        "sku": sku,
-                        "filename": filename,
-                        "provider": provider,
-                        "model": provider_model,
-                        "prompt": image_prompt,
-                        "status": "failed",
-                        "error": str(exc),
-                    }
-                )
-            print(f"  [design-agent/photos] {sku} failed: {exc}", file=sys.stderr)
+                time.sleep(delay)
+        with _lock:
+            records.append(
+                {
+                    "sku": sku,
+                    "filename": filename,
+                    "provider": provider,
+                    "model": provider_model,
+                    "prompt": image_prompt,
+                    "status": "failed",
+                    "error": str(last_exc),
+                }
+            )
+        print(f"  [design-agent/photos] {sku} failed: {last_exc}", file=sys.stderr)
 
     total = len(work_items)
     print(
-        f"  [design-agent/photos] generating {total} image(s) "
-        f"({_MAX_WORKERS} concurrent, provider={provider})"
+        f"  [design-agent/photos] generating {total} missing image(s) "
+        f"({_MAX_WORKERS} concurrent, provider={provider}; {len(existing)} already present)"
     )
     with concurrent.futures.ThreadPoolExecutor(max_workers=_MAX_WORKERS) as pool:
         list(pool.map(_generate_one, work_items))
 
-    status = "generated" if written else "placeholder-fallback"
+    available = len(existing) + written
+    status = "generated" if available == len(products) else "partial"
     _write_photo_manifest(
         theme_root,
         prompts=prompt_map,
@@ -1371,7 +1458,7 @@ def run_photos(theme_root: Path, *, dry_run: bool, model: str, keep_going: bool)
         status=status,
         records=records,
     )
-    if written == 0:
+    if available == 0:
         repair_path = _write_repair_packet(
             slug,
             [
@@ -1388,9 +1475,9 @@ def run_photos(theme_root: Path, *, dry_run: bool, model: str, keep_going: bool)
             print(f"  [design-agent/photos] wrote {_safe_rel(repair_path)}", file=sys.stderr)
         if not keep_going:
             return 1
-    elif written != len(products) and not keep_going:
+    elif available != len(products) and not keep_going:
         print(
-            f"  [design-agent/photos] generated {written}/{len(products)} product photos; failing strict photo phase",
+            f"  [design-agent/photos] generated {available}/{len(products)} product photos; failing strict photo phase",
             file=sys.stderr,
         )
         return 1
