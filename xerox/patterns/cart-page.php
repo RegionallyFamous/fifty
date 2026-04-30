@@ -42,8 +42,8 @@
 <p class="has-text-align-center has-secondary-color has-text-color has-xs-font-size wo-empty__eyebrow" style="text-transform:uppercase;letter-spacing:var(--wp--custom--letter-spacing--wider);margin-bottom:0"><?php esc_html_e( 'CART', 'xerox' ); ?></p>
 <!-- /wp:paragraph -->
 
-<!-- wp:heading {"textAlign":"center","level":1,"className":"wo-empty__title","fontSize":"3xl","style":{"typography":{"letterSpacing":"var:custom|letter-spacing|tight"},"spacing":{"margin":{"top":"0","bottom":"0"}}}} -->
-<h1 class="wp-block-heading has-text-align-center has-3-xl-font-size wo-empty__title" style="margin-top:0;margin-bottom:0;letter-spacing:var(--wp--custom--letter-spacing--tight)"><?php esc_html_e( 'CART: EMPTY.', 'xerox' ); ?></h1>
+<!-- wp:heading {"textAlign":"center","level":2,"className":"wo-empty__title","fontSize":"3xl","style":{"typography":{"letterSpacing":"var:custom|letter-spacing|tight"},"spacing":{"margin":{"top":"0","bottom":"0"}}}} -->
+<h2 class="wp-block-heading has-text-align-center has-3-xl-font-size wo-empty__title" style="margin-top:0;margin-bottom:0;letter-spacing:var(--wp--custom--letter-spacing--tight)"><?php esc_html_e( 'CART: EMPTY.', 'xerox' ); ?></h2>
 <!-- /wp:heading -->
 
 <!-- wp:paragraph {"align":"center","className":"wo-empty__lede","textColor":"secondary"} -->
@@ -55,8 +55,8 @@
 <div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop/"><?php esc_html_e( 'Xerox counter bad5bf', 'xerox' ); ?></a></div>
 <!-- /wp:button -->
 
-<!-- wp:button {"className":"is-style-outline"} -->
-<div class="wp-block-button is-style-outline"><a class="wp-block-button__link wp-element-button" href="/journal/"><?php esc_html_e( 'Xerox counter 6ab82d', 'xerox' ); ?></a></div>
+<!-- wp:button {"className":"is-style-outline","textColor":"contrast"} -->
+<div class="wp-block-button is-style-outline"><a class="wp-block-button__link has-contrast-color has-text-color wp-element-button" href="/journal/"><?php esc_html_e( 'Xerox counter 6ab82d', 'xerox' ); ?></a></div>
 <!-- /wp:button --></div>
 <!-- /wp:buttons --></div>
 <!-- /wp:woocommerce/empty-cart-block --></div>
