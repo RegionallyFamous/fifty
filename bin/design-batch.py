@@ -367,6 +367,7 @@ class RunnerOptions:
     self_heal: bool = True
     max_repair_rounds: int = 3
     unblock_dry_run: bool = False
+    keep_going: bool = True  # skip failing check phase and continue to publish
     # Progressive mode splits generation into `design.py build` followed
     # by `design.py dress`. The build step commits + pushes a structurally
     # sound draft first, then the slower content/vision work lands as
@@ -460,6 +461,8 @@ def _run_design_cmd(
         ]
         if opts.unblock_dry_run:
             cmd.append("--unblock-dry-run")
+        if opts.keep_going:
+            cmd.append("--keep-going")
         cmd.extend(["--", *design_cmd])
     else:
         cmd = [sys.executable, "bin/design.py", *design_cmd]
@@ -1856,6 +1859,17 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--keep-going",
+        action="store_true",
+        help=(
+            "Pass --keep-going to every design-watch.py child so that "
+            "when all repair layers are exhausted the pipeline skips the "
+            "failing check phase and continues to report/commit/publish. "
+            "A draft PR is opened even when checks fail; issues are noted "
+            "in the PR body."
+        ),
+    )
+    p.add_argument(
         "--single-shot",
         action="store_true",
         help=(
@@ -2206,6 +2220,7 @@ def main(argv: list[str] | None = None) -> int:
         self_heal=not args.no_self_heal,
         max_repair_rounds=args.max_repair_rounds,
         unblock_dry_run=args.unblock_dry_run,
+        keep_going=args.keep_going if hasattr(args, "keep_going") else True,
         progressive=not args.single_shot,
         fresh_worktree=args.no_resume,
         allow_unpromoted_factory_defects=args.allow_unpromoted_factory_defects,

@@ -152,6 +152,7 @@ class WatchState:
     repair_last_reason: str = ""
     repair_last_touched: list[str] = field(default_factory=list)
     repair_stop_reason: str = ""
+    kept_going_past_phase: str = ""  # set when --keep-going skipped a blocked phase
     active_child_run_id: str = ""
     active_child_status_path: str = ""
 
@@ -585,7 +586,13 @@ def write_status(
             ]
         )
     lines.extend(["", "## Next Action"])
-    if state.repair_stop_reason:
+    if state.kept_going_past_phase:
+        lines.append(
+            f"Pipeline skipped the blocked `{state.kept_going_past_phase}` phase "
+            f"(--keep-going) and continued. Issues below are unresolved but the "
+            "PR was still opened. Fix them in a follow-up PR."
+        )
+    elif state.repair_stop_reason:
         lines.append(
             f"Auto-unblock stopped: {state.repair_stop_reason} "
             "Open the Auto-Unblock section below, then fix the first blocker by hand."
@@ -858,6 +865,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--no-tool-rescue", action="store_true", help="Skip bounded tool-rescue repair."
+    )
+    parser.add_argument(
+        "--keep-going",
+        action="store_true",
+        help=(
+            "When all repair layers are exhausted and the run is still blocked, "
+            "skip the failing check phase and continue to the next phase (report, "
+            "commit, publish) instead of stopping. Issues are preserved in the "
+            "status and PR body. Use this to get a draft PR even when checks fail."
+        ),
     )
     return parser
 
@@ -1133,6 +1150,40 @@ def _terminate_child(proc: subprocess.Popen[str], *, reason: str) -> None:
         proc.wait(timeout=5)
     except subprocess.TimeoutExpired:
         pass
+
+
+def _next_phase_after(design_args: list[str], phase: str) -> str:
+    """Return the pipeline phase that immediately follows *phase*.
+
+    Reads the phase list from design.py by importing its constants so the
+    order stays in sync automatically. Falls back to "report" if the phase
+    isn't found or is the last one — "report" is always safe to resume from
+    because it just reads existing artifacts.
+    """
+    try:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "_design_for_phase_lookup",
+            Path(__file__).parent / "design.py",
+        )
+        assert spec and spec.loader
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        # Detect build vs dress by looking for --spec in design_args.
+        is_build = any(
+            a in ("build",) or a.endswith(".json")
+            for a in design_args[:3]
+        )
+        phases: tuple[str, ...] = mod._PHASES_FOR_BUILD if is_build else mod._PHASES_FOR_DRESS
+    except Exception:
+        # If import fails just advance to report
+        return "report"
+    try:
+        idx = list(phases).index(phase)
+        return phases[idx + 1] if idx + 1 < len(phases) else "report"
+    except (ValueError, IndexError):
+        return "report"
 
 
 def _resume_design_args(design_args: list[str], from_phase: str) -> list[str]:
@@ -1436,6 +1487,59 @@ def main(argv: list[str] | None = None) -> int:
                     4: "Repair cap or non-improving streak reached.",
                     5: "LLM unavailable or dry-run; handoff to a human boundary.",
                 }.get(rc_unblock, f"Repair halted after {layer_used or 'no layer'}.")
+                if watch_args.keep_going and rc_unblock != 2:
+                    # All repair layers exhausted but --keep-going is set:
+                    # skip past the failing check phase and resume the rest
+                    # of the pipeline (report → commit → publish) so a draft
+                    # PR lands even when checks can't be fully resolved.
+                    # rc==2 (dirty worktree) is the one case we never skip —
+                    # framework files are in an unknown state.
+                    _skip_phase = resume_phase  # usually "check"
+                    state.kept_going_past_phase = _skip_phase
+                    print(
+                        f"Working: --keep-going: skipping blocked phase "
+                        f"`{_skip_phase}` and continuing pipeline.",
+                        flush=True,
+                    )
+                    write_event(
+                        event_path,
+                        {
+                            "type": "keep_going_skip",
+                            "skipped_phase": _skip_phase,
+                            "stop_reason": state.repair_stop_reason,
+                        },
+                    )
+                    state.check_failures = []
+                    state.snap_error_cells = 0
+                    state.final_status = None
+                    # Advance past the stuck phase to the one after it.
+                    next_resume = _next_phase_after(design_args, _skip_phase)
+                    resume_args = _resume_design_args(design_args, next_resume)
+                    state.command = [sys.executable, "-u", str(script_path), *resume_args]
+                    state.current_phase = next_resume
+                    state.phase_started_at = time.time()
+                    state.last_output_at = time.time()
+                    try:
+                        rc = run_subprocess(
+                            state,
+                            event_path,
+                            status_path,
+                            summary_path,
+                            watch_args.heartbeat_seconds,
+                            watch_args.stall_seconds,
+                            watch_args.kill_stall_seconds,
+                            watch_args.max_elapsed_seconds,
+                            watch_args.verbose,
+                        )
+                    finally:
+                        if state.current_phase and state.phase_started_at:
+                            state.phase_durations[state.current_phase] = (
+                                state.phase_durations.get(state.current_phase, 0.0)
+                                + max(0.0, time.time() - state.phase_started_at)
+                            )
+                    state.returncode = rc
+                    write_event(event_path, {"type": "process_exit", "returncode": rc})
+                    write_summary(summary_path, state)
                 break
 
             # Prepare a resume: reset per-run artifacts the next child run

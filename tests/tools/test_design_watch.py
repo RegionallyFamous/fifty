@@ -492,6 +492,41 @@ def test_resume_design_args_strips_only_flag():
     assert resumed[-2:] == ["--from", "check"]
 
 
+def test_keep_going_flag_parsed_and_helper_returns_next_phase():
+    """--keep-going arg parses; _next_phase_after returns the phase after 'check'."""
+    watch = load_design_watch()
+    args, _design = watch.parse_watch_args(["--keep-going", "--", "dress", "--theme", "agave"])
+    assert args.keep_going is True
+
+    # _next_phase_after with dress pipeline should return "report" after "check"
+    next_p = watch._next_phase_after(["dress", "--theme", "agave"], "check")
+    assert next_p == "report"
+
+
+def test_keep_going_status_message(tmp_path):
+    """write_status shows the keep-going skip note instead of the stop message."""
+    watch = load_design_watch()
+    now = time.time()
+    state = watch.WatchState(
+        run_id="test",
+        started_at=now,
+        command=["python3", "bin/design.py"],
+        cwd=str(REPO_ROOT),
+        slug="agave",
+        phases=list(watch.PHASE_LABELS.keys()),
+    )
+    state.repair_stop_reason = "Repair halted."
+    state.kept_going_past_phase = "check"
+    status_path = tmp_path / "STATUS.md"
+    watch.write_status(status_path, state)
+    body = status_path.read_text(encoding="utf-8")
+    assert "--keep-going" in body
+    assert "check" in body
+    assert "follow-up PR" in body
+    # The "Auto-unblock stopped" message should NOT appear when keep_going took over
+    assert "Auto-unblock stopped" not in body
+
+
 def test_write_status_emits_auto_unblock_section(tmp_path):
     watch = load_design_watch()
     now = time.time()
