@@ -1,0 +1,84 @@
+{
+  "custom_border_width": {
+    "hairline": "1px",
+    "thick": "1.5px"
+  },
+  "custom_radius": {
+    "lg": "0",
+    "md": "0",
+    "none": "0",
+    "pill": "0",
+    "sm": "0",
+    "xl": "0"
+  },
+  "schema": 1,
+  "shadow_presets": [
+    {
+      "shadow": "none",
+      "slug": "xs"
+    },
+    {
+      "shadow": "none",
+      "slug": "sm"
+    },
+    {
+      "shadow": "none",
+      "slug": "md"
+    },
+    {
+      "shadow": "none",
+      "slug": "lg"
+    },
+    {
+      "shadow": "none",
+      "slug": "xl"
+    },
+    {
+      "shadow": "inset 0 1px 2px rgba(15,15,18,0.08)",
+      "slug": "inset"
+    }
+  ],
+  "spacing_sizes": [
+    {
+      "size": "clamp(0.25rem, 0.3vw + 0.1rem, 0.3125rem)",
+      "slug": "2-xs"
+    },
+    {
+      "size": "clamp(0.375rem, 0.5vw + 0.2rem, 0.5rem)",
+      "slug": "xs"
+    },
+    {
+      "size": "clamp(0.5rem, 0.6vw + 0.3rem, 0.75rem)",
+      "slug": "sm"
+    },
+    {
+      "size": "clamp(0.75rem, 0.8vw + 0.5rem, 1rem)",
+      "slug": "md"
+    },
+    {
+      "size": "clamp(1rem, 1.2vw + 0.6rem, 1.5rem)",
+      "slug": "lg"
+    },
+    {
+      "size": "clamp(1.5rem, 2vw + 0.75rem, 2.5rem)",
+      "slug": "xl"
+    },
+    {
+      "size": "clamp(2rem, 3vw + 1rem, 3rem)",
+      "slug": "2-xl"
+    },
+    {
+      "size": "clamp(2.5rem, 4vw + 1.25rem, 4rem)",
+      "slug": "3-xl"
+    },
+    {
+      "size": "clamp(3rem, 5vw + 1.5rem, 5rem)",
+      "slug": "4-xl"
+    },
+    {
+      "size": "clamp(3.5rem, 6vw + 1.75rem, 6rem)",
+      "slug": "5-xl"
+    }
+  ],
+  "styles_css_append": "/* lab-decant: zero-radius, border-only, monospace data-grid tuning */\n\n/* --- global resets --- */\n*,\n*::before,\n*::after {\n  border-radius: 0 !important;\n  box-shadow: none !important;\n}\n\n/* --- page / surface hierarchy --- */\nbody {\n  background-color: var(--wp--preset--color--base);\n  font-family: var(--wp--preset--font-family--sans);\n  font-weight: 400;\n}\n\n/* --- section vertical rhythm --- */\n.wp-site-blocks > * + * {\n  margin-block-start: var(--wp--preset--spacing--xl);\n}\n.wp-site-blocks section,\n.wp-site-blocks .wp-block-group {\n  padding-block: var(--wp--preset--spacing--lg);\n}\n\n/* --- card chrome: surface fill + heavy border, no shadow --- */\n.wc-block-grid__product,\n.wc-block-components-product-card,\nul.products li.product,\n.wp-block-woocommerce-product-new .wc-block-grid__product,\n.wo-card,\n.wp-block-post {\n  background-color: var(--wp--preset--color--surface);\n  border: 1.5px solid var(--wp--preset--color--border);\n  padding: var(--wp--preset--spacing--sm);\n  box-shadow: none !important;\n}\n\n/* --- section dividers --- */\n.wp-block-separator,\n.wc-block-components-totals-item {\n  border-color: var(--wp--preset--color--border);\n  border-width: 1.5px;\n}\n\n/* --- section headings: tertiary, reduced size --- */\nh2, h3, .wp-block-heading {\n  color: var(--wp--preset--color--tertiary);\n  font-size: var(--wp--preset--font-size--md, 1rem);\n  font-weight: 500;\n  font-family: var(--wp--preset--font-family--sans);\n  text-transform: uppercase;\n  letter-spacing: 0.06em;\n}\n\n/* --- hero headline: monospace display --- */\n.wp-block-site-title,\n.wp-block-site-tagline,\n.hero-headline,\n.wp-block-heading.is-style-display {\n  font-family: var(--wp--preset--font-family--display);\n  font-weight: 700;\n  color: var(--wp--preset--color--contrast);\n}\n\n/* --- price, mL qty, lot/batch: monospace + contrast --- */\n.wc-block-components-product-price,\n.price,\nbdi,\n.wo-lot,\n.wo-batch,\n.wo-ml {\n  font-family: var(--wp--preset--font-family--mono);\n  font-weight: 600;\n  color: var(--wp--preset--color--contrast);\n}\n\n/* --- secondary metadata: muted --- */\n.wc-block-components-product-meta,\n.product_meta,\n.wo-meta-label,\n.wo-house-label {\n  font-family: var(--wp--preset--font-family--mono);\n  font-weight: 400;\n  color: var(--wp--preset--color--muted);\n  font-size: 0.75rem;\n  letter-spacing: 0.04em;\n}\n\n/* --- buttons: rectangular, accent fill, no radius --- */\n.wp-block-button__link,\n.wc-block-components-button,\n.button,\nbutton,\ninput[type=\"submit\"] {\n  border-radius: 0 !important;\n  background-color: var(--wp--preset--color--accent);\n  color: var(--wp--preset--color--base);\n  font-family: var(--wp--preset--font-family--sans);\n  font-weight: 500;\n  font-size: 0.8125rem;\n  letter-spacing: 0.05em;\n  text-transform: uppercase;\n  border: 1.5px solid var(--wp--preset--color--accent);\n  padding: var(--wp--preset--spacing--xs) var(--wp--preset--spacing--md);\n  box-shadow: none !important;\n  transition: background-color 0.15s ease, color 0.15s ease;\n}\n.wp-block-button__link:hover,\n.wc-block-components-button:hover,\n.button:hover,\nbutton:hover,\ninput[type=\"submit\"]:hover {\n  background-color: var(--wp--preset--color--primary-hover);\n  border-color: var(--wp--preset--color--primary-hover);\n  color: var(--wp--preset--color--base);\n}\n\n/* --- category strip tiles: border-only, accent-soft hover, mono label --- */\n.wp-block-navigation-item__content,\n.wo-category-tile,\n.wp-block-term-description {\n  border: 1.5px solid var(--wp--preset--color--border);\n  padding: var(--wp--preset--spacing--xs) var(--wp--preset--spacing--sm);\n  font-family: var(--wp--preset--font-family--mono);\n  font-weight: 400;\n  font-size: 0.75rem;\n  letter-spacing: 0.06em;\n  text-transform: uppercase;\n  background-color: transparent;\n  transition: background-color 0.15s ease;\n}\n.wo-category-tile:hover,\n.wp-block-navigation-item:hover .wp-block-navigation-item__content {\n  background-color: var(--wp--preset--color--accent-soft);\n}\n\n/* --- product grid: 4-col desktop, 2-col tablet, 1-col mobile --- */\n.wc-block-grid__products,\nul.products {\n  display: grid !important;\n  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;\n  gap: var(--wp--preset--spacing--sm) !important;\n}\n@media (max-width: 1024px) {\n  .wc-block-grid__products,\n  ul.products {\n    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;\n  }\n}\n@media (max-width: 600px) {\n  .wc-block-grid__products,\n  ul.products {\n    grid-template-columns: minmax(0, 1fr) !important;\n  }\n}\n\n/* --- form inputs: rectangular, heavy border --- */\ninput[type=\"text\"],\ninput[type=\"email\"],\ninput[type=\"search\"],\ninput[type=\"number\"],\nselect,\ntextarea {\n  border-radius: 0 !important;\n  border: 1.5px solid var(--wp--preset--color--border);\n  font-family: var(--wp--preset--font-family--sans);\n  background-color: var(--wp--preset--color--base);\n  padding: var(--wp--preset--spacing--xs) var(--wp--preset--spacing--sm);\n}\ninput[type=\"text\"]:focus,\ninput[type=\"email\"]:focus,\ninput[type=\"search\"]:focus,\nselect:focus,\ntextarea:focus {\n  border-color: var(--wp--preset--color--accent);\n  outline: none;\n  box-shadow: none !important;\n}\n\n/* --- sale / stock badges: mono, rectangular --- */\n.onsale,\n.wc-block-components-product-sale-badge {\n  border-radius: 0 !important;\n  font-family: var(--wp--preset--font-family--mono);\n  font-size: 0.6875rem;\n  font-weight: 600;\n  letter-spacing: 0.08em;\n  text-transform: uppercase;\n  background-color: var(--wp--preset--color--accent);\n  color: var(--wp--preset--color--base);\n  padding: 0.125rem 0.375rem;\n}\n\n/* --- star ratings: accent colour --- */\n.star-rating span::before,\n.wc-block-components-review-list-item__rating .wc-block-components-product-rating__stars::before {\n  color: var(--wp--preset--color--accent);\n}\n\n/* --- max-width cap on sections --- */\n.wp-site-blocks > .alignfull {\n  max-width: 100%;\n}\n.wp-site-blocks > *:not(.alignfull):not(.alignwide) {\n  max-width: var(--wp--style--global--content-size, 1200px);\n  margin-inline: auto;\n}\n\n/* --- suppress excessive whitespace in editorial sections --- */\n.wp-block-spacer {\n  max-height: 3rem !important;\n}\n"
+}

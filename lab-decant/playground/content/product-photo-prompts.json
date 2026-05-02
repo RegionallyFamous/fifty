@@ -1,0 +1,311 @@
+{
+  "model": "gpt-image-2",
+  "prompts": {
+    "WO-BORROWED-NOSTALGIA": "Square product photograph on a pale off-white matte surface. A small 3 mL glass atomizer vial filled with faintly amber liquid sits centered on a scratched aluminum specimen tray. Beside it, a folded strip of aged, slightly yellowed lab tape marked with handwritten batch numbers. One clean glass pipette rests diagonally. Overhead diffused light casts soft hard-edged shadows. Cool neutral tones, faint warm amber refraction through the vial. No text visible.",
+    "WO-BOTTLED-MORNING": "Square product photograph on a clean white ceramic tile surface. A 2 mL clear glass spray vial filled with pale golden liquid centered in frame. A single small glass beaker with a few millilitres of clear water beside it. Morning-quality cool diffused light from upper left. Crisp shadows, clinical backdrop, faint blue tint in specular reflections on the vial cap. Stainless steel micro-spatula crossing the frame at lower edge. No text.",
+    "WO-CHAOS-SEASONING": "Square product photograph on a brushed stainless steel laboratory tray. Three small glass sample vials of varying fill levels \u2014 1 mL, 2 mL, 3 mL \u2014 arranged in a slightly chaotic non-grid cluster. A few scattered glass micro-beads around the base. Harsh overhead diffused light, high contrast, minimal color. Silver and white tones dominate. Faint iridescent refractions from vials. No text, no labels visible.",
+    "WO-COSMIC-MYSTERY-BOX": "Square product photograph of a matte white cardboard specimen box, lid half-open, on a #f8f8f4 surface. Inside: four 2 mL glass atomizer vials in individual foam slots, contents varying from pale clear to deep amber to dusky violet. Clinical overhead lighting, cool shadows. A pair of stainless steel tweezers rests across the open lid. Matte finish throughout. No readable text or logos.",
+    "WO-DEJA-VU-SESSION": "Square product photograph on a pale grey laboratory bench surface. Two identical 2 mL glass sample vials side by side, one slightly behind the other, both filled with the same translucent pale liquid. A small circular glass watch glass in front. Overhead diffused light, cool neutral palette, subtle double shadow from twin vials creating near-mirror symmetry. Clinical, quiet. No text visible.",
+    "WO-DISCOUNT-GRAVITY": "Square product photograph on a matte white surface. A 5 mL glass atomizer bottle tipped at a 45-degree angle, propped against a small rectangular laboratory weight block. Liquid inside visibly shifted. Cool diffused sidelight from left. Clinical off-white palette, hard shadows, faint blue specular on glass cap. Minimal prop set \u2014 just the vial and the block. No text.",
+    "WO-DREAD-REPELLENT": "Square product photograph on a dark charcoal matte ceramic tile. A 3 mL matte black-capped glass vial centered in frame, filled with dark near-black liquid. A small aluminum dish holding a few dark grey pebbles beside it. Low-angle side lighting, high contrast, near-monochromatic. Cool blue-black shadows. Slight menace in the stillness. No text, no labels legible.",
+    "WO-FOG-IN-BOTTLE": "Square product photograph on a cool grey matte surface. A 5 mL frosted glass atomizer vial, content barely visible as a cloudy pale haze inside. Fine water condensation micro-droplets on the outer glass. Soft diffused overhead light, cool blue-grey palette, ethereal but clinical. A single glass stir rod alongside. No text.",
+    "WO-FORBIDDEN-HONEY": "Square product photograph on a white glazed ceramic surface. A 3 mL glass vial filled with deep amber-gold viscous liquid, catching warm transmitted light from below. A small glass petri dish with a single amber droplet beside it. Warm transmitted light balanced against cool overhead diffused light. Rich golden refraction, clinical setting. No text or logos.",
+    "WO-GENTLY-USED-LUCK": "Square product photograph on a slightly worn matte off-white lab bench. A 2 mL glass sample vial, fill level at approximately 60%, cap slightly misaligned. A few faint circular stains on the surface from previous vials. One small piece of plain white lab tape, blank, stuck to the surface nearby. Neutral overhead diffused light, clinical but imperfect. No text.",
+    "WO-HANDCRAFTED-ECHO": "Square product photograph on a natural unfinished wood block set on a white lab surface. A 3 mL glass atomizer vial hand-placed slightly off-center, filled with a pale hazy liquid. A single stainless steel measuring scoop beside it. Warm sidelight from right, cool overhead fill. Contrast between warm wood grain and cold glass. No text, no logos.",
+    "WO-HAUNTED-CANDLE": "Square product photograph on a matte black ceramic surface. A small 10 mL cylindrical glass vial filled with a pale smoke-grey liquid, beside a burned-down white pillar candle stub. Cold, clinical top light. Monochromatic near-black palette with only the glass vial catching a faint cool blue specular highlight. No text visible.",
+    "WO-IMAGINARY-DEED": "Square product photograph on a white matte surface. An empty 5 mL glass atomizer vial, uncapped, placed beside its cap. Interior perfectly clean and clear. A blank folded piece of white lab tape nearby. Minimal overhead diffused light, clean white palette, faint shadows. The emptiness is the subject. No text.",
+    "WO-INTERDIM-BAZAAR": "Square product photograph on a pale off-white surface. Five small 1 mL glass vials in a stainless steel rack, each filled with a different colored liquid \u2014 pale gold, clear, deep amber, faint violet, dusky rose. Clinical overhead diffused light. Cool neutral background, color interest only through vial contents. Rack is industrial, utilitarian. No text.",
+    "WO-INVISIBLE-UMBRELLA": "Square product photograph on a white glazed tile. A completely clear, empty 3 mL glass vial, capped, centered in frame. Its only presence is refraction and shadow. Overhead diffused light casting a crisp circular shadow beneath. White-on-white minimalism, clinical. Nothing else in frame. No text.",
+    "WO-LEFT-SOCK": "Square product photograph on a grey matte laboratory surface. A single 2 mL glass vial standing alone on the far left side of the frame, filled with a pale muted liquid. The right side of the frame is deliberately empty bench surface. Off-center composition, clinical overhead light. Quiet, slightly absurd negative space. No text.",
+    "WO-LOST-RECIPE-TIME": "Square product photograph on a worn white ceramic tile. A 5 mL glass dropper vial filled with amber liquid, dropper tip removed and resting beside it. A faded blank index card folded in half propped up behind. Warm amber light through vial, cool overhead diffused fill. Clinical with a sense of archive. No text.",
+    "WO-MEMORY-FOAM-MEMORY": "Square product photograph on a soft off-white foam insert cut to hold a 3 mL vial. The vial sits in its custom-cut foam slot, pale liquid inside. Foam surface shows slight compression marks. Overhead diffused light, muted warm-neutral tones, clinical precision. A pair of stainless steel tweezers nearby. No text.",
+    "WO-MONDAY-KIT": "Square product photograph on a white matte surface. A flat aluminum tray containing five 2 mL glass sample vials in a single row, filled with varying pale liquids. A small glass beaker beside the tray. Cool neutral overhead diffused light. Organized, clinical, utilitarian energy. No text, no labels readable.",
+    "WO-MOON-DUST": "Square product photograph on a pale grey matte stone surface. A 3 mL matte-finish glass vial filled with a pale silver-white cloudy liquid. A small amount of fine white powder dusted onto the stone surface nearby. Cool overhead diffused light, near-monochromatic silver-white-grey palette. Faint blue specular on vial glass. No text.",
+    "WO-ONE-HAND-CLAPPING": "Square product photograph on a white ceramic surface. A single 2 mL glass sample vial standing alone, slightly left of center. No other props. Overhead diffused light, clean white palette, minimal crisp shadow. The vial is filled with a clear pale liquid. Extreme simplicity \u2014 one object, perfect light. No text.",
+    "WO-POCKET-THUNDER": "Square product photograph on a dark matte grey surface. A compact 2 mL metal-capped glass atomizer, small enough to fit in a pocket, centered in frame. Dramatic single side-lighting from the left, deep shadow on right. High contrast, moody but clinical. Faint electrical-blue specular on the metal cap. No text.",
+    "WO-PORTABLE-HOLE": "Square product photograph on a matte black surface. A 3 mL glass vial filled with deep near-black liquid placed at the center of a perfect black matte circle painted on the surface beneath it. Clinical overhead diffused light, all-black tonal range except for fine glass specular highlight. No text.",
+    "WO-SENSORY-STARTER": "Square product photograph on a white matte surface. A small kit: three 1 mL glass vials in a row \u2014 clear, pale amber, pale green-grey \u2014 beside a clean glass eyedropper and a blank white label strip. Overhead diffused light, clinical and welcoming. Cool neutral palette. Organized, beginner-appropriate. No text.",
+    "WO-SILENCE-JAR": "Square product photograph on a pale off-white surface. A wide-mouth 10 mL clear glass jar, lid sealed, filled with a very pale translucent liquid. Interior appears still, surface-tension flat. Overhead diffused light, near-silent composition. Cool neutral tones, minimal shadow. A single glass stir rod beside it. No text.",
+    "WO-SPARE-KEY-NOWHERE": "Square product photograph on a cold brushed aluminum surface. A 2 mL glass sample vial lying on its side, not standing, in the center of the frame. No other props. Single overhead diffused light source. The horizontal vial creates an unusual resting composition. Pale golden liquid visible through glass. No text.",
+    "WO-SPARE-TUESDAY": "Square product photograph on a pale off-white matte surface. A 3 mL glass atomizer vial, uncapped, cap beside it. Both objects slightly separated, unhurried composition. Overhead diffused light, low contrast, neutral tones, nothing urgent. Faint warm liquid hue inside vial. Clinical, relaxed. No text.",
+    "WO-TANGIBLE-WIFI": "Square product photograph on a white ceramic surface. A 3 mL glass vial filled with clear liquid beside a small circular antenna-style copper wire loop prop. Cold overhead diffused light, blue-white specular on glass. Clinical, slightly absurd pairing of organic and technical objects. No text.",
+    "WO-VOID-SAMPLER": "Square product photograph on a matte black surface under very low overhead diffused light. A set of four 1 mL glass vials in a black aluminum mini-rack, all filled with near-black liquids of slightly varying viscosities. Near-total darkness at edges, only vial tops catch faint specular. Monochromatic, clinical, void-like. No text.",
+    "WO-WHISPERING-STONE": "Square product photograph on a natural grey stone slab surface. A 3 mL frosted glass vial filled with a pale smoky liquid, centered on the stone. A single smooth river pebble beside it. Cool diffused side light from left. Muted grey-white palette, tactile surface contrast between frosted glass and stone. No text."
+  },
+  "provider": "openai",
+  "records": [
+    {
+      "attempt": 1,
+      "filename": "product-wo-deja-vu-session.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a pale grey laboratory bench surface. Two identical 2 mL glass sample vials side by side, one slightly behind the other, both filled with the same translucent pale liquid. A small circular glass watch glass in front. Overhead diffused light, cool neutral palette, subtle double shadow from twin vials creating near-mirror symmetry. Clinical, quiet. No text visible.",
+      "provider": "openai",
+      "sku": "WO-DEJA-VU-SESSION",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-discount-gravity.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a matte white surface. A 5 mL glass atomizer bottle tipped at a 45-degree angle, propped against a small rectangular laboratory weight block. Liquid inside visibly shifted. Cool diffused sidelight from left. Clinical off-white palette, hard shadows, faint blue specular on glass cap. Minimal prop set \u2014 just the vial and the block. No text.",
+      "provider": "openai",
+      "sku": "WO-DISCOUNT-GRAVITY",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-dread-repellent.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a dark charcoal matte ceramic tile. A 3 mL matte black-capped glass vial centered in frame, filled with dark near-black liquid. A small aluminum dish holding a few dark grey pebbles beside it. Low-angle side lighting, high contrast, near-monochromatic. Cool blue-black shadows. Slight menace in the stillness. No text, no labels legible.",
+      "provider": "openai",
+      "sku": "WO-DREAD-REPELLENT",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-cosmic-mystery-box.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph of a matte white cardboard specimen box, lid half-open, on a #f8f8f4 surface. Inside: four 2 mL glass atomizer vials in individual foam slots, contents varying from pale clear to deep amber to dusky violet. Clinical overhead lighting, cool shadows. A pair of stainless steel tweezers rests across the open lid. Matte finish throughout. No readable text or logos.",
+      "provider": "openai",
+      "sku": "WO-COSMIC-MYSTERY-BOX",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-bottled-morning.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a clean white ceramic tile surface. A 2 mL clear glass spray vial filled with pale golden liquid centered in frame. A single small glass beaker with a few millilitres of clear water beside it. Morning-quality cool diffused light from upper left. Crisp shadows, clinical backdrop, faint blue tint in specular reflections on the vial cap. Stainless steel micro-spatula crossing the frame at lower edge. No text.",
+      "provider": "openai",
+      "sku": "WO-BOTTLED-MORNING",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-chaos-seasoning.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a brushed stainless steel laboratory tray. Three small glass sample vials of varying fill levels \u2014 1 mL, 2 mL, 3 mL \u2014 arranged in a slightly chaotic non-grid cluster. A few scattered glass micro-beads around the base. Harsh overhead diffused light, high contrast, minimal color. Silver and white tones dominate. Faint iridescent refractions from vials. No text, no labels visible.",
+      "provider": "openai",
+      "sku": "WO-CHAOS-SEASONING",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-borrowed-nostalgia.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a pale off-white matte surface. A small 3 mL glass atomizer vial filled with faintly amber liquid sits centered on a scratched aluminum specimen tray. Beside it, a folded strip of aged, slightly yellowed lab tape marked with handwritten batch numbers. One clean glass pipette rests diagonally. Overhead diffused light casts soft hard-edged shadows. Cool neutral tones, faint warm amber refraction through the vial. No text visible.",
+      "provider": "openai",
+      "sku": "WO-BORROWED-NOSTALGIA",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-fog-in-bottle.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a cool grey matte surface. A 5 mL frosted glass atomizer vial, content barely visible as a cloudy pale haze inside. Fine water condensation micro-droplets on the outer glass. Soft diffused overhead light, cool blue-grey palette, ethereal but clinical. A single glass stir rod alongside. No text.",
+      "provider": "openai",
+      "sku": "WO-FOG-IN-BOTTLE",
+      "status": "generated"
+    },
+    {
+      "attempt": 3,
+      "filename": "product-wo-forbidden-honey.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a white glazed ceramic surface. A 3 mL glass vial filled with deep amber-gold viscous liquid, catching warm transmitted light from below. A small glass petri dish with a single amber droplet beside it. Warm transmitted light balanced against cool overhead diffused light. Rich golden refraction, clinical setting. No text or logos.",
+      "provider": "openai",
+      "sku": "WO-FORBIDDEN-HONEY",
+      "status": "generated"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-handcrafted-echo.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a natural unfinished wood block set on a white lab surface. A 3 mL glass atomizer vial hand-placed slightly off-center, filled with a pale hazy liquid. A single stainless steel measuring scoop beside it. Warm sidelight from right, cool overhead fill. Contrast between warm wood grain and cold glass. No text, no logos.",
+      "provider": "openai",
+      "sku": "WO-HANDCRAFTED-ECHO",
+      "status": "failed"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-haunted-candle.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a matte black ceramic surface. A small 10 mL cylindrical glass vial filled with a pale smoke-grey liquid, beside a burned-down white pillar candle stub. Cold, clinical top light. Monochromatic near-black palette with only the glass vial catching a faint cool blue specular highlight. No text visible.",
+      "provider": "openai",
+      "sku": "WO-HAUNTED-CANDLE",
+      "status": "failed"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-imaginary-deed.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a white matte surface. An empty 5 mL glass atomizer vial, uncapped, placed beside its cap. Interior perfectly clean and clear. A blank folded piece of white lab tape nearby. Minimal overhead diffused light, clean white palette, faint shadows. The emptiness is the subject. No text.",
+      "provider": "openai",
+      "sku": "WO-IMAGINARY-DEED",
+      "status": "failed"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-left-sock.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a grey matte laboratory surface. A single 2 mL glass vial standing alone on the far left side of the frame, filled with a pale muted liquid. The right side of the frame is deliberately empty bench surface. Off-center composition, clinical overhead light. Quiet, slightly absurd negative space. No text.",
+      "provider": "openai",
+      "sku": "WO-LEFT-SOCK",
+      "status": "failed"
+    },
+    {
+      "attempt": 3,
+      "filename": "product-wo-interdim-bazaar.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a pale off-white surface. Five small 1 mL glass vials in a stainless steel rack, each filled with a different colored liquid \u2014 pale gold, clear, deep amber, faint violet, dusky rose. Clinical overhead diffused light. Cool neutral background, color interest only through vial contents. Rack is industrial, utilitarian. No text.",
+      "provider": "openai",
+      "sku": "WO-INTERDIM-BAZAAR",
+      "status": "generated"
+    },
+    {
+      "attempt": 3,
+      "filename": "product-wo-gently-used-luck.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a slightly worn matte off-white lab bench. A 2 mL glass sample vial, fill level at approximately 60%, cap slightly misaligned. A few faint circular stains on the surface from previous vials. One small piece of plain white lab tape, blank, stuck to the surface nearby. Neutral overhead diffused light, clinical but imperfect. No text.",
+      "provider": "openai",
+      "sku": "WO-GENTLY-USED-LUCK",
+      "status": "generated"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-lost-recipe-time.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a worn white ceramic tile. A 5 mL glass dropper vial filled with amber liquid, dropper tip removed and resting beside it. A faded blank index card folded in half propped up behind. Warm amber light through vial, cool overhead diffused fill. Clinical with a sense of archive. No text.",
+      "provider": "openai",
+      "sku": "WO-LOST-RECIPE-TIME",
+      "status": "failed"
+    },
+    {
+      "attempt": 2,
+      "filename": "product-wo-invisible-umbrella.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a white glazed tile. A completely clear, empty 3 mL glass vial, capped, centered in frame. Its only presence is refraction and shadow. Overhead diffused light casting a crisp circular shadow beneath. White-on-white minimalism, clinical. Nothing else in frame. No text.",
+      "provider": "openai",
+      "sku": "WO-INVISIBLE-UMBRELLA",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-memory-foam-memory.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a soft off-white foam insert cut to hold a 3 mL vial. The vial sits in its custom-cut foam slot, pale liquid inside. Foam surface shows slight compression marks. Overhead diffused light, muted warm-neutral tones, clinical precision. A pair of stainless steel tweezers nearby. No text.",
+      "provider": "openai",
+      "sku": "WO-MEMORY-FOAM-MEMORY",
+      "status": "generated"
+    },
+    {
+      "attempt": 2,
+      "filename": "product-wo-moon-dust.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a pale grey matte stone surface. A 3 mL matte-finish glass vial filled with a pale silver-white cloudy liquid. A small amount of fine white powder dusted onto the stone surface nearby. Cool overhead diffused light, near-monochromatic silver-white-grey palette. Faint blue specular on vial glass. No text.",
+      "provider": "openai",
+      "sku": "WO-MOON-DUST",
+      "status": "generated"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-portable-hole.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a matte black surface. A 3 mL glass vial filled with deep near-black liquid placed at the center of a perfect black matte circle painted on the surface beneath it. Clinical overhead diffused light, all-black tonal range except for fine glass specular highlight. No text.",
+      "provider": "openai",
+      "sku": "WO-PORTABLE-HOLE",
+      "status": "failed"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-silence-jar.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a pale off-white surface. A wide-mouth 10 mL clear glass jar, lid sealed, filled with a very pale translucent liquid. Interior appears still, surface-tension flat. Overhead diffused light, near-silent composition. Cool neutral tones, minimal shadow. A single glass stir rod beside it. No text.",
+      "provider": "openai",
+      "sku": "WO-SILENCE-JAR",
+      "status": "failed"
+    },
+    {
+      "attempt": 2,
+      "filename": "product-wo-monday-kit.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a white matte surface. A flat aluminum tray containing five 2 mL glass sample vials in a single row, filled with varying pale liquids. A small glass beaker beside the tray. Cool neutral overhead diffused light. Organized, clinical, utilitarian energy. No text, no labels readable.",
+      "provider": "openai",
+      "sku": "WO-MONDAY-KIT",
+      "status": "generated"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-spare-key-nowhere.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a cold brushed aluminum surface. A 2 mL glass sample vial lying on its side, not standing, in the center of the frame. No other props. Single overhead diffused light source. The horizontal vial creates an unusual resting composition. Pale golden liquid visible through glass. No text.",
+      "provider": "openai",
+      "sku": "WO-SPARE-KEY-NOWHERE",
+      "status": "failed"
+    },
+    {
+      "attempt": 2,
+      "filename": "product-wo-sensory-starter.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a white matte surface. A small kit: three 1 mL glass vials in a row \u2014 clear, pale amber, pale green-grey \u2014 beside a clean glass eyedropper and a blank white label strip. Overhead diffused light, clinical and welcoming. Cool neutral palette. Organized, beginner-appropriate. No text.",
+      "provider": "openai",
+      "sku": "WO-SENSORY-STARTER",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-tangible-wifi.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a white ceramic surface. A 3 mL glass vial filled with clear liquid beside a small circular antenna-style copper wire loop prop. Cold overhead diffused light, blue-white specular on glass. Clinical, slightly absurd pairing of organic and technical objects. No text.",
+      "provider": "openai",
+      "sku": "WO-TANGIBLE-WIFI",
+      "status": "generated"
+    },
+    {
+      "attempt": 4,
+      "filename": "product-wo-one-hand-clapping.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a white ceramic surface. A single 2 mL glass sample vial standing alone, slightly left of center. No other props. Overhead diffused light, clean white palette, minimal crisp shadow. The vial is filled with a clear pale liquid. Extreme simplicity \u2014 one object, perfect light. No text.",
+      "provider": "openai",
+      "sku": "WO-ONE-HAND-CLAPPING",
+      "status": "generated"
+    },
+    {
+      "attempt": 4,
+      "filename": "product-wo-spare-tuesday.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a pale off-white matte surface. A 3 mL glass atomizer vial, uncapped, cap beside it. Both objects slightly separated, unhurried composition. Overhead diffused light, low contrast, neutral tones, nothing urgent. Faint warm liquid hue inside vial. Clinical, relaxed. No text.",
+      "provider": "openai",
+      "sku": "WO-SPARE-TUESDAY",
+      "status": "generated"
+    },
+    {
+      "attempt": 4,
+      "filename": "product-wo-pocket-thunder.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a dark matte grey surface. A compact 2 mL metal-capped glass atomizer, small enough to fit in a pocket, centered in frame. Dramatic single side-lighting from the left, deep shadow on right. High contrast, moody but clinical. Faint electrical-blue specular on the metal cap. No text.",
+      "provider": "openai",
+      "sku": "WO-POCKET-THUNDER",
+      "status": "generated"
+    },
+    {
+      "attempt": 3,
+      "filename": "product-wo-void-sampler.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a matte black surface under very low overhead diffused light. A set of four 1 mL glass vials in a black aluminum mini-rack, all filled with near-black liquids of slightly varying viscosities. Near-total darkness at edges, only vial tops catch faint specular. Monochromatic, clinical, void-like. No text.",
+      "provider": "openai",
+      "sku": "WO-VOID-SAMPLER",
+      "status": "generated"
+    },
+    {
+      "attempt": 4,
+      "filename": "product-wo-whispering-stone.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph on a natural grey stone slab surface. A 3 mL frosted glass vial filled with a pale smoky liquid, centered on the stone. A single smooth river pebble beside it. Cool diffused side light from left. Muted grey-white palette, tactile surface contrast between frosted glass and stone. No text.",
+      "provider": "openai",
+      "sku": "WO-WHISPERING-STONE",
+      "status": "generated"
+    }
+  ],
+  "schema": 2,
+  "status": "partial",
+  "theme": "lab-decant"
+}

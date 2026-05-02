@@ -1,0 +1,56 @@
+{
+  "slug": "lab-decant",
+  "name": "Lab Decant",
+  "tagline": "Niche fragrance samples by the millilitre.",
+  "voice": "Technician who measures in mL — neutral, batch-and-lot specific, never perfume-review florals. Cart: Tray. Sort: By mL price / by house. Sold-out: Bottle exhausted — awaiting fresh source.",
+  "source": "obel",
+  "palette": {
+    "base": "#ffffff",
+    "surface": "#f8f8f4",
+    "subtle": "#e2e2dc",
+    "muted": "#9a9a94",
+    "border": "#c4c4bc",
+    "tertiary": "#5a5a58",
+    "secondary": "#2a2a28",
+    "contrast": "#0f0f12",
+    "primary": "#0f0f12",
+    "primary-hover": "#1a1a22",
+    "accent": "#1f66b5",
+    "accent-soft": "#d4e4f5"
+  },
+  "fonts": {
+    "display": {
+      "family": "JetBrains Mono",
+      "fallback": "ui-monospace, SFMono-Regular, Menlo, monospace",
+      "google_font": true,
+      "weights": [
+        400,
+        700
+      ]
+    },
+    "sans": {
+      "family": "IBM Plex Sans",
+      "fallback": "-apple-system, BlinkMacSystemFont, sans-serif",
+      "google_font": true,
+      "weights": [
+        400,
+        500,
+        600
+      ]
+    },
+    "mono": {
+      "family": "JetBrains Mono",
+      "fallback": "ui-monospace, SFMono-Regular, Menlo, monospace",
+      "google_font": true,
+      "weights": [
+        400,
+        600
+      ]
+    }
+  },
+  "layout_hints": [
+    "From vibes/Concepts/46-lab-decant.yaml: lab-data dense, search-led, monospace display for mL and batch language",
+    "Hero stays light: search-by-house bar energy without breaking block-theme constraints",
+    "Category story: by house / by perfumer / by size / sample sets / library subscription / about decanting"
+  ]
+}
