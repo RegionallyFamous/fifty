@@ -1,0 +1,52 @@
+{
+  "custom_border_width": {
+    "hairline": "1px",
+    "thick": "2px"
+  },
+  "custom_radius": {
+    "lg": "2px",
+    "md": "2px",
+    "none": "0",
+    "pill": "2px",
+    "sm": "2px",
+    "xl": "2px"
+  },
+  "schema": 1,
+  "shadow_presets": [
+    {
+      "shadow": "none",
+      "slug": "xs"
+    },
+    {
+      "shadow": "none",
+      "slug": "sm"
+    },
+    {
+      "shadow": "none",
+      "slug": "md"
+    },
+    {
+      "shadow": "none",
+      "slug": "lg"
+    },
+    {
+      "shadow": "none",
+      "slug": "xl"
+    },
+    {
+      "shadow": "inset 0 -2px 0 var(--wp--preset--color--subtle)",
+      "slug": "inset"
+    }
+  ],
+  "spacing_sizes": [
+    {
+      "size": "clamp(3rem, 5vw + 1.5rem, 5rem)",
+      "slug": "xl"
+    },
+    {
+      "size": "clamp(4rem, 6vw + 2rem, 6.5rem)",
+      "slug": "2-xl"
+    }
+  ],
+  "styles_css_append": "/* ferment-co rustic rectilinear overrides */\n\n/* Page background and surface */\nbody.theme-ferment-co{background-color:var(--wp--preset--color--base);}\n\n/* Section vertical rhythm \u2014 unhurried homestead pacing */\nbody.theme-ferment-co .wp-block-group.alignfull{padding-top:var(--wp--preset--spacing--xl);padding-bottom:var(--wp--preset--spacing--xl);}\n\n/* Section headings: EB Garamond 700, high-contrast on base */\nbody.theme-ferment-co h1,\nbody.theme-ferment-co h2,\nbody.theme-ferment-co h3,\nbody.theme-ferment-co .wp-block-query-title,\nbody.theme-ferment-co .wp-block-post-title{font-family:var(--wp--preset--font-family--display);font-weight:700;color:var(--wp--preset--color--contrast);letter-spacing:-0.01em;}\n\n/* Body and dek: Lora 400 */\nbody.theme-ferment-co p,\nbody.theme-ferment-co li,\nbody.theme-ferment-co .wp-block-post-excerpt__excerpt{font-family:var(--wp--preset--font-family--sans);font-weight:400;color:var(--wp--preset--color--secondary);}\n\n/* Eyebrows / labels: Lora 500 uppercase tracked */\nbody.theme-ferment-co .wp-block-post-terms,\nbody.theme-ferment-co .wc-block-components-product-category-list,\nbody.theme-ferment-co .wc-block-components-product-badge,\nbody.theme-ferment-co figcaption{font-family:var(--wp--preset--font-family--sans);font-weight:500;text-transform:uppercase;letter-spacing:0.1em;font-size:0.75em;color:var(--wp--preset--color--tertiary);}\n\n/* CTA buttons: accent fill, cream text, no border-radius, 2px secondary border on hover */\nbody.theme-ferment-co .wp-block-button__link,\nbody.theme-ferment-co .wc-block-components-button,\nbody.theme-ferment-co .wc-block-cart__submit-button,\nbody.theme-ferment-co .wc-block-components-checkout-place-order-button,\nbody.theme-ferment-co .wo-empty__cta--primary,\nbody.theme-ferment-co .selvedge-footer__newsletter-submit{background-color:var(--wp--preset--color--accent);color:var(--wp--preset--color--surface);border-radius:0;border:2px solid transparent;font-family:var(--wp--preset--font-family--sans);font-weight:500;text-transform:uppercase;letter-spacing:0.08em;}\n\nbody.theme-ferment-co .wp-block-button__link:hover,\nbody.theme-ferment-co .wc-block-components-button:hover,\nbody.theme-ferment-co .wc-block-cart__submit-button:hover,\nbody.theme-ferment-co .wc-block-components-checkout-place-order-button:hover,\nbody.theme-ferment-co .wo-empty__cta--primary:hover,\nbody.theme-ferment-co .selvedge-footer__newsletter-submit:hover{background-color:var(--wp--preset--color--primary-hover);color:var(--wp--preset--color--surface);border-color:var(--wp--preset--color--secondary);}\n\n/* Product cards and category tiles: surface fill, 2px border-color border, no shadow, 2px radius */\nbody.theme-ferment-co .wc-block-components-product-card,\nbody.theme-ferment-co .wp-block-woocommerce-product-template .wp-block-post,\nbody.theme-ferment-co .wc-block-product-template .wc-block-grid__product,\nbody.theme-ferment-co .wp-block-woocommerce-handpicked-products .wc-block-grid__product,\nbody.theme-ferment-co .wo-product-card{background-color:var(--wp--preset--color--surface);border:2px solid var(--wp--preset--color--border);border-radius:2px;box-shadow:none;}\n\n/* Category strip tiles: accent-soft fill, accent label, border-color border */\nbody.theme-ferment-co .wp-block-query.is-category-strip .wp-block-post,\nbody.theme-ferment-co .ferment-category-tile,\nbody.theme-ferment-co .wp-block-categories-list .wp-block-categories__item,\nbody.theme-ferment-co .wc-block-product-categories .wc-block-product-categories__list-item{background-color:var(--wp--preset--color--accent-soft);border:2px solid var(--wp--preset--color--border);border-radius:2px;color:var(--wp--preset--color--accent);font-family:var(--wp--preset--font-family--sans);font-weight:500;text-transform:uppercase;letter-spacing:0.08em;}\n\nbody.theme-ferment-co .wp-block-categories-list .wp-block-categories__item a,\nbody.theme-ferment-co .wc-block-product-categories .wc-block-product-categories__list-item a{color:var(--wp--preset--color--accent);}\n\n/* Card separator: subtle bottom-border, no shadow */\nbody.theme-ferment-co .wc-block-components-product-card,\nbody.theme-ferment-co .wo-product-card{border-bottom:2px solid var(--wp--preset--color--subtle);}\n\n/* Inter-card gap: spacing--md */\nbody.theme-ferment-co .wp-block-query .wp-block-post-template,\nbody.theme-ferment-co .wc-block-product-template,\nbody.theme-ferment-co .wc-block-grid__products{gap:var(--wp--preset--spacing--md);}\n\n/* Footer signup band: surface bg, full-width, 2px border-color top border */\nbody.theme-ferment-co footer.wp-block-template-part,\nbody.theme-ferment-co .selvedge-footer,\nbody.theme-ferment-co .wp-block-group.is-footer-newsletter{background-color:var(--wp--preset--color--surface);border-top:2px solid var(--wp--preset--color--border);}\n\n/* Links in body copy */\nbody.theme-ferment-co a{color:var(--wp--preset--color--accent);}\nbody.theme-ferment-co a:hover{color:var(--wp--preset--color--primary-hover);}\n\n/* Input fields: parchment bg, border-color border, no radius */\nbody.theme-ferment-co input[type=\"text\"],\nbody.theme-ferment-co input[type=\"email\"],\nbody.theme-ferment-co input[type=\"search\"],\nbody.theme-ferment-co input[type=\"number\"],\nbody.theme-ferment-co textarea,\nbody.theme-ferment-co select{background-color:var(--wp--preset--color--base);border:2px solid var(--wp--preset--color--muted);border-radius:0;color:var(--wp--preset--color--contrast);font-family:var(--wp--preset--font-family--sans);}\n\nbody.theme-ferment-co input:focus,\nbody.theme-ferment-co textarea:focus,\nbody.theme-ferment-co select:focus{border-color:var(--wp--preset--color--border);outline:none;box-shadow:none;}\n\n/* WooCommerce price: accent color, display font */\nbody.theme-ferment-co .wc-block-components-product-price,\nbody.theme-ferment-co .price,\nbody.theme-ferment-co .woocommerce-Price-amount{color:var(--wp--preset--color--accent);font-family:var(--wp--preset--font-family--display);font-weight:600;}\n\n/* Out of stock / out of culture styling */\nbody.theme-ferment-co .wc-block-components-product-stock-indicator,\nbody.theme-ferment-co .out-of-stock{color:var(--wp--preset--color--muted);font-style:italic;font-family:var(--wp--preset--font-family--sans);}\n\n/* Hover polarity fix for ferment-co class */\nbody.theme-ferment-co.theme-ferment-co .wc-block-mini-cart__footer-actions a:hover,\nbody.theme-ferment-co.theme-ferment-co .wc-block-components-totals-coupon__button:hover,\nbody.theme-ferment-co.theme-ferment-co .wc-block-cart__submit-container .wc-block-components-checkout-place-order-button:hover,\nbody.theme-ferment-co.theme-ferment-co .wo-empty__cta--primary:hover,\nbody.theme-ferment-co.theme-ferment-co .selvedge-footer__newsletter-submit:hover{background-color:var(--wp--preset--color--primary-hover);color:var(--wp--preset--color--surface);border-color:var(--wp--preset--color--secondary);}\n/* /ferment-co rustic rectilinear overrides */"
+}

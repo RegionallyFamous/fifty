@@ -1,0 +1,46 @@
+{
+  "slug": "ferment-co",
+  "name": "Ferment Co",
+  "tagline": "Crocks, cultures, and pantry fermentation.",
+  "voice": "home cook with a crock: patient, recipe-grounded; cart is Pantry; sort by ferment type; sold-out reads as out of culture until Friday refresh; live cultures ship Mon-Wed",
+  "source": "obel",
+  "palette": {
+    "base": "#f2ebd2",
+    "surface": "#fffaec",
+    "subtle": "#d9c8a4",
+    "muted": "#c4b08a",
+    "border": "#5c2a14",
+    "tertiary": "#6b4a32",
+    "secondary": "#4d3018",
+    "contrast": "#3a1f0e",
+    "primary": "#3a1f0e",
+    "primary-hover": "#5c2a14",
+    "accent": "#a85c2c",
+    "accent-soft": "#e5c9a8"
+  },
+  "fonts": {
+    "display": {
+      "family": "EB Garamond",
+      "fallback": "Georgia, Times New Roman, serif",
+      "google_font": true,
+      "weights": [
+        600,
+        700
+      ]
+    },
+    "sans": {
+      "family": "Lora",
+      "fallback": "Georgia, Times New Roman, serif",
+      "google_font": true,
+      "weights": [
+        400,
+        500
+      ]
+    }
+  },
+  "layout_hints": [
+    "From vibes/Concepts/47-ferment-co.yaml: rustic homestead, warm parchment base, two-column rhythm",
+    "Hero: current featured ferment with recipe link; five category tiles: crocks, cultures, salt, tools, books, subscribe",
+    "Footer: cultures-of-the-month signup persists; cart voice Pantry; checkout note for live cultures Mon-Wed"
+  ]
+}

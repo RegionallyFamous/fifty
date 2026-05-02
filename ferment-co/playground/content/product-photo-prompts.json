@@ -1,0 +1,311 @@
+{
+  "model": "gpt-image-2",
+  "prompts": {
+    "WO-BORROWED-NOSTALGIA": "Square product photo. A well-worn stoneware crock with salt-glazed finish sits on aged oak boards, surrounded by a handwritten recipe card (text illegible), dried herb sprigs, and a small ceramic dish of coarse pink salt. Warm amber side-light rakes across the crock's surface, revealing texture. Parchment linen backdrop. Muted brown and warm cream tones. Shallow depth of field. Editorial fermentation pantry aesthetic.",
+    "WO-BOTTLED-MORNING": "Square product photo. A tall, slender swing-top glass bottle filled with pale golden kombucha, morning condensation on the glass, resting on a worn wooden cutting board. Fresh ginger root and lemon slices nearby. Soft diffused window light from left. Warm cream and amber tones. Rustic homestead kitchen surface. Shallow focus on the bottle's shoulder. No labels readable.",
+    "WO-CHAOS-SEASONING": "Square product photo. A ceramic open crock overflowing with a colorful mix of fermented vegetable scraps \u2014 carrot coins, purple cabbage shreds, peppercorns \u2014 brine glistening on top. Coarse sea salt scattered on the dark wood surface beside it. Dramatic warm side-light. Deep mahogany background. Textures vivid and tactile. Pantry fermentation aesthetic.",
+    "WO-COSMIC-MYSTERY-BOX": "Square product photo. A rough-hewn wooden crate lined with parchment paper holds an assortment of fermentation supplies: a small crock, a muslin bag of salt, a dried culture packet, a wooden tamper. Shot from slight overhead angle on a dark walnut surface. Warm amber lantern-style light. Rustic homestead unboxing scene. Rich brown tones.",
+    "WO-DEJA-VU-SESSION": "Square product photo. Two identical small mason jars of fermented sauerkraut, lids slightly domed, sitting side by side on a linen-covered shelf. One jar slightly more aged-looking with a weathered ring. Soft even natural light. Parchment and warm cream tones. Shallow depth of field. Simple, calm fermentation pantry composition.",
+    "WO-DISCOUNT-GRAVITY": "Square product photo. A heavy salt-glazed fermentation crock tipped slightly on its side on a rough oak plank, brine pooling near the base, ceramic weights visible inside. Coarse salt crystals scattered around it. Low, raking warm amber light from one side. Deep brown surface and muted cream backdrop. Tactile, honest pantry aesthetic.",
+    "WO-DREAD-REPELLENT": "Square product photo. A dark stoneware jar sealed with a beeswax-dipped cloth tied with twine sits centered on aged wood. Surrounding it: dried lavender, a few cloves of black garlic, and a small pile of smoked sea salt. Moody warm side-light, deep mahogany tones. Fermentation apothecary feeling. Shallow focus.",
+    "WO-FOG-IN-BOTTLE": "Square product photo. A wide-mouth glass jar of pale cloudy lacto-fermented brine \u2014 milky white, slightly effervescent \u2014 on a parchment-colored linen surface. Diffused soft morning light creates a glowing, hazy quality in the liquid. Warm cream backdrop. Condensation on the glass. Quiet, patient fermentation pantry mood.",
+    "WO-FORBIDDEN-HONEY": "Square product photo. A small hex-glass jar filled with raw, dark amber fermented honey \u2014 honey garlic \u2014 with whole garlic cloves visible through the glass. Sticky golden drips on the jar's exterior. Resting on aged beeswax-finished oak. Warm candlelit side-light. Rich amber and mahogany tones. Rustic pantry aesthetic.",
+    "WO-GENTLY-USED-LUCK": "Square product photo. A second-hand-looking ceramic fermentation crock, slightly chipped at the rim, filled with bubbling kimchi, sits on a worn wooden surface. A folded square of parchment paper and a wooden spoon rest beside it. Warm diffused light. Earthy brown and cream palette. Lived-in homestead kitchen feeling.",
+    "WO-HANDCRAFTED-ECHO": "Square product photo. A hand-thrown wheel-glazed fermentation jar with uneven, organic walls and a cork stopper, sitting on a linen cloth on a dark oak surface. Fermented miso visible at the rim. Soft natural light from upper left. Deep brown and warm parchment tones. Textured, artisan-made quality evident. Simple composition.",
+    "WO-HAUNTED-CANDLE": "Square product photo. A thick beeswax pillar candle, slightly melted and dripping, sits atop a salt-glazed crock lid on a dark wood surface. Dried herb sprigs and scattered caraway seeds around the base. The candle is lit, casting warm amber light. Dark moody background. Rustic fermentation pantry atmosphere.",
+    "WO-IMAGINARY-DEED": "Square product photo. A rolled parchment scroll tied with rough twine rests inside an open stoneware crock on an aged oak surface. Surrounding the crock: a wooden tamper, coarse salt, and dried dill fronds. Warm side-light. Deep mahogany and cream tones. Rustic, patient homestead composition. Shallow depth of field.",
+    "WO-INTERDIM-BAZAAR": "Square product photo. An overhead flat-lay of fermentation pantry items arranged on a parchment-colored linen surface: a small crock, packets of culture starter, a salt cellar, dried chilies, garlic bulbs, wooden tools. Warm diffused natural light. Rich earthy brown and amber tones. Dense, market-stall composition.",
+    "WO-INVISIBLE-UMBRELLA": "Square product photo. An open-top wide-mouth mason jar of water kefir \u2014 crystal clear, lightly fizzing \u2014 sits alone on a pale parchment linen surface. A single lemon slice floats inside. Bright, airy natural light from above. Warm cream and subtle amber tones. Minimal, clean fermentation aesthetic. Condensation on glass.",
+    "WO-LEFT-SOCK": "Square product photo. A lone ceramic fermentation weight \u2014 smooth, round, cream-colored \u2014 sits slightly off-center on a worn oak board next to an empty crock. Soft, melancholy warm side-light. Parchment and brown tones. A single dried bay leaf nearby. Simple, understated pantry still-life composition.",
+    "WO-LOST-RECIPE-TIME": "Square product photo. An open, handwritten recipe journal (text illegible) lies flat on a dark oak surface beside a small crock of bubbling brine. A wooden spoon rests across the journal. Dried herbs and salt crystals scattered nearby. Warm amber side-light. Parchment and mahogany tones. Nostalgic fermentation kitchen mood.",
+    "WO-MEMORY-FOAM-MEMORY": "Square product photo. A soft muslin bag filled with culture starter rests inside a wide stoneware crock lined with a linen cloth. The texture of the muslin is prominent \u2014 soft, yielding. Warm diffused light from a window. Cream and subtle brown tones. Quiet, tactile fermentation pantry composition.",
+    "WO-MONDAY-KIT": "Square product photo. A flat-lay overhead of a starter fermentation kit arranged on aged oak: a half-gallon mason jar, a small salt cellar, a packet of culture, a wooden tamper, and a folded square of cheesecloth. Warm natural light. Parchment and amber tones. Practical, organized homestead kitchen aesthetic.",
+    "WO-MOON-DUST": "Square product photo. A small open ceramic bowl filled with fine pale-grey mineral salt \u2014 fleur de sel \u2014 sits on a dark walnut surface. A few silver-grey crystals scattered around the bowl. Soft, cool-toned natural light with warm amber rim from a nearby candle. Quiet, elemental fermentation pantry mood.",
+    "WO-ONE-HAND-CLAPPING": "Square product photo. A single wooden fermentation tamper, slightly worn, rests upright inside an empty stoneware crock on a linen surface. Warm side-light casts a long shadow. Minimal composition. Parchment backdrop and dark oak surface. Patient, Zen-like fermentation pantry aesthetic.",
+    "WO-POCKET-THUNDER": "Square product photo. A small tightly sealed flip-top glass bottle of dark, tangy fermented hot sauce \u2014 deep burgundy-red \u2014 sits on a rough oak surface. A dried chili pepper and a few peppercorns beside it. Dramatic warm side-light. Deep mahogany background. Intense, vivid fermentation pantry scene.",
+    "WO-PORTABLE-HOLE": "Square product photo. A wide-mouth mason jar with a dark, cloth-covered lid sits open, revealing a deep, dark miso paste inside. A wooden paddle rests across the jar's rim. Shot from slight overhead. Warm amber side-light. Dark walnut surface, parchment linen cloth. Rich umami fermentation pantry mood.",
+    "WO-SENSORY-STARTER": "Square product photo. A beginner fermentation starter set arranged on a linen cloth: a small crock, a portion of live SCOBY in brine in a small jar, a pinch bowl of salt, and dried herbs. Warm natural window light. Earthy cream and brown tones. Inviting, approachable homestead kitchen composition.",
+    "WO-SILENCE-JAR": "Square product photo. A sealed wide-mouth mason jar of clear, still lacto-fermented water \u2014 no bubbles, no sediment \u2014 sits perfectly centered on a pale parchment linen surface. Minimal props. Very soft, even natural light. Warm cream tones. Meditative, quiet fermentation aesthetic. Extreme simplicity.",
+    "WO-SPARE-KEY-NOWHERE": "Square product photo. A small iron key lies inside an open salt-glazed crock on a dark oak surface, surrounded by coarse sea salt crystals. Warm amber candlelight from the side. Deep brown and cream tones. Mysterious, quiet pantry still-life with a fermentation aesthetic.",
+    "WO-SPARE-TUESDAY": "Square product photo. An unremarkable, slightly dusty half-gallon mason jar of plain sauerkraut \u2014 simple, honest, unlabeled \u2014 sits at the back of a pantry shelf with soft, dim ambient light. A few other jars blurred in background. Warm parchment tones. Patient, everyday fermentation pantry mood.",
+    "WO-TANGIBLE-WIFI": "Square product photo. A round ceramic fermentation crock with airlock lid \u2014 the bubbler filled with water, actively releasing a small bubble \u2014 sits on a warm oak surface. The airlock is the visual focus. Warm amber side-light. Dark brown and cream tones. Active, living fermentation process aesthetic.",
+    "WO-VOID-SAMPLER": "Square product photo. An overhead flat-lay of six small pinch bowls arranged in a circle on a dark walnut surface, each holding a different fermentation salt or spice: black, pink, grey, white, golden, and red. Warm directional light. Deep contrasting tones. Minimal, elemental pantry sampling composition.",
+    "WO-WHISPERING-STONE": "Square product photo. A smooth river stone used as a fermentation weight rests inside a clear glass jar of pale lacto-fermented brine, the stone just visible beneath the liquid surface. Resting on aged oak with a linen cloth. Soft natural window light. Warm cream and brown tones. Elemental, quiet fermentation aesthetic."
+  },
+  "provider": "openai",
+  "records": [
+    {
+      "attempt": 1,
+      "filename": "product-wo-bottled-morning.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A tall, slender swing-top glass bottle filled with pale golden kombucha, morning condensation on the glass, resting on a worn wooden cutting board. Fresh ginger root and lemon slices nearby. Soft diffused window light from left. Warm cream and amber tones. Rustic homestead kitchen surface. Shallow focus on the bottle's shoulder. No labels readable.",
+      "provider": "openai",
+      "sku": "WO-BOTTLED-MORNING",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-discount-gravity.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A heavy salt-glazed fermentation crock tipped slightly on its side on a rough oak plank, brine pooling near the base, ceramic weights visible inside. Coarse salt crystals scattered around it. Low, raking warm amber light from one side. Deep brown surface and muted cream backdrop. Tactile, honest pantry aesthetic.",
+      "provider": "openai",
+      "sku": "WO-DISCOUNT-GRAVITY",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-borrowed-nostalgia.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A well-worn stoneware crock with salt-glazed finish sits on aged oak boards, surrounded by a handwritten recipe card (text illegible), dried herb sprigs, and a small ceramic dish of coarse pink salt. Warm amber side-light rakes across the crock's surface, revealing texture. Parchment linen backdrop. Muted brown and warm cream tones. Shallow depth of field. Editorial fermentation pantry aesthetic.",
+      "provider": "openai",
+      "sku": "WO-BORROWED-NOSTALGIA",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-fog-in-bottle.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A wide-mouth glass jar of pale cloudy lacto-fermented brine \u2014 milky white, slightly effervescent \u2014 on a parchment-colored linen surface. Diffused soft morning light creates a glowing, hazy quality in the liquid. Warm cream backdrop. Condensation on the glass. Quiet, patient fermentation pantry mood.",
+      "provider": "openai",
+      "sku": "WO-FOG-IN-BOTTLE",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-chaos-seasoning.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A ceramic open crock overflowing with a colorful mix of fermented vegetable scraps \u2014 carrot coins, purple cabbage shreds, peppercorns \u2014 brine glistening on top. Coarse sea salt scattered on the dark wood surface beside it. Dramatic warm side-light. Deep mahogany background. Textures vivid and tactile. Pantry fermentation aesthetic.",
+      "provider": "openai",
+      "sku": "WO-CHAOS-SEASONING",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-dread-repellent.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A dark stoneware jar sealed with a beeswax-dipped cloth tied with twine sits centered on aged wood. Surrounding it: dried lavender, a few cloves of black garlic, and a small pile of smoked sea salt. Moody warm side-light, deep mahogany tones. Fermentation apothecary feeling. Shallow focus.",
+      "provider": "openai",
+      "sku": "WO-DREAD-REPELLENT",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-cosmic-mystery-box.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A rough-hewn wooden crate lined with parchment paper holds an assortment of fermentation supplies: a small crock, a muslin bag of salt, a dried culture packet, a wooden tamper. Shot from slight overhead angle on a dark walnut surface. Warm amber lantern-style light. Rustic homestead unboxing scene. Rich brown tones.",
+      "provider": "openai",
+      "sku": "WO-COSMIC-MYSTERY-BOX",
+      "status": "generated"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-forbidden-honey.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A small hex-glass jar filled with raw, dark amber fermented honey \u2014 honey garlic \u2014 with whole garlic cloves visible through the glass. Sticky golden drips on the jar's exterior. Resting on aged beeswax-finished oak. Warm candlelit side-light. Rich amber and mahogany tones. Rustic pantry aesthetic.",
+      "provider": "openai",
+      "sku": "WO-FORBIDDEN-HONEY",
+      "status": "failed"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-handcrafted-echo.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A hand-thrown wheel-glazed fermentation jar with uneven, organic walls and a cork stopper, sitting on a linen cloth on a dark oak surface. Fermented miso visible at the rim. Soft natural light from upper left. Deep brown and warm parchment tones. Textured, artisan-made quality evident. Simple composition.",
+      "provider": "openai",
+      "sku": "WO-HANDCRAFTED-ECHO",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-deja-vu-session.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. Two identical small mason jars of fermented sauerkraut, lids slightly domed, sitting side by side on a linen-covered shelf. One jar slightly more aged-looking with a weathered ring. Soft even natural light. Parchment and warm cream tones. Shallow depth of field. Simple, calm fermentation pantry composition.",
+      "provider": "openai",
+      "sku": "WO-DEJA-VU-SESSION",
+      "status": "generated"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-imaginary-deed.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A rolled parchment scroll tied with rough twine rests inside an open stoneware crock on an aged oak surface. Surrounding the crock: a wooden tamper, coarse salt, and dried dill fronds. Warm side-light. Deep mahogany and cream tones. Rustic, patient homestead composition. Shallow depth of field.",
+      "provider": "openai",
+      "sku": "WO-IMAGINARY-DEED",
+      "status": "failed"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-interdim-bazaar.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. An overhead flat-lay of fermentation pantry items arranged on a parchment-colored linen surface: a small crock, packets of culture starter, a salt cellar, dried chilies, garlic bulbs, wooden tools. Warm diffused natural light. Rich earthy brown and amber tones. Dense, market-stall composition.",
+      "provider": "openai",
+      "sku": "WO-INTERDIM-BAZAAR",
+      "status": "failed"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-invisible-umbrella.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. An open-top wide-mouth mason jar of water kefir \u2014 crystal clear, lightly fizzing \u2014 sits alone on a pale parchment linen surface. A single lemon slice floats inside. Bright, airy natural light from above. Warm cream and subtle amber tones. Minimal, clean fermentation aesthetic. Condensation on glass.",
+      "provider": "openai",
+      "sku": "WO-INVISIBLE-UMBRELLA",
+      "status": "failed"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-gently-used-luck.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A second-hand-looking ceramic fermentation crock, slightly chipped at the rim, filled with bubbling kimchi, sits on a worn wooden surface. A folded square of parchment paper and a wooden spoon rest beside it. Warm diffused light. Earthy brown and cream palette. Lived-in homestead kitchen feeling.",
+      "provider": "openai",
+      "sku": "WO-GENTLY-USED-LUCK",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-haunted-candle.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A thick beeswax pillar candle, slightly melted and dripping, sits atop a salt-glazed crock lid on a dark wood surface. Dried herb sprigs and scattered caraway seeds around the base. The candle is lit, casting warm amber light. Dark moody background. Rustic fermentation pantry atmosphere.",
+      "provider": "openai",
+      "sku": "WO-HAUNTED-CANDLE",
+      "status": "generated"
+    },
+    {
+      "attempt": 3,
+      "filename": "product-wo-left-sock.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A lone ceramic fermentation weight \u2014 smooth, round, cream-colored \u2014 sits slightly off-center on a worn oak board next to an empty crock. Soft, melancholy warm side-light. Parchment and brown tones. A single dried bay leaf nearby. Simple, understated pantry still-life composition.",
+      "provider": "openai",
+      "sku": "WO-LEFT-SOCK",
+      "status": "generated"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-lost-recipe-time.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. An open, handwritten recipe journal (text illegible) lies flat on a dark oak surface beside a small crock of bubbling brine. A wooden spoon rests across the journal. Dried herbs and salt crystals scattered nearby. Warm amber side-light. Parchment and mahogany tones. Nostalgic fermentation kitchen mood.",
+      "provider": "openai",
+      "sku": "WO-LOST-RECIPE-TIME",
+      "status": "failed"
+    },
+    {
+      "attempt": 2,
+      "filename": "product-wo-moon-dust.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A small open ceramic bowl filled with fine pale-grey mineral salt \u2014 fleur de sel \u2014 sits on a dark walnut surface. A few silver-grey crystals scattered around the bowl. Soft, cool-toned natural light with warm amber rim from a nearby candle. Quiet, elemental fermentation pantry mood.",
+      "provider": "openai",
+      "sku": "WO-MOON-DUST",
+      "status": "generated"
+    },
+    {
+      "attempt": 1,
+      "filename": "product-wo-memory-foam-memory.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A soft muslin bag filled with culture starter rests inside a wide stoneware crock lined with a linen cloth. The texture of the muslin is prominent \u2014 soft, yielding. Warm diffused light from a window. Cream and subtle brown tones. Quiet, tactile fermentation pantry composition.",
+      "provider": "openai",
+      "sku": "WO-MEMORY-FOAM-MEMORY",
+      "status": "generated"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-one-hand-clapping.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A single wooden fermentation tamper, slightly worn, rests upright inside an empty stoneware crock on a linen surface. Warm side-light casts a long shadow. Minimal composition. Parchment backdrop and dark oak surface. Patient, Zen-like fermentation pantry aesthetic.",
+      "provider": "openai",
+      "sku": "WO-ONE-HAND-CLAPPING",
+      "status": "failed"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-pocket-thunder.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A small tightly sealed flip-top glass bottle of dark, tangy fermented hot sauce \u2014 deep burgundy-red \u2014 sits on a rough oak surface. A dried chili pepper and a few peppercorns beside it. Dramatic warm side-light. Deep mahogany background. Intense, vivid fermentation pantry scene.",
+      "provider": "openai",
+      "sku": "WO-POCKET-THUNDER",
+      "status": "failed"
+    },
+    {
+      "attempt": 2,
+      "filename": "product-wo-monday-kit.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A flat-lay overhead of a starter fermentation kit arranged on aged oak: a half-gallon mason jar, a small salt cellar, a packet of culture, a wooden tamper, and a folded square of cheesecloth. Warm natural light. Parchment and amber tones. Practical, organized homestead kitchen aesthetic.",
+      "provider": "openai",
+      "sku": "WO-MONDAY-KIT",
+      "status": "generated"
+    },
+    {
+      "attempt": 2,
+      "filename": "product-wo-silence-jar.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A sealed wide-mouth mason jar of clear, still lacto-fermented water \u2014 no bubbles, no sediment \u2014 sits perfectly centered on a pale parchment linen surface. Minimal props. Very soft, even natural light. Warm cream tones. Meditative, quiet fermentation aesthetic. Extreme simplicity.",
+      "provider": "openai",
+      "sku": "WO-SILENCE-JAR",
+      "status": "generated"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-portable-hole.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A wide-mouth mason jar with a dark, cloth-covered lid sits open, revealing a deep, dark miso paste inside. A wooden paddle rests across the jar's rim. Shot from slight overhead. Warm amber side-light. Dark walnut surface, parchment linen cloth. Rich umami fermentation pantry mood.",
+      "provider": "openai",
+      "sku": "WO-PORTABLE-HOLE",
+      "status": "failed"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-spare-key-nowhere.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A small iron key lies inside an open salt-glazed crock on a dark oak surface, surrounded by coarse sea salt crystals. Warm amber candlelight from the side. Deep brown and cream tones. Mysterious, quiet pantry still-life with a fermentation aesthetic.",
+      "provider": "openai",
+      "sku": "WO-SPARE-KEY-NOWHERE",
+      "status": "failed"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-spare-tuesday.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. An unremarkable, slightly dusty half-gallon mason jar of plain sauerkraut \u2014 simple, honest, unlabeled \u2014 sits at the back of a pantry shelf with soft, dim ambient light. A few other jars blurred in background. Warm parchment tones. Patient, everyday fermentation pantry mood.",
+      "provider": "openai",
+      "sku": "WO-SPARE-TUESDAY",
+      "status": "failed"
+    },
+    {
+      "error": "https://api.openai.com/v1/images/generations returned HTTP 429: {\n  \"error\": {\n    \"message\": \"Rate limit reached for gpt-image-2 (for limit gpt-image) in organization org-KSJP9sqfFFuzeBU8Bc0NKwZZ on input-images per min: Limit 5, Used 5, Requested 1. Please try again in 12s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n    \"type\": \"input-images\",\n    \"param\": null,\n    \"code\": \"rate_limit_exceeded\"\n  }\n}",
+      "filename": "product-wo-tangible-wifi.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A round ceramic fermentation crock with airlock lid \u2014 the bubbler filled with water, actively releasing a small bubble \u2014 sits on a warm oak surface. The airlock is the visual focus. Warm amber side-light. Dark brown and cream tones. Active, living fermentation process aesthetic.",
+      "provider": "openai",
+      "sku": "WO-TANGIBLE-WIFI",
+      "status": "failed"
+    },
+    {
+      "attempt": 2,
+      "filename": "product-wo-sensory-starter.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A beginner fermentation starter set arranged on a linen cloth: a small crock, a portion of live SCOBY in brine in a small jar, a pinch bowl of salt, and dried herbs. Warm natural window light. Earthy cream and brown tones. Inviting, approachable homestead kitchen composition.",
+      "provider": "openai",
+      "sku": "WO-SENSORY-STARTER",
+      "status": "generated"
+    },
+    {
+      "attempt": 2,
+      "filename": "product-wo-void-sampler.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. An overhead flat-lay of six small pinch bowls arranged in a circle on a dark walnut surface, each holding a different fermentation salt or spice: black, pink, grey, white, golden, and red. Warm directional light. Deep contrasting tones. Minimal, elemental pantry sampling composition.",
+      "provider": "openai",
+      "sku": "WO-VOID-SAMPLER",
+      "status": "generated"
+    },
+    {
+      "attempt": 2,
+      "filename": "product-wo-whispering-stone.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photo. A smooth river stone used as a fermentation weight rests inside a clear glass jar of pale lacto-fermented brine, the stone just visible beneath the liquid surface. Resting on aged oak with a linen cloth. Soft natural window light. Warm cream and brown tones. Elemental, quiet fermentation aesthetic.",
+      "provider": "openai",
+      "sku": "WO-WHISPERING-STONE",
+      "status": "generated"
+    }
+  ],
+  "schema": 2,
+  "status": "partial",
+  "theme": "ferment-co"
+}
