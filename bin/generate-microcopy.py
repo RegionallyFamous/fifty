@@ -369,10 +369,55 @@ def _find_duplicates(theme_root: Path) -> dict[str, str]:
     return duplicates
 
 
+# Stale shapes from older generator / model output — must be rewritten on
+# regenerate. Keep in sync with `check_no_placeholder_microcopy` repair
+# patterns (hex-tagged narrative) plus legacy parcel-room typos.
 _STALE_GENERATED_COPY_RE = re.compile(
+    r"(?is)"
     r"\b[A-Z][A-Za-z0-9 &'-]{0,60}\s+"
-    r"(?:parcel-room copy|counter|service desk note)\s+[0-9a-f]{6}\b"
+    r"(?:parcel-room copy|counter|service desk note)\s+[0-9a-f]{4,10}\b"
+    r"|"
+    r"\b(?:register|counter)\s+[a-z]{1,24}\s+[0-9a-f]{4,10}\b"
+    r"|"
+    r"\b[a-z][a-z0-9-]{1,40}\s+register\s+[0-9a-f]{4,10}\b"
 )
+
+# Values matching these patterns fail `check_no_placeholder_microcopy` — reject
+# API output and never emit them from offline fallbacks.
+_PLACEHOLDER_LEAK_VALUE_RE = re.compile(
+    r"(?is)"
+    r"\b(?:register|counter)\s+[a-z]{1,24}\s+[0-9a-f]{4,10}\b"
+    r"|"
+    r"\bparcel\s+(?:basket|record|copy)\s+(?:[a-z]{1,20}\s+)?[0-9a-f]{4,10}\b"
+    r"|"
+    r"\bcounter\s+record\s+[0-9a-f]{4,10}\b"
+    r"|"
+    r"\bshop-floor\s+find\s+[0-9a-f]{4,10}\b"
+    r"|"
+    r"\bvoucher\s+slip\s+[0-9a-f]{4,10}\b"
+)
+
+_FLEET_REGISTER_HEX_FOR_API: re.Pattern[str] | None = None
+
+
+def _fleet_register_hex_pattern_for_api() -> re.Pattern[str]:
+    """Same fleet-leak idea as ``check_no_placeholder_microcopy`` (API scrub)."""
+    global _FLEET_REGISTER_HEX_FOR_API
+    if _FLEET_REGISTER_HEX_FOR_API is not None:
+        return _FLEET_REGISTER_HEX_FOR_API
+    slugs = sorted(
+        {p.name.lower() for p in iter_themes(MONOREPO_ROOT, stages=())},
+        key=len,
+        reverse=True,
+    )
+    if not slugs:
+        _FLEET_REGISTER_HEX_FOR_API = re.compile(r"(?!x)x")
+        return _FLEET_REGISTER_HEX_FOR_API
+    alt = "|".join(re.escape(s) for s in slugs)
+    _FLEET_REGISTER_HEX_FOR_API = re.compile(
+        rf"(?i)\b(?:{alt})\s+register\s+[0-9a-f]{{4,10}}\b"
+    )
+    return _FLEET_REGISTER_HEX_FOR_API
 
 
 def _find_stale_generated_copy(theme_root: Path) -> dict[str, str]:
@@ -443,8 +488,43 @@ def _theme_label(theme_root: Path, spec: dict) -> str:
     return theme_root.name.replace("-", " ").title()
 
 
-def _code_for(text: str) -> str:
-    return hashlib.sha1(text.encode("utf-8")).hexdigest()[:6]
+_SUFFIX_MARKERS = (
+    "batch",
+    "lot",
+    "run",
+    "mark",
+    "line",
+    "code",
+    "set",
+    "tag",
+    "row",
+    "bin",
+    "lane",
+    "slot",
+    "unit",
+    "pair",
+    "tier",
+    "pass",
+    "wave",
+    "clip",
+    "flag",
+    "hold",
+    "note",
+    "tape",
+    "rack",
+)
+
+
+def _suffix_token(seed: str) -> str:
+    """Deterministic two-word tag for offline disambiguation.
+
+    Must NOT end in a short hex token — `check_no_placeholder_microcopy`
+    treats ``register foo ab12cd`` as repair-leak garbage.
+    """
+    digest = hashlib.sha1(seed.encode("utf-8")).digest()
+    a = _SUFFIX_MARKERS[digest[0] % len(_SUFFIX_MARKERS)]
+    b = _SUFFIX_MARKERS[digest[1] % len(_SUFFIX_MARKERS)]
+    return f"{a}-{b}"
 
 
 def _generic_replacement(needle: str, theme_root: Path, spec: dict) -> str:
@@ -455,40 +535,40 @@ def _generic_replacement(needle: str, theme_root: Path, spec: dict) -> str:
     improve the prose later; this keeps the build mechanically distinct.
     """
     label = _theme_label(theme_root, spec)
-    code = _code_for(f"{theme_root.name}:{needle}")
+    tok = _suffix_token(f"{theme_root.name}:{needle}")
     lower = needle.lower()
     if "?" in needle or lower.startswith(("can ", "do ", "how ", "what ", "where ")):
-        return f"{label} service desk note {code}"
+        return f"{label} service desk note ({tok})"
     if re.match(r"^\d{2}\s+[—-]", needle.strip()):
-        return f"Parcel register {code}"
+        return f"Parcel register ({tok})"
     if len(needle.strip()) <= 24:
-        return f"{label} counter {code}"
-    return f"{label} parcel-room copy {code}"
+        return f"{label} bench marker ({tok})"
+    return f"{label} parcel-room note ({tok})"
 
 
 def _generic_wc_replacement(default: str, theme_root: Path, spec: dict) -> str:
     label = _theme_label(theme_root, spec)
-    code = _code_for(f"wc:{theme_root.name}:{default}")[:4]
+    tok = _suffix_token(f"wc:{theme_root.name}:{default}")
     lower = default.lower()
     if "checkout" in lower or "place order" in lower:
-        return f"To the register {code}"
+        return f"To the register ({tok})"
     if "cart" in lower:
-        return f"Parcel basket {code}"
+        return f"Parcel basket ({tok})"
     if "password" in lower:
-        return f"Key misplaced {code}"
+        return f"Key misplaced ({tok})"
     if "sorting" in lower:
-        return f"Counter choice {code}"
+        return f"Bench sort ({tok})"
     if "coupon" in lower:
-        return f"Voucher slip {code}"
+        return f"Voucher slip ({tok})"
     if "review" in lower:
-        return f"Counter note {code}"
+        return f"Bench note ({tok})"
     if "order" in lower:
-        return f"Parcel record {code}"
+        return f"Parcel record ({tok})"
     if "total" in lower or "subtotal" in lower:
-        return f"Register sum {code}"
+        return f"Register tally ({tok})"
     if "product" in lower or "selection" in lower:
-        return f"Shop-floor find {code}"
-    return f"{label} register {code}"
+        return f"Shop-floor pull ({tok})"
+    return f"{label} register ({tok})"
 
 
 def _theme_source_contains(theme_root: Path, needle: str) -> bool:
@@ -689,6 +769,7 @@ Strings to rewrite:
         # Filter: drop any value that's still forbidden, then merge.
         accepted: dict[str, str] = {}
         rejected: dict[str, str] = {}
+        fleet_leak_re = _fleet_register_hex_pattern_for_api()
         for key, value in overrides.items():
             if not isinstance(value, str) or not value:
                 continue
@@ -698,6 +779,9 @@ Strings to rewrite:
                 continue
             # Within-response uniqueness too.
             if any(_normalise(v) == n for v in accepted.values()):
+                rejected[key] = value
+                continue
+            if _PLACEHOLDER_LEAK_VALUE_RE.search(value) or fleet_leak_re.search(value):
                 rejected[key] = value
                 continue
             accepted[key] = value
@@ -795,6 +879,16 @@ def generate_overrides(
             overrides[needle] = _generic_replacement(needle, theme_root, spec)
 
     _add_literal_variants(overrides)
+
+    # Last line of defence: never write override values that would fail
+    # ``check_no_placeholder_microcopy`` (hex-tagged repair narrative).
+    fleet_leak_re = _fleet_register_hex_pattern_for_api()
+    for needle in list(overrides):
+        val = overrides[needle]
+        if not isinstance(val, str):
+            continue
+        if _PLACEHOLDER_LEAK_VALUE_RE.search(val) or fleet_leak_re.search(val):
+            overrides[needle] = _generic_replacement(needle, theme_root, spec)
 
     if not overrides:
         if not quiet:

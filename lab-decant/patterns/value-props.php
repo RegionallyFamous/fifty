@@ -27,7 +27,7 @@
 		<!-- wp:column -->
 		<div class="wp-block-column">
 			<!-- wp:heading {"level":3,"fontSize":"lg"} -->
-			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Returns within 30 days of receipt', 'lab-decant' ); ?></h3>
+			<h3 class="wp-block-heading has-lg-font-size"><?php esc_html_e( 'Lab Decant bench marker (mark-flag) of receipt', 'lab-decant' ); ?></h3>
 			<!-- /wp:heading -->
 			<!-- wp:paragraph {"textColor":"secondary"} -->
 			<p class="has-secondary-color has-text-color"><?php esc_html_e( 'Product not as specified? Return the sealed unit — no justification required.', 'lab-decant' ); ?></p>

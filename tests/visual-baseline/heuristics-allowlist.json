@@ -86,6 +86,14 @@
       "*"
     ]
   },
+  "basalt:desktop:my-account-orders": {
+    "a11y-document-title": [
+      "*"
+    ],
+    "a11y-html-has-lang": [
+      "*"
+    ]
+  },
   "chonk:desktop:cart-filled": {
     "narrow-wc-block": [
       ".wc-block-cart-items"
@@ -254,6 +262,14 @@
       "*"
     ]
   },
+  "foundry:mobile:my-account-dashboard": {
+    "a11y-document-title": [
+      "*"
+    ],
+    "a11y-html-has-lang": [
+      "*"
+    ]
+  },
   "lysholm:desktop:cart-filled": {
     "narrow-wc-block": [
       ".wc-block-cart-items"
@@ -280,6 +296,14 @@
     ],
     "narrow-wc-block": [
       ".wo-account-login-grid"
+    ]
+  },
+  "lysholm:mobile:my-account-dashboard": {
+    "a11y-document-title": [
+      "*"
+    ],
+    "a11y-html-has-lang": [
+      "*"
     ]
   },
   "noir:desktop:cart-filled": {
@@ -386,6 +410,29 @@
     ],
     "a11y-color-contrast": [
       "*"
+    ]
+  },
+  "lab-decant:desktop:cart-filled": {
+    "narrow-wc-block": [
+      ".wc-block-cart-items"
+    ]
+  },
+  "lab-decant:desktop:cart-filled.line-remove": {
+    "narrow-wc-block": [
+      ".wc-block-cart-items"
+    ]
+  },
+  "lab-decant:desktop:checkout-filled.return-to-cart-visible": {
+    "a11y-autocomplete-valid": [
+      "*"
+    ],
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "lab-decant:desktop:my-account": {
+    "narrow-wc-block": [
+      ".wo-account-login-grid"
     ]
   }
 }

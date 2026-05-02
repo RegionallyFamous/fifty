@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 import random
 from pathlib import Path
 
@@ -42,6 +41,7 @@ def seed_for(sku: str) -> random.Random:
 def grain_layer(rng: random.Random) -> Image.Image:
     grain = Image.new("L", (SIZE, SIZE), 0)
     px = grain.load()
+    assert px is not None
     for _ in range(SIZE * SIZE // 24):
         x = rng.randrange(SIZE)
         y = rng.randrange(SIZE)

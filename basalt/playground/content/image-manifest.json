@@ -1,0 +1,462 @@
+{
+  "categories": [
+    {
+      "exists": true,
+      "filename": "cat-curated-bundles.jpg",
+      "name": "Curated Bundles",
+      "path": "basalt/playground/images/cat-curated-bundles.jpg",
+      "prompt": "basalt category cover for Curated Bundles; editorial cover generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "cat-curiosities.jpg",
+      "name": "Curiosities",
+      "path": "basalt/playground/images/cat-curiosities.jpg",
+      "prompt": "basalt category cover for Curiosities; editorial cover generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "cat-digital-oddments.jpg",
+      "name": "Digital Oddments",
+      "path": "basalt/playground/images/cat-digital-oddments.jpg",
+      "prompt": "basalt category cover for Digital Oddments; editorial cover generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "cat-forbidden-snacks.jpg",
+      "name": "Forbidden Snacks",
+      "path": "basalt/playground/images/cat-forbidden-snacks.jpg",
+      "prompt": "basalt category cover for Forbidden Snacks; editorial cover generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "cat-impossibilities.jpg",
+      "name": "Impossibilities",
+      "path": "basalt/playground/images/cat-impossibilities.jpg",
+      "prompt": "basalt category cover for Impossibilities; editorial cover generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "cat-moods-feelings.jpg",
+      "name": "Moods & Feelings",
+      "path": "basalt/playground/images/cat-moods-feelings.jpg",
+      "prompt": "basalt category cover for Moods & Feelings; editorial cover generated from theme palette"
+    }
+  ],
+  "coverage": {
+    "categories": 6,
+    "hero_placeholders": 28,
+    "missing_categories": [],
+    "missing_products": [],
+    "products": 30
+  },
+  "generated_at": 1777747482.91044,
+  "generator": "bin/generate-product-photos.py",
+  "hero_placeholders": [
+    {
+      "exists": true,
+      "filename": "wonders-page-about.png",
+      "path": "basalt/playground/images/wonders-page-about.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-page-contact.png",
+      "path": "basalt/playground/images/wonders-page-contact.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-page-faq.png",
+      "path": "basalt/playground/images/wonders-page-faq.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-page-home.png",
+      "path": "basalt/playground/images/wonders-page-home.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-page-journal.png",
+      "path": "basalt/playground/images/wonders-page-journal.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-page-lookbook.png",
+      "path": "basalt/playground/images/wonders-page-lookbook.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-page-privacy-policy.png",
+      "path": "basalt/playground/images/wonders-page-privacy-policy.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-page-shipping-returns.png",
+      "path": "basalt/playground/images/wonders-page-shipping-returns.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-behind-the-scenes-bottling-mondays.png",
+      "path": "basalt/playground/images/wonders-post-behind-the-scenes-bottling-mondays.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-caring-for-your-portable-hole.png",
+      "path": "basalt/playground/images/wonders-post-caring-for-your-portable-hole.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-carl-on-the-moon.png",
+      "path": "basalt/playground/images/wonders-post-carl-on-the-moon.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-chaos-seasoning-recipe-roundup.png",
+      "path": "basalt/playground/images/wonders-post-chaos-seasoning-recipe-roundup.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-fog-season.png",
+      "path": "basalt/playground/images/wonders-post-fog-season.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-forbidden-honey-what-does-forbidden-mean.png",
+      "path": "basalt/playground/images/wonders-post-forbidden-honey-what-does-forbidden-mean.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-hidden-gems-5-overlooked-products.png",
+      "path": "basalt/playground/images/wonders-post-hidden-gems-5-overlooked-products.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-how-to-apply-existential-dread-repellent.png",
+      "path": "basalt/playground/images/wonders-post-how-to-apply-existential-dread-repellent.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-imaginary-ownership-beginners.png",
+      "path": "basalt/playground/images/wonders-post-imaginary-ownership-beginners.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-interview-with-carl.png",
+      "path": "basalt/playground/images/wonders-post-interview-with-carl.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-invisible-umbrella-spotlight.png",
+      "path": "basalt/playground/images/wonders-post-invisible-umbrella-spotlight.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-memoirs-of-a-left-sock.png",
+      "path": "basalt/playground/images/wonders-post-memoirs-of-a-left-sock.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-mildly-haunted-candle-faq.png",
+      "path": "basalt/playground/images/wonders-post-mildly-haunted-candle-faq.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-philosophy-of-bottled-monday-morning.png",
+      "path": "basalt/playground/images/wonders-post-philosophy-of-bottled-monday-morning.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-pocket-thunder-safety.png",
+      "path": "basalt/playground/images/wonders-post-pocket-thunder-safety.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-spare-tuesday-field-guide.png",
+      "path": "basalt/playground/images/wonders-post-spare-tuesday-field-guide.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-tangible-wifi-30-day-review.png",
+      "path": "basalt/playground/images/wonders-post-tangible-wifi-30-day-review.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-the-art-of-artisanal-silence.png",
+      "path": "basalt/playground/images/wonders-post-the-art-of-artisanal-silence.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-welcome-to-wonders-and-oddities.png",
+      "path": "basalt/playground/images/wonders-post-welcome-to-wonders-and-oddities.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    },
+    {
+      "exists": true,
+      "filename": "wonders-post-year-one-abridged.png",
+      "path": "basalt/playground/images/wonders-post-year-one-abridged.png",
+      "prompt": "basalt page/post hero placeholder generated from theme palette"
+    }
+  ],
+  "mode": "pillow-specimen-card",
+  "palette": {
+    "accent": "#a0826d",
+    "accent-soft": "#d4c4b8",
+    "base": "#ffffff",
+    "border": "#d1d1d1",
+    "contrast": "#000000",
+    "error": "#B33A3A",
+    "info": "#3A6FB3",
+    "muted": "#9e9e9e",
+    "primary": "#1a1a1a",
+    "primary-hover": "#2e2e2e",
+    "secondary": "#3d3d3d",
+    "subtle": "#e8e8e8",
+    "success": "#2F7A4D",
+    "surface": "#f5f5f5",
+    "tertiary": "#6b6b6b",
+    "warning": "#B58231"
+  },
+  "products": [
+    {
+      "exists": true,
+      "filename": "product-wo-borrowed-nostalgia.jpg",
+      "path": "basalt/playground/images/product-wo-borrowed-nostalgia.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-BORROWED-NOSTALGIA; specimen-card fallback generated from theme palette",
+      "sku": "WO-BORROWED-NOSTALGIA"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-bottled-morning.jpg",
+      "path": "basalt/playground/images/product-wo-bottled-morning.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-BOTTLED-MORNING; specimen-card fallback generated from theme palette",
+      "sku": "WO-BOTTLED-MORNING"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-chaos-seasoning.jpg",
+      "path": "basalt/playground/images/product-wo-chaos-seasoning.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-CHAOS-SEASONING; specimen-card fallback generated from theme palette",
+      "sku": "WO-CHAOS-SEASONING"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-cosmic-mystery-box.jpg",
+      "path": "basalt/playground/images/product-wo-cosmic-mystery-box.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-COSMIC-MYSTERY-BOX; specimen-card fallback generated from theme palette",
+      "sku": "WO-COSMIC-MYSTERY-BOX"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-deja-vu-session.jpg",
+      "path": "basalt/playground/images/product-wo-deja-vu-session.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-DEJA-VU-SESSION; specimen-card fallback generated from theme palette",
+      "sku": "WO-DEJA-VU-SESSION"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-discount-gravity.jpg",
+      "path": "basalt/playground/images/product-wo-discount-gravity.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-DISCOUNT-GRAVITY; specimen-card fallback generated from theme palette",
+      "sku": "WO-DISCOUNT-GRAVITY"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-dread-repellent.jpg",
+      "path": "basalt/playground/images/product-wo-dread-repellent.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-DREAD-REPELLENT; specimen-card fallback generated from theme palette",
+      "sku": "WO-DREAD-REPELLENT"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-fog-in-bottle.jpg",
+      "path": "basalt/playground/images/product-wo-fog-in-bottle.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-FOG-IN-BOTTLE; specimen-card fallback generated from theme palette",
+      "sku": "WO-FOG-IN-BOTTLE"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-forbidden-honey.jpg",
+      "path": "basalt/playground/images/product-wo-forbidden-honey.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-FORBIDDEN-HONEY; specimen-card fallback generated from theme palette",
+      "sku": "WO-FORBIDDEN-HONEY"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-gently-used-luck.jpg",
+      "path": "basalt/playground/images/product-wo-gently-used-luck.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-GENTLY-USED-LUCK; specimen-card fallback generated from theme palette",
+      "sku": "WO-GENTLY-USED-LUCK"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-handcrafted-echo.jpg",
+      "path": "basalt/playground/images/product-wo-handcrafted-echo.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-HANDCRAFTED-ECHO; specimen-card fallback generated from theme palette",
+      "sku": "WO-HANDCRAFTED-ECHO"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-haunted-candle.jpg",
+      "path": "basalt/playground/images/product-wo-haunted-candle.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-HAUNTED-CANDLE; specimen-card fallback generated from theme palette",
+      "sku": "WO-HAUNTED-CANDLE"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-imaginary-deed.jpg",
+      "path": "basalt/playground/images/product-wo-imaginary-deed.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-IMAGINARY-DEED; specimen-card fallback generated from theme palette",
+      "sku": "WO-IMAGINARY-DEED"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-interdim-bazaar.jpg",
+      "path": "basalt/playground/images/product-wo-interdim-bazaar.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-INTERDIM-BAZAAR; specimen-card fallback generated from theme palette",
+      "sku": "WO-INTERDIM-BAZAAR"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-invisible-umbrella.jpg",
+      "path": "basalt/playground/images/product-wo-invisible-umbrella.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-INVISIBLE-UMBRELLA; specimen-card fallback generated from theme palette",
+      "sku": "WO-INVISIBLE-UMBRELLA"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-left-sock.jpg",
+      "path": "basalt/playground/images/product-wo-left-sock.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-LEFT-SOCK; specimen-card fallback generated from theme palette",
+      "sku": "WO-LEFT-SOCK"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-lost-recipe-time.jpg",
+      "path": "basalt/playground/images/product-wo-lost-recipe-time.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-LOST-RECIPE-TIME; specimen-card fallback generated from theme palette",
+      "sku": "WO-LOST-RECIPE-TIME"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-memory-foam-memory.jpg",
+      "path": "basalt/playground/images/product-wo-memory-foam-memory.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-MEMORY-FOAM-MEMORY; specimen-card fallback generated from theme palette",
+      "sku": "WO-MEMORY-FOAM-MEMORY"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-monday-kit.jpg",
+      "path": "basalt/playground/images/product-wo-monday-kit.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-MONDAY-KIT; specimen-card fallback generated from theme palette",
+      "sku": "WO-MONDAY-KIT"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-moon-dust.jpg",
+      "path": "basalt/playground/images/product-wo-moon-dust.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-MOON-DUST; specimen-card fallback generated from theme palette",
+      "sku": "WO-MOON-DUST"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-one-hand-clapping.jpg",
+      "path": "basalt/playground/images/product-wo-one-hand-clapping.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-ONE-HAND-CLAPPING; specimen-card fallback generated from theme palette",
+      "sku": "WO-ONE-HAND-CLAPPING"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-pocket-thunder.jpg",
+      "path": "basalt/playground/images/product-wo-pocket-thunder.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-POCKET-THUNDER; specimen-card fallback generated from theme palette",
+      "sku": "WO-POCKET-THUNDER"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-portable-hole.jpg",
+      "path": "basalt/playground/images/product-wo-portable-hole.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-PORTABLE-HOLE; specimen-card fallback generated from theme palette",
+      "sku": "WO-PORTABLE-HOLE"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-sensory-starter.jpg",
+      "path": "basalt/playground/images/product-wo-sensory-starter.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-SENSORY-STARTER; specimen-card fallback generated from theme palette",
+      "sku": "WO-SENSORY-STARTER"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-silence-jar.jpg",
+      "path": "basalt/playground/images/product-wo-silence-jar.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-SILENCE-JAR; specimen-card fallback generated from theme palette",
+      "sku": "WO-SILENCE-JAR"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-spare-key-nowhere.jpg",
+      "path": "basalt/playground/images/product-wo-spare-key-nowhere.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-SPARE-KEY-NOWHERE; specimen-card fallback generated from theme palette",
+      "sku": "WO-SPARE-KEY-NOWHERE"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-spare-tuesday.jpg",
+      "path": "basalt/playground/images/product-wo-spare-tuesday.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-SPARE-TUESDAY; specimen-card fallback generated from theme palette",
+      "sku": "WO-SPARE-TUESDAY"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-tangible-wifi.jpg",
+      "path": "basalt/playground/images/product-wo-tangible-wifi.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-TANGIBLE-WIFI; specimen-card fallback generated from theme palette",
+      "sku": "WO-TANGIBLE-WIFI"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-void-sampler.jpg",
+      "path": "basalt/playground/images/product-wo-void-sampler.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-VOID-SAMPLER; specimen-card fallback generated from theme palette",
+      "sku": "WO-VOID-SAMPLER"
+    },
+    {
+      "exists": true,
+      "filename": "product-wo-whispering-stone.jpg",
+      "path": "basalt/playground/images/product-wo-whispering-stone.jpg",
+      "prompt": "basalt brand-fit product photograph for WO-WHISPERING-STONE; specimen-card fallback generated from theme palette",
+      "sku": "WO-WHISPERING-STONE"
+    }
+  ],
+  "regeneration": {
+    "all": "python3 bin/generate-product-photos.py --theme basalt --force",
+    "seed": "python3 bin/seed-playground-content.py --theme basalt"
+  },
+  "schema": 1,
+  "theme": "basalt"
+}
