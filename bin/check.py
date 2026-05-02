@@ -7,6 +7,8 @@ cares about and exits non-zero if any of them fail.
 Checks performed:
   1. JSON validity for theme.json and styles/*.json
   1a. design-intent.md present next to theme.json (consumed by snap-vision-review.py)
+  1b. design-intent.md H1 names the theme directory (catches pasted rubrics)
+  1c. no repair-narrative / hex-tagged placeholder microcopy in templates/parts/patterns
   2. PHP syntax for every .php file
   3. Block-name validity in theme.json (via validate-theme-json.py)
   4. No `!important` in code (only in AGENTS.md and other rule docs, which is allowed)
@@ -510,6 +512,157 @@ def check_design_intent_present() -> Result:
         )
         return r
     r.details.append(f"{len(body.splitlines())} lines, {len(body)} chars")
+    return r
+
+
+def check_design_intent_brand_match() -> Result:
+    """First ATX H1 in design-intent.md must name the theme directory.
+
+    Catches rubrics pasted from another variant (e.g. ``basalt`` still
+    opening with ``# foundry``). Vision review concatenates this file;
+    a mismatched heading sends the wrong brand criteria at the model.
+    """
+    r = Result("design-intent.md H1 names this theme directory")
+    theme_json = ROOT / "theme.json"
+    intent = ROOT / "design-intent.md"
+    if not theme_json.exists():
+        r.skip("no theme.json")
+        return r
+    if not intent.exists():
+        r.skip("design-intent.md missing (see design-intent present check)")
+        return r
+    slug = ROOT.name
+    slug_hyphen = slug.lower()
+    slug_space = slug_hyphen.replace("-", " ")
+    body = intent.read_text(encoding="utf-8", errors="replace")
+    h1_title = ""
+    for raw in body.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        m = re.match(r"^(#+)\s+(.*)$", line)
+        if not m:
+            continue
+        level = len(m.group(1))
+        title = m.group(2).strip()
+        if level != 1:
+            r.fail(
+                f"design-intent.md first heading is not an H1: {line[:120]!r}. "
+                "Open the file with a single `# …` title line that names this "
+                f"theme (directory {slug!r}) before any `##` subsections."
+            )
+            return r
+        h1_title = title
+        break
+    if not h1_title:
+        r.fail(
+            "design-intent.md has no ATX H1 (`# Title`). Add an opening line "
+            f"such as `# {slug} — design intent` before subsections."
+        )
+        return r
+    h1_low = h1_title.lower()
+    if slug_hyphen not in h1_low and slug_space not in h1_low:
+        r.fail(
+            f"design-intent.md H1 {h1_title!r} does not contain the theme "
+            f"directory slug ({slug!r} as `{slug_hyphen}` or spaced words "
+            f"`{slug_space}`). Rewrite the opening `# …` line so tooling "
+            "and reviewers can tell which theme this rubric belongs to."
+        )
+        return r
+    r.details.append(f"H1 documents {slug!r}")
+    return r
+
+
+_LEAK_FLEET_REGISTER_HEX: re.Pattern[str] | None = None
+_STALE_REPAIR_MICROCOPY_RE = re.compile(
+    r"(?is)"
+    r"\b(?:register|counter)\s+[a-z]{1,24}\s+[0-9a-f]{4,10}\b"
+    r"|"
+    r"\bparcel\s+(?:basket|record|copy)\s+(?:[a-z]{1,20}\s+)?[0-9a-f]{4,10}\b"
+    r"|"
+    r"\bcounter\s+record\s+[0-9a-f]{4,10}\b"
+    r"|"
+    r"\bshop-floor\s+find\s+[0-9a-f]{4,10}\b"
+    r"|"
+    r"\bvoucher\s+slip\s+[0-9a-f]{4,10}\b"
+)
+
+
+def _leak_fleet_register_hex_pattern() -> re.Pattern[str]:
+    """Match ``<any-theme-slug> register <short-hex>`` across the monorepo."""
+    global _LEAK_FLEET_REGISTER_HEX
+    if _LEAK_FLEET_REGISTER_HEX is not None:
+        return _LEAK_FLEET_REGISTER_HEX
+    roots = list(iter_themes(MONOREPO_ROOT, stages=()))
+    slugs = sorted({p.name.lower() for p in roots}, key=len, reverse=True)
+    if not slugs:
+        _LEAK_FLEET_REGISTER_HEX = re.compile(r"(?!x)x")
+        return _LEAK_FLEET_REGISTER_HEX
+    alt = "|".join(re.escape(s) for s in slugs)
+    _LEAK_FLEET_REGISTER_HEX = re.compile(
+        rf"(?i)\b(?:{alt})\s+register\s+[0-9a-f]{{4,10}}\b"
+    )
+    return _LEAK_FLEET_REGISTER_HEX
+
+
+def _iter_placeholder_microcopy_scan_files() -> list[Path]:
+    """HTML/PHP surfaces where shopper-visible copy is authored."""
+    paths: list[Path] = []
+    for sub, suffixes in (
+        ("templates", (".html",)),
+        ("parts", (".html",)),
+        ("patterns", (".html", ".php")),
+    ):
+        d = ROOT / sub
+        if not d.is_dir():
+            continue
+        for p in d.rglob("*"):
+            if p.is_file() and p.suffix in suffixes:
+                paths.append(p)
+    fp = ROOT / "functions.php"
+    if fp.is_file():
+        paths.append(fp)
+    mo = ROOT / "microcopy-overrides.json"
+    if mo.is_file():
+        paths.append(mo)
+    return sorted(paths, key=lambda p: p.as_posix())
+
+
+def check_no_placeholder_microcopy() -> Result:
+    """Reject repair-narrative / hex-tagged placeholder strings in markup.
+
+    These patterns come from half-applied voice passes (e.g. ``Register
+    sum d075``, ``Noir register 2560``) that must never ship in templates,
+    patterns, WC gettext maps, or ``microcopy-overrides.json``.
+    """
+    r = Result("no placeholder repair microcopy in theme sources")
+    theme_json = ROOT / "theme.json"
+    if not theme_json.exists():
+        r.skip("no theme.json")
+        return r
+    fleet_re = _leak_fleet_register_hex_pattern()
+    repair_re = _STALE_REPAIR_MICROCOPY_RE
+    hits: set[tuple[str, str]] = set()
+    paths = _iter_placeholder_microcopy_scan_files()
+    for path in paths:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            r.fail(f"{path.relative_to(ROOT)}: {exc}")
+            return r
+        rel = path.relative_to(ROOT).as_posix()
+        for cre in (fleet_re, repair_re):
+            for m in cre.finditer(text):
+                hits.add((rel, m.group(0).strip()))
+    if hits:
+        sample = sorted(hits)[:12]
+        lines = [f"  {rel}: {frag!r}" for rel, frag in sample]
+        r.fail(
+            "Leaked repair/placeholder microcopy (hex-tagged narrative). "
+            "Remove or rewrite:\n" + "\n".join(lines)
+        )
+        return r
+    r.details.append(f"{len(paths)} files scanned")
     return r
 
 
@@ -10515,6 +10668,7 @@ def _build_results(offline: bool) -> list[tuple[str, Callable[[], Result]]]:
     return [
         ("check_json_validity", check_json_validity),
         ("check_design_intent_present", check_design_intent_present),
+        ("check_design_intent_brand_match", check_design_intent_brand_match),
         ("check_theme_readiness", check_theme_readiness),
         ("check_php_syntax", check_php_syntax),
         ("check_block_names", lambda: check_block_names(offline=offline)),
@@ -10524,6 +10678,7 @@ def _build_results(offline: bool) -> list[tuple[str, Callable[[], Result]]]:
         ("check_block_prefixes", check_block_prefixes),
         ("check_no_wc_tabs_block", check_no_wc_tabs_block),
         ("check_no_ai_fingerprints", check_no_ai_fingerprints),
+        ("check_no_placeholder_microcopy", check_no_placeholder_microcopy),
         ("check_no_hardcoded_colors", check_no_hardcoded_colors),
         ("check_no_hex_in_theme_json", check_no_hex_in_theme_json),
         ("check_no_remote_fonts", check_no_remote_fonts),
