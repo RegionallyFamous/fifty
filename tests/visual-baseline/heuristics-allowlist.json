@@ -434,5 +434,28 @@
     "narrow-wc-block": [
       ".wo-account-login-grid"
     ]
+  },
+  "ferment-co:desktop:cart-filled": {
+    "narrow-wc-block": [
+      ".wc-block-cart-items"
+    ]
+  },
+  "ferment-co:desktop:cart-filled.line-remove": {
+    "narrow-wc-block": [
+      ".wc-block-cart-items"
+    ]
+  },
+  "ferment-co:desktop:checkout-filled.return-to-cart-visible": {
+    "a11y-autocomplete-valid": [
+      "*"
+    ],
+    "a11y-color-contrast": [
+      "*"
+    ]
+  },
+  "ferment-co:desktop:my-account": {
+    "narrow-wc-block": [
+      ".wo-account-login-grid"
+    ]
   }
 }

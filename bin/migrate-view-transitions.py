@@ -30,7 +30,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "obel"
-TARGETS = ("aero", "chonk", "foundry", "lysholm", "selvedge")
+TARGETS = ("aero", "chonk", "ferment-co", "foundry", "lysholm", "selvedge")
 
 # Sentinels used in BOTH source and target files. Anything between
 # (and including) these markers is the migration unit.

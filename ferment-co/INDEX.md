@@ -345,7 +345,7 @@ Read this file at the start of any LLM session to discover the project's structu
 - `contrast` = #3a1f0e (Contrast)
 - `primary` = #3a1f0e (Primary)
 - `primary-hover` = #5c2a14 (Primary Hover)
-- `accent` = #a85c2c (Accent)
+- `accent` = #7a3e18 (Accent)
 - `accent-soft` = #e5c9a8 (Accent Soft)
 - `success` = #2F7A4D (Success)
 - `warning` = #B58231 (Warning)
