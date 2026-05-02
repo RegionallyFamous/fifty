@@ -1,0 +1,39 @@
+slug: north-still-gin
+niche: single-product gin distillery in Maine — one bottle, three sizes, very deep about that one bottle
+use_case: DTC alcohol with state-by-state shipping, age-gate, gift-forward
+catalog_size: 1 product × 3 sizes + 4 cocktail accessories = 7 SKUs
+references:
+  - "Hendrick's Gin storytelling"
+  - "Pappy Van Winkle product page"
+  - "Bordeaux estate websites"
+  - "Cunard ocean-liner brochures"
+palette:
+  base: "#F3F2EE"
+  contrast: "#0A1B33"
+  surface: "#FFFFFF"
+  subtle: "#D9D6CC"
+  border: "#A89E7E"
+  accent: "#9B8455"
+type:
+  display: Bodoni Moda 700/900, didone high-contrast
+  body: Inter 400/500
+  notes: tight display letter-spacing (-0.03em), normal body
+shape:
+  overall: single-bottle reverence, magazine spread
+  hero: radical — one bottle, full-bleed, didone headline beside it
+  category_tiles: replaced by a long scroll narrative
+  footer: light, single horizontal row
+  cart: light retheme, minimal sidebar drawer
+  checkout: restructure — age-gate banner persists, state-shipping selector inline
+hero: single bottle shot on a marble plinth in soft directional light, didone headline set very large to the left, almost no body copy
+categories:
+  - The Bottle
+  - How We Make It
+  - Cocktails
+  - Where to Find It
+  - Gift Boxes
+voice: |
+  Distiller who quotes Hemingway — confident, sparing with words, no exclamation points.
+  Cart: "Cellar."
+  Sort: "By size."
+  Sold-out: "Resting in the casks."

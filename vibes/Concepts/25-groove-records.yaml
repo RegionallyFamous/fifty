@@ -1,0 +1,41 @@
+slug: groove-records
+niche: twelve-year-old indie label, eighty catalog releases on vinyl, cassette, and digital — focus on heavy psych and post-punk
+use_case: physical vinyl + digital downloads + cassettes; pre-orders for new releases
+catalog_size: ~80 albums × (vinyl + digital + cassette) = ~240 SKUs + merch
+references:
+  - "Sacred Bones Records"
+  - "Mexican Summer"
+  - "Numero Group"
+  - "early Vice magazine layouts"
+palette:
+  base: "#E8E2D2"
+  contrast: "#0A0A0A"
+  surface: "#FFF8E2"
+  subtle: "#C9BFA0"
+  border: "#0A0A0A"
+  accent: "#FF1F4F"
+type:
+  display: Bungee 400, blocky display
+  body: IBM Plex Mono 400/500
+  notes: tight display tracking, monospace body keeps zine feel
+shape:
+  overall: zine cut-and-paste, photocopy textures
+  hero: radical — torn-paper headline over photocopied band photo
+  category_tiles: light — six big tiles, each one a stylized record sleeve
+  footer: restructure — bandcamp-style player block embedded
+  cart: light retheme
+  checkout: light
+hero: a photocopied black-and-white band photo as the background, blocky Bungee headline torn-paper-collaged over it, release date stamped in red
+categories:
+  - New Releases
+  - Pre-Orders
+  - Catalog
+  - Cassettes
+  - Digital
+  - Merch
+  - About
+voice: |
+  Label boss who used to write fanzines — opinionated, references obscure '78 bands, asterisks for footnotes.
+  Cart: "Crate."
+  Sort: "By release date."
+  Sold-out: "Pressing's gone — next run pending."

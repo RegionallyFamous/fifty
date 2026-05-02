@@ -1,0 +1,40 @@
+slug: cabinet-of-curiosities
+niche: nineteenth-century scientific instruments, taxidermy, naturalist ephemera — museum-quality oddities
+use_case: single-piece, permanent sold archive with provenance, ships insured worldwide
+catalog_size: ~500 unique items active; ~3000 sold archive
+references:
+  - "The Evolution Store"
+  - "Obscura Antiques"
+  - "the Wellcome Collection website"
+  - "old Christie's natural history catalogs"
+palette:
+  base: "#EBE3CF"
+  contrast: "#1A0F08"
+  surface: "#F5EDD8"
+  subtle: "#D4C9A8"
+  border: "#3D2614"
+  accent: "#7A1414"
+type:
+  display: Cinzel 600, engraved Roman capitals
+  body: EB Garamond 400/500/700
+  notes: very wide display tracking (+0.1em), small caps for category labels, body normal
+shape:
+  overall: nineteenth-century engraving, plate-like layouts
+  hero: radical — sepia engraving-style hero, headline in engraved caps
+  category_tiles: replaced by a dense index of every category as numbered plates
+  footer: light, three columns, address engraved-style
+  cart: light, called "Cabinet"
+  checkout: light, with shipping-insurance toggle prominent
+hero: sepia-toned engraving-style illustration of a brass microscope and a butterfly under glass, all-caps Cinzel headline above on a parchment field
+categories:
+  - Instruments
+  - Specimens
+  - Books and Maps
+  - Fossils
+  - Optics
+  - Recently Sold
+voice: |
+  Victorian curator with monocle vibes (different cousin from Woo-drow) — formal, footnoted, dates everything to the half-decade.
+  Cart: "Cabinet."
+  Sort: "By century."
+  Sold-out: "Acquired by another collector."

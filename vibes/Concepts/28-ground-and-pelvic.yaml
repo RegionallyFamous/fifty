@@ -1,0 +1,39 @@
+slug: ground-and-pelvic
+niche: pelvic floor physical therapist with bookable sessions plus a small line of educational guides and therapy tools
+use_case: services primary (booking telehealth + in-person) + tiny product attachment
+catalog_size: 6 product SKUs (guides, balls, dilators) + 4 service types + 6 telehealth slots/week
+references:
+  - "Origin (the PT clinic)"
+  - "Hello Pelvis"
+  - "the design of trauma-informed therapy practices"
+  - "soft brand identity of Maude"
+palette:
+  base: "#F2ECE5"
+  contrast: "#2C2520"
+  surface: "#FFFFFF"
+  subtle: "#E5DACD"
+  border: "#A88A78"
+  accent: "#D4847E"
+type:
+  display: Lora 500/700, warm transitional serif
+  body: DM Sans 400/500
+  notes: normal display tracking, body normal
+shape:
+  overall: clinical-soft, two columns with a calming illustrated panel on most pages
+  hero: light — type-led intake message with Book button
+  category_tiles: light — three tiles for book/learn/tools
+  footer: restructure — emergency disclaimer note + scope-of-practice block
+  cart: light retheme
+  checkout: restructure — telehealth vs in-person picker with consent checkbox
+hero: a soft watercolor illustration of a body in repose, lora headline above reading a welcoming sentence, Book CTA prominent below
+categories:
+  - Book a Session
+  - Guides
+  - Tools
+  - About
+  - FAQ
+voice: |
+  PT who explains everything twice, kindly — anatomically specific, never euphemistic, always validating.
+  Cart: "Cart."
+  Sort: "By topic."
+  Sold-out: "Currently between batches — guide download still available."

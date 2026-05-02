@@ -1,0 +1,40 @@
+slug: paniere
+niche: weekly preorder Italian bakery in Oakland — sourdough, focaccia, filled pastries
+use_case: preorder for Saturday/Sunday pickup only, no shipping, weekly menu rotation, local-only
+catalog_size: ~14 weekly items, rotating; 3 standing-order tiers
+references:
+  - "Tartine Bakery menu pages"
+  - "Edda Acid Bakery Instagram aesthetic"
+  - "Tom Hovey Great British Bake Off illustrations"
+  - "Italian trattoria chalkboards"
+palette:
+  base: "#F6EBD4"
+  contrast: "#3A1A0E"
+  surface: "#FFF7E4"
+  subtle: "#E5C996"
+  border: "#7A2812"
+  accent: "#C53D1B"
+type:
+  display: EB Garamond 700, old-style serif
+  body: Lora 400 with Caveat for accent labels
+  notes: small caps display, body normal
+shape:
+  overall: warm hand-painted feel, asymmetric
+  hero: radical — illustrated weekly menu drawn like a chalkboard
+  category_tiles: light — four big squares for the bread/sweet/savory/standing-orders families
+  footer: light, three columns including pickup hours map
+  cart: restructure — show pickup-day selector inline
+  checkout: restructure — local-pickup-only, no shipping fields
+hero: illustrated chalkboard-style weekly menu rendered as a hand-drawn image, name of the bakery in EB Garamond above
+categories:
+  - This Week
+  - Loaves
+  - Sweets
+  - Savory
+  - Standing Orders
+  - Pickup
+voice: |
+  Nonna calling out to the line — affectionate, slightly bossy, one-word Italian asides.
+  Cart: "Tua cesta."
+  Sort: "Fresh first."
+  Sold-out: "Mangiato. Next week, eh."

@@ -1,0 +1,40 @@
+slug: apothecaria
+niche: herbalist-led skincare line — six products, single-ingredient transparency, every botanical sourced and named
+use_case: DTC + opt-in subscription refills, education-heavy product pages
+catalog_size: 6 products × 2 sizes = 12 SKUs + 4 educational PDFs
+references:
+  - "de Mamiel"
+  - "Susanne Kaufmann"
+  - "Aesop early product pages"
+  - "old herbal medicine textbooks"
+palette:
+  base: "#EFEDE2"
+  contrast: "#2A2E22"
+  surface: "#FFFFFF"
+  subtle: "#D4D2BC"
+  border: "#5C6B4A"
+  accent: "#8C6F2A"
+type:
+  display: Crimson Pro 500/700, transitional serif
+  body: IBM Plex Sans 400/500
+  notes: normal display tracking, generous body line-height (1.7)
+shape:
+  overall: clinical-meets-botanical, two-column with botanical-illustration sidebar
+  hero: light — single bottle on a leaf, type-led
+  category_tiles: replaced by an ingredients glossary as the front-page section
+  footer: light, two columns, subscribe to refills CTA
+  cart: light retheme
+  checkout: light
+hero: a glass dropper bottle resting on a fresh sage leaf in soft daylight, crimson pro headline above, ingredient list set as a small caption to the right
+categories:
+  - Cleansers
+  - Serums
+  - Balms
+  - Refills
+  - Ingredients
+  - The Studio
+voice: |
+  Herbalist with a chemistry minor — gentle, taxonomically precise, reads like a notebook.
+  Cart: "Mortar."
+  Sort: "By ingredient."
+  Sold-out: "Awaiting next harvest."

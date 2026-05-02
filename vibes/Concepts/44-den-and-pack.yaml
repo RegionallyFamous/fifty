@@ -1,0 +1,40 @@
+slug: den-and-pack
+niche: small Pacific Northwest wildlife rescue selling merch (tees, hats, stickers) and recurring support tiers to fund rehab work
+use_case: merch primary (proceeds fund rehab) + recurring monthly support tiers + occasional sponsor-an-animal stories
+catalog_size: 18 merch SKUs + 4 monthly support tiers + ~6 active sponsor stories
+references:
+  - "Cottonwood Foundation"
+  - "Independent Animal Rescue tees"
+  - "the watercolor-illustration aesthetic of Sibley field guides"
+  - "Etsy small-shop merch sites"
+palette:
+  base: "#F0EBDC"
+  contrast: "#2A1F14"
+  surface: "#FFFAEC"
+  subtle: "#D6CAB0"
+  border: "#5C3A1F"
+  accent: "#7A8E4A"
+type:
+  display: Caveat 700, handwritten
+  body: Lora 400/500
+  notes: handwritten display retains natural variance; body warm
+shape:
+  overall: hand-illustrated, watercolor accents, asymmetric
+  hero: radical — hand-painted illustration of a current rescue animal with a sponsor-this-animal CTA
+  category_tiles: light — three tiles for merch/support/stories
+  footer: restructure — current rescues persist with mini-cards
+  cart: light retheme
+  checkout: restructure — sponsor-on-behalf-of name field, monthly toggle
+hero: a watercolor illustration of an injured fox under care, caveat handwritten headline reading the fox's name and current status, sponsor button below
+categories:
+  - Tees and Hats
+  - Stickers
+  - Monthly Support
+  - Sponsor an Animal
+  - Stories from the Den
+  - About
+voice: |
+  Rehabber who names every animal — warm, story-driven, occasionally heartbroken without being maudlin.
+  Cart: "Pack."
+  Sort: "By animal / by tier."
+  Sold-out: "Sold out this print run — restocking when rehab budget allows."

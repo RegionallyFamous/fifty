@@ -1,0 +1,40 @@
+slug: fixed-edge
+niche: collector-grade fixed-blade knives from contemporary American makers — high-carbon steels, hand-stitched sheaths
+use_case: small-quantity drops + sold archive + provenance writeup per piece
+catalog_size: ~100 active + ~1500 sold archive
+references:
+  - "Knifeworks"
+  - "Blade HQ collector tier"
+  - "watch-dealer single-product layouts"
+  - "old Smithsonian acquisition cards"
+palette:
+  base: "#F0ECE0"
+  contrast: "#0F0F10"
+  surface: "#FFFFFF"
+  subtle: "#D6CFB8"
+  border: "#0F0F10"
+  accent: "#5C2A1F"
+type:
+  display: Source Serif 4 700, classical serif
+  body: Source Code Pro 400
+  notes: wide display tracking on titles, mono body for steel-spec tables
+shape:
+  overall: gun-shop catalog meets watch-dealer detail, two-column with macro photography
+  hero: light — single knife on a leather strop with maker callout
+  category_tiles: light — six tiles for makers/steels/styles
+  footer: restructure — drop calendar persists
+  cart: light retheme, called "Sheath"
+  checkout: light, with hold-for-restock option
+hero: a single blade laid on a piece of leather under directional studio light, source-serif maker name below, steel and finish stamped in monospace
+categories:
+  - New Drops
+  - Makers
+  - Steels
+  - Sheaths
+  - Sold Archive
+  - Buying Guide
+voice: |
+  Collector who measures grain — technical, steel-name-specific, never sentimental.
+  Cart: "Sheath."
+  Sort: "By maker / by steel."
+  Sold-out: "Sold to a collector — see archive."

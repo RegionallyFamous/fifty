@@ -1,0 +1,40 @@
+slug: seminar-house
+niche: cohort-based writing courses for novelists — twelve courses per year plus six self-paced classics and four faculty books
+use_case: cohort enrollment with limited seats + lifetime self-paced access + book purchases
+catalog_size: 12 active cohort courses + 6 self-paced + 4 books = 22 SKUs (with cohort scheduling)
+references:
+  - "Tin House Workshops"
+  - "Catapult class pages"
+  - "Sentence first newsletter"
+  - "Pelican books cover designs"
+palette:
+  base: "#F0EBDF"
+  contrast: "#1F1A14"
+  surface: "#FFFAEC"
+  subtle: "#D9D0BC"
+  border: "#5C2A20"
+  accent: "#7A1414"
+type:
+  display: Lora 700, transitional serif with literary feel
+  body: Inter 400/500
+  notes: normal display tracking, generous body line-height (1.7) for reading
+shape:
+  overall: editorial book-jacket, two-up reading layout
+  hero: light — current-cohort callout card with seats remaining
+  category_tiles: light — three tiles for cohorts/self-paced/books
+  footer: restructure — calendar of upcoming cohort start dates
+  cart: light retheme, called "Library"
+  checkout: restructure — cohort start-date confirmation visible, self-paced grants instant access
+hero: a book-cover-style card laying out the current cohort's name, dates, faculty, and seats remaining, all in literary serif
+categories:
+  - Cohorts
+  - Self-Paced
+  - Books
+  - Faculty
+  - Calendar
+  - About
+voice: |
+  Novelist-turned-teacher — generous, anecdote-prone, gives advice in the form of editing observations.
+  Cart: "Reading list."
+  Sort: "By start date."
+  Sold-out: "Cohort's full — waitlist opens for the spring section."

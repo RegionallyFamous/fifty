@@ -1,0 +1,39 @@
+slug: wild-grant
+niche: wildlife corridor nonprofit accepting donations, selling tier-rewards merch, and offering symbolic species adoptions
+use_case: donation-primary (one-time + recurring monthly) + tier-based gifts + symbolic adoptions + small merch
+catalog_size: 6 donation tiers + 8 symbolic adoptions + 12 merch SKUs
+references:
+  - "Wild Salmon Center"
+  - "Patagonia Action Works"
+  - "Sierra Club"
+  - "old WWF annual reports"
+palette:
+  base: "#F0EDE3"
+  contrast: "#1A2418"
+  surface: "#FFFFFF"
+  subtle: "#D6D2BE"
+  border: "#3A4A24"
+  accent: "#D26A1F"
+type:
+  display: Source Serif 4 600/700, classical serif
+  body: Inter 400/500
+  notes: normal display tracking, generous body line-height (1.7) for field-report reading
+shape:
+  overall: conservation-photo editorial, large image-led
+  hero: radical — full-bleed wildlife camera-trap photo with a donation impact callout overlaid
+  category_tiles: light — three tiles for donate/adopt/merch
+  footer: restructure — recurring monthly support CTA persists
+  cart: restructure — donation amounts as line items, gift-on-behalf-of toggle
+  checkout: restructure — tax-receipt info collected, in-honor-of name field
+hero: a full-bleed camera-trap photograph of a mountain lion in low light, source-serif headline reading the impact of a typical donation overlaid in cream
+categories:
+  - Donate
+  - Symbolic Adoptions
+  - Merch
+  - Field Reports
+  - About the Trust
+voice: |
+  Ranger writing a field report — measured, fact-first, names species and locations rather than feelings.
+  Cart: "Pledge."
+  Sort: "By region / by species."
+  Sold-out: "Adoption full for this season — try another corridor or join the waitlist."

@@ -1,0 +1,40 @@
+slug: selvedge-mill
+niche: small-batch selvedge denim and workwear from a third-generation Massachusetts mill, sold direct
+use_case: DTC apparel, no marketplace, slow seasonal drops
+catalog_size: ~40 SKUs across 6 categories, drops twice a year
+references:
+  - 3sixteen
+  - "Buck Mason's denim section"
+  - "Tender Co. archive page"
+  - Mister Freedom
+palette:
+  base: "#F4EFE6"
+  contrast: "#1B2A4A"
+  surface: "#FFFFFF"
+  subtle: "#E8E0D2"
+  border: "#2C2C2C"
+  accent: "#B5532A"
+type:
+  display: Anton 700, condensed brutal poster
+  body: Inter 400/500/600
+  notes: tight letter-spacing on display (-0.01em), normal on body
+shape:
+  overall: dense editorial grid
+  hero: radical — full-bleed factory-floor photo, headline knocked out lower-third, no overlay box
+  category_tiles: radical — wide aspect, single image per tile, type set BIG over the image
+  footer: light retheme, four columns of real menus
+  cart: restructure to 2-column with summary sidebar pinned right
+  checkout: light retheme, single column, no progress bar
+hero: full-bleed black-and-white press photo of denim being cut on a table, headline in Anton at bottom-left, no button
+categories:
+  - Jeans
+  - Jackets
+  - Shirts
+  - Workwear
+  - Hardware
+  - Archive
+voice: |
+  Third-generation millworker — terse, proud of craft, no marketing fluff.
+  Cart: "In your bag" not "Your cart".
+  Sort label: "What we'd grab first" not "Featured".
+  Sold-out: "Cut from the line."

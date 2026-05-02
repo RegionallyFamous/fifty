@@ -1,0 +1,40 @@
+slug: cha-no-yu
+niche: Japanese tea importer with full ceremonial gear — sencha, matcha, hojicha, plus bowls and whisks
+use_case: DTC with detailed product education, in-person ceremony booking as secondary service
+catalog_size: ~120 SKUs (teas + tools) + 6 ceremony bookings/month
+references:
+  - "Ippodo Tea"
+  - "Kettl Tea"
+  - "Postcard Teas London"
+  - "Japanese Wabi-Sabi book design"
+palette:
+  base: "#F1EBDD"
+  contrast: "#1A1612"
+  surface: "#FFFFFF"
+  subtle: "#DCD1B8"
+  border: "#3D2A1F"
+  accent: "#8C5A3F"
+type:
+  display: Source Serif 4 300/600, restrained editorial serif
+  body: IBM Plex Sans 300/400/500
+  notes: very wide display letter-spacing (+0.06em), generous body line-height (1.8)
+shape:
+  overall: spare Japanese editorial, vertical breathing room
+  hero: radical — single still-life photo with one small tea bowl, type set vertically
+  category_tiles: light — narrow column of type indices, no images
+  footer: light, two columns
+  cart: light, vertical sidebar
+  checkout: light
+hero: a single tea bowl on a stone surface in dim daylight, photograph occupies one-third of the frame, the rest is empty cream space with vertical Japanese-inflected typography
+categories:
+  - Sencha
+  - Matcha
+  - Hojicha
+  - Bowls
+  - Whisks
+  - Ceremonies
+voice: |
+  Tea master, slow cadence — never rushes, names producers and prefectures, never says "delicious".
+  Cart: "Tray."
+  Sort: "By prefecture."
+  Sold-out: "This year's leaves are gone."

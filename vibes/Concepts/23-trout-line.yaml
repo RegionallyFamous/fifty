@@ -1,0 +1,41 @@
+slug: trout-line
+niche: Catskill-area fly shop — flies, rods, waders, books, plus guided trips on the Beaverkill and Willowemoc
+use_case: large DTC catalog + paper catalog mailing + guided trip booking on partial calendar
+catalog_size: ~3000 SKUs (overwhelmingly individual flies in many sizes); ~40 trip slots/year
+references:
+  - "Orvis early catalogs"
+  - "L.L.Bean's printed gear book"
+  - "American Angler magazine"
+  - "the Tenkara USA site's restraint"
+palette:
+  base: "#EDE6CF"
+  contrast: "#1F2814"
+  surface: "#F5EFD9"
+  subtle: "#C9C0A0"
+  border: "#3D4A24"
+  accent: "#7A1414"
+type:
+  display: Source Serif 4 700, restrained classical serif
+  body: Source Code Pro 400/500
+  notes: normal display tracking, monospace body keeps the catalog-print feel
+shape:
+  overall: paper-catalog dense, three-up product grids with extensive spec text
+  hero: light — current-conditions river photo with hatch report headline
+  category_tiles: light — six big tiles, single fly icon per tile
+  footer: restructure — current river conditions + trip availability calendar
+  cart: light retheme, called "Tackle"
+  checkout: light, with hold-for-pickup option for in-store
+hero: photograph of the Beaverkill at dawn, source-serif headline reading the current hatch report, photo small, river stats laid out in monospace below
+categories:
+  - Flies
+  - Rods
+  - Reels
+  - Lines
+  - Waders
+  - Literature
+  - Guided Trips
+voice: |
+  Fly shop owner reading aloud from a journal — patient, river-stat-specific, references hatches by Latin name.
+  Cart: "Tackle box."
+  Sort: "By hatch / by size."
+  Sold-out: "Off the bench — tying more this weekend."

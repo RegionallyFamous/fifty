@@ -1,0 +1,41 @@
+slug: arena-cards
+niche: trading card game secondary market — singles, sealed product, supplies, with grading partner
+use_case: large catalog with complex SKU variants (foil, alt-art, condition, language), buylist intake
+catalog_size: ~15000 SKUs (huge variant explosion per card)
+references:
+  - "TCGplayer"
+  - "Card Kingdom"
+  - "Sphere Mass Online (Pokémon Japan)"
+  - "old Beckett price guide layouts"
+palette:
+  base: "#0A0F1F"
+  contrast: "#FFFFFF"
+  surface: "#13182C"
+  subtle: "#1A2440"
+  border: "#33405C"
+  accent: "#FFD600"
+type:
+  display: Oswald 600/700, condensed
+  body: Roboto 400/500
+  notes: tight display tracking, tabular numerals critical for prices
+shape:
+  overall: collector-dense + glossy, holographic accent stripes
+  hero: light — featured singles row + market-movers ticker
+  category_tiles: light — set-icon tiles for each TCG set
+  footer: restructure — market price ticker + buylist CTA persistent
+  cart: restructure — condition selector inline, foil/non-foil toggle
+  checkout: restructure — buylist credit applied as payment method, sleeve-up + tracked shipping default
+hero: a featured rare card glowing under holographic accents, oswald headline naming the set, market-movers ticker scrolling above
+categories:
+  - Singles
+  - Sealed
+  - Supplies
+  - Buylist
+  - Grading
+  - Sets
+  - Want List
+voice: |
+  Shop owner who knows every set — set-name-droppy, condition-specific, comfortable with abbreviations.
+  Cart: "Binder."
+  Sort: "By price / by set / by rarity."
+  Sold-out: "Out of stock at this condition — try NM or LP."

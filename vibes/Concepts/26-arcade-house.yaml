@@ -1,0 +1,39 @@
+slug: arcade-house
+niche: solo game developer shipping pixel-art puzzlers and chiptune soundtracks
+use_case: digital downloads + Steam keys + soundtrack purchases, no physical
+catalog_size: 4 games × multiple platforms + 4 OSTs + 2 art books PDF = ~16 digital SKUs
+references:
+  - "Itch.io devlog pages"
+  - "Yacht Club Games site"
+  - "Heart Machine's Hyper Light Drifter promo"
+  - "old Macintosh System 7 UI"
+palette:
+  base: "#0B0F1A"
+  contrast: "#33FF99"
+  surface: "#0F1A2E"
+  subtle: "#1A2438"
+  border: "#33FF99"
+  accent: "#FF3399"
+type:
+  display: Press Start 2P 400, 8-bit pixel
+  body: VT323 400 / Space Mono 400
+  notes: pixel display has fixed sizing — use sparingly large; mono body
+shape:
+  overall: late-90s web pixel-art, scanline overlays, CRT-aware
+  hero: radical — animated GIF of gameplay loop with pixel-text marquee
+  category_tiles: replaced by a pixel-icon grid
+  footer: light, single row, with a pixel-style guestbook signup
+  cart: light retheme — checkout shows a "PRESS START" button
+  checkout: light
+hero: a looping gameplay GIF taking up most of the screen, pixel-font headline scrolling above it like a marquee, "PRESS START" subhead blinking
+categories:
+  - Games
+  - Soundtracks
+  - Devlog
+  - Art Books
+  - Press Kit
+voice: |
+  Solo dev posting devlogs — earnest, self-deprecating, lots of em-dashes and asides about edge cases.
+  Cart: "Inventory."
+  Sort: "By release."
+  Sold-out: never (digital only) — but waitlist for an unreleased title says "WIP — no ETA."

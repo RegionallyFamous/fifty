@@ -1,0 +1,39 @@
+slug: clavis-blades
+niche: Japanese-trained American bladesmith making one heirloom kitchen knife at a time, eight-week lead times
+use_case: made-to-order, deposit + balance, queue-based, no inventory
+catalog_size: 8 knife profiles × 3 steel options = 24 configurations, all queued
+references:
+  - "Bloodroot Blades"
+  - "Hatch Show Print order forms"
+  - "Tetsubo studio pages"
+  - "Watch dealer single-product layouts"
+palette:
+  base: "#FAFAF7"
+  contrast: "#1A1A1A"
+  surface: "#FFFFFF"
+  subtle: "#E5E2D9"
+  border: "#B8B0A0"
+  accent: "#8B4513"
+type:
+  display: Cormorant Garamond 300/500, classical serif quiet
+  body: IBM Plex Sans 400/500
+  notes: wide display letter-spacing (+0.04em) for headlines, normal body
+shape:
+  overall: long-form per product, tons of whitespace
+  hero: light — small studio shot, type-led page-opener
+  category_tiles: replaced entirely — a queue list, not a grid
+  footer: light, single column centered
+  cart: restructure — line items show queue-position and lead-time inline
+  checkout: light, deposit calculator embedded above the form
+hero: knife on linen cloth in daylight, hand barely visible holding the handle, single short headline above
+categories:
+  - Profiles
+  - Steels
+  - In Queue
+  - Care
+  - About the Forge
+voice: |
+  Bladesmith who measures things — dry, technical, occasionally moved by craft.
+  Cart: "Place in the queue."
+  Sort: "By lead time."
+  Sold-out: "Booked through autumn."

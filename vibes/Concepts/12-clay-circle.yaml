@@ -1,0 +1,40 @@
+slug: clay-circle
+niche: husband-wife pottery studio in Asheville making functional stoneware in seasonal batches
+use_case: drops every 3 months, batch-based with waitlist + made-to-order for select forms
+catalog_size: ~40 active forms; drop-day rush + slow trickle of restocks
+references:
+  - "East Fork Pottery"
+  - "MQuan studio"
+  - "Heath Ceramics"
+  - "Apartamento studio profiles"
+palette:
+  base: "#EFE4D2"
+  contrast: "#2C1810"
+  surface: "#FAF1DC"
+  subtle: "#D6C4A4"
+  border: "#5C3A1F"
+  accent: "#A24C24"
+type:
+  display: Fraunces 600/700 with optical-size variation, expressive humanist serif
+  body: Inter 400/500
+  notes: variable optical-size on display headlines (largest at 144pt), body normal
+shape:
+  overall: warm and bodily, asymmetric
+  hero: radical — clay-on-wheel close-up, headline overlapping the photo
+  category_tiles: light — four squares for mug/bowl/vase/plate
+  footer: light, two columns + waitlist signup
+  cart: restructure — drop countdown timer when applicable
+  checkout: light
+hero: hands shaping clay on a wheel in raking light, fraunces headline overlapping the photo on the left, drop-date countdown subhead
+categories:
+  - This Drop
+  - Mugs
+  - Bowls
+  - Vases
+  - Tableware
+  - Notify Me
+voice: |
+  Potter checking the kiln — patient, hands-on, occasional kiln-related dad joke.
+  Cart: "Wheel."
+  Sort: "By form."
+  Sold-out: "Out of the kiln. New batch in three months."

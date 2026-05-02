@@ -1,0 +1,41 @@
+slug: gauge-zero
+niche: HO and N-scale model railroad supplier — locomotives, rolling stock, track, scenery, DCC electronics
+use_case: deep hobbyist catalog + special-order workflow + manufacturer pre-orders
+catalog_size: ~5000 SKUs + active pre-order pipeline
+references:
+  - "Walthers Model Railroading catalog"
+  - "Micro-Mark"
+  - "old Marklin printed catalogs"
+  - "Model Railroader magazine"
+palette:
+  base: "#F2EFE5"
+  contrast: "#1A1614"
+  surface: "#FFFFFF"
+  subtle: "#D8D2BE"
+  border: "#1A1614"
+  accent: "#1F4F8A"
+type:
+  display: Source Serif 4 700, classical serif
+  body: Source Code Pro 400
+  notes: normal display tracking, monospace body keeps the catalog-print feel
+shape:
+  overall: catalog-vintage, dense product cards, manufacturer-grouped sections
+  hero: light — a model train photo with the manufacturer/era/scale stamped over it
+  category_tiles: light — six tiles for locomotives/rolling/track/scenery/electronics/special
+  footer: restructure — pre-order calendar visible
+  cart: restructure — pre-order-arrival ETA inline per line
+  checkout: light, with hold-for-shipment-when-all-arrive option
+hero: a detailed photograph of an HO-scale steam locomotive on a layout, source-serif name label below stamped with road number, era, and scale
+categories:
+  - Locomotives
+  - Rolling Stock
+  - Track
+  - Scenery
+  - Tools
+  - DCC and Electronics
+  - Special Order
+voice: |
+  Enthusiast modeler in a basement — patient, road-name and road-number specific, occasional historical aside.
+  Cart: "Layout."
+  Sort: "By manufacturer / by era."
+  Sold-out: "Out of run — pre-order the next batch."

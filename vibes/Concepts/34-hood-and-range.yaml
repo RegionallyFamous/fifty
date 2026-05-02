@@ -1,0 +1,40 @@
+slug: hood-and-range
+niche: commercial kitchen equipment dealer — ranges, refrigeration, prep tables, smallwares — install and service included
+use_case: B2B with quote-based + standard pricing, install booking, service contracts
+catalog_size: ~2500 SKUs + service types + install scheduling
+references:
+  - "WebstaurantStore"
+  - "Tundra Restaurant Supply"
+  - "old Vulcan Hart equipment catalogs"
+  - "stainless-steel restaurant kitchen photography"
+palette:
+  base: "#F4F4F2"
+  contrast: "#0F0F0F"
+  surface: "#FFFFFF"
+  subtle: "#D9D9D4"
+  border: "#5C5C58"
+  accent: "#1F66B5"
+type:
+  display: IBM Plex Sans 600/700
+  body: Inter 400/500
+  notes: tight display tracking, tabular numerals
+shape:
+  overall: catalog-clean, three-up product grids, spec-sheet-heavy
+  hero: light — current promo callout with delivery/install lead time
+  category_tiles: light — six big tiles for the equipment families
+  footer: restructure — service-area map + quote-request CTA persistent
+  cart: restructure — install-booking toggle on heavy items
+  checkout: restructure — PO number, ship-to-restaurant address, install date picker
+hero: a stainless-steel commercial kitchen photographed wide, plex-sans headline naming a current model promotion, lead-time in tabular numerals to the right
+categories:
+  - Cooking
+  - Refrigeration
+  - Prep
+  - Smallwares
+  - Service
+  - Quote / Account
+voice: |
+  Salesperson who knows the chefs by name — friendly-direct, lead-time specific, occasional restaurant-industry shorthand.
+  Cart: "Order."
+  Sort: "By BTU / by capacity."
+  Sold-out: "Out of stock — pre-order with 6-week lead."

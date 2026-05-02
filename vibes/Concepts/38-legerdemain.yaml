@@ -1,0 +1,42 @@
+slug: legerdemain
+niche: stage and close-up magic supplies for working magicians — apparatus, cards, coins, mentalism props, plus tutorial downloads
+use_case: deep specialist physical catalog + tutorial digital downloads + member-only access for advanced effects
+catalog_size: ~1500 physical + ~300 digital downloads + 4 membership tiers
+references:
+  - "Penguin Magic"
+  - "Vanishing Inc."
+  - "Tannen's Magic shop site"
+  - "old Tarbell Course in Magic illustrations"
+palette:
+  base: "#1A0F14"
+  contrast: "#F0E6D2"
+  surface: "#22141C"
+  subtle: "#3A1F2A"
+  border: "#5A2C40"
+  accent: "#C8A24A"
+type:
+  display: Limelight 400, art-deco theatrical display
+  body: Cormorant Garamond 400/500
+  notes: very wide display tracking on small caps headlines, body normal
+shape:
+  overall: vaudeville poster, dark with brass accents
+  hero: radical — theater-curtain-style hero with a featured effect
+  category_tiles: light — six tiles styled as theater playbills
+  footer: light, two columns set in small caps
+  cart: light retheme, called "Trunk"
+  checkout: restructure — member discount auto-applies, instant download for digital
+hero: a velvet-curtain background with a featured effect title set in limelight, "Now Showing" stamped in brass above
+categories:
+  - Close-Up
+  - Stage
+  - Cards
+  - Coins
+  - Mentalism
+  - Tutorials
+  - Apparatus
+  - Membership
+voice: |
+  Old magician with a velvet voice — theatrical, never reveals secrets in copy, refers to "the work".
+  Cart: "Trunk."
+  Sort: "By difficulty / by performer."
+  Sold-out: "Back behind the curtain — restocking next week."

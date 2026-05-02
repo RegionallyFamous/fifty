@@ -1,0 +1,40 @@
+slug: mycelial-supply
+niche: cultivation supplies for gourmet mushroom growers — grain spawn, substrates, lab equipment, sterile syringes
+use_case: DTC + small-business wholesale + lab account tier with verified credentials
+catalog_size: ~150 SKUs across spawn, substrate, equipment, lab supplies
+references:
+  - "North Spore"
+  - "Out-Grow"
+  - "Mycology Now journal"
+  - "lab-supply catalogs (VWR, Fisher Scientific)"
+palette:
+  base: "#F8F8F4"
+  contrast: "#1A1F1A"
+  surface: "#FFFFFF"
+  subtle: "#E2E2D8"
+  border: "#1A1F1A"
+  accent: "#7A4FB8"
+type:
+  display: JetBrains Mono 600/700, monospace with ligatures
+  body: Inter 400/500
+  notes: monospace display gives lab-data feel; tabular numerals for batch numbers
+shape:
+  overall: lab-clean, dense product cards with batch and lot numbers
+  hero: light — current batch availability table at the top
+  category_tiles: light — four tiles for spawn/substrate/equipment/lab
+  footer: restructure — lab-account verification form
+  cart: restructure — wholesale-tier discount visible per line if logged in
+  checkout: restructure — sterility-certificate download per qualifying item
+hero: a clean photograph of a petri dish with a single fungal colony, jetbrains-mono headline naming the species, batch number stamped beside in monospace
+categories:
+  - Spawn
+  - Substrate
+  - Equipment
+  - Lab Supplies
+  - Wholesale
+  - Lab Accounts
+voice: |
+  Mycologist with a clipboard — Latin binomials first, batch and lot numbers always cited, no marketing claims.
+  Cart: "Bench."
+  Sort: "By species / by batch date."
+  Sold-out: "Out of batch — next inoculation in 14 days."

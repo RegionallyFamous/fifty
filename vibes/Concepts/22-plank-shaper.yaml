@@ -1,0 +1,40 @@
+slug: plank-shaper
+niche: solo surfboard shaper in Encinitas — twelve stock shapes plus custom orders, all hand-shaped
+use_case: stock shapes + made-to-order with deposit, 4-week lead on customs
+catalog_size: 12 stock shapes + custom configurator + ~10 accessories (fins, wax, leashes)
+references:
+  - "Mollusk Surf Shop"
+  - "Captain Fin Co."
+  - "old Surfer's Journal magazine spreads"
+  - "Sticker-bombed shaper-bay walls"
+palette:
+  base: "#F2EAD3"
+  contrast: "#2A1F0A"
+  surface: "#F7F0DC"
+  subtle: "#D8C8A0"
+  border: "#5A4A22"
+  accent: "#E04B1F"
+type:
+  display: Permanent Marker 400 for headlines, hand-marker feel
+  body: Inter 400/500
+  notes: handwritten display retains natural variance; body normal
+shape:
+  overall: surf-zine cut-and-paste, taped-on photographs
+  hero: radical — torn-paper-collage style hero with hand-marker headline
+  category_tiles: light — twelve shape outlines as a row of tiles
+  footer: light, two columns, with shaper's hours noted as if scribbled
+  cart: light retheme
+  checkout: light
+hero: a hand-marker headline scrawled across a photograph of a foam blank in the shaping bay, taped photo of an unrelated surf trip overlapping the corner
+categories:
+  - Stock Shapes
+  - Custom Orders
+  - Fins
+  - Wax & Leashes
+  - Stories
+  - About the Bay
+voice: |
+  Shaper who surfs every morning — laid-back, surf-jargon-heavy, mid-sentence brand drops.
+  Cart: "Quiver."
+  Sort: "By volume."
+  Sold-out: "Out of foam — next blank's coming Tuesday."

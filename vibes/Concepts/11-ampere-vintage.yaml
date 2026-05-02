@@ -1,0 +1,40 @@
+slug: ampere-vintage
+niche: vintage and restored mid-century European lighting — Castiglioni, Sarfatti, lesser-known Italian houses
+use_case: one-of-a-kind sales, sold-out is permanent, provenance documentation per piece
+catalog_size: ~200 active pieces, churns weekly; ~2000 sold archive
+references:
+  - "1stDibs gallery pages"
+  - "Galerie kreo"
+  - "Wright Auction catalogs"
+  - "Domus magazine 1960s issues"
+palette:
+  base: "#F4EFE8"
+  contrast: "#171614"
+  surface: "#FFFFFF"
+  subtle: "#E0D7C5"
+  border: "#171614"
+  accent: "#5A1A1A"
+type:
+  display: Italiana 400, art-deco-meets-couture serif
+  body: Manrope 300/400/500
+  notes: very wide display tracking (+0.08em), body normal
+shape:
+  overall: gallery editorial, generous whitespace, museum-card detail blocks
+  hero: light — single-piece detail with provenance card
+  category_tiles: replaced by a dense index-grid of every available piece
+  footer: light, two columns
+  cart: light retheme
+  checkout: light, with a "request shipping quote" branch for oversized items
+hero: a single pendant lamp photographed against a colored wall in a gallery space, italiana headline naming designer and year, museum-card metadata block beside it
+categories:
+  - Pendants
+  - Floor
+  - Table
+  - Sconces
+  - Designers
+  - Sold Archive
+voice: |
+  Dealer with a notebook full of provenance — names designers, years, factories without showing off.
+  Cart: "Holding."
+  Sort: "By designer / by year."
+  Sold-out: "Sold to a private collection."

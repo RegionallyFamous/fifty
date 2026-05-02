@@ -1,0 +1,38 @@
+slug: kiln-edition
+niche: ceramicist releases numbered editions of twenty-five sculptural pieces per year, gallery-represented
+use_case: numbered drops + waitlist + permanent sold archive, gallery-collector audience
+catalog_size: 25 active editions + ~80 sold archive
+references:
+  - "Bari Ziperstein studio site"
+  - "Kasper Würtz"
+  - "the Jonathan Adler editions section"
+  - "a contemporary art monograph"
+palette:
+  base: "#F2EAD8"
+  contrast: "#1A1410"
+  surface: "#FFFFFF"
+  subtle: "#D9C9A8"
+  border: "#7A4F2C"
+  accent: "#C53D1B"
+type:
+  display: Italiana 400, art-deco editorial serif
+  body: Plus Jakarta Sans 400/500
+  notes: very wide display tracking (+0.08em) with small caps, body normal
+shape:
+  overall: gallery monograph — large image, sparse text, museum-card metadata
+  hero: radical — single sculpture photographed in a gallery setting
+  category_tiles: replaced by a chronological year-by-year grid
+  footer: light, single column centered
+  cart: light retheme, called "Hold"
+  checkout: light, with white-glove shipping option default
+hero: a single sculptural piece on a plinth in a white-cube gallery, italiana name label below in widely-tracked caps, edition number ("3 of 25") to the right
+categories:
+  - Current Edition
+  - Archive
+  - Studio Notes
+  - Statement
+voice: |
+  Artist statement voice — sparse, confident, occasional one-line poem.
+  Cart: "Hold."
+  Sort: "By year."
+  Sold-out: "Edition closed — held in a private collection."

@@ -1,0 +1,40 @@
+slug: ironclad-co
+niche: foundry-direct cast iron cookware — five pans plus accessories, lifetime warranty
+use_case: DTC, warranty/registration heavy, gift-friendly
+catalog_size: 5 pans + 8 accessories + 4 care products = 17 SKUs
+references:
+  - "Smithey Ironware"
+  - "Field Company"
+  - "Snow Peak product photography"
+  - "old Sears Roebuck catalogs"
+palette:
+  base: "#E8E2D5"
+  contrast: "#0F0F0F"
+  surface: "#FFFFFF"
+  subtle: "#C9C0A8"
+  border: "#1A1A1A"
+  accent: "#6B0F0F"
+type:
+  display: Zilla Slab 700/800, industrial slab serif
+  body: Inter 400/500/600
+  notes: tight display letter-spacing, body normal
+shape:
+  overall: industrial catalog, dense product detail
+  hero: light — single pan shot, slab headline over it
+  category_tiles: light — five pan silhouettes in a row
+  footer: restructure — warranty registration form is a footer-region pattern
+  cart: light retheme
+  checkout: light
+hero: top-down shot of a single skillet on raw concrete, slab-serif headline reading the pan name, weight in ounces below as a numeric callout
+categories:
+  - Pans
+  - Care
+  - Re-Seasoning
+  - Warranty
+  - Gifts
+  - The Foundry
+voice: |
+  Foundry foreman — declarative, weight-and-measures specific, mild pride in the metallurgy.
+  Cart: "Skillet rack."
+  Sort: "By weight."
+  Sold-out: "Cooling off."

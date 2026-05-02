@@ -1,0 +1,40 @@
+slug: ebbtide
+niche: organic-cotton tampons and silicone cups, science-led education, no euphemisms
+use_case: DTC + flexible monthly subscription, education content on every page
+catalog_size: 4 product lines × varying sizes/quantities = ~12 SKUs
+references:
+  - "August"
+  - "The Honey Pot Co."
+  - "Hello Period (NZ) education page"
+  - "Rituals magazine layouts"
+palette:
+  base: "#F1ECE3"
+  contrast: "#2A332B"
+  surface: "#FFFFFF"
+  subtle: "#D9D2C4"
+  border: "#7A8E78"
+  accent: "#E58B7C"
+type:
+  display: DM Sans 700, geometric humanist
+  body: Lora 400/500
+  notes: normal display tracking, body warm
+shape:
+  overall: clean wellness with magazine touches
+  hero: light — illustrated diagram, type-led
+  category_tiles: light — four product squares
+  footer: restructure — Learn section gets footer billing, not buried
+  cart: restructure — subscription frequency selector inline per item
+  checkout: light
+hero: a clean line illustration of a moon-cycle calendar, DM Sans headline reading the brand promise above, no people in the image
+categories:
+  - Tampons
+  - Cups
+  - Pads
+  - Subscribe
+  - Learn
+  - FAQ
+voice: |
+  Friendly OB-GYN — clinical-but-kind, never euphemistic, says "uterus" and "vagina" without flinching.
+  Cart: "Your cycle."
+  Sort: "By flow."
+  Sold-out: "Restocking next week."

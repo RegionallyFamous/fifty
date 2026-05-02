@@ -1,0 +1,42 @@
+slug: bolt-and-flange
+niche: industrial fastener supplier — bolts, nuts, washers, anchors, structural fittings — for general contractors and shops
+use_case: B2B with account pricing, bulk ordering, quote requests for non-stock items
+catalog_size: ~10000 SKUs across thread sizes, lengths, materials, finishes
+references:
+  - "McMaster-Carr"
+  - "Grainger"
+  - "Fastenal"
+  - "old industrial mill catalogs"
+palette:
+  base: "#FFFFFF"
+  contrast: "#0F0F0F"
+  surface: "#F4F4F2"
+  subtle: "#E0E0DC"
+  border: "#0F0F0F"
+  accent: "#FFC300"
+type:
+  display: Roboto 700, neutral utilitarian
+  body: Roboto Mono 400/500
+  notes: tight display tracking, monospace body for spec data, tabular numerals everywhere
+shape:
+  overall: utilitarian dense, search-led, twelve-column data tables
+  hero: light — search bar dominates, type-led
+  category_tiles: light — eight tiles for fastener families
+  footer: restructure — account login + quote request CTAs persist
+  cart: restructure — bulk-quantity pricing breaks visible per line item
+  checkout: restructure — PO number field, account terms, ship to job site address
+hero: a giant search box, autocomplete suggestions for thread sizes, headline reading "Find by spec — thread, length, material, finish"
+categories:
+  - Bolts
+  - Nuts
+  - Washers
+  - Anchors
+  - Threaded Rod
+  - Structural
+  - Custom
+  - Account / Quote
+voice: |
+  Parts counterman with a clipboard — abbreviates everything, calls customers by their account number.
+  Cart: "Order."
+  Sort: "By spec / by stock."
+  Sold-out: "Backorder — 4-6 wks ARO."

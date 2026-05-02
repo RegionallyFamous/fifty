@@ -1,0 +1,40 @@
+slug: aquascape-supply
+niche: planted aquarium specialty — live aquatic plants, neocaridina shrimp, hardscape stone and wood, ADA-style tools
+use_case: DTC + DOA guarantee + scheduled-shipping (shrimp ship Mon/Tue only)
+catalog_size: ~250 SKUs (live + hardscape + tools + substrate)
+references:
+  - "ADA (Aqua Design Amano)"
+  - "Buce Plant"
+  - "Green Aqua"
+  - "Takashi Amano's nature-aquarium photography"
+palette:
+  base: "#F2F0EA"
+  contrast: "#0F1A14"
+  surface: "#FFFFFF"
+  subtle: "#D8DACD"
+  border: "#1F4A3A"
+  accent: "#5C8A2C"
+type:
+  display: Lora 600/700, warm transitional serif
+  body: DM Sans 400/500
+  notes: normal display tracking, body normal
+shape:
+  overall: nature-aquarium photography, two-column with detail callouts
+  hero: light — full-bleed aquascape photo with planting-style callout
+  category_tiles: light — five tiles for plants/shrimp/hardscape/tools/care
+  footer: restructure — live-arrival shipping calendar visible
+  cart: restructure — DOA guarantee terms surfaced inline, ship-day picker
+  checkout: restructure — heat-pack toggle, weather-week selector
+hero: a full-bleed photograph of a finished iwagumi-style aquascape, lora headline naming the design style, plant-ID callout list below
+categories:
+  - Plants
+  - Shrimp
+  - Hardscape
+  - Tools
+  - Substrate
+  - Care Sheets
+voice: |
+  Aquascaper, very calm — references planting-style names (iwagumi, Dutch, jungle) without explaining, gentle on care advice.
+  Cart: "Tank."
+  Sort: "By light requirement / by difficulty."
+  Sold-out: "Out of cultivation — next harvest in 4 weeks."

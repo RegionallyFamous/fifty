@@ -1,0 +1,39 @@
+slug: cathode-sauce
+niche: one-person Brooklyn hot sauce label — three sauces in four heat tiers each
+use_case: DTC + monthly subscription, one-product-line brand
+catalog_size: 12 sauce SKUs (3 × 4 heats) + 1 tee + 1 gift box = 14 total
+references:
+  - "Hella Bitters labels"
+  - "Marquis hot sauce packaging"
+  - "Aesop product detail pages"
+  - "Hatch Show Print posters"
+palette:
+  base: "#FFE8C2"
+  contrast: "#2A0700"
+  surface: "#FFEDC9"
+  subtle: "#E8B66B"
+  border: "#6B1F0A"
+  accent: "#DC2A00"
+type:
+  display: Big Shoulders Display 700/900, wood-type Western character
+  body: DM Sans 400/500
+  notes: tight display letter-spacing (-0.02em), normal body
+shape:
+  overall: poster-first, single hero per page
+  hero: radical — gigantic single-bottle photograph, headline wraps the bottle silhouette
+  category_tiles: light — three big tiles, one per sauce family
+  footer: light, single row of links over a colored block
+  cart: light retheme, sidebar drawer
+  checkout: light retheme
+hero: one bottle photographed at oversized scale against a colored backdrop, headline in Big Shoulders looping around it, no button — the bottle is the click
+categories:
+  - The Three
+  - Heat Levels
+  - Subscribe
+  - Gift Sets
+  - Tees
+voice: |
+  Warehouse chef who burned his tongue on purpose — punchy, specific about Scoville, mild profanity allowed.
+  Cart: "Add to the lineup."
+  Sort: "By burn."
+  Sold-out: "Pepper's resting."

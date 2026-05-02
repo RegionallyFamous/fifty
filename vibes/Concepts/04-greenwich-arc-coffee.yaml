@@ -1,0 +1,39 @@
+slug: greenwich-arc-coffee
+niche: tiny Brooklyn roaster rotating six single-origins on a two-week cycle, plus two house blends
+use_case: subscription-primary (every 2/4/8 weeks), one-time purchase secondary
+catalog_size: ~6 active origins + 2 blends + 4 brewing tools = 12 SKUs
+references:
+  - "Sey Coffee"
+  - "Onyx Coffee Lab"
+  - "Tim Wendelboe"
+  - "Apartamento magazine"
+palette:
+  base: "#F5F1EA"
+  contrast: "#0F0F10"
+  surface: "#FFFFFF"
+  subtle: "#E2DCD0"
+  border: "#0F0F10"
+  accent: "#E8624A"
+type:
+  display: Source Serif 4 600/700, editorial high-contrast
+  body: IBM Plex Sans 400/500
+  notes: normal letter-spacing throughout, generous line-height (1.6) on body
+shape:
+  overall: editorial Swiss with generous whitespace
+  hero: light — type-led announcement of the current rotation
+  category_tiles: light — three big tiles, generous gutters
+  footer: light, two columns
+  cart: light retheme
+  checkout: light retheme, single column
+hero: type-only headline announcing the current week's rotation, small index list of all six origins below in a tight grid, no image
+categories:
+  - Currently Roasting
+  - Subscriptions
+  - Brewing
+  - Origins
+  - About
+voice: |
+  Barista who reads magazines — measured, curious, references coffee history without showing off.
+  Cart: "Your rotation."
+  Sort: "By tasting note."
+  Sold-out: "Off rotation."

@@ -1,0 +1,40 @@
+slug: line-and-fade
+niche: three-chair barbershop in Philadelphia with a small line of grooming products and merch
+use_case: services primary (booking via WC Bookings) + small retail catalog
+catalog_size: 8 retail SKUs (pomades, brushes, tees) + ~15 service types + appointment slots
+references:
+  - "Frank's Chop Shop"
+  - "Hawleywoods Barber Shop"
+  - "Carhartt WIP look book"
+  - "old boxing gym signage"
+palette:
+  base: "#0F0F0F"
+  contrast: "#F0E6D2"
+  surface: "#1A1A1A"
+  subtle: "#2C2C2C"
+  border: "#5C5C5C"
+  accent: "#C8102E"
+type:
+  display: Anton 700 with Six Caps for ultra-condensed sub-heads
+  body: Inter 400/500/700
+  notes: tight display tracking, all-caps category labels
+shape:
+  overall: streetwear-meets-shop-window, dark
+  hero: radical — book-now CTA front and center over a black-and-white shop interior shot
+  category_tiles: light — three big tiles for cuts/beards/products
+  footer: restructure — hours, address, and Book button persist
+  cart: light retheme (small retail catalog)
+  checkout: restructure — booking flow vs retail flow split clearly at top of page
+hero: high-contrast black-and-white interior shot of the shop with all three chairs in use, condensed Anton headline reading "BOOK A CHAIR" and a date picker visible immediately
+categories:
+  - Book a Chair
+  - Cuts
+  - Beards
+  - Pomades
+  - Brushes
+  - About the Shop
+voice: |
+  Shop owner who's seen things — direct, dry, occasional Philly slang.
+  Cart: "Counter."
+  Sort: "By time slot."
+  Sold-out: "Booked up. Try Tuesday."

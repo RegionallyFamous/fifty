@@ -1,0 +1,40 @@
+slug: impressed
+niche: letterpress stationery shop in Brooklyn — thirty stock cards, custom wedding suites, in-house design
+use_case: stock retail + custom commission with quote workflow
+catalog_size: ~30 stock cards + custom-quote pipeline + 6 paper samples
+references:
+  - "Hatch Show Print"
+  - "Sesame Letterpress"
+  - "Studio On Fire"
+  - "old American Type Founders specimen books"
+palette:
+  base: "#E8E0D0"
+  contrast: "#0F0F0F"
+  surface: "#F2EBD8"
+  subtle: "#C9BFA0"
+  border: "#0F0F0F"
+  accent: "#C8102E"
+type:
+  display: Libre Caslon Display 400, classical American letterpress
+  body: Inter 400/500
+  notes: wide display tracking with small caps, body normal
+shape:
+  overall: letterpress-print proof, ink texture details
+  hero: light — current featured card shown as if pulled from the press
+  category_tiles: light — six categories for occasion-based browsing
+  footer: light, single row, addresses set in printers' caps
+  cart: light retheme
+  checkout: restructure — custom-commission flow branches into a quote-request form
+hero: a stack of just-printed cards on a press bed in soft window light, libre caslon headline above with the press's name in small caps
+categories:
+  - Stock Cards
+  - Wedding
+  - Birth Announcements
+  - Custom
+  - Papers
+  - About the Press
+voice: |
+  Printer who keeps a logbook — formal, specifies pound-weight of stock, signs off as "the press".
+  Cart: "Proof tray."
+  Sort: "By occasion."
+  Sold-out: "Off the press — reprinting next week."

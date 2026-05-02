@@ -1,0 +1,40 @@
+slug: doorknob-house
+niche: high-end door, cabinet, and bath hardware for residential architects and interior designers
+use_case: B2B + trade pricing tier + sample ordering, spec sheet downloads on every product
+catalog_size: ~1200 SKUs across 30 collections (each collection has door/cabinet/bath variants)
+references:
+  - "Rocky Mountain Hardware"
+  - "Sun Valley Bronze"
+  - "Nanz Hardware"
+  - "Italian architectural hardware catalogs"
+palette:
+  base: "#F0EBE0"
+  contrast: "#1F1A14"
+  surface: "#FFFFFF"
+  subtle: "#D9CFB8"
+  border: "#5C4A2C"
+  accent: "#A88458"
+type:
+  display: Bodoni Moda 500/700, didone editorial
+  body: Inter 400/500
+  notes: tight display tracking (-0.02em), tabular numerals on spec sheets
+shape:
+  overall: spec-sheet meets Italian editorial monograph
+  hero: radical — single piece of hardware photographed in a fitted-out interior
+  category_tiles: light — thirty collection tiles, scrollable
+  footer: restructure — trade-program signup CTA persists
+  cart: restructure — spec sheet download per line, sample request branch
+  checkout: restructure — trade discount auto-applies for verified accounts, project name field
+hero: a single bronze door pull installed on a finished walnut door in soft directional light, bodoni moda collection name below, spec sheet download link beside
+categories:
+  - Collections
+  - Door Hardware
+  - Cabinet
+  - Bath
+  - Trade
+  - Samples
+voice: |
+  Showroom rep who keeps a binder of specs — composed, finish-name forward, occasional designer-name drop.
+  Cart: "Pull list."
+  Sort: "By collection / by finish."
+  Sold-out: "Backorder — cast-to-order, 8 weeks."

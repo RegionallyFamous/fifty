@@ -1,0 +1,40 @@
+slug: midnight-records-archive
+niche: archival reissue label specializing in obscure 1970s funk, soul, and spiritual jazz — heavy liner-note research
+use_case: physical reissues (vinyl + cassette) + lifetime members tier + back-catalog archive with sleeve-art galleries
+catalog_size: ~400 active reissues + ~200 in vault (members-only)
+references:
+  - "Numero Group"
+  - "Soul Jazz Records"
+  - "Light in the Attic"
+  - "Blue Note album covers"
+palette:
+  base: "#0F1A2C"
+  contrast: "#F2EBD8"
+  surface: "#13203D"
+  subtle: "#1F2D4F"
+  border: "#5C4A2C"
+  accent: "#D8A85C"
+type:
+  display: Bebas Neue 400, condensed grotesk
+  body: Source Serif 4 400/500
+  notes: very tight display tracking (-0.04em); generous body line-height for liner-note reading
+shape:
+  overall: jazz-album-cover homage, gold-on-midnight palette, full-bleed sleeve art
+  hero: radical — current reissue with full sleeve art and a 30-second player embedded
+  category_tiles: light — six tiles for releases/members/vault/genres/liner-notes/about
+  footer: restructure — members-only access CTA persists
+  cart: light retheme, called "Crate"
+  checkout: light, members get instant vault access on purchase
+hero: a full-bleed reissue sleeve photographed at an angle on a wooden floor, bebas neue headline naming the artist, gold sub-text reading the year and original label
+categories:
+  - New Reissues
+  - Catalog
+  - Members Only
+  - The Vault
+  - Liner Notes
+  - About the Label
+voice: |
+  Crate-digger DJ — reverent about the source, year-and-label specific, gives liner-note context without showing off.
+  Cart: "Crate."
+  Sort: "By year / by genre."
+  Sold-out: "Pressing exhausted — next represses pending vault rights."

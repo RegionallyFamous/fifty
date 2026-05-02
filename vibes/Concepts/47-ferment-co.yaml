@@ -1,0 +1,40 @@
+slug: ferment-co
+niche: home fermentation supplies — crocks, weights, salt, cultures, books, fermenting vegetables and dairy
+use_case: DTC + cultures-of-the-month subscription
+catalog_size: ~120 SKUs (vessels + cultures + tools + books)
+references:
+  - "Cultures for Health"
+  - "the Sandor Katz book covers"
+  - "old American homestead catalogs"
+  - "Pioneer Woman pantry photography"
+palette:
+  base: "#F2EBD2"
+  contrast: "#3A1F0E"
+  surface: "#FFFAEC"
+  subtle: "#D9C8A4"
+  border: "#5C2A14"
+  accent: "#A85C2C"
+type:
+  display: EB Garamond 700, old-style serif
+  body: Lora 400/500
+  notes: normal display tracking with small caps category labels, body warm
+shape:
+  overall: rustic homestead, two-column with hand-drawn diagram accents
+  hero: light — current featured ferment with recipe link
+  category_tiles: light — five tiles for crocks/cultures/salt/tools/books
+  footer: restructure — cultures-of-the-month signup persists
+  cart: light retheme, called "Pantry"
+  checkout: restructure — cultures shipping note (live cultures ship Mon-Wed)
+hero: an overhead photograph of a stoneware crock filled with bubbling kraut on a kitchen counter, EB Garamond headline above naming the ferment, recipe link below
+categories:
+  - Crocks and Vessels
+  - Cultures
+  - Salt
+  - Tools
+  - Books
+  - Subscribe
+voice: |
+  Home cook with a crock — patient, recipe-grounded, occasional reference to "your grandmother's pantry".
+  Cart: "Pantry."
+  Sort: "By ferment type."
+  Sold-out: "Out of culture — refresh comes Friday."

@@ -1,0 +1,40 @@
+slug: randonneur
+niche: framebuilder making thirty randonneur and touring frames per year, configurator-led
+use_case: configurator + 30% deposit + 6-month lead time, no inventory, build-log per frame
+catalog_size: 1 frame design × thousands of configurations (size, geometry, paint, components) — purely configurator-driven
+references:
+  - "Crust Bikes"
+  - "Rivendell Bicycle Works"
+  - "blueprints in old framebuilding manuals"
+  - "the Rapha Continental site"
+palette:
+  base: "#EDEAE2"
+  contrast: "#0F1014"
+  surface: "#FFFFFF"
+  subtle: "#CFCBBE"
+  border: "#3A3D45"
+  accent: "#C8102E"
+type:
+  display: IBM Plex Mono 500/700
+  body: IBM Plex Sans 400/500
+  notes: monospace display gives blueprint feel; tight tracking on display, normal body
+shape:
+  overall: blueprint technical — gridded backgrounds, dimensioned callouts
+  hero: radical — a technical-drawing-style frame diagram with measurements
+  category_tiles: replaced by the configurator at the top of the front page
+  footer: restructure — current queue position counter, deposit calculator
+  cart: restructure — configurator state persists into cart with all selected options summarized
+  checkout: restructure — deposit + balance terms visible, no shipping until ready-to-ship
+hero: a technical frame drawing with dimensions labeled in monospace, color-coded tube selection diagram, all set on a faint grid background
+categories:
+  - Configurator
+  - In Queue
+  - Geometry
+  - Components
+  - Build Log
+  - Studio
+voice: |
+  Framebuilder who measures twice — terse, dimensional, occasional dry mechanical aside.
+  Cart: "Build sheet."
+  Sort: "By queue position."
+  Sold-out: "Slot taken — next opening Q3."

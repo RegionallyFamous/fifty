@@ -1,0 +1,42 @@
+slug: parchment-bookshop
+niche: independent bookstore in Burlington, Vermont — full general-trade catalog, used books section, weekly events
+use_case: large retail catalog + book club subscriptions + ticketed events
+catalog_size: ~5000 active titles + 4 book club subscriptions + ~30 events/quarter
+references:
+  - "Strand Bookstore"
+  - "Powell's City of Books site"
+  - "Daunt Books London"
+  - "old Penguin orange-spine paperbacks"
+palette:
+  base: "#F2EBD8"
+  contrast: "#1A1814"
+  surface: "#FFFAEC"
+  subtle: "#D9CFB4"
+  border: "#5C2A1F"
+  accent: "#C8102E"
+type:
+  display: Source Serif 4 600/700, dense classical serif
+  body: IBM Plex Sans 400/500
+  notes: tight display tracking, body normal, numerals tabular
+shape:
+  overall: dense newsprint catalog, eight-up grids
+  hero: light — staff-pick of the week with handwritten shelf-talker
+  category_tiles: light — eight tiles for fiction/nonfiction/kids/used/etc.
+  footer: restructure — events calendar persists with next four events
+  cart: light retheme
+  checkout: restructure — pickup-in-store toggle, with shelf-hold message
+hero: a stack of staff-pick books on a wooden table, source-serif headline reading "This Week" with a handwritten shelf-talker peeking out
+categories:
+  - New Releases
+  - Bestsellers
+  - Fiction
+  - Nonfiction
+  - Used & Rare
+  - Kids
+  - Events
+  - Book Clubs
+voice: |
+  Bookseller who has opinions — recommends by leaning across the counter, name-drops authors casually.
+  Cart: "Stack."
+  Sort: "By staff pick."
+  Sold-out: "Out of stock — we can backorder."

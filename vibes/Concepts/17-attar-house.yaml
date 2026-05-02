@@ -1,0 +1,39 @@
+slug: attar-house
+niche: French nose composing seven perfumes per year as a numbered annual edition, very small batches, very expensive
+use_case: DTC + sample subscription, sold-out is retired forever, gift wrap default
+catalog_size: ~14 active fragrances + sample sets; ~80 retired in archive
+references:
+  - "Frederic Malle"
+  - "Editions de Parfums"
+  - "DS & Durga"
+  - "Document Journal art direction"
+palette:
+  base: "#1A1418"
+  contrast: "#F2EBDF"
+  surface: "#241A22"
+  subtle: "#3A2A35"
+  border: "#5A4252"
+  accent: "#C9A24A"
+type:
+  display: Bodoni Moda 300/700, ultra-thin then heavy didone
+  body: Manrope 300/400
+  notes: very tight display tracking (-0.04em), body normal — high-contrast typographic feel
+shape:
+  overall: dark high-fashion magazine, full-bleed photography
+  hero: radical — perfume bottle photographed in dark velvet light, didone text crawls the edge
+  category_tiles: replaced by a chronological index of editions
+  footer: light, single row of small caps links
+  cart: light, named "Atelier"
+  checkout: light, with gift wrap defaulted on
+hero: perfume bottle on dark velvet under a single warm spotlight, didone serif name running vertically up the right edge, year set in gold below
+categories:
+  - 2026 Edition
+  - Archive
+  - Samples
+  - About the Nose
+  - Gift Sets
+voice: |
+  Nose who writes tasting notes like prose poems — uses words like "sillage" and "drydown" without explanation, occasional French.
+  Cart: "Atelier."
+  Sort: "By edition."
+  Sold-out: "Retired into the archive."

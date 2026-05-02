@@ -1,0 +1,40 @@
+slug: greenhouse-vintage
+niche: rare aroids, hoyas, and begonias from a Pacific Northwest greenhouse — collector-grade live plants
+use_case: weather-gated shipping (heat packs in winter, ice packs in summer), single-piece for rares, multi-quantity for staples
+catalog_size: ~150 active plants + 30 pots/tools = ~180 SKUs
+references:
+  - "Steve's Leaves"
+  - "Logee's Greenhouses"
+  - "Aroid Society newsletters"
+  - "Victorian botanical illustration plates"
+palette:
+  base: "#EFEAD8"
+  contrast: "#0E1F12"
+  surface: "#F8F4E2"
+  subtle: "#C8C5A4"
+  border: "#1F3A1F"
+  accent: "#8C6F2A"
+type:
+  display: DM Serif Display 400, lush high-contrast display serif
+  body: DM Sans 400/500
+  notes: normal display tracking, body normal
+shape:
+  overall: lush editorial, like a Victorian plant catalog rendered in colour
+  hero: radical — overhead shot of leaves filling the frame edge-to-edge
+  category_tiles: light — five families, each tile is a single leaf cutout
+  footer: restructure — shipping-zone calendar and weather alerts
+  cart: restructure — heat-pack add-on toggle, shipping-week selector
+  checkout: restructure — weather-week selector visible, transit-time estimator inline
+hero: overhead photograph of variegated monstera leaves filling the entire frame, DM Serif headline overlaid in cream
+categories:
+  - Aroids
+  - Hoyas
+  - Begonias
+  - Pots
+  - Care
+  - Shipping Calendar
+voice: |
+  Plant person who labels everything in Latin — gentle, taxonomic, gives the binomial first.
+  Cart: "Greenhouse cart."
+  Sort: "By light requirement."
+  Sold-out: "Currently propagating."

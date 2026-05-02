@@ -1,0 +1,41 @@
+slug: mountain-grade
+niche: deep specialist for trad and alpine climbing — gear-tester reviews on every product, route-tested
+use_case: DTC + pro program (B2B-lite for guides and instructors with verified credentials)
+catalog_size: ~600 SKUs across hardgoods, softgoods, ropes, and consumables
+references:
+  - "Patagonia Provisions"
+  - "Wild Country product pages"
+  - "American Alpine Journal"
+  - "the Cotopaxi catalog"
+palette:
+  base: "#1A1F26"
+  contrast: "#F4F2EE"
+  surface: "#22282F"
+  subtle: "#2E363F"
+  border: "#5C6470"
+  accent: "#FF6B35"
+type:
+  display: Space Grotesk 600/700
+  body: IBM Plex Mono 400/500
+  notes: tight display tracking, monospace body for spec sheets
+shape:
+  overall: utility-tech, dark, dense product detail
+  hero: radical — alpine ridge photo, headline overlaid, gear callouts as labeled annotations
+  category_tiles: light — six rectangles for cams/nuts/quickdraws/ropes/hardgoods/softgoods
+  footer: restructure — pro program signup gets footer billing
+  cart: light retheme
+  checkout: restructure — pro discount auto-applies if logged in as verified pro
+hero: an alpine ridgeline at golden hour with a small climber silhouette, headline in Space Grotesk overlaid, three labeled annotations pointing to gear visible in the image
+categories:
+  - Cams
+  - Nuts
+  - Quickdraws
+  - Ropes
+  - Hardgoods
+  - Softgoods
+  - Pro Program
+voice: |
+  Gearhead who's logged the routes — technical, route-name-droppy, occasional self-deprecating epic story.
+  Cart: "Rack."
+  Sort: "By weight."
+  Sold-out: "Out of rack — restocking after spring season."

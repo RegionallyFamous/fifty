@@ -1,0 +1,39 @@
+slug: orange-glassed
+niche: natural wine club shipping six bottles monthly, plus a curated cellar of one-off releases
+use_case: subscription primary + cellar one-offs, age-gated alcohol
+catalog_size: ~80 active cellar bottles + 3 subscription tiers
+references:
+  - "Chambers Street Wines"
+  - "Wine Therapy"
+  - "Ordinaire Oakland"
+  - "Apartamento and Drift magazines"
+palette:
+  base: "#F2EBDF"
+  contrast: "#2B1810"
+  surface: "#FFF8EC"
+  subtle: "#E8D7B8"
+  border: "#7A4F2C"
+  accent: "#D86A2C"
+type:
+  display: Caveat 600/700 for headlines, handwritten-feel
+  body: Lora 400/500
+  notes: handwritten display retains natural spacing, body normal
+shape:
+  overall: notebook-meets-magazine, tactile
+  hero: radical — handwritten chalkboard-style headline over a photo of pouring wine
+  category_tiles: replaced by a producer index laid out like a journal
+  footer: light, three columns
+  cart: light, drawer-style
+  checkout: light
+hero: photograph of a hand pouring orange wine into a glass on a stained tablecloth, handwritten headline overlaid in orange, small subhead in Lora
+categories:
+  - Cellar
+  - The Clubs
+  - Producers
+  - Tastings
+  - Gifts
+voice: |
+  Sommelier who DJs — warm, opinionated, drops Italian and French words without translating.
+  Cart: "Your case."
+  Sort: "By vibe."
+  Sold-out: "Drunk by the better people."

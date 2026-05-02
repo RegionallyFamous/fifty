@@ -1,0 +1,40 @@
+slug: typewriter-collective
+niche: typewriter restorer in Los Angeles selling thirty fully-serviced vintage machines at any time, plus ribbons, parts, and repair service
+use_case: single-piece machine sales + ribbon subscription + repair-service intake
+catalog_size: ~30 machines + ribbons + parts + repair-quote workflow
+references:
+  - "Mr. Typewriter NYC"
+  - "California Typewriter (the documentary's shop)"
+  - "old Olivetti adverts"
+  - "everything Wes Anderson"
+palette:
+  base: "#F2EBD8"
+  contrast: "#1A1410"
+  surface: "#FFFAEC"
+  subtle: "#D9C9A8"
+  border: "#1A1410"
+  accent: "#D86A2C"
+type:
+  display: Special Elite 400, typewritten
+  body: Courier Prime 400/700
+  notes: typewritten display retains natural fixed-width feel; body monospace
+shape:
+  overall: as if the entire site were typed on a Selectric — wavy baselines, ribbon-stamp headers
+  hero: radical — a featured machine on a wooden desk with a typed page in the carriage
+  category_tiles: light — three tiles for available/sold/parts
+  footer: restructure — ribbon subscription form rendered as an order slip
+  cart: light retheme, called "Carriage"
+  checkout: light, with shipping-insurance toggle prominent
+hero: a fully-restored 1956 Olivetti Lettera 22 on a wooden desk with a typed page mid-sentence in the carriage, special-elite headline above as if just typed
+categories:
+  - Available
+  - Sold
+  - Ribbons
+  - Parts
+  - Repair Service
+  - About the Bench
+voice: |
+  Restorer at a workbench — patient, mechanically specific, types as if every word costs ribbon.
+  Cart: "Carriage."
+  Sort: "By decade / by manufacturer."
+  Sold-out: "Sold — keep an eye out for the next one."

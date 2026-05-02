@@ -1,0 +1,40 @@
+slug: lab-decant
+niche: fragrance decanter — sells small portions of expensive niche perfumes so people can try before buying full bottles
+use_case: DTC + sample sets + monthly library subscription (rotating decants)
+catalog_size: ~600 fragrances × 4 size options (1ml, 5ml, 10ml, 30ml) = ~2400 SKUs
+references:
+  - "The Perfumed Court"
+  - "Surrender to Chance"
+  - "lab-supply catalogs"
+  - "Apothecarist publishing"
+palette:
+  base: "#FFFFFF"
+  contrast: "#0F0F12"
+  surface: "#F8F8F4"
+  subtle: "#E2E2DC"
+  border: "#0F0F12"
+  accent: "#1F66B5"
+type:
+  display: JetBrains Mono 700, monospace
+  body: IBM Plex Sans 400/500
+  notes: monospace display gives lab-data feel; tabular numerals for mL specs everywhere
+shape:
+  overall: lab-data dense, search-led, twelve-column data tables
+  hero: light — search-by-house bar with mL pricing matrix below
+  category_tiles: light — six tiles for by-house/by-perfumer/sets/library/about/decanting
+  footer: restructure — library subscription form persists
+  cart: restructure — mL selector inline per line, batch number visible
+  checkout: light, with "decant from current bottle" disclaimer
+hero: a row of small clear glass vials photographed flat-lay against white, jetbrains-mono headline reading the search prompt, mL-by-price matrix below in monospace
+categories:
+  - By House
+  - By Perfumer
+  - By Size
+  - Sample Sets
+  - Library Subscription
+  - About Decanting
+voice: |
+  Technician who measures in mL — neutral, batch-and-lot specific, never describes a fragrance ("not our job, that's the perfumer's").
+  Cart: "Tray."
+  Sort: "By mL price / by house."
+  Sold-out: "Bottle exhausted — awaiting fresh source."

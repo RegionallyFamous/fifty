@@ -1,0 +1,40 @@
+slug: terroir-box
+niche: 80-acre regenerative farm in the Hudson Valley shipping weekly produce boxes May through November
+use_case: weekly subscription with Saturday/Sunday pickup or local delivery, half-share or full-share, season-gated
+catalog_size: ~50 produce items + 8 box configurations + eggs/honey/jam = ~70 active SKUs
+references:
+  - "Stone Barns Center"
+  - "Blue Hill at Stone Barns menus"
+  - "old-school 4H pamphlets"
+  - "Whole Earth Catalog"
+palette:
+  base: "#F2EFE3"
+  contrast: "#1F2A14"
+  surface: "#FFFFFF"
+  subtle: "#DDD8C1"
+  border: "#3A4A24"
+  accent: "#D4691A"
+type:
+  display: Roboto Slab 700/900, sturdy slab industrial
+  body: IBM Plex Mono 400/500
+  notes: monospace body lends a chit-printer feel; display tight on big headlines
+shape:
+  overall: utility hand-stamped, dense
+  hero: light — week-number callout + photo strip of this week's harvest
+  category_tiles: replaced — show this week's box contents as a checklist
+  footer: light, three columns including delivery zone map
+  cart: restructure — week-selector + delivery-zone validator
+  checkout: restructure — pickup point picker, no shipping fields
+hero: this week's harvest laid out flat on a wooden table photographed from above, week number stamped over it in slab type
+categories:
+  - This Week
+  - Half Share
+  - Full Share
+  - Eggs and Honey
+  - Pantry
+  - About the Farm
+voice: |
+  Farmer who keeps a notebook — direct, weather-aware, occasional dry humor.
+  Cart: "This week's box."
+  Sort: "By what's ripe."
+  Sold-out: "Field's done with that one."

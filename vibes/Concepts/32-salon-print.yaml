@@ -1,0 +1,39 @@
+slug: salon-print
+niche: contemporary art gallery selling numbered fine art prints from thirty represented artists
+use_case: numbered editions, sold-out is permanent, gallery-curated, white-glove shipping default
+catalog_size: ~150 active editions + ~800 sold archive
+references:
+  - "Pace Prints"
+  - "Hauser & Wirth Editions"
+  - "Print Center New York"
+  - "MoMA prints catalogs"
+palette:
+  base: "#FFFFFF"
+  contrast: "#0A0A0A"
+  surface: "#F8F8F6"
+  subtle: "#E8E8E4"
+  border: "#0A0A0A"
+  accent: "#FF3B1F"
+type:
+  display: Inter 700, neutral grotesk
+  body: Source Serif 4 400/500
+  notes: tight display tracking, generous body line-height (1.7)
+shape:
+  overall: white-cube gallery, asymmetric grid
+  hero: radical — single artwork, oversize, no overlay, type to the side
+  category_tiles: light — thirty artist tiles, each a single signature image
+  footer: light, single row
+  cart: light retheme
+  checkout: light, white-glove shipping toggle defaulted on
+hero: one artwork hanging on a vast white wall photographed from a slight angle, artist name and edition number set tiny in inter to the right
+categories:
+  - Artists
+  - Editions
+  - Recent
+  - Sold Archive
+  - About the Salon
+voice: |
+  Gallerist — measured, biographically specific, never says "stunning".
+  Cart: "Hold."
+  Sort: "By artist / by year."
+  Sold-out: "Edition complete — held in private and institutional collections."

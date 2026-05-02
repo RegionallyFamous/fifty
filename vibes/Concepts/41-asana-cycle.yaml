@@ -1,0 +1,40 @@
+slug: asana-cycle
+niche: yoga studio in Austin offering classes, workshops, retreats, and a small house apparel line
+use_case: services primary (class booking + workshops + retreats) + small apparel attachment
+catalog_size: ~30 class types + 12 apparel SKUs + 4 retreats/year + class-pack credits
+references:
+  - "Wanderlust festival branding"
+  - "Outdoor Voices early site"
+  - "Yoga Journal magazine"
+  - "natural California light photography"
+palette:
+  base: "#EFE7D8"
+  contrast: "#2A2C24"
+  surface: "#FAF2E2"
+  subtle: "#D9CFB4"
+  border: "#7A8E5C"
+  accent: "#E2A23F"
+type:
+  display: Fraunces 400/600 with optical-size variation, expressive humanist serif
+  body: Plus Jakarta Sans 400/500
+  notes: variable optical-size on display (largest at 96pt+), generous body line-height (1.7)
+shape:
+  overall: warm wellness, four-up class schedule grid front and center
+  hero: light — current week's schedule with Book buttons inline
+  category_tiles: light — four tiles for classes/workshops/retreats/apparel
+  footer: restructure — class-pack signup CTA persists
+  cart: restructure — class-pack credits applied as payment method
+  checkout: restructure — booking confirms a slot, retail proceeds to ship
+hero: a wide photograph of a sunny studio with mats laid out before a class, fraunces headline above naming the studio, this-week's schedule in a four-day grid below
+categories:
+  - Classes
+  - Workshops
+  - Retreats
+  - Apparel
+  - Class Packs
+  - Teachers
+voice: |
+  Teacher with a deliberate cadence — soft-direct, rhythmic instructions, occasional Sanskrit term explained in parentheses.
+  Cart: "Mat space."
+  Sort: "By teacher / by time."
+  Sold-out: "Class is full — join the waitlist or try the 6:30 Vinyasa."

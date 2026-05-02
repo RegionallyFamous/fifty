@@ -1,0 +1,39 @@
+slug: silver-print-co
+niche: archival pigment prints from twelve contemporary photographers, each image available in three sizes on two papers
+use_case: print-on-demand from gallery editions, made-to-order with 2-week lead
+catalog_size: ~120 images × 6 size/paper combinations = configurator-driven, effectively 720 SKUs
+references:
+  - "20x200"
+  - "Unique Photo's gallery prints"
+  - "Magnum Photos editions site"
+  - "white-cube gallery printed catalogs"
+palette:
+  base: "#F8F8F6"
+  contrast: "#0E0E0E"
+  surface: "#FFFFFF"
+  subtle: "#E2E0DC"
+  border: "#0E0E0E"
+  accent: "#C9A24A"
+type:
+  display: Cormorant Garamond 400, ultra-light editorial serif
+  body: Inter 400/500
+  notes: very wide display tracking (+0.08em), generous body line-height (1.7)
+shape:
+  overall: white-cube gallery — extreme whitespace, single image at center
+  hero: radical — single hero image, headline below in tiny widely-tracked caps
+  category_tiles: light — twelve photographer cards, each with a single signature image
+  footer: light, single row
+  cart: light, called "Folio"
+  checkout: restructure — paper picker, size picker, and frame add-on inline as configurator
+hero: a single photograph occupying the center of a vast white field, photographer's name and edition number set tiny in widely-tracked caps below
+categories:
+  - Editions
+  - Photographers
+  - Sizes and Papers
+  - Framing
+  - About the Press
+voice: |
+  Print master, technical and quiet — measures in gsm and microns, never says "art".
+  Cart: "Folio."
+  Sort: "By photographer."
+  Sold-out: "Edition closed."

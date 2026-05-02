@@ -1,0 +1,40 @@
+slug: flax-house
+niche: European-flax linen bedding — six washed colors, three sizes, four product lines
+use_case: DTC, registry-friendly, premium, ships in linen drawstring bags
+catalog_size: 6 colors × 3 sizes × 4 products = ~72 SKUs
+references:
+  - "Hawkins New York"
+  - "Bellocq Tea Atelier visual identity"
+  - "Cultiver"
+  - "Kinfolk magazine layouts"
+palette:
+  base: "#F2EEE6"
+  contrast: "#3D3A33"
+  surface: "#FAF6EC"
+  subtle: "#D8D2C2"
+  border: "#A89F8A"
+  accent: "#9A6D4F"
+type:
+  display: Cormorant Garamond 300, ultra-light high-contrast serif
+  body: Plus Jakarta Sans 400/500
+  notes: very wide display tracking (+0.1em) on H1, normal elsewhere
+shape:
+  overall: minimalist gallery, breathing room
+  hero: light — flat-lay of folded sheets in a single dusty color
+  category_tiles: light — six color swatches as tiles, hover reveals the sheet draped
+  footer: light, single row, registry signup at center
+  cart: light, sidebar
+  checkout: light
+hero: top-down still-life of folded linen sheets in a single dusty rose color, ultra-light cormorant headline above
+categories:
+  - Sheets
+  - Duvets
+  - Towels
+  - Robes
+  - Color Stories
+  - Registry
+voice: |
+  Linen-clad designer with a studio — quiet, color-name forward, never says "luxury".
+  Cart: "Folded."
+  Sort: "By color."
+  Sold-out: "Out of bolt — back in the next weave."
