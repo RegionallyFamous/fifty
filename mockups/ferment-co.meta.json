@@ -1,0 +1,14 @@
+{
+  "slug": "ferment-co",
+  "name": "Ferment Co",
+  "blurb": "Home fermentation supplies: crocks, cultures, salts, and pantry goods with homestead warmth.",
+  "tags": {
+    "palette": ["parchment", "umber", "rust", "cream"],
+    "type": "oldstyle-serif",
+    "era": "pre-1950",
+    "sector": "pantry",
+    "hero": "photo-hero"
+  },
+  "palette_hex": ["#F2EBD2", "#3A1F0E", "#A85C2C", "#D9C8A4", "#5C2A14"],
+  "type_specimen": "Display: EB Garamond. Body: Lora."
+}
