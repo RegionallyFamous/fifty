@@ -52,6 +52,11 @@ doesn't emit.
 If **Miles** produced the storefront direction and exported a **Fifty spec
 JSON** (same object shape as §2 / `bin/design.py --print-example-spec`):
 
+For a **net-new** slug that does not yet exist on the concept bench, you can
+either export the bundle from Miles directly or emit the same directory layout
+locally with **`bin/bootstrap-miles-handoff.py`** (curated demos + optional
+`--spec-json` for hand-authored JSON) before running the bridge / `design.py`.
+
 1. Put **`miles-ready.json`** in the artifact directory with `"site_ready": true`
    and a **`spec`** field naming the spec file relative to that directory
    (omit **`spec`** or leave it empty to default to `spec.json`). The spec file

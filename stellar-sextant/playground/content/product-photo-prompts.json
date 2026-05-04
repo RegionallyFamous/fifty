@@ -1,0 +1,281 @@
+{
+  "model": "gpt-image-2",
+  "prompts": {
+    "WO-BORROWED-NOSTALGIA": "Square product photograph. A small brass pocket watch with a worn, verdigris-edged case rests atop a folded 19th-century nautical chart on dark-stained teak. A length of aged manila rope coils beside it. Warm single-point lantern light from upper left casts long shadows. Background is deep navy blackboard. Shallow depth of field. Photorealistic, no text.",
+    "WO-BOTTLED-MORNING": "Square product photograph. A slender apothecary glass bottle sealed with cork holds pale gold liquid with faint iridescent mist inside. Placed on a porthole sill, soft pre-dawn blue light filters through salt-hazed glass. A folded hydrographic chart lies underneath. Condensation on the bottle exterior. Dark navy surface. Photorealistic, no logos, no text.",
+    "WO-CHAOS-SEASONING": "Square product photograph. A short, wide-mouth dark ceramic jar with an uneven wax seal sits on rough-hewn slate. Fine multi-colored mineral granules spill from a brass measuring scoop beside it. A compass rose is sketched in chalk on the slate surface. Single overhead brass lantern casts warm pool of light. Deep shadow surround. Photorealistic, no text.",
+    "WO-COSMIC-MYSTERY-BOX": "Square product photograph. A small wooden crate with dovetail joints, closed lid, and a wax stamp sits centered on dark navy velvet. Brass corner hardware glints under a single overhead warm light. A star chart fragment tucked beneath the crate. Sprigs of dried sea lavender lean against one side. Very dark background. Photorealistic, no text, no logos.",
+    "WO-DEJA-VU-SESSION": "Square product photograph. An antique brass ship's bell timer \u2014 two-bulb hourglass form in polished brass cage \u2014 stands upright on weathered teak decking. Fine silver sand mid-fall. A looped section of tarred rope and a folded chart rest beside it. Candlelight from the right, cool ambient fill from left. Dark navy background. Photorealistic, no text.",
+    "WO-DISCOUNT-GRAVITY": "Square product photograph. A small lead plumb bob on braided linen cord hangs from a brass hook screwed into aged dark-wood paneling. The bob nearly touches a worn nautical chart spread below. Warm side-lit lantern illuminates the brass. Deep shadow around the edges. Square crop. Photorealistic, no text, no logos.",
+    "WO-DREAD-REPELLENT": "Square product photograph. A dark glass spray bottle with a matte black pump, sealed with a wax ring, sits on a slab of grey Baltic slate. Two sprigs of dried wormwood and a small coil of tarred rope flank it. Cool blue moonlight from upper right, faint brass-warm fill. Very deep navy background. Photorealistic, no text.",
+    "WO-FOG-IN-BOTTLE": "Square product photograph. A wide-bellied glass flask stoppered with ground glass holds dense white vapor that swirls slowly inside. Placed on a brass chart weight atop a celestial map. Minimal cold diffuse light gives the fog an inner glow. Dark indigo-black background. Water droplets on the exterior glass. Photorealistic, no text, no logos.",
+    "WO-FORBIDDEN-HONEY": "Square product photograph. A squat amber hexagonal jar of dark, nearly opaque honey rests on a worn leather-bound log book. A brass cartographer's divider leans against the jar. Candle glow from the right reflects in the honey jar. Beeswax seal over the lid. Deep midnight-navy background. Photorealistic, no text.",
+    "WO-GENTLY-USED-LUCK": "Square product photograph. A small worn rabbit's foot, bronzed and attached to a brass swivel clasp, lies on unfolded parchment printed with tide tables. A silver coin rests beside it. Warm single-point lantern light. Faint patina on all metal surfaces. Very dark navy background, hard vignette. Photorealistic, no text, no logos.",
+    "WO-HANDCRAFTED-ECHO": "Square product photograph. A small turned-wood speaking trumpet, miniature scale, sits bell-down on dark teak. Aged brass fittings at the mouthpiece end. A nautical chart is partially visible underneath. Warm overhead lantern highlights the wood grain. Deep shadow background in navy-black. Photorealistic, no text.",
+    "WO-HAUNTED-CANDLE": "Square product photograph. A thick pillar candle in near-black beeswax stands in a tarnished brass chamberstick on rough stone. The flame casts a warm amber glow with a faint second shadow suggesting an unseen presence. Drips of wax coat the brass. Dark navy-black background. Photorealistic, moody, no text, no logos.",
+    "WO-IMAGINARY-DEED": "Square product photograph. A rolled parchment scroll tied with faded red ribbon and sealed with dark wax rests on a brass sextant. A quill pen lies across the scroll. Warm lantern from upper left casts a precise highlight on the wax seal. Very deep navy background. Dust motes visible in the light beam. Photorealistic, no text.",
+    "WO-INTERDIM-BAZAAR": "Square product photograph. A miniature wooden market stall model \u2014 tiny canvas awning, brass lamp post, small crates \u2014 sits on a celestial globe chart. Fine compass-needle props lean against miniature crates. Warm side light from a brass lantern. Dark indigo background. High detail, shallow depth of field. Photorealistic, no text, no logos.",
+    "WO-INVISIBLE-UMBRELLA": "Square product photograph. A classic curved-handle umbrella in matte charcoal fabric, furled and secured with a leather strap, stands propped against dark weathered ship timber. A faint sheen on the canopy suggests waterproofing. Brass ferrule at the tip. Cool diffuse light, one warm lantern accent. Deep navy background. Photorealistic, no text.",
+    "WO-LEFT-SOCK": "Square product photograph. A single thick merino wool sock in deep navy with fine gold stripe detail lies draped across a coil of jute rope on a teak surface. A small brass cleat is visible in the background. Low side lantern light. Very dark, almost black background. Warm shadows. Photorealistic, no text, no logos.",
+    "WO-LOST-RECIPE-TIME": "Square product photograph. A small aged tin recipe box, lid slightly ajar, reveals yellowed index cards inside. A brass compass sits atop the lid. The box rests on a spread nautical chart. Warm single lantern from the right. Patina on the tin. Deep navy background with hard vignette. Photorealistic, no text.",
+    "WO-MEMORY-FOAM-MEMORY": "Square product photograph. A tightly rolled slice of ivory foam, cross-section visible, stands upright on dark slate. A narrow strip of aged chart paper wraps around it once, tied with a linen thread. Brass dividers lean against the foam roll. Warm overhead lantern. Very dark navy background. Photorealistic, no text, no logos.",
+    "WO-MONDAY-KIT": "Square product photograph. A compact canvas roll-up kit in waxed navy duck cloth, partially unrolled, reveals small brass tools tucked in pockets: a divider, a parallel rule fragment, a pencil stub. Laid on a teak chart table. Warm brass-tone lantern light from the left. Dark background. Photorealistic, no text.",
+    "WO-MOON-DUST": "Square product photograph. A shallow wide-mouth tin with a hinged lid holds fine silver-grey powder with a faint iridescent shimmer. A small brass scoop rests inside. The tin sits on a star chart with constellation lines visible beneath. Soft cold moonlight overhead, warm brass-accent fill. Deep navy background. Photorealistic, no text, no logos.",
+    "WO-ONE-HAND-CLAPPING": "Square product photograph. A single articulated bronze hand sculpture, mid-clap pose with one palm facing up and fingers spread, sits on a square of dark velvet atop a nautical chart. Warm single-point lantern from the upper right creates dramatic shadows. Deep navy-black background. Photorealistic, no text.",
+    "WO-POCKET-THUNDER": "Square product photograph. A small brushed-steel flask, cylindrical with a tight-fit stopper, sits on rough grey slate. A miniature brass barometer dial leans against it. Crackling static visual effect achieved with tiny copper wire spirals around the flask base. Warm lantern light, cool rim light. Dark navy background. Photorealistic, no text, no logos.",
+    "WO-PORTABLE-HOLE": "Square product photograph. A circle of flat black velvet, perfectly round, is spread on weathered teak decking. A brass grommet rings its edge. A folded chart and coiled rope surround it. Overhead lantern light illuminates the teak but the velvet absorbs all light, appearing as a void. Photorealistic, no text.",
+    "WO-SENSORY-STARTER": "Square product photograph. A fitted wooden box, open lid lined in navy felt, holds an arrangement of small tactile objects: polished river stone, a square of rough canvas, a brass ring, dried sea grass. Warm overhead lantern spotlights the contents. Dark teak exterior. Deep navy background. Photorealistic, no text, no logos.",
+    "WO-SILENCE-JAR": "Square product photograph. A tall mason-style glass jar with a tight rubber-gasket lid sits on a square of dark slate. Interior appears completely still and slightly fogged. A brass label holder on the lid is empty. Single warm candle-glow from the right. Very deep navy background. Photorealistic, no text.",
+    "WO-SPARE-KEY-NOWHERE": "Square product photograph. An ornate antique brass skeleton key lies on a worn nautical chart showing open ocean with no land. A short length of red wax-sealed ribbon is threaded through the key bow. Warm lantern from upper left. Long hard shadows on the chart. Deep navy-black background. Photorealistic, no text, no logos.",
+    "WO-SPARE-TUESDAY": "Square product photograph. A small leather-bound day planner, open to a blank page, rests on a teak surface. A brass parallel ruler lies across the open page. A ship's chronometer is partially visible in the dark background. Warm lantern light falls on the planner. Deep navy background with hard vignette. Photorealistic, no text.",
+    "WO-TANGIBLE-WIFI": "Square product photograph. A coil of fine copper wire formed into a compact antenna-like sculpture sits on a square of navy velvet. A miniature brass spark-gap telegraph key is placed beside it. Warm amber lantern from the right, faint cool blue rim light. Dark navy background. Photorealistic, no text, no logos.",
+    "WO-VOID-SAMPLER": "Square product photograph. A set of four small vials in a brass rack, each holding a different depth of dark liquid ranging from deep indigo to absolute black, sits on a hydrographic chart. A brass eyedropper rests beside the rack. Single warm overhead lantern. Very dark navy background. Photorealistic, no text.",
+    "WO-WHISPERING-STONE": "Square product photograph. A smooth oval basalt stone, dark grey with faint silver mineral veining, sits centered on a square of aged parchment chart paper. A brass compass is placed to one side. Very soft warm lantern from the upper right grazes the stone surface. Deep navy background. Photorealistic, no text, no logos."
+  },
+  "provider": "openai",
+  "records": [
+    {
+      "filename": "product-wo-borrowed-nostalgia.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small brass pocket watch with a worn, verdigris-edged case rests atop a folded 19th-century nautical chart on dark-stained teak. A length of aged manila rope coils beside it. Warm single-point lantern light from upper left casts long shadows. Background is deep navy blackboard. Shallow depth of field. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-BORROWED-NOSTALGIA",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-bottled-morning.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A slender apothecary glass bottle sealed with cork holds pale gold liquid with faint iridescent mist inside. Placed on a porthole sill, soft pre-dawn blue light filters through salt-hazed glass. A folded hydrographic chart lies underneath. Condensation on the bottle exterior. Dark navy surface. Photorealistic, no logos, no text.",
+      "provider": "openai",
+      "sku": "WO-BOTTLED-MORNING",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-chaos-seasoning.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A short, wide-mouth dark ceramic jar with an uneven wax seal sits on rough-hewn slate. Fine multi-colored mineral granules spill from a brass measuring scoop beside it. A compass rose is sketched in chalk on the slate surface. Single overhead brass lantern casts warm pool of light. Deep shadow surround. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-CHAOS-SEASONING",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-cosmic-mystery-box.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small wooden crate with dovetail joints, closed lid, and a wax stamp sits centered on dark navy velvet. Brass corner hardware glints under a single overhead warm light. A star chart fragment tucked beneath the crate. Sprigs of dried sea lavender lean against one side. Very dark background. Photorealistic, no text, no logos.",
+      "provider": "openai",
+      "sku": "WO-COSMIC-MYSTERY-BOX",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-deja-vu-session.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. An antique brass ship's bell timer \u2014 two-bulb hourglass form in polished brass cage \u2014 stands upright on weathered teak decking. Fine silver sand mid-fall. A looped section of tarred rope and a folded chart rest beside it. Candlelight from the right, cool ambient fill from left. Dark navy background. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-DEJA-VU-SESSION",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-discount-gravity.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small lead plumb bob on braided linen cord hangs from a brass hook screwed into aged dark-wood paneling. The bob nearly touches a worn nautical chart spread below. Warm side-lit lantern illuminates the brass. Deep shadow around the edges. Square crop. Photorealistic, no text, no logos.",
+      "provider": "openai",
+      "sku": "WO-DISCOUNT-GRAVITY",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-dread-repellent.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A dark glass spray bottle with a matte black pump, sealed with a wax ring, sits on a slab of grey Baltic slate. Two sprigs of dried wormwood and a small coil of tarred rope flank it. Cool blue moonlight from upper right, faint brass-warm fill. Very deep navy background. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-DREAD-REPELLENT",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-fog-in-bottle.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A wide-bellied glass flask stoppered with ground glass holds dense white vapor that swirls slowly inside. Placed on a brass chart weight atop a celestial map. Minimal cold diffuse light gives the fog an inner glow. Dark indigo-black background. Water droplets on the exterior glass. Photorealistic, no text, no logos.",
+      "provider": "openai",
+      "sku": "WO-FOG-IN-BOTTLE",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-forbidden-honey.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A squat amber hexagonal jar of dark, nearly opaque honey rests on a worn leather-bound log book. A brass cartographer's divider leans against the jar. Candle glow from the right reflects in the honey jar. Beeswax seal over the lid. Deep midnight-navy background. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-FORBIDDEN-HONEY",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-gently-used-luck.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small worn rabbit's foot, bronzed and attached to a brass swivel clasp, lies on unfolded parchment printed with tide tables. A silver coin rests beside it. Warm single-point lantern light. Faint patina on all metal surfaces. Very dark navy background, hard vignette. Photorealistic, no text, no logos.",
+      "provider": "openai",
+      "sku": "WO-GENTLY-USED-LUCK",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-handcrafted-echo.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small turned-wood speaking trumpet, miniature scale, sits bell-down on dark teak. Aged brass fittings at the mouthpiece end. A nautical chart is partially visible underneath. Warm overhead lantern highlights the wood grain. Deep shadow background in navy-black. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-HANDCRAFTED-ECHO",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-haunted-candle.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A thick pillar candle in near-black beeswax stands in a tarnished brass chamberstick on rough stone. The flame casts a warm amber glow with a faint second shadow suggesting an unseen presence. Drips of wax coat the brass. Dark navy-black background. Photorealistic, moody, no text, no logos.",
+      "provider": "openai",
+      "sku": "WO-HAUNTED-CANDLE",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-imaginary-deed.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A rolled parchment scroll tied with faded red ribbon and sealed with dark wax rests on a brass sextant. A quill pen lies across the scroll. Warm lantern from upper left casts a precise highlight on the wax seal. Very deep navy background. Dust motes visible in the light beam. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-IMAGINARY-DEED",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-interdim-bazaar.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A miniature wooden market stall model \u2014 tiny canvas awning, brass lamp post, small crates \u2014 sits on a celestial globe chart. Fine compass-needle props lean against miniature crates. Warm side light from a brass lantern. Dark indigo background. High detail, shallow depth of field. Photorealistic, no text, no logos.",
+      "provider": "openai",
+      "sku": "WO-INTERDIM-BAZAAR",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-invisible-umbrella.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A classic curved-handle umbrella in matte charcoal fabric, furled and secured with a leather strap, stands propped against dark weathered ship timber. A faint sheen on the canopy suggests waterproofing. Brass ferrule at the tip. Cool diffuse light, one warm lantern accent. Deep navy background. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-INVISIBLE-UMBRELLA",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-left-sock.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A single thick merino wool sock in deep navy with fine gold stripe detail lies draped across a coil of jute rope on a teak surface. A small brass cleat is visible in the background. Low side lantern light. Very dark, almost black background. Warm shadows. Photorealistic, no text, no logos.",
+      "provider": "openai",
+      "sku": "WO-LEFT-SOCK",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-lost-recipe-time.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small aged tin recipe box, lid slightly ajar, reveals yellowed index cards inside. A brass compass sits atop the lid. The box rests on a spread nautical chart. Warm single lantern from the right. Patina on the tin. Deep navy background with hard vignette. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-LOST-RECIPE-TIME",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-memory-foam-memory.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A tightly rolled slice of ivory foam, cross-section visible, stands upright on dark slate. A narrow strip of aged chart paper wraps around it once, tied with a linen thread. Brass dividers lean against the foam roll. Warm overhead lantern. Very dark navy background. Photorealistic, no text, no logos.",
+      "provider": "openai",
+      "sku": "WO-MEMORY-FOAM-MEMORY",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-monday-kit.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A compact canvas roll-up kit in waxed navy duck cloth, partially unrolled, reveals small brass tools tucked in pockets: a divider, a parallel rule fragment, a pencil stub. Laid on a teak chart table. Warm brass-tone lantern light from the left. Dark background. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-MONDAY-KIT",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-moon-dust.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A shallow wide-mouth tin with a hinged lid holds fine silver-grey powder with a faint iridescent shimmer. A small brass scoop rests inside. The tin sits on a star chart with constellation lines visible beneath. Soft cold moonlight overhead, warm brass-accent fill. Deep navy background. Photorealistic, no text, no logos.",
+      "provider": "openai",
+      "sku": "WO-MOON-DUST",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-one-hand-clapping.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A single articulated bronze hand sculpture, mid-clap pose with one palm facing up and fingers spread, sits on a square of dark velvet atop a nautical chart. Warm single-point lantern from the upper right creates dramatic shadows. Deep navy-black background. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-ONE-HAND-CLAPPING",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-pocket-thunder.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small brushed-steel flask, cylindrical with a tight-fit stopper, sits on rough grey slate. A miniature brass barometer dial leans against it. Crackling static visual effect achieved with tiny copper wire spirals around the flask base. Warm lantern light, cool rim light. Dark navy background. Photorealistic, no text, no logos.",
+      "provider": "openai",
+      "sku": "WO-POCKET-THUNDER",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-portable-hole.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A circle of flat black velvet, perfectly round, is spread on weathered teak decking. A brass grommet rings its edge. A folded chart and coiled rope surround it. Overhead lantern light illuminates the teak but the velvet absorbs all light, appearing as a void. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-PORTABLE-HOLE",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-sensory-starter.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A fitted wooden box, open lid lined in navy felt, holds an arrangement of small tactile objects: polished river stone, a square of rough canvas, a brass ring, dried sea grass. Warm overhead lantern spotlights the contents. Dark teak exterior. Deep navy background. Photorealistic, no text, no logos.",
+      "provider": "openai",
+      "sku": "WO-SENSORY-STARTER",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-silence-jar.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A tall mason-style glass jar with a tight rubber-gasket lid sits on a square of dark slate. Interior appears completely still and slightly fogged. A brass label holder on the lid is empty. Single warm candle-glow from the right. Very deep navy background. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-SILENCE-JAR",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-spare-key-nowhere.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. An ornate antique brass skeleton key lies on a worn nautical chart showing open ocean with no land. A short length of red wax-sealed ribbon is threaded through the key bow. Warm lantern from upper left. Long hard shadows on the chart. Deep navy-black background. Photorealistic, no text, no logos.",
+      "provider": "openai",
+      "sku": "WO-SPARE-KEY-NOWHERE",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-spare-tuesday.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A small leather-bound day planner, open to a blank page, rests on a teak surface. A brass parallel ruler lies across the open page. A ship's chronometer is partially visible in the dark background. Warm lantern light falls on the planner. Deep navy background with hard vignette. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-SPARE-TUESDAY",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-tangible-wifi.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A coil of fine copper wire formed into a compact antenna-like sculpture sits on a square of navy velvet. A miniature brass spark-gap telegraph key is placed beside it. Warm amber lantern from the right, faint cool blue rim light. Dark navy background. Photorealistic, no text, no logos.",
+      "provider": "openai",
+      "sku": "WO-TANGIBLE-WIFI",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-void-sampler.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A set of four small vials in a brass rack, each holding a different depth of dark liquid ranging from deep indigo to absolute black, sits on a hydrographic chart. A brass eyedropper rests beside the rack. Single warm overhead lantern. Very dark navy background. Photorealistic, no text.",
+      "provider": "openai",
+      "sku": "WO-VOID-SAMPLER",
+      "status": "skipped-existing"
+    },
+    {
+      "filename": "product-wo-whispering-stone.jpg",
+      "model": "gpt-image-2",
+      "prompt": "Square product photograph. A smooth oval basalt stone, dark grey with faint silver mineral veining, sits centered on a square of aged parchment chart paper. A brass compass is placed to one side. Very soft warm lantern from the upper right grazes the stone surface. Deep navy background. Photorealistic, no text, no logos.",
+      "provider": "openai",
+      "sku": "WO-WHISPERING-STONE",
+      "status": "skipped-existing"
+    }
+  ],
+  "schema": 2,
+  "status": "generated",
+  "theme": "stellar-sextant"
+}

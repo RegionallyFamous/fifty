@@ -1,0 +1,50 @@
+{
+  "slug": "stellar-sextant",
+  "name": "Stellar Sextant",
+  "tagline": "Celestial navigation, harbor charts, and brass you can trust at sea.",
+  "voice": "Measured hydrographic-office tone: call orders a 'ledger', the cart a 'manifest', checkout 'close the manifest', password link 'recover your ledger key', sort menu 'order of bearing', result counts 'entries sighted', totals ' reckonings', proceed button 'sign the manifest and sail on'. Use '·' as the required-field marker. No exclamation marks in customer-facing UI.",
+  "source": "obel",
+  "palette": {
+    "base": "#0a1020",
+    "surface": "#121a2e",
+    "subtle": "#1a2438",
+    "muted": "#3d4f6f",
+    "border": "#5a6d8f",
+    "tertiary": "#8fa3c2",
+    "secondary": "#c5d0e3",
+    "contrast": "#f6f1e8",
+    "primary": "#f6f1e8",
+    "primary-hover": "#dcd6c8",
+    "accent": "#d4a437",
+    "accent-soft": "#2a2412",
+    "success": "#3d8b6a",
+    "warning": "#c98a2e",
+    "error": "#c44c4c",
+    "info": "#4a7dbd"
+  },
+  "fonts": {
+    "display": {
+      "family": "Libre Baskerville",
+      "fallback": "Georgia, 'Times New Roman', serif",
+      "google_font": true,
+      "weights": [
+        400,
+        700
+      ]
+    },
+    "sans": {
+      "family": "Source Sans 3",
+      "fallback": "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      "google_font": true,
+      "weights": [
+        400,
+        600
+      ]
+    }
+  },
+  "layout_hints": [
+    "night-sky hero with a single brass instrument still-life and one chart texture",
+    "narrow editorial column for shop story above a wide product rail",
+    "footer with three columns: voyages (journal), instruments (categories), signals (social)"
+  ]
+}

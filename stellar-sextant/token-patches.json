@@ -1,0 +1,48 @@
+{
+  "custom_border_width": {
+    "hairline": "1px",
+    "thick": "1px"
+  },
+  "custom_radius": {
+    "lg": "2px",
+    "md": "1px",
+    "none": "0",
+    "pill": "2px",
+    "sm": "0",
+    "xl": "2px"
+  },
+  "schema": 1,
+  "shadow_presets": [
+    {
+      "shadow": "none",
+      "slug": "xs"
+    },
+    {
+      "shadow": "none",
+      "slug": "sm"
+    },
+    {
+      "shadow": "none",
+      "slug": "md"
+    },
+    {
+      "shadow": "none",
+      "slug": "lg"
+    },
+    {
+      "shadow": "none",
+      "slug": "xl"
+    },
+    {
+      "shadow": "none",
+      "slug": "inset"
+    }
+  ],
+  "spacing_sizes": [
+    {
+      "size": "clamp(0.5rem, 0.6vw + 0.35rem, 0.75rem)",
+      "slug": "sm"
+    }
+  ],
+  "styles_css_append": "/* stellar-sextant precision-instrument overrides */\n\n/* ── page background ─────────────────────────────────────────── */\nbody.theme-stellar-sextant {\n  background-color: var(--wp--preset--color--base);\n  color: var(--wp--preset--color--secondary);\n}\n\n/* ── hero overlay depth ──────────────────────────────────────── */\nbody.theme-stellar-sextant .wp-block-cover__background,\nbody.theme-stellar-sextant .wp-block-cover .has-background-dim {\n  opacity: 0.55;\n  background-color: var(--wp--preset--color--base);\n}\n\n/* ── headings ─────────────────────────────────────────────────── */\nbody.theme-stellar-sextant h1,\nbody.theme-stellar-sextant h2,\nbody.theme-stellar-sextant h3,\nbody.theme-stellar-sextant h4,\nbody.theme-stellar-sextant h5,\nbody.theme-stellar-sextant h6 {\n  color: var(--wp--preset--color--contrast);\n}\n\n/* section/category labels — uppercase tracked wide in tertiary */\nbody.theme-stellar-sextant .wp-block-query-title,\nbody.theme-stellar-sextant .section-label,\nbody.theme-stellar-sextant .wp-block-heading.is-style-section-label {\n  color: var(--wp--preset--color--tertiary);\n  text-transform: uppercase;\n  letter-spacing: 0.15em;\n  font-weight: 700;\n}\n\n/* ── body / secondary text ────────────────────────────────────── */\nbody.theme-stellar-sextant p,\nbody.theme-stellar-sextant li,\nbody.theme-stellar-sextant label,\nbody.theme-stellar-sextant .wc-block-components-product-price {\n  color: var(--wp--preset--color--secondary);\n}\n\n/* muted metadata */\nbody.theme-stellar-sextant .wc-block-components-product-metadata,\nbody.theme-stellar-sextant .wp-block-post-date,\nbody.theme-stellar-sextant .wp-block-post-terms,\nbody.theme-stellar-sextant small,\nbody.theme-stellar-sextant .entry-meta {\n  color: var(--wp--preset--color--tertiary);\n}\n\n/* ── product cards ────────────────────────────────────────────── */\nbody.theme-stellar-sextant .wc-block-grid__product,\nbody.theme-stellar-sextant .wp-block-woocommerce-product-template > li,\nbody.theme-stellar-sextant .wc-block-product-template > li {\n  background-color: var(--wp--preset--color--surface);\n  border: 1px solid var(--wp--preset--color--border);\n  border-radius: 0;\n  box-shadow: none;\n}\n\n/* ── editorial column ─────────────────────────────────────────── */\nbody.theme-stellar-sextant .editorial-column,\nbody.theme-stellar-sextant .shop-story {\n  max-width: 640px;\n  margin-inline: auto;\n  padding-block: var(--wp--preset--spacing--lg) var(--wp--preset--spacing--xl);\n}\n\n/* ── section dividers ─────────────────────────────────────────── */\nbody.theme-stellar-sextant hr,\nbody.theme-stellar-sextant .wp-block-separator {\n  border: none;\n  border-top: 1px solid var(--wp--preset--color--muted);\n  background: none;\n  box-shadow: none;\n  height: 1px;\n}\n\n/* ── CTA / primary buttons ────────────────────────────────────── */\nbody.theme-stellar-sextant .wp-block-button__link,\nbody.theme-stellar-sextant .wc-block-components-button,\nbody.theme-stellar-sextant .wc-block-cart__submit-container .wc-block-components-checkout-place-order-button,\nbody.theme-stellar-sextant .wc-block-cart__submit-container a.wc-block-cart__submit-button,\nbody.theme-stellar-sextant .wc-block-components-checkout-place-order-button,\nbody.theme-stellar-sextant .wo-empty__cta--primary {\n  background-color: var(--wp--preset--color--accent);\n  color: var(--wp--preset--color--base);\n  border: none;\n  border-radius: 0;\n  box-shadow: none;\n  transition: background-color 0.18s ease;\n}\n\nbody.theme-stellar-sextant .wp-block-button__link:hover,\nbody.theme-stellar-sextant .wp-block-button__link:focus,\nbody.theme-stellar-sextant .wc-block-components-button:hover,\nbody.theme-stellar-sextant .wc-block-components-button:focus,\nbody.theme-stellar-sextant .wc-block-cart__submit-container .wc-block-components-checkout-place-order-button:hover,\nbody.theme-stellar-sextant .wc-block-cart__submit-container a.wc-block-cart__submit-button:hover,\nbody.theme-stellar-sextant .wc-block-components-checkout-place-order-button:hover,\nbody.theme-stellar-sextant .wo-empty__cta--primary:hover {\n  background-color: var(--wp--preset--color--primary-hover);\n  color: var(--wp--preset--color--base);\n}\n\n/* ── accent rule lines (decorative) ───────────────────────────── */\nbody.theme-stellar-sextant .accent-rule {\n  border-top: 1px solid var(--wp--preset--color--accent);\n}\n\n/* ── footer three-column layout ───────────────────────────────── */\nbody.theme-stellar-sextant footer.wp-block-group,\nbody.theme-stellar-sextant .wp-block-template-part[class*=\"footer\"] {\n  background-color: var(--wp--preset--color--subtle);\n}\n\nbody.theme-stellar-sextant .selvedge-footer__col-heading,\nbody.theme-stellar-sextant .footer-col-heading {\n  color: var(--wp--preset--color--tertiary);\n  text-transform: uppercase;\n  letter-spacing: 0.15em;\n  font-weight: 700;\n}\n\nbody.theme-stellar-sextant .selvedge-footer__col + .selvedge-footer__col,\nbody.theme-stellar-sextant .footer-col + .footer-col {\n  border-left: 1px solid var(--wp--preset--color--border);\n}\n\n/* ── surface backgrounds (cards, panels) ──────────────────────── */\nbody.theme-stellar-sextant .wp-block-group.has-surface-background-color,\nbody.theme-stellar-sextant .wc-block-mini-cart__drawer,\nbody.theme-stellar-sextant .wc-block-components-sidebar {\n  background-color: var(--wp--preset--color--surface);\n  box-shadow: none;\n}\n\n/* ── form inputs: match dark palette ─────────────────────────── */\nbody.theme-stellar-sextant input[type=\"text\"],\nbody.theme-stellar-sextant input[type=\"email\"],\nbody.theme-stellar-sextant input[type=\"password\"],\nbody.theme-stellar-sextant input[type=\"search\"],\nbody.theme-stellar-sextant input[type=\"number\"],\nbody.theme-stellar-sextant select,\nbody.theme-stellar-sextant textarea {\n  background-color: var(--wp--preset--color--subtle);\n  color: var(--wp--preset--color--contrast);\n  border: 1px solid var(--wp--preset--color--border);\n  border-radius: 0;\n  box-shadow: none;\n}\n\nbody.theme-stellar-sextant input[type=\"text\"]:focus,\nbody.theme-stellar-sextant input[type=\"email\"]:focus,\nbody.theme-stellar-sextant input[type=\"password\"]:focus,\nbody.theme-stellar-sextant input[type=\"search\"]:focus,\nbody.theme-stellar-sextant input[type=\"number\"]:focus,\nbody.theme-stellar-sextant select:focus,\nbody.theme-stellar-sextant textarea:focus {\n  border-color: var(--wp--preset--color--accent);\n  outline: none;\n}\n\n/* ── required field marker ────────────────────────────────────── */\nbody.theme-stellar-sextant .required,\nbody.theme-stellar-sextant abbr[title=\"required\"] {\n  color: var(--wp--preset--color--accent);\n  text-decoration: none;\n}\nbody.theme-stellar-sextant .required::after,\nbody.theme-stellar-sextant abbr[title=\"required\"]::after {\n  content: \" ·\";\n}\n\n/* ── navigation links ─────────────────────────────────────────── */\nbody.theme-stellar-sextant .wp-block-navigation a {\n  color: var(--wp--preset--color--secondary);\n}\n\nbody.theme-stellar-sextant .wp-block-navigation a:hover,\nbody.theme-stellar-sextant .wp-block-navigation a:focus {\n  color: var(--wp--preset--color--accent);\n}\n\n/* active nav item border in accent */\nbody.theme-stellar-sextant .wp-block-navigation .current-menu-item > a {\n  border-bottom: 1px solid var(--wp--preset--color--accent);\n  color: var(--wp--preset--color--contrast);\n}\n/* /stellar-sextant precision-instrument overrides */"
+}

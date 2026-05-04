@@ -338,7 +338,7 @@ def _closest_allowed(hex_value: str, allowed: set[str], *, max_distance: int) ->
         cand_rgb = _rgb_for(cand)
         if not cand_rgb:
             continue
-        distance = sum((a - b) ** 2 for a, b in zip(target_rgb, cand_rgb, strict=True)) ** 0.5
+        distance = sum((a - b) ** 2 for a, b in zip(target_rgb, cand_rgb)) ** 0.5
         if best is None or distance < best[0]:
             best = (distance, cand)
     if best is None or best[0] > max_distance:
