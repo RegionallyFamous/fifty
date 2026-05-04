@@ -33,7 +33,8 @@ fifty/
 ├── mockups/              # concept-queue source (1 PNG + 1 <slug>.meta.json per concept; read mockups/README.md)
 ├── tests/                # committed visual-baseline PNGs (read tests/visual-baseline/README.md)
 ├── docs/                 # generated GH Pages site + the tier-infra prose (shipping-a-theme.md, batch-playbook.md, blindspot-decisions.md, day-0-smoke.md, tier-3-deferrals.md)
-├── .claude/skills/       # in-repo agent skills (build-block-theme-variant, design-theme)
+├── .agents/skills/       # agent skills installed via `npx skills add …` (vendored copy; lockfile `skills-lock.json`)
+├── .claude/skills/       # first-party skills (design-theme, build-block-theme-variant) + optional symlinks into `.agents/skills/`
 ├── .cursor/rules/        # Cursor-style per-area agent rules (.mdc)
 ├── README.md             # human-facing project intro
 ├── AGENTS.md             # you are here (rules, gotchas, tooling)
@@ -378,14 +379,17 @@ Other build-pipeline scripts grew matching `--snap` flags so the gate runs inlin
 
 ## Agent skills
 
-This repo ships its own agent skills under `.claude/skills/` so any LLM working in the codebase (Claude Code, Claude.ai with this repo attached, Cursor, etc.) can pick them up without any local install. Cursor users will also find a mirror at `~/.cursor/skills/` on the maintainer's machine; the in-repo copy under `.claude/skills/` is the source of truth.
+This repo ships first-party agent skills under `.claude/skills/` so any LLM working in the codebase (Claude Code, Claude.ai with this repo attached, Cursor, etc.) can pick them up without any local install. Cursor users will also find a mirror at `~/.cursor/skills/` on the maintainer's machine; the in-repo copy under `.claude/skills/` is the source of truth for **Fifty-owned** skills.
+
+**Miles (bymilesai)** — installed from [`bymilesai/skills`](https://github.com/bymilesai/skills) with `npx skills add bymilesai/skills -y` (from the repo root). Skill files live under `.agents/skills/miles/`; `.claude/skills/miles` is a symlink for hosts that read the Claude layout. Update or refresh with the same command; `skills-lock.json` records the resolved skill hash. **Precedence:** anything in this `AGENTS.md` (block-only themes, `theme.json` as source of truth, Playground seeding, WC microcopy/swatches boundaries, `bin/check.py` gates) overrides Miles when you are editing *this* monorepo. Use Miles for external site design via the Miles CLI (`miles create-site`, `miles reply`, etc.); use `design-theme` / `build-block-theme-variant` for shipping a Fifty variant.
 
 | Skill | Use when |
 |---|---|
 | `.claude/skills/design-theme/SKILL.md` | Shipping a brand-new theme *from a prompt* (no mockup yet). Owns the deterministic spine: prompt → `spec.json` → `bin/design.py` (clone + token swap + seed + sync + check). Short; hands off to `build-block-theme-variant` for the judgment-heavy passes. Pair with `docs/shipping-a-theme.md`. |
 | `.claude/skills/build-block-theme-variant/SKILL.md` | Building a new visual variant of Obel *from a mockup or explicit visual reference*: mockup → tokens → templates → dynamic data → verification. Encodes the surface checklist, structural defect scan, WC-integration gotchas, and the hard rules (modern blocks only, nothing static, self-hosted Google Fonts only). |
+| `.agents/skills/miles/SKILL.md` | User wants **Miles AI** for discovery, briefs, design directions, or builds *outside* the Fifty block-theme pipeline; user says “Miles” or “bymilesai”. Requires `miles login` / credentials under `~/.miles/` when calling the API. |
 
-If you add a new skill, drop it under `.claude/skills/<name>/SKILL.md` with the standard frontmatter (`name`, `description`) so every agent host can discover it.
+If you add a new **first-party** skill, drop it under `.claude/skills/<name>/SKILL.md` with the standard frontmatter (`name`, `description`) so every agent host can discover it. Third-party installs from `npx skills add` go under `.agents/skills/`; commit them (and `skills-lock.json`) when the team should share the same skill revision.
 
 ## Adding a new theme variant
 

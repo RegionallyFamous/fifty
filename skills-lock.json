@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "miles": {
+      "source": "bymilesai/skills",
+      "sourceType": "github",
+      "skillPath": "miles/SKILL.md",
+      "computedHash": "e0a32e06c0e265eac5dd6eaddb904e3b453391a7212ddd57d497999f2e7f965c"
+    }
+  }
+}
