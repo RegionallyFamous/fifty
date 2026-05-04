@@ -711,7 +711,7 @@ def derive_target_from_meta(slug: str, meta: dict[str, Any]) -> DesignTarget:
         source={
             "mockup": f"mockups/mockup-{slug}.png",
             "method": "deterministic-from-meta",
-            "extracted_at": _dt.datetime.now(_dt.timezone.utc).isoformat(
+            "extracted_at": _dt.datetime.now(_dt.timezone.utc).isoformat(  # noqa: UP017
                 timespec="seconds"
             ),
         },
