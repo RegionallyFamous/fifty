@@ -37,6 +37,21 @@ Steps 1-4 are this skill. Steps 5-8 borrow from `build-block-theme-variant` and 
 
 ## Step 1 — Prompt to spec
 
+### Miles-led handoff (optional)
+
+If the Proprietor used **Miles** first: Miles must export the **spec JSON** plus
+**`miles-ready.json`** (`site_ready: true`, optional `spec` path). The bridge
+validates and copies only — no Claude in Fifty. Then either:
+
+- `python3 bin/miles-bridge-to-spec.py --slug <slug> --name "<Name>" --artifacts-dir <dir> --out tmp/specs/<slug>.json` then `python3 bin/design.py --spec tmp/specs/<slug>.json`, or
+- `python3 bin/design.py --miles-artifacts <dir> --miles-slug <slug> --miles-name "<Name>"` (runs `miles whoami` then the bridge; **not** combinable with `--prompt` in v1; set `FIFTY_SKIP_MILES_GATE=1` only for CI without Miles).
+
+Details: `bin/miles-bridge-to-spec.py --help`, `docs/shipping-a-theme.md` §2b,
+`AGENTS.md` (Miles → theme factory). Miles never replaces the Fifty theme tree
+— it only feeds the **spec** step.
+
+---
+
 The spec is a JSON object. Get the canonical shape with:
 
 ```bash

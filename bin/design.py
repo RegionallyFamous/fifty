@@ -453,6 +453,28 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--miles-artifacts",
+        type=Path,
+        default=None,
+        help=(
+            "Miles-only handoff: directory with miles-ready.json (site_ready) + "
+            "Miles-exported spec JSON (see `bin/miles-bridge-to-spec.py`). "
+            "Runs Miles `whoami` first; exits if Miles is not usable (unless "
+            "FIFTY_SKIP_MILES_GATE=1). No Claude. Mutually exclusive with --spec "
+            "and --prompt. Requires --miles-slug and --miles-name."
+        ),
+    )
+    p.add_argument(
+        "--miles-slug",
+        default=None,
+        help="Theme slug when using --miles-artifacts (must match target clone slug).",
+    )
+    p.add_argument(
+        "--miles-name",
+        default=None,
+        help='Display name when using --miles-artifacts (e.g. "Ferment Co").',
+    )
+    p.add_argument(
         "--print-example-spec",
         action="store_true",
         help=(
@@ -673,12 +695,50 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write("\n")
         return 0
 
+    ma = args.miles_artifacts
+    ms = args.miles_slug
+    mn = args.miles_name
+
+    if (ms or mn) and ma is None:
+        print(
+            "error: --miles-slug / --miles-name are only valid with --miles-artifacts",
+            file=sys.stderr,
+        )
+        return 2
+
     if args.prompt and args.spec:
         print(
             "error: --prompt and --spec are mutually exclusive (pick one input source)",
             file=sys.stderr,
         )
         return 2
+    if ma is not None and args.spec:
+        print(
+            "error: --miles-artifacts and --spec are mutually exclusive",
+            file=sys.stderr,
+        )
+        return 2
+    if ma is not None and args.prompt:
+        print(
+            "error: --miles-artifacts and --prompt are mutually exclusive",
+            file=sys.stderr,
+        )
+        return 2
+    if ma is not None and (not ms or not str(ms).strip() or not mn or not str(mn).strip()):
+        print(
+            "error: --miles-artifacts requires --miles-slug and --miles-name",
+            file=sys.stderr,
+        )
+        return 2
+
+    if ma is not None:
+        try:
+            args.spec = _resolve_miles_artifacts_to_spec(ma, str(ms).strip(), str(mn).strip())
+        except PhaseError as e:
+            print(f"\nSTATUS: FAIL (phase {e.args[0]})", file=sys.stderr)
+            print(f"  {e.args[1]}", file=sys.stderr)
+            return 1
+        print(f"design.py: Miles artifacts resolved to spec at {args.spec}")
 
     if args.prompt:
         try:
@@ -691,7 +751,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.spec:
         print(
-            "error: provide --spec PATH or --prompt STR (or --print-example-spec)",
+            "error: provide --spec PATH, --prompt STR, --miles-artifacts DIR "
+            "(with --miles-slug / --miles-name), or --print-example-spec",
             file=sys.stderr,
         )
         return 2
@@ -2566,6 +2627,80 @@ def _phase_publish(spec: ValidatedSpec, dest: Path, args: argparse.Namespace) ->
             "`python3 bin/design.py --spec <spec> --only publish`.",
         )
     print(f"  [publish] {spec.slug} theme pushed to {remote}/{branch}")
+
+
+def _miles_whoami_gate() -> None:
+    """Require a working Miles CLI session before Miles-led builds.
+
+    Set FIFTY_SKIP_MILES_GATE=1 to bypass (tests / environments without Node).
+    """
+    if os.environ.get("FIFTY_SKIP_MILES_GATE") == "1":
+        return
+    cli = MONOREPO_ROOT / ".agents" / "skills" / "miles" / "scripts" / "miles-cli.mjs"
+    if not cli.is_file():
+        raise PhaseError(
+            "miles-artifacts",
+            "Miles CLI missing at .agents/skills/miles/scripts/miles-cli.mjs. "
+            "Install skills (`npx skills add bymilesai/skills -y`) or set "
+            "FIFTY_SKIP_MILES_GATE=1.",
+        )
+    proc = subprocess.run(
+        ["node", str(cli), "whoami"],
+        cwd=str(MONOREPO_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=45,
+    )
+    if proc.returncode != 0:
+        tail = (proc.stderr or proc.stdout or "").strip()[:800]
+        raise PhaseError(
+            "miles-artifacts",
+            "Miles `whoami` failed — not logged in or CLI error. "
+            "Fix Miles auth (`miles login`) or set FIFTY_SKIP_MILES_GATE=1 for "
+            f"local tests.\n{tail}",
+        )
+
+
+def _resolve_miles_artifacts_to_spec(artifacts_dir: Path, slug: str, name: str) -> Path:
+    """Invoke `bin/miles-bridge-to-spec.py` to validate Miles-exported spec JSON.
+
+    Raises PhaseError on failure (mirrors `_resolve_prompt_to_spec`).
+    """
+    _miles_whoami_gate()
+    helper = ROOT / "bin" / "miles-bridge-to-spec.py"
+    if not helper.is_file():
+        raise PhaseError(
+            "miles-artifacts",
+            f"bin/miles-bridge-to-spec.py not found at {helper}.",
+        )
+    out_dir = MONOREPO_ROOT / "tmp" / "specs"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"{slug}.json"
+    cmd = [
+        sys.executable,
+        str(helper),
+        "--slug",
+        slug,
+        "--name",
+        name,
+        "--artifacts-dir",
+        str(artifacts_dir.resolve()),
+        "--out",
+        str(out_path.resolve()),
+    ]
+    proc = subprocess.run(cmd, cwd=str(MONOREPO_ROOT), capture_output=True, text=True)
+    if proc.returncode != 0:
+        raise PhaseError(
+            "miles-artifacts",
+            f"bin/miles-bridge-to-spec.py exited {proc.returncode}: "
+            f"{proc.stderr.strip() or proc.stdout.strip()}",
+        )
+    if not out_path.is_file():
+        raise PhaseError(
+            "miles-artifacts",
+            f"bin/miles-bridge-to-spec.py did not write {out_path}",
+        )
+    return out_path
 
 
 def _resolve_prompt_to_spec(prompt: str) -> Path:

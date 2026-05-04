@@ -46,6 +46,42 @@ Fallback: hand-write the spec against
 this if the LLM path is broken or you need a structure concept-to-spec
 doesn't emit.
 
+### 2b. Miles-led spec (optional)
+
+If **Miles** produced the storefront direction and exported a **Fifty spec
+JSON** (same object shape as §2 / `bin/design.py --print-example-spec`):
+
+1. Put **`miles-ready.json`** in the artifact directory with `"site_ready": true`
+   and a **`spec`** field naming the spec file relative to that directory
+   (omit **`spec`** or leave it empty to default to `spec.json`). The spec file
+   must already satisfy `validate_spec` + `validate_generation_safety` — the
+   bridge only checks and copies; it does **not** call Anthropic.
+2. Run the bridge (slug and name must match the JSON):
+
+   ```bash
+   python3 bin/miles-bridge-to-spec.py \
+     --slug <slug> --name "<Display Name>" \
+     --artifacts-dir path/to/miles-handoff \
+     --out tmp/specs/<slug>.json
+   ```
+
+3. Run `design.py` on that file as in §3, **or** combine bridge resolution with
+   the factory in one invocation:
+
+   ```bash
+   python3 bin/design.py --miles-artifacts path/to/miles-handoff \
+     --miles-slug <slug> --miles-name "<Display Name>" build
+   ```
+
+`--miles-artifacts` is mutually exclusive with `--spec` and `--prompt`. That
+path runs **`miles whoami`** before the bridge (Miles CLI installed and logged
+in). Use **`FIFTY_SKIP_MILES_GATE=1`** only when you intentionally skip that
+check (e.g. CI without Miles).
+
+Concept + mockup batching (`bin/design-batch.py --from-concepts`) uses only
+`bin/concept-to-spec.py` against the mockup and concept seed — there is no
+Miles sidecar file for the LLM path.
+
 ## 3. Run `bin/design.py`
 
 ```bash

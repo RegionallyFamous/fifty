@@ -574,7 +574,6 @@ def write_spec(spec: dict, out_path: Path) -> None:
 # LLM-assisted mode (thin wrapper around _vision_lib)
 # ---------------------------------------------------------------------------
 
-
 LLM_SYSTEM_PROMPT = """You are a design translator. Given a curated concept entry
 (name, palette_tags, type_genre, era, sector, hero_composition, type_specimen,
 blurb) and a mockup PNG of the intended storefront, produce a JSON object
