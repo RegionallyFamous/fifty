@@ -3,7 +3,7 @@ mutation on theme.json, and brief generation.
 
 Why this module exists
 ----------------------
-`bin/design.py` is the deterministic spine of the "prompt -> theme" pipeline:
+`bin/design.py` is the deterministic spine of the "spec JSON -> theme" pipeline:
 clone Obel, apply a JSON spec to `theme.json`, seed playground content, sync
 the blueprint, run `bin/check.py`. Every step that can be expressed as a
 pure data transform belongs here so it can be unit-tested without booting
@@ -11,7 +11,7 @@ Playground or shelling out to subprocesses.
 
 The split is deliberate:
   * `_design_lib.py` (this file) — pure functions on dicts/strings, no I/O,
-    no subprocess, no environment lookups. Trivial to test.
+    no subprocess, except ``allow_non_miles_spec_tools()`` (one env var).
   * `design.py` — argparse + I/O orchestration. Calls into this module.
 
 If you need to add a new design transform (e.g. swap shadow tokens, rewrite
@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -46,6 +47,19 @@ from typing import Any
 # Same regex `bin/clone.py` uses, kept in sync intentionally so a spec that
 # validates here will clone successfully there.
 SLUG_PATTERN = re.compile(r"^[a-z][a-z0-9-]{1,38}$")
+
+
+def allow_non_miles_spec_tools() -> bool:
+    """When false (default), CLIs refuse Anthropic-only spec shortcuts.
+
+    Miles export + ``miles-ready.json`` (``--miles-artifacts`` / ``miles-bridge``),
+    hand-authored ``--spec`` JSON, and deterministic ``concept-to-spec`` stay
+    allowed. Set ``FIFTY_ALLOW_NON_MILES_SPEC=1`` to re-enable ``design.py
+    --prompt``, manifest ``prompt`` rows, and ``concept-to-spec --llm``.
+    """
+
+    return os.environ.get("FIFTY_ALLOW_NON_MILES_SPEC", "").strip() == "1"
+
 
 # Hex color: 3, 4, 6, or 8 digit forms (alpha allowed). Lowercase or upper.
 HEX_PATTERN = re.compile(r"^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")

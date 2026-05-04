@@ -2,7 +2,8 @@
 
 These tests exercise the dry-run path (which does not call Anthropic),
 arg validation, and the output-path resolution. The live API path is
-covered by `bin/design.py --prompt` smoke runs in CI when a real key is
+covered by direct CLI runs (legacy `design.py --prompt` is gated; use
+`FIFTY_ALLOW_NON_MILES_SPEC=1` if wiring an end-to-end smoke with a real key).
 present; here we keep tests offline-only and free.
 """
 

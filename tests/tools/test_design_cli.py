@@ -105,7 +105,14 @@ def test_design_rejects_invalid_spec(tmp_path):
 def test_design_requires_spec_when_not_printing_example():
     r = _run([])
     assert r.returncode == 2
-    assert "--spec" in r.stderr and "--prompt" in r.stderr
+    assert "--spec" in r.stderr
+    assert "miles-artifacts" in r.stderr or "--miles-artifacts" in r.stderr
+
+
+def test_design_rejects_prompt_without_escape_hatch():
+    r = _run(["--prompt", "a midcentury surf shop", "--dry-run"])
+    assert r.returncode == 2
+    assert "FIFTY_ALLOW_NON_MILES_SPEC" in r.stderr
 
 
 def test_design_rejects_spec_and_prompt_together(tmp_path):

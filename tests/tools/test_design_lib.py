@@ -19,6 +19,7 @@ import json
 
 import pytest
 from _design_lib import (
+    allow_non_miles_spec_tools,
     apply_fonts,
     apply_palette,
     apply_token_patches,
@@ -28,6 +29,14 @@ from _design_lib import (
     validate_generation_safety,
     validate_spec,
 )
+
+
+def test_allow_non_miles_spec_tools_env_gate(monkeypatch):
+    monkeypatch.delenv("FIFTY_ALLOW_NON_MILES_SPEC", raising=False)
+    assert allow_non_miles_spec_tools() is False
+    monkeypatch.setenv("FIFTY_ALLOW_NON_MILES_SPEC", "1")
+    assert allow_non_miles_spec_tools() is True
+
 
 # ---------------------------------------------------------------------------
 # validate_spec

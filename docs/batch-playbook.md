@@ -31,14 +31,15 @@ per-theme checklist this playbook wraps.
    lookups; if any of your slugs use tags not yet in the lookup
    tables you'll see "unknown palette_tag" warnings. Either extend
    the tables ([bin/concept-to-spec.py](../bin/concept-to-spec.py)
-   has them at module scope) in a pre-batch PR, or run the LLM
-   path for those slugs.
+   has them at module scope) in a pre-batch PR, or export a Miles spec
+   for those slugs and merge by hand.
 
-3. Decide on LLM spend. `--concept-spec-mode no-llm` is the default
-   and is free/offline. `--concept-spec-mode llm` calls the vision
-   model once per slug for a more polished spec. Batch runs also honor
-   `--budget-usd` / `FIFTY_VISION_DAILY_BUDGET` before each theme so a
-   run halts cleanly at the daily cap instead of failing mid-theme.
+3. Spec generation in `--from-concepts` is **deterministic only**
+   (``bin/concept-to-spec`` controlled-vocab mapping — free/offline).
+   For mockup-led polish use Miles + ``design.py --miles-artifacts``.
+   Batch runs also honor ``--budget-usd`` / ``FIFTY_VISION_DAILY_BUDGET``
+   before each theme so a run halts cleanly at the daily cap instead of
+   failing mid-theme.
 
 ## Kicking off the batch
 
@@ -46,7 +47,6 @@ per-theme checklist this playbook wraps.
 python3 bin/design-batch.py \
   --from-concepts \
   --concept-slugs "agave,apiary,brine,cathode,cobbler" \
-  --concept-spec-mode no-llm \
   --limit 5
 ```
 
@@ -101,9 +101,9 @@ tail tmp/batch-<run-id>.json  # which slug? why?
 python3 bin/concept-to-spec.py <slug> --no-llm --verbose
 ```
 
-If deterministic mode works but LLM mode doesn't, the LLM's JSON is
-off-schema for `bin/design.py`. Re-run the batch with
-`--concept-spec-mode no-llm` for that slug only.
+If validation still fails, the concept metadata is off-schema for
+`bin/design.py` — fix the seed tags or author a Miles-exported spec and
+point the manifest at ``{"spec": "..."}``.
 
 ### A slug fails `design.py` / `design-watch.py`
 

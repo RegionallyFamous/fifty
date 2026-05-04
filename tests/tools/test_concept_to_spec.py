@@ -479,6 +479,19 @@ def test_cli_print_only_no_llm_emits_valid_spec():
     assert "palette" in data and "fonts" in data
 
 
+def test_cli_default_is_deterministic_like_no_llm():
+    r_default = _run(["--slug", "agave", "--print-only"])
+    r_no_llm = _run(["--slug", "agave", "--no-llm", "--print-only"])
+    assert r_default.returncode == 0 and r_no_llm.returncode == 0
+    assert json.loads(r_default.stdout) == json.loads(r_no_llm.stdout)
+
+
+def test_cli_llm_requires_escape_hatch():
+    r = _run(["--slug", "agave", "--llm", "--print-only"])
+    assert r.returncode == 2
+    assert "FIFTY_ALLOW_NON_MILES_SPEC" in r.stderr
+
+
 def test_cli_unknown_slug_exits_nonzero():
     r = _run(["--slug", "this-slug-does-not-exist", "--no-llm", "--print-only"])
     assert r.returncode != 0

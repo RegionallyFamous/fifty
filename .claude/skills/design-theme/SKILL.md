@@ -1,27 +1,31 @@
 ---
 name: design-theme
-description: Drive `bin/design.py` to build a new WooCommerce block theme from a prompt. Use when the user asks to "make a new theme called X", "build a theme that looks like [description]", "design a theme from this prompt", or "spin up a [style] theme". This skill owns the deterministic spine (clone + token swap + seed + sync + check); the longer `build-block-theme-variant` skill owns the design judgment (microcopy voice, structural restyle, photography). Both skills coexist — this one is the fast path that produces a runnable theme in one orchestrator pass.
+description: Drive `bin/design.py` to build a new WooCommerce block theme from a validated spec (Miles export, deterministic concept-to-spec, or hand-edited JSON). Use when the user asks to ship a new theme from the bench, from Miles artifacts, or from an existing spec.json. This skill owns the deterministic spine (clone + token swap + seed + sync + check); `build-block-theme-variant` owns mockup-led judgment. Legacy free-text `design.py --prompt` is gated off by default — see `AGENTS.md`.
 ---
 
-# Design a theme from a prompt
+# Design a theme from a validated spec
 
-The agent's job here is to translate a free-form prompt into a JSON spec, run `bin/design.py` once, then iterate the spec until the theme passes `bin/check.py`. This skill is intentionally short: the heavy reference material lives in `build-block-theme-variant`. Read this skill when you want to ship fast; read both skills when the result needs the full surface-by-surface judgment pass.
+The agent's job here is to obtain a **validated `spec.json`** (Miles handoff,
+`bin/concept-to-spec.py` from a concept seed, or hand-authored from
+`--print-example-spec`), run `bin/design.py` once, then iterate until
+`bin/check.py` is green. This skill is intentionally short: the heavy
+reference material lives in `build-block-theme-variant`.
 
 ## When to read this skill (vs `build-block-theme-variant`)
 
 | Trigger | Skill |
 |---------|-------|
-| "Make a new theme called X" / "build a [style] theme" / "design a theme from this prompt" | **design-theme** (this one) — drives `bin/design.py` |
+| "Ship theme X from Miles / the bench / a spec.json" | **design-theme** (this one) — drives `bin/design.py` |
 | "Make a variant of obel that looks like [mockup]" / hands you a mockup image | `build-block-theme-variant` — long-form judgment-heavy flow |
 | "I have a spec.json, run it" | **design-theme** (this one) |
 | "Restyle the cart on every theme" / cross-theme structural changes | Neither — bare bin tools |
 
-If the user's prompt has design intent but no mockup, start here. If they hand you a mockup, jump to `build-block-theme-variant`.
+If the user has **design intent in Miles** or a **concept slug** only, start here. If they hand you a **mockup image** as the source of truth, jump to `build-block-theme-variant`.
 
 ## The non-negotiable sequence
 
 ```
-1. PROMPT      -> spec.json (you author this from the prompt + 1 confirmation question)
+1. SPEC        -> spec.json (Miles export + bridge, or `bin/concept-to-spec.py <slug>`, or hand-edit from --print-example-spec)
 2. VALIDATE    -> python3 bin/design.py --spec spec.json --dry-run
 3. RUN         -> python3 bin/design.py --spec spec.json
 4. READ BRIEF  -> open <slug>/BRIEF.md (the orchestrator wrote this for you)
@@ -35,20 +39,31 @@ Steps 1-4 are this skill. Steps 5-8 borrow from `build-block-theme-variant` and 
 
 ---
 
-## Step 1 — Prompt to spec
+## Step 1 — Produce `spec.json`
 
-### Miles-led handoff (optional)
+### Miles-led handoff (preferred for design-led work)
 
 If the Proprietor used **Miles** first: Miles must export the **spec JSON** plus
 **`miles-ready.json`** (`site_ready: true`, optional `spec` path). The bridge
 validates and copies only — no Claude in Fifty. Then either:
 
 - `python3 bin/miles-bridge-to-spec.py --slug <slug> --name "<Name>" --artifacts-dir <dir> --out tmp/specs/<slug>.json` then `python3 bin/design.py --spec tmp/specs/<slug>.json`, or
-- `python3 bin/design.py --miles-artifacts <dir> --miles-slug <slug> --miles-name "<Name>"` (runs `miles whoami` then the bridge; **not** combinable with `--prompt` in v1; set `FIFTY_SKIP_MILES_GATE=1` only for CI without Miles).
+- `python3 bin/design.py --miles-artifacts <dir> --miles-slug <slug> --miles-name "<Name>"` (runs `miles whoami` then the bridge; mutually exclusive with `--spec`; set `FIFTY_SKIP_MILES_GATE=1` only for CI without Miles).
 
 Details: `bin/miles-bridge-to-spec.py --help`, `docs/shipping-a-theme.md` §2b,
 `AGENTS.md` (Miles → theme factory). Miles never replaces the Fifty theme tree
 — it only feeds the **spec** step.
+
+### Concept queue (deterministic)
+
+From a `bin/concept_seed.py` slug with a mockup on the bench:
+
+```bash
+python3 bin/concept-to-spec.py <slug> --out tmp/specs/<slug>.json
+```
+
+This path is **offline / no Anthropic** by default. Do not reach for
+`--llm` unless the Proprietor has explicitly set `FIFTY_ALLOW_NON_MILES_SPEC=1`.
 
 ---
 
@@ -92,9 +107,9 @@ Edit the file in place. The required fields are `slug` and `name`; everything el
 
 **Authoring rules:**
 
-1. **Always confirm in one batch before running.** Use `AskQuestion` exactly once with: slug confirm, palette anchor (3-6 hexes), display font intent, voice keyword, layout aggression. Do not drip-feed — the user gets one chance to correct your reading of their prompt before the orchestrator runs.
+1. **Always confirm in one batch before running.** Use `AskQuestion` exactly once with: slug confirm, palette anchor (3-6 hexes), display font intent, voice keyword, layout aggression. Do not drip-feed — the user gets one chance to correct your reading of their brief before the orchestrator runs.
 2. **Picking a palette:** if the user gave you vibes ("warm 1960s department store"), translate to 4-6 hexes and put them in the spec. Validate against WCAG by writing the contrast pairings to your scratch notes before locking.
-3. **Picking fonts:** Google Fonts only (the per-theme `check_no_remote_fonts` lint blocks any other source). Default to system stacks unless the prompt explicitly calls for a custom display family.
+3. **Picking fonts:** Google Fonts only (the per-theme `check_no_remote_fonts` lint blocks any other source). Default to system stacks unless the brief explicitly calls for a custom display family.
 4. **Voice keyword:** one paragraph. The orchestrator records it in `BRIEF.md`; you'll write the actual `// === BEGIN wc microcopy ===` block in step 5. `check_wc_microcopy_distinct_across_themes` enforces uniqueness vs every sibling theme — if you reuse phrasing from Obel/Chonk/Selvedge/Lysholm/Aero, the gate will reject it.
 
 ---

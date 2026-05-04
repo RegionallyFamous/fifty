@@ -6,8 +6,9 @@ Why this script exists
 ----------------------
 The pre-100-themes hardening plan identified "hand-authoring spec JSON
 for each new concept" as one of the slower manual steps in shipping a
-theme. `bin/spec-from-prompt.py` already covers the "arbitrary prompt"
-case by calling an LLM. This script is its structured-input sibling:
+theme. For arbitrary English prompts use Miles (export spec JSON) or, in
+legacy mode only, ``bin/spec-from-prompt.py`` with ``FIFTY_ALLOW_NON_MILES_SPEC=1``.
+This script is the structured-input sibling for **concept_seed + mockup**:
 
   * The INPUT is already curated (controlled-vocab palette_tags,
     type_genre, era, hero_composition, plus a mockup PNG the operator
@@ -15,31 +16,19 @@ case by calling an LLM. This script is its structured-input sibling:
   * The OUTPUT is exactly the spec schema `bin/design.py --spec`
     consumes.
 
-So the script is really a *structured translator* with two modes:
+Default mode is **deterministic** (same as ``--no-llm``): map controlled-vocab
+tokens to spec fields via PALETTE_TAG_TO_HEX, TYPE_GENRE_FONTS, and
+HERO_COMPOSITION_HINTS — free, offline-safe, reproducible.
 
-  `--no-llm` (deterministic)
-      Pure mapping from controlled-vocab tokens to spec fields using
-      the embedded lookup tables (PALETTE_TAG_TO_HEX, TYPE_GENRE_FONTS,
-      HERO_COMPOSITION_HINTS). Produces a valid, reproducible spec
-      without any API cost. Useful for:
-        * unit tests
-        * offline / budget-exhausted runs
-        * "start here, then polish" workflow where the agent wants a
-          known-good baseline spec before iterating with the LLM.
+Optional ``--llm`` sends the mockup + concept metadata to Claude via
+``_vision_lib.vision_completion``. **``--llm`` is refused unless**
+``FIFTY_ALLOW_NON_MILES_SPEC=1`` (escape hatch for legacy automation only).
 
-  `--llm` (default when ANTHROPIC_API_KEY is set)
-      Calls `bin/_vision_lib.vision_completion` (the generic
-      image+text primitive that shares HTTP/retry/ledger plumbing
-      with the visual-regression reviewer) with a concept-to-spec
-      system prompt. Sends the mockup + concept metadata to Claude
-      and parses the returned JSON into a spec shaped like
-      `_design_lib.example_spec()`. On validation failure the model
-      is re-prompted once with the validator's per-field errors so
-      it can self-correct; a second failure surfaces to the caller.
+``--no-llm`` and ``--dry-run`` remain as explicit aliases for the
+deterministic path.
 
-Both modes run `bin/_design_lib.validate_spec` on the result and exit
-non-zero if the spec fails. The caller (`bin/design.py` or
-`bin/design-batch.py --from-concepts`) can trust the output.
+Both paths run ``bin/_design_lib.validate_spec`` on the result and exit
+non-zero if the spec fails. Callers can trust the output.
 
 Typical usage
 -------------
@@ -48,7 +37,7 @@ Typical usage
     # Deterministic sanity check:
     python3 bin/concept-to-spec.py --slug agave --no-llm
 
-    # Normal operator flow (uses vision + mockup):
+    # Default: deterministic (no Anthropic):
     python3 bin/concept-to-spec.py --slug agave
 
     # Pipe straight into design.py:
@@ -75,6 +64,7 @@ sys.path.insert(0, str(ROOT / "bin"))
 
 from _design_lib import (  # noqa: E402
     KNOWN_FONT_SLUGS,
+    allow_non_miles_spec_tools,
     validate_generation_safety,
     validate_spec,
 )
@@ -784,10 +774,17 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--no-llm", action="store_true",
         help=(
-            "Skip the vision model; derive the spec entirely from the "
-            "concept's controlled-vocab tags + the lookup tables in this "
-            "script. Deterministic, reproducible, free. Good for tests and "
-            "a known-good baseline before an LLM iteration pass."
+            "Force deterministic mapping (explicit alias for the default). "
+            "Same as the default when neither --llm nor --dry-run is set."
+        ),
+    )
+    p.add_argument(
+        "--llm",
+        action="store_true",
+        help=(
+            "Use vision + Claude on the mockup (requires "
+            "FIFTY_ALLOW_NON_MILES_SPEC=1). Default is deterministic only; "
+            "prefer Miles export for design-led specs."
         ),
     )
     p.add_argument(
@@ -804,6 +801,9 @@ def main(argv: list[str] | None = None) -> int:
         help="Print the validated spec to stdout instead of writing a file.",
     )
     args = p.parse_args(argv)
+    if args.llm and args.no_llm:
+        print("error: --llm and --no-llm are mutually exclusive", file=sys.stderr)
+        return 2
 
     try:
         concept = _load_concept(args.slug)
@@ -814,10 +814,20 @@ def main(argv: list[str] | None = None) -> int:
     mockup = args.mockup or (ROOT / "docs" / "mockups" / f"{args.slug}.png")
 
     try:
-        if args.no_llm or args.dry_run:
+        if args.llm:
+            if not allow_non_miles_spec_tools():
+                print(
+                    "error: --llm is disabled by default. Use deterministic output "
+                    "(omit --llm), export a spec from Miles, or set "
+                    "FIFTY_ALLOW_NON_MILES_SPEC=1 for legacy automation only.",
+                    file=sys.stderr,
+                )
+                return 2
+            spec = concept_to_spec_llm(concept, mockup, dry_run=False)
+        elif args.no_llm or args.dry_run:
             spec = concept_to_spec(concept)
         else:
-            spec = concept_to_spec_llm(concept, mockup, dry_run=False)
+            spec = concept_to_spec(concept)
     except ConceptToSpecError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1

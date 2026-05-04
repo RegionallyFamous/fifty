@@ -33,13 +33,14 @@ python3 bin/design-batch.py --from-concepts --dry-run --limit 10
 Preferred path (Tier 1.2):
 
 ```bash
-python3 bin/concept-to-spec.py <slug>           # LLM-assisted (default)
-python3 bin/concept-to-spec.py <slug> --no-llm  # deterministic from seed
+python3 bin/concept-to-spec.py <slug>           # deterministic from seed (default)
+python3 bin/concept-to-spec.py <slug> --no-llm  # explicit alias for the same path
 ```
 
-Output lands at `tmp/specs/<slug>.json`. `--no-llm` is useful when you
-want a reproducible spec from the concept seed alone (no network, no
-Anthropic spend, no non-determinism).
+Output lands at `tmp/specs/<slug>.json`. For **design-led** palette/type
+polish from a mockup, export a spec from **Miles** and use
+`bin/miles-bridge-to-spec.py` / `bin/design.py --miles-artifacts`. The
+legacy vision ``--llm`` path exists only when ``FIFTY_ALLOW_NON_MILES_SPEC=1``.
 
 Fallback: hand-write the spec against
 [bin/design.py](../bin/design.py)'s docstring for its schema. Only use

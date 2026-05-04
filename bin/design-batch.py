@@ -4,11 +4,12 @@ worktree per theme.
 
 Why this exists
 ---------------
-`bin/design.py --prompt "..."` ships one theme. The user's mental model
+`bin/design.py --spec …` or `--miles-artifacts …` ships one theme. The user's mental model
 for the 50-theme push is "one manifest, walk away, come back to N PRs."
 This script is that walker. It:
 
-1. Reads a manifest JSON listing themes (each a `prompt:` or `spec:`).
+1. Reads a manifest JSON listing themes (each a `spec:` path, or legacy
+   `prompt:` only when ``FIFTY_ALLOW_NON_MILES_SPEC=1``).
 2. For each entry, materializes a fresh `git worktree` rooted on
    `origin/main` so cross-theme failures stay isolated and humans can
    `cd` into a worktree to inspect.
@@ -64,13 +65,13 @@ Manifest format
 
     {
       "themes": [
-        {"prompt": "midcentury department store with warm cream + burnt orange"},
-        {"prompt": "japandi tea ceremony shop, monochrome cypress"},
-        {"spec": "specs/aerocoastal.json"}
+        {"spec": "specs/batch-example/midcentury.json", "slug_hint": "midcentury"},
+        {"spec": "specs/batch-example/japandi.json", "slug_hint": "japandi"}
       ],
-      "concurrency": 1,
-      "model": "claude-sonnet-4-6"
+      "concurrency": 1
     }
+
+Legacy ``{"prompt": "..."}`` rows require ``FIFTY_ALLOW_NON_MILES_SPEC=1``.
 
 CLI flags override manifest values.
 
@@ -122,6 +123,8 @@ UTC = getattr(dt, "UTC", dt.timezone.utc)  # noqa: UP017
 ROOT = Path(__file__).resolve().parents[1]
 BATCH_VISION_LEDGER = ROOT / "tmp" / "vision-spend.jsonl"
 sys.path.insert(0, str(ROOT / "bin"))
+
+from _design_lib import allow_non_miles_spec_tools  # noqa: E402
 
 
 # Imported for budget probe + spec validation. Keep this import lazy
@@ -278,6 +281,14 @@ def load_manifest(path: Path) -> tuple[list[ManifestEntry], dict[str, Any]]:
                 slug_hint=row.get("slug_hint"),
             )
         )
+    for i, entry in enumerate(entries):
+        if entry.prompt and not allow_non_miles_spec_tools():
+            raise SystemExit(
+                "error: manifest themes cannot use 'prompt' unless "
+                "FIFTY_ALLOW_NON_MILES_SPEC=1. Use {\"spec\": \"path/to.json\"} "
+                "(Miles export or hand-authored), or set the env var for legacy "
+                f"runs only (offending index: {i})."
+            )
     opts = {k: v for k, v in raw.items() if k != "themes"}
     return entries, opts
 
@@ -1699,8 +1710,9 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "Synthesize a manifest from bin/concept_seed.CONCEPTS -- every "
             "concept that has a mockup PNG under docs/mockups/ but no theme "
-            "directory yet. Uses bin/concept-to-spec.py to generate one "
-            "spec JSON per concept into tmp/specs/<slug>.json before "
+            "directory yet. Uses bin/concept-to-spec.py deterministic mapping "
+            "only (no Anthropic) to generate one spec JSON per concept into "
+            "tmp/specs/<slug>.json before "
             "handing off to the normal worktree-per-theme loop. "
             "Combine with --limit to batch N at a time, or "
             "--concept-slugs a,b,c to scope to specific concepts."
@@ -1725,20 +1737,6 @@ def _build_parser() -> argparse.ArgumentParser:
             "attempted this run. Ignored when --manifest is used (the "
             "manifest size is the cap). Recommended for first runs: "
             "--limit 5 matches the Day-0 smoke-batch shape."
-        ),
-    )
-    p.add_argument(
-        "--concept-spec-mode",
-        choices=("llm", "no-llm"),
-        default="no-llm",
-        help=(
-            "How --from-concepts should build each spec. 'no-llm' "
-            "(default) uses the deterministic controlled-vocab mapping "
-            "from bin/concept-to-spec.py -- free, offline-safe, "
-            "reproducible. 'llm' sends the mockup PNG + concept metadata "
-            "to the vision model for a polished spec. Use 'no-llm' for "
-            "first rehearsal runs so the batch halt condition is 'spec "
-            "failed to validate', not 'ran out of vision budget'."
         ),
     )
     p.add_argument(
@@ -2069,7 +2067,6 @@ def _synthesize_from_concepts(
     *,
     concept_slugs: str | None,
     limit: int | None,
-    spec_mode: str,
 ) -> tuple[list[ManifestEntry], dict[str, Any]]:
     """Build a manifest's worth of ManifestEntry rows from concept_seed.
 
@@ -2142,12 +2139,8 @@ def _synthesize_from_concepts(
     for slug in picked:
         out = specs_dir / f"{slug}.json"
         concept = by_slug[slug]
-        mockup = ROOT / "docs" / "mockups" / f"{slug}.png"
         try:
-            if spec_mode == "no-llm":
-                payload = c2s.concept_to_spec(concept)
-            else:
-                payload = c2s.concept_to_spec_llm(concept, mockup, dry_run=False)
+            payload = c2s.concept_to_spec(concept)
             c2s.write_spec(payload, out)
         except c2s.ConceptToSpecError as e:
             raise SystemExit(f"error: concept {slug!r}: {e}") from e
@@ -2186,7 +2179,6 @@ def main(argv: list[str] | None = None) -> int:
         entries, manifest_opts = _synthesize_from_concepts(
             concept_slugs=args.concept_slugs,
             limit=args.limit,
-            spec_mode=args.concept_spec_mode,
         )
     else:
         entries, manifest_opts = load_manifest(args.manifest)

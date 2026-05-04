@@ -129,18 +129,19 @@ Updating rules:
 - **Decision:** **shipped.** Vision/LLM-backed flows write an
   append-only spend ledger and batch runs enforce a daily cap before
   each theme.
-- **Why:** a 100-theme rollout with LLM-assisted concept-to-spec +
-  spec-from-prompt + snap-vision-review will hit Anthropic dozens of
-  times. Without a log we have no way to argue the budget case or
-  catch a runaway batch. A per-day cap is now safer than guessing a
-  lifetime project budget.
+- **Why:** snap-vision-review (and any legacy ``FIFTY_ALLOW_NON_MILES_SPEC``
+  paths) still hit Anthropic; batch caps stay the safety rail. The default
+  concept queue path is now **deterministic** ``concept-to-spec`` + Miles for
+  design-led specs, so spend is dominated by vision-review rather than
+  per-theme spec LLMs.
 - **Operator flow:**
   - Append-only `tmp/vision-spend.jsonl` written through
     `bin/_vision_lib.py`.
   - `FIFTY_VISION_DAILY_BUDGET` / `--budget-usd` gates batch runs
     before each theme.
-  - `--no-llm` / `--dry-run` flags remain the escape hatch for local
-    rehearsals.
+  - Deterministic ``concept-to-spec`` + ``--dry-run`` remain the cheap
+    rehearsal path; legacy Anthropic spec tools need
+    ``FIFTY_ALLOW_NON_MILES_SPEC=1``.
 - **Trigger for next change:** if non-vision LLM calls grow outside
   `_vision_lib.py`, move the ledger naming from "vision" to a generic
   LLM spend ledger without losing historical entries.

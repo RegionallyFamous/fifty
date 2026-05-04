@@ -1,0 +1,46 @@
+{
+  "slug": "midcentury",
+  "name": "Midcentury",
+  "tagline": "Postwar shop, modern goods.",
+  "voice": "warm midcentury department store: 'parcel' for order, 'register' for checkout, 'kindly' on prompts, '·' as the required-field marker",
+  "source": "obel",
+  "palette": {
+    "base": "#F5EFE6",
+    "surface": "#FFFFFF",
+    "subtle": "#EBE3D6",
+    "muted": "#D9CDB8",
+    "border": "#C9BBA3",
+    "tertiary": "#7A6F5C",
+    "secondary": "#5C5343",
+    "contrast": "#1F1B16",
+    "primary": "#1F1B16",
+    "primary-hover": "#403828",
+    "accent": "#D87E3A",
+    "accent-soft": "#F2D8B8"
+  },
+  "fonts": {
+    "display": {
+      "family": "Bricolage Grotesque",
+      "fallback": "Helvetica, Arial, sans-serif",
+      "google_font": true,
+      "weights": [
+        400,
+        700
+      ]
+    },
+    "sans": {
+      "family": "Inter",
+      "fallback": "-apple-system, BlinkMacSystemFont, sans-serif",
+      "google_font": true,
+      "weights": [
+        400,
+        600
+      ]
+    }
+  },
+  "layout_hints": [
+    "asymmetric hero with offset product image",
+    "tiled 3x2 category grid",
+    "full-bleed top announcement strip"
+  ]
+}

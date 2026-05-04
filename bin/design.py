@@ -131,6 +131,7 @@ sys.path.insert(0, str(ROOT / "bin"))
 
 from _design_lib import (  # noqa: E402
     ValidatedSpec,
+    allow_non_miles_spec_tools,
     apply_fonts,
     apply_palette,
     apply_token_patches,
@@ -445,11 +446,10 @@ def _build_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         help=(
-            "Natural-language theme description; resolved to a spec.json by "
-            "`bin/spec-from-prompt.py` before phase dispatch. Mutually exclusive "
-            "with --spec. The resolved spec is written to "
-            "tmp/specs/<slug>.json so subsequent phases (or re-runs) can use "
-            "--spec on it directly."
+            "LEGACY: natural-language description → `bin/spec-from-prompt.py`. "
+            "Disabled unless FIFTY_ALLOW_NON_MILES_SPEC=1. Prefer Miles export "
+            "(--miles-artifacts) or hand-authored --spec. Mutually exclusive with "
+            "--spec; writes tmp/specs/<slug>.json when enabled."
         ),
     )
     p.add_argument(
@@ -741,6 +741,15 @@ def main(argv: list[str] | None = None) -> int:
         print(f"design.py: Miles artifacts resolved to spec at {args.spec}")
 
     if args.prompt:
+        if not allow_non_miles_spec_tools():
+            print(
+                "error: --prompt is disabled by default. Use Miles export + "
+                "--miles-artifacts (see bin/miles-bridge-to-spec.py) or pass "
+                "--spec PATH to a JSON file. Set FIFTY_ALLOW_NON_MILES_SPEC=1 "
+                "only to re-enable bin/spec-from-prompt.py for legacy runs.",
+                file=sys.stderr,
+            )
+            return 2
         try:
             args.spec = _resolve_prompt_to_spec(args.prompt)
         except PhaseError as e:
@@ -751,8 +760,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.spec:
         print(
-            "error: provide --spec PATH, --prompt STR, --miles-artifacts DIR "
-            "(with --miles-slug / --miles-name), or --print-example-spec",
+            "error: provide --spec PATH, --miles-artifacts DIR "
+            "(with --miles-slug / --miles-name), or --print-example-spec. "
+            "Legacy --prompt requires FIFTY_ALLOW_NON_MILES_SPEC=1.",
             file=sys.stderr,
         )
         return 2

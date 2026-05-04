@@ -3,10 +3,10 @@
 
 Why this exists
 ---------------
-`bin/design.py --spec` requires a hand-authored JSON document. The
-agent's mental model for a 50-theme batch run is "50 prompts in, 50
-themes out", not "50 hand-crafted JSON files in." This script closes
-the gap: feed it a prompt like
+`bin/design.py` normally expects **Miles-exported** or hand-authored JSON;
+`design.py --prompt` is **disabled by default** (set
+``FIFTY_ALLOW_NON_MILES_SPEC=1`` to re-enable the subprocess to this script).
+This standalone tool still converts a free-form brief like
 
     "midcentury department store with warm cream + burnt orange,
      Bricolage Grotesque + Inter, 'parcel' microcopy"
@@ -29,8 +29,9 @@ How it works
 4. Cache by SHA-256 of `(prompt, schema_version, model)`. Re-running
    the same prompt is free.
 5. Write the validated spec to `--out` (default
-   `tmp/specs/<slug>.json`) and print the path so `bin/design.py
-   --prompt` (which shells out to this script) can read it.
+   `tmp/specs/<slug>.json`) and print the path. Pass that file to
+   ``bin/design.py --spec`` (or enable legacy ``design.py --prompt`` with
+   ``FIFTY_ALLOW_NON_MILES_SPEC=1``).
 
 Usage
 -----

@@ -10,6 +10,7 @@ demands it).
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -19,13 +20,22 @@ SCRIPT = REPO_ROOT / "bin" / "design-batch.py"
 EXAMPLE_MANIFEST = REPO_ROOT / "specs" / "batch-example.json"
 
 
-def _run(args: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
+def _run(
+    args: list[str],
+    cwd: Path | None = None,
+    *,
+    allow_legacy_prompt: bool = False,
+) -> subprocess.CompletedProcess:
+    env = os.environ.copy()
+    if allow_legacy_prompt:
+        env["FIFTY_ALLOW_NON_MILES_SPEC"] = "1"
     return subprocess.run(
         [sys.executable, str(SCRIPT), *args],
         capture_output=True,
         text=True,
         cwd=str(cwd or REPO_ROOT),
         timeout=60,
+        env=env,
     )
 
 
@@ -90,7 +100,8 @@ def test_dry_run_with_inline_manifest(tmp_path: Path):
             "test-inline",
             "--worktree-parent",
             str(tmp_path / "wt"),
-        ]
+        ],
+        allow_legacy_prompt=True,
     )
     assert r.returncode == 0, r.stderr + r.stdout
     report = REPO_ROOT / "tmp" / "batch-test-inline.json"
@@ -102,6 +113,25 @@ def test_dry_run_with_inline_manifest(tmp_path: Path):
     assert "brutalist" in slugs
     assert any(s.startswith("warm-coastal") for s in slugs)
     report.unlink()
+
+
+def test_manifest_prompt_rejects_without_escape_hatch(tmp_path: Path):
+    manifest = tmp_path / "m.json"
+    manifest.write_text(
+        json.dumps({"themes": [{"prompt": "warm coastal california surf shop"}]}),
+        encoding="utf-8",
+    )
+    r = _run(
+        [
+            "--manifest",
+            str(manifest),
+            "--dry-run",
+            "--run-id",
+            "test-no-prompt",
+        ]
+    )
+    assert r.returncode != 0
+    assert "FIFTY_ALLOW_NON_MILES_SPEC" in r.stderr
 
 
 def test_manifest_must_set_exactly_one_of_prompt_or_spec(tmp_path: Path):
@@ -156,7 +186,8 @@ def test_concurrency_clamped_to_hard_cap(tmp_path: Path):
             "test-clamp",
             "--worktree-parent",
             str(tmp_path / "wt"),
-        ]
+        ],
+        allow_legacy_prompt=True,
     )
     assert r.returncode == 0, r.stderr
     assert "clamping" in r.stderr.lower()
@@ -188,12 +219,12 @@ def test_resume_skips_already_passed(tmp_path: Path):
         "--worktree-parent",
         str(tmp_path / "wt"),
     ]
-    r1 = _run(args)
+    r1 = _run(args, allow_legacy_prompt=True)
     assert r1.returncode == 0, r1.stderr
     report = REPO_ROOT / "tmp" / "batch-test-resume.json"
     data1 = json.loads(report.read_text(encoding="utf-8"))
     assert data1["totals"]["passed"] == 2
-    r2 = _run(args)
+    r2 = _run(args, allow_legacy_prompt=True)
     assert r2.returncode == 0, r2.stderr
     data2 = json.loads(report.read_text(encoding="utf-8"))
     # Both themes still 'passed' after the second run; resumability
